@@ -14,6 +14,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var button: UIButton!
     @IBOutlet weak var time: UILabel!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    @IBOutlet weak var settings: UIButton!
 
     var onboardingOnThisRun = false
 
@@ -108,16 +109,16 @@ window.downloadForecast(function() {
         slider_button.frame.origin = CGPoint(x: x_coordiante, y: y_coordinate)
     }
 
-    func toggleDarkMode() {
+    /*func toggleDarkMode() {
         // #343a40 = darkmode titelbar color
         let darkmode = UIColor(red: 0x34/255.0, green: 0x3a/255.0, blue: 0x40/255.0, alpha: 1.0)
         UIApplication.shared.statusBarView?.backgroundColor = darkmode
-    }
+    }*/
 
-    func toggleLightMode() {
+    /*func toggleLightMode() {
         // #f8f9fa = non-darkmode titelbar color
         UIApplication.shared.statusBarView?.backgroundColor = lightmode
-    }
+    }*/
 
     func notify(location: CLLocation) {
         webView.evaluateJavaScript("window.injectLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy));")
@@ -133,12 +134,12 @@ window.downloadForecast(function() {
             self.currentdate = NSDate(timeIntervalSince1970: Double(action)!) as Date
         }
 
-        if action == "darkmode" {
+        /*if action == "darkmode" {
             toggleDarkMode()
         }
         if action == "lightmode" {
             toggleLightMode()
-        }
+        }*/
 
         if action == "startMonitoringLocationExplicit" {
             SharedLocationUpdater.requestLocation(observer: self, explicit: true)
@@ -250,6 +251,7 @@ window.downloadForecast(function() {
         self.view.addSubview(button!)
         self.view.addSubview(time!)
         self.view.addSubview(activityIndicator!)
+        self.view.addSubview(settings!)
 
         time.isHidden = true
         time.layer.masksToBounds = true
@@ -275,7 +277,7 @@ window.downloadForecast(function() {
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
 
-        toggleLightMode()
+        //toggleLightMode()
 
         if let url = URL(string: "https://meteocool.com/?mobile=ios3") {
             let request = URLRequest(url: url)
@@ -284,6 +286,8 @@ window.downloadForecast(function() {
 
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
+
+        //Setting page
     }
 
     override func viewDidAppear(_ animated: Bool) {

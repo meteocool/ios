@@ -30,6 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
 
         // XXX call this only when there are >0 notifications on launch! saves 1 useless request.
+        SettingsBundleHelper.setToken()
         acknowledgeNotification(retry: true, from: "foreground")
     }
 
@@ -96,8 +97,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 }
 
-extension UIApplication {
+/*extension UIApplication {
     var statusBarView: UIView? {
         return value(forKey: "statusBar") as? UIView
     }
-}
+}*/
