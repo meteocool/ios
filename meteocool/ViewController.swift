@@ -316,6 +316,12 @@ window.downloadForecast(function() {
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
             userDefaults?.setValue(false, forKey: "mesocyclones")
         }
+        if (userDefaults?.value(forKey: "colourMapClassic") == nil){
+            userDefaults?.setValue(false, forKey: "colourMapClassic")
+        }
+        if (userDefaults?.value(forKey: "colourMapViridis") == nil){
+            userDefaults?.setValue(true, forKey: "colourMapViridis")
+        }
         
         
         webView.evaluateJavaScript("window.injectSettings({\"mapRotation\": \(String(describing: userDefaults?.value(forKey: "mapRotation")) )});")

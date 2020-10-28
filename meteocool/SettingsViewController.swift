@@ -25,7 +25,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Customise the appearance and behaviour of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
         NSLocalizedString("If you want, we can notify you ahead of rain or snow at your current location.", comment: "footer"),
-        NSLocalizedString("Version Nr", comment: "footer")
+        NSLocalizedString("Version Nr \n\n © meteocool", comment: "footer")
     ]
     private var dataPushNotification = [
         NSLocalizedString("Push Notification", comment: "dataPushNotification"),
@@ -37,18 +37,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto Zoom after Start", comment: "dataMapView"),
         NSLocalizedString("Darkmode", comment: "dataMapView"),
-        //NSLocalizedString("Look", comment: "dataMapView")
+        NSLocalizedString("Colour Map", comment: "dataMapView")
     ]
     private var dataLayers = [
         NSLocalizedString("⚡️ Lightning", comment: "dataLayers"),
         NSLocalizedString("🌀 Mesocyclones", comment: "dataLayers"),
         NSLocalizedString("☂️ Shelters", comment: "dataLayers")
     ]
-    private var dataAboutLable = [
-        NSLocalizedString("Github", comment: "dataAboutLable"),
-        NSLocalizedString("Twitter", comment: "dataAboutLable"),
-        NSLocalizedString("Feedback", comment: "dataAboutLable"),
-        NSLocalizedString("Push Token", comment: "dataAboutLable")
+    private var dataAboutLabel = [
+        NSLocalizedString("Github", comment: "dataAboutLabel"),
+        NSLocalizedString("Twitter", comment: "dataAboutLabel"),
+        NSLocalizedString("Feedback", comment: "dataAboutLabel"),
+        NSLocalizedString("Push Token", comment: "dataAboutLabel")
     ]
     private var dataAboutValue = [
         "","","",
@@ -101,7 +101,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 return 1
             }
         case 3: //About
-            return dataAboutLable.count
+            return dataAboutLabel.count
         default:
             return 0
         }
@@ -128,6 +128,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell")
         let textCell = tableView.dequeueReusableCell(withIdentifier: "textCell")
         let stepperSliderCell = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell")
+        let linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell")
         
         // Switch
         let switchView = UISwitch(frame: .zero)
@@ -146,7 +147,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let textValueLabel = UILabel.init(frame: CGRect(x: tableView.frame.width/2-15.0,y: 0,width: tableView.frame.width/2-10.0,height: 44.0))
         textValueLabel.textAlignment = .right
         textValueLabel.textColor = UIColor.gray
-        let linkArrow = UIImageView.init(frame: CGRect(x: tableView.frame.width-30.0,y: 44.0/2-15/2,width:15.0,height: 15.0))
+        let linkValueLabel = UILabel.init(frame: CGRect(x: tableView.frame.width/2-30.0,y: 0,width: tableView.frame.width/2-10.0,height: 44.0))
+        linkValueLabel.textAlignment = .right
+        linkValueLabel.textColor = UIColor.gray
+        
+        
         returnCell = textCell!
         switch indexPath.section{
         case 0: //Map View
@@ -163,6 +168,19 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell?.textLabel?.text = dataMapView[indexPath.row]
                 returnCell = switcherCell!
                 switchView.setOn((userDefaults?.bool(forKey: "darkMode"))!, animated: false)
+            case 3: //Look
+                linkCell?.addSubview(textInfoLabel)
+                linkCell?.addSubview(linkValueLabel)
+                textInfoLabel.text = dataMapView[indexPath.row]
+                
+                if (userDefaults?.bool(forKey: "colourMapClassic"))! != true{
+                    linkValueLabel.text = "Classic"
+                }
+                if (userDefaults?.bool(forKey: "colourMapViridis"))! != true{
+                    linkValueLabel.text = "Viridis"
+                }
+                
+                returnCell = linkCell!
             default:
                 returnCell = textCell!
             }
@@ -202,6 +220,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 stepperSliderCell!.addSubview(stepperSliderCellInfoLabel)
                 
                 stepperSliderCellValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
+                stepperSliderCellValueLabel.textColor = .gray
                 stepperSliderCell!.addSubview(stepperSliderCellValueLabel)
                 
                 returnCell = stepperSliderCell!
@@ -214,6 +233,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 stepperSliderCell!.addSubview(stepperSliderCellInfoLabel)
                 
                 stepperSliderCellValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
+                stepperSliderCellValueLabel.textColor = .gray
                 stepperSliderCell!.addSubview(stepperSliderCellValueLabel)
                 
                 returnCell = stepperSliderCell!
@@ -225,21 +245,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 3: //Push Token
                 textCell?.addSubview(textInfoLabel)
-                textInfoLabel.text = dataAboutLable[indexPath.row]
+                textInfoLabel.text = dataAboutLabel[indexPath.row]
                 textCell?.addSubview(textValueLabel)
                 textValueLabel.text = dataAboutValue[indexPath.row]
                 returnCell = textCell!
             
-            default: //Feedack and About
-                textCell?.addSubview(textInfoLabel)
-                textInfoLabel.text = dataAboutLable[indexPath.row]
-                textCell?.addSubview(linkArrow)
-                if #available(iOS 13.0, *) {
-                    linkArrow.image = UIImage.init(systemName: "chevron.right")
-                } else {
-                    // Fallback on earlier versions
-                }
-                returnCell = textCell!
+            default: //Feedack and Links to Websides
+                linkCell?.addSubview(textInfoLabel)
+                textInfoLabel.text = dataAboutLabel[indexPath.row]
+                returnCell = linkCell!
             }
         default:
             returnCell = textCell!
@@ -268,6 +282,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
+        if (indexPath.section == 0 && indexPath.row == 3){
+            performSegue(withIdentifier: "secondSettingsPage", sender: self)
+        }
         if (indexPath.section == 3 && indexPath.row == 0){
             if let url = URL(string: "https://github.com/v4lli/meteocool") {
                 UIApplication.shared.open(url)
