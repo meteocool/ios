@@ -227,6 +227,11 @@
                                                 <action selector="saveSettings:" destination="GjJ-gj-D4n" id="QEJ-ai-jaQ"/>
                                             </connections>
                                         </barButtonItem>
+                                        <barButtonItem key="rightBarButtonItem" systemItem="cancel" id="hjU-bN-gQe">
+                                            <connections>
+                                                <action selector="cancelSettings:" destination="GjJ-gj-D4n" id="GNG-2x-N0P"/>
+                                            </connections>
+                                        </barButtonItem>
                                     </navigationItem>
                                 </items>
                             </navigationBar>

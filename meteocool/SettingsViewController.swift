@@ -7,6 +7,24 @@
 //
 import UIKit
 import StepSlider
+/*
+class LinkTableViewCell: UITableViewCell{
+    @IBOutlet weak var lable: UILabel!
+    @IBOutlet weak var checkbox: UIImageView!
+}
+
+class StepperTableViewCell: UITableViewCell{
+    @IBOutlet weak var stepperSliderCellInfoLabel: UILabel!
+    @IBOutlet weak var stepperSliderCellValueLabel: UILabel!
+}
+
+class SwitcherTableViewCell: UITableViewCell{
+    
+}
+
+class TextTableViewCell: UITableViewCell{
+    
+}*/
 
 class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
     @IBOutlet weak var settingsBar:UINavigationBar!
