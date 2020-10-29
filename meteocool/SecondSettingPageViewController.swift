@@ -95,7 +95,7 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
         self.dismiss(animated: true,completion:nil)
         userDefaults?.setValue(colourMapClassic, forKey: "colourMapClassic")
         userDefaults?.setValue(colourMapViridis, forKey: "colourMapViridis")
-        //ToDo Call the reloadData of the SettingsViewTable
+        NotificationCenter.default.post(name: NSNotification.Name("ColourMapSettingsChanged"), object: nil)
     }
     
     //Return Back without Save

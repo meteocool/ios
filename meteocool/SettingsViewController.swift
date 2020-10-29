@@ -95,8 +95,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         super.viewDidLoad()
         settingsTable.estimatedRowHeight = 100
         settingsTable.rowHeight = 44
-        //settingsTable.delegate = self
-        //settingsTable.dataSource = self
+        NotificationCenter.default.addObserver(self, selector: #selector(reload), name: NSNotification.Name("ColourMapSettingsChanged"), object: nil)
     }
     
     //Return Back with Done
@@ -301,7 +300,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         if (indexPath.section == 3 && indexPath.row == 2){ //Feedback
             let mailAdress = "support@meteocool.com"
-            if let url = URL(string: "mailto:\(mailAdress)") {
+            let token = "test-token"
+            if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=token=\(token)") {
                 UIApplication.shared.open(url)
             }
         }
@@ -355,5 +355,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             print ("Not happen")
         }
         settingsTable.reloadData()
+    }
+    
+    @objc func reload(){
+        settingsTable.reloadData()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
