@@ -334,7 +334,7 @@ window.downloadForecast(function() {
         
         //toggleLightMode()
 
-        if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"){*/"https://app.ng.meteocool.com/") {
+        if let url = URL(string: "https://meteocool.com/?mobile=ios3"){//"https://app.ng.meteocool.com/") {
             let request = URLRequest(url: url)
             webView.load(request)
         }
