@@ -155,39 +155,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let stepperSliderCell = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as! StepperTableViewCell
         let linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as! LinkTableViewCell
         
-        // Switch
-        /*let switchView = UISwitch(frame: .zero)
-        switchView.onTintColor = UIColor(red: 0, green: 122/255, blue: 1, alpha: 1.0)
-        */
         // StepperSlider
         let stepperSliderView = StepSlider.init(frame: CGRect(x: 15.0,y: 50.0,width: tableView.frame.width-30,height: 50.0))
         stepperSliderView.sliderCircleColor = UIColor(red: 233/255, green: 233/255, blue: 235/255, alpha: 1.0)
         stepperSliderView.labelColor = UIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
-        /*let stepperSliderCellInfoLabel = UILabel.init(frame: CGRect(x: 20.0,y: 5.0,width: tableView.frame.width/2-15.0,height: 44.0))
-        let stepperSliderCellValueLabel = UILabel.init(frame: CGRect(x: tableView.frame.width/2-15.0,y: 5.0,width: tableView.frame.width/2-10.0,height: 44.0))
-        stepperSliderCellValueLabel.textAlignment = .right*/
-        
-        // Text
-        /*let textInfoLabel = UILabel.init(frame: CGRect(x: 20.0,y: 0,width: tableView.frame.width/2-15.0,height: 44.0))
-        let textValueLabel = UILabel.init(frame: CGRect(x: tableView.frame.width/2-15.0,y: 0,width: tableView.frame.width/2-10.0,height: 44.0))
-        textValueLabel.textAlignment = .right
-        textValueLabel.textColor = UIColor.gray
-        let linkValueLabel = UILabel.init(frame: CGRect(x: tableView.frame.width/2-30.0,y: 0,width: tableView.frame.width/2-10.0,height: 44.0))
-        linkValueLabel.textAlignment = .right
-        linkValueLabel.textColor = UIColor.gray*/
-        
-        //SwitchChange
-        //To detect which switch changed: Fist Num: Selection, Secend Num: Row
-        switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-        switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged) //Change here!!!
-        //switcherCell.accessoryView = switcherCell
-        
-        //switchView.tag = Int(String(indexPath.section)+String(indexPath.row))!
-        //switchView.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged) //Change here!!!
-        //switcherCell!.accessoryView = switchView
-        
-        //SliderChange
-        stepperSliderView.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
         
         //returnCell = (textCell)!
         switch indexPath.section{
@@ -196,26 +167,23 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             case 0: //Map Rotation
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "mapRotation"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataMapView[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "mapRotation"))!, animated: false)*/
             case 1: //Auto Zoom
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "autoZoom"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataMapView[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "autoZoom"))!, animated: false)*/
             case 2: //DarkMode
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "darkMode"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataMapView[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "darkMode"))!, animated: false)*/
             case 3: //Colour Map
-                linkCell.linkInfoLable.text = "test" //dataMapView[indexPath.row]
+                linkCell.linkInfoLable.text = dataMapView[indexPath.row]
                 
                 if (userDefaults?.bool(forKey: "colourMapClassic"))! != true{
                     linkCell.linkValueLable.text = "Classic"
@@ -223,67 +191,46 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 if (userDefaults?.bool(forKey: "colourMapViridis"))! != true{
                     linkCell.linkValueLable.text = "Viridis"
                 }
-                
-                /*textInfoLabel.text = dataMapView[indexPath.row]
-                linkCell?.addSubview(textInfoLabel)
-                linkCell?.addSubview(linkValueLabel)
-                
-                if (userDefaults?.bool(forKey: "colourMapClassic"))! != true{
-                    linkValueLabel.text = "Classic"
-                }
-                if (userDefaults?.bool(forKey: "colourMapViridis"))! != true{
-                    linkValueLabel.text = "Viridis"
-                }
-                
-                returnCell = linkCell!*/
+                return linkCell
             default:
                 print("This should not happen...")
-                //returnCell = textCell!
             }
         case 1: //Layers
             switch indexPath.row{
             case 0: //Lightning
                 switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "lightning"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataLayers[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "lightning"))!, animated: false)*/
             case 1: //Mesocyclones
                 switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "mesocyclones"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataLayers[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "mesocyclones"))!, animated: false)*/
             /*case 2: //Shelters
                 switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "shelters"))!, animated: false)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataLayers[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "shelters"))!, animated: false)*/
              */
             default:
                 print("This should not happen...")
-                //returnCell = textCell!
             }
         case 2: //Push Notification
             switch indexPath.row {
             case 0: //Notificatino On/Off
                 switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "pushNotification"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataPushNotification[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "pushNotification"))!, animated: false)*/
             case 1: //with dbZ
                 switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "withDBZ"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-                /*switcherCell?.textLabel?.text = dataPushNotification[indexPath.row]
-                returnCell = switcherCell!
-                switchView.setOn((userDefaults?.bool(forKey: "withDBZ"))!, animated: false)*/
             case 2: //Intensity, Threshold
                 stepperSliderCell.addSubview(stepperSliderView)
                 stepperSliderView.maxCount = UInt(intensity.count)
@@ -292,15 +239,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 stepperSliderCell.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
                 stepperSliderCell.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
                 
+                stepperSliderView.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
+                
                 return stepperSliderCell
-                /*stepperSliderCellInfoLabel.text = dataPushNotification[indexPath.row]
-                stepperSliderCell!.addSubview(stepperSliderCellInfoLabel)
-                
-                stepperSliderCellValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
-                stepperSliderCellValueLabel.textColor = .gray
-                stepperSliderCell!.addSubview(stepperSliderCellValueLabel)
-                
-                returnCell = stepperSliderCell!*/
             case 3: //Time before
                 stepperSliderCell.addSubview(stepperSliderView)
                 stepperSliderView.maxCount = 9
@@ -309,20 +250,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 stepperSliderCell.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
                 stepperSliderCell.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
                 
+                stepperSliderView.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
+                
                 return stepperSliderCell
-                
-                /*stepperSliderCellInfoLabel.text = dataPushNotification[indexPath.row]
-                stepperSliderCell!.addSubview(stepperSliderCellInfoLabel)
-                
-                stepperSliderCellValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
-                stepperSliderCellValueLabel.textColor = .gray
-                stepperSliderCell!.addSubview(stepperSliderCellValueLabel)
-                
-                returnCell = stepperSliderCell!*/
             default:
                 print("This should not happen...")
-                /*textCell?.textLabel?.text = dataPushNotification[indexPath.row]
-                returnCell = textCell!*/
             }
         case 3: //About
             switch indexPath.row {
@@ -330,23 +262,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 textCell.textInfoLabel.text = dataAboutLabel[indexPath.row]
                 textCell.textValueLabel.text = dataAboutLabel[indexPath.row]
                 return textCell
-                /*textCell?.addSubview(textInfoLabel)
-                textInfoLabel.text = dataAboutLabel[indexPath.row]
-                textCell?.addSubview(textValueLabel)
-                textValueLabel.text = dataAboutValue[indexPath.row]
-                returnCell = textCell!*/
             
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
-                linkCell.linkValueLable.isHidden = true
+                linkCell.linkValueLable.text = ""
                 return linkCell
-                /*linkCell?.addSubview(textInfoLabel)
-                textInfoLabel.text = dataAboutLabel[indexPath.row]
-                returnCell = linkCell!*/
             }
         default:
             print("This should not happen...")
-            //returnCell = textCell!
         }
         
         return textCell
@@ -385,7 +308,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     }
     
     @objc func switchChanged(_ sender : UISwitch!){
-        print(sender.tag)
         switch sender.tag {
         //Map View
         case 0:
