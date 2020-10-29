@@ -47,7 +47,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Customise the appearance and behaviour of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
         NSLocalizedString("If you want, we can notify you ahead of rain or snow at your current location.", comment: "footer"),
-        NSLocalizedString("Version Nr \n\n © meteocool", comment: "footer")
+        NSLocalizedString("Version Nr:  \n\n Copyright:\n© meteocool Contributors \n\n Data from: \n© DWD © blitzortung.org \n© OpenStreetMap © CARTO", comment: "footer")
     ]
     private var dataPushNotification = [
         NSLocalizedString("Push Notification", comment: "dataPushNotification"),
@@ -145,9 +145,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     //Table Content
     func tableView(_ tableView: UITableView,cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        //var returnCell : UITableViewCell
-        
-        
         // kind of cells
         let switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as! SwitcherTableViewCell
         let textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as! TextTableViewCell
@@ -185,7 +182,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
                 
                 if (userDefaults?.bool(forKey: "colourMapClassic"))! != true{
-                    linkCell.linkValueLable.text = "Classic"
+                    linkCell.linkValueLable.text = NSLocalizedString("Classic", comment: "colourMap")
                 }
                 if (userDefaults?.bool(forKey: "colourMapViridis"))! != true{
                     linkCell.linkValueLable.text = "Viridis"
@@ -352,7 +349,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
             //Value +1 *5 for minutes
         default:
-            print ("Not happen")
+            print ("This not happen")
         }
         settingsTable.reloadData()
     }

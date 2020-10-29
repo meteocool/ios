@@ -5,3 +5,6 @@
 
 /* Class = "UINavigationItem"; title = "Settings"; ObjectID = "oAo-u7-TF2"; */
 "oAo-u7-TF2.title" = "Einstellungen";
+
+/* Class = "UINavigationItem"; title = "Colour Map"; ObjectID = "1lG-Y9-aPj"; */
+"1lG-Y9-aPj.title" = "Farbschema";
