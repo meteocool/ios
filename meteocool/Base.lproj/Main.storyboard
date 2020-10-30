@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17506" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17156" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17504.1"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17126"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -13,14 +13,16 @@
         <scene sceneID="tne-QT-ifu">
             <objects>
                 <viewController id="BYZ-38-t0r" customClass="ViewController" customModule="meteocool" customModuleProvider="target" sceneMemberID="viewController">
-                    <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
+                    <view key="view" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="8bC-Xf-vdC">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="aOD-KT-ksP">
-                                <rect key="frame" x="0.0" y="-6" width="414" height="902"/>
+                            <wkWebView contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" allowsLinkPreview="NO" translatesAutoresizingMaskIntoConstraints="NO" id="aOD-KT-ksP">
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                <wkWebViewConfiguration key="configuration">
+                                <edgeInsets key="layoutMargins" top="0.0" left="0.0" bottom="0.0" right="0.0"/>
+                                <wkWebViewConfiguration key="configuration" allowsAirPlayForMediaPlayback="NO" allowsPictureInPictureMediaPlayback="NO">
+                                    <dataDetectorTypes key="dataDetectorTypes"/>
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
                                     <wkPreferences key="preferences"/>
                                 </wkWebViewConfiguration>
@@ -44,12 +46,12 @@
                                 </connections>
                             </button>
                             <activityIndicatorView hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" style="gray" translatesAutoresizingMaskIntoConstraints="NO" id="KcY-U7-JEH">
-                                <rect key="frame" x="312" y="62" width="20" height="20"/>
+                                <rect key="frame" x="312" y="68" width="20" height="20"/>
                                 <rect key="contentStretch" x="1" y="1" width="1" height="1"/>
                                 <color key="color" systemColor="darkTextColor"/>
                             </activityIndicatorView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0 min" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BTS-em-eiA">
-                                <rect key="frame" x="177" y="94" width="60" height="21"/>
+                                <rect key="frame" x="177" y="50" width="60" height="21"/>
                                 <color key="backgroundColor" red="0.4760928750038147" green="0.58250075578689575" blue="0.72943240404129028" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <constraints>
                                     <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="60" id="HZE-aZ-CkT"/>
@@ -59,7 +61,7 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Vl3-Fb-G9g">
-                                <rect key="frame" x="369" y="812" width="35" height="35"/>
+                                <rect key="frame" x="369" y="846" width="35" height="35"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="35" id="DOp-gp-3E8"/>
                                     <constraint firstAttribute="width" constant="35" id="O73-jP-m1M"/>
@@ -71,20 +73,19 @@
                                 </connections>
                             </button>
                         </subviews>
-                        <viewLayoutGuide key="safeArea" id="eLq-EE-HwW"/>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <gestureRecognizers/>
                         <constraints>
                             <constraint firstItem="aOD-KT-ksP" firstAttribute="top" secondItem="KcY-U7-JEH" secondAttribute="bottom" constant="-88" id="0AD-qv-zDH"/>
-                            <constraint firstItem="aOD-KT-ksP" firstAttribute="top" secondItem="eLq-EE-HwW" secondAttribute="top" constant="-50" id="4bD-5Z-ZyV"/>
+                            <constraint firstItem="aOD-KT-ksP" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="4bD-5Z-ZyV"/>
                             <constraint firstItem="BTS-em-eiA" firstAttribute="centerX" secondItem="aOD-KT-ksP" secondAttribute="centerX" id="H0g-a1-ugA"/>
-                            <constraint firstItem="BTS-em-eiA" firstAttribute="top" secondItem="eLq-EE-HwW" secondAttribute="top" constant="50" id="NF7-5V-BnW"/>
-                            <constraint firstItem="aOD-KT-ksP" firstAttribute="leading" secondItem="eLq-EE-HwW" secondAttribute="leading" id="PZO-yj-6qD"/>
+                            <constraint firstItem="BTS-em-eiA" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" constant="50" id="NF7-5V-BnW"/>
+                            <constraint firstItem="aOD-KT-ksP" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="PZO-yj-6qD"/>
                             <constraint firstItem="aOD-KT-ksP" firstAttribute="bottom" secondItem="8bC-Xf-vdC" secondAttribute="bottom" id="X8a-Bx-Qhm"/>
-                            <constraint firstItem="aOD-KT-ksP" firstAttribute="trailing" secondItem="eLq-EE-HwW" secondAttribute="trailing" id="XWC-b0-Lf8"/>
+                            <constraint firstItem="aOD-KT-ksP" firstAttribute="trailing" secondItem="8bC-Xf-vdC" secondAttribute="trailing" id="XWC-b0-Lf8"/>
                             <constraint firstItem="KcY-U7-JEH" firstAttribute="leading" secondItem="aOD-KT-ksP" secondAttribute="trailing" constant="-102" id="oDd-dR-YcU"/>
-                            <constraint firstItem="eLq-EE-HwW" firstAttribute="trailing" secondItem="Vl3-Fb-G9g" secondAttribute="trailing" constant="10" id="vEk-Zp-rzx"/>
-                            <constraint firstItem="eLq-EE-HwW" firstAttribute="bottom" secondItem="Vl3-Fb-G9g" secondAttribute="bottom" constant="15" id="zf4-sA-mSh"/>
+                            <constraint firstAttribute="trailing" secondItem="Vl3-Fb-G9g" secondAttribute="trailing" constant="10" id="vEk-Zp-rzx"/>
+                            <constraint firstAttribute="bottom" secondItem="Vl3-Fb-G9g" secondAttribute="bottom" constant="15" id="zf4-sA-mSh"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="pxd-FG-BoV"/>
@@ -101,7 +102,7 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
                 <gestureRecognizer id="VUV-Tz-dat" customClass="CustomGestureRecognizer" customModule="meteocool" customModuleProvider="target"/>
             </objects>
-            <point key="canvasLocation" x="52.173913043478265" y="34.151785714285715"/>
+            <point key="canvasLocation" x="-552.17391304347825" y="109.82142857142857"/>
         </scene>
         <!--Settings View Controller-->
         <scene sceneID="gZn-8e-OCg">

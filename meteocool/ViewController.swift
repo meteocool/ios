@@ -334,7 +334,7 @@ window.downloadForecast(function() {
         
         //toggleLightMode()
 
-        if let url = URL(string: "https://meteocool.com/?mobile=ios3"){//"https://app.ng.meteocool.com/") {
+        if let url = URL(string: "https://app.ng.meteocool.com/ios.html") {
             let request = URLRequest(url: url)
             webView.load(request)
         }
@@ -369,11 +369,5 @@ window.downloadForecast(function() {
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background
         webView.evaluateJavaScript("window.manualTileUpdateFn(true);")
-    }
-}
-
-extension WKWebView {
-    override open var safeAreaInsets: UIEdgeInsets {
-        return UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     }
 }
