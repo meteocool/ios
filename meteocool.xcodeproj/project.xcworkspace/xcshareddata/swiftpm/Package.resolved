@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "OnboardKit",
+        "repositoryURL": "https://github.com/NikolaKirev/OnboardKit",
+        "state": {
+          "branch": null,
+          "revision": "98bd903892618cb8f5de99b7a29d1e3b7afc247e",
+          "version": "1.5.0"
+        }
+      },
+      {
+        "package": "StepSlider",
+        "repositoryURL": "https://github.com/spromicky/StepSlider",
+        "state": {
+          "branch": null,
+          "revision": "bb490b81515cb0dc87465938a36c43dcba11a274",
+          "version": "1.8.0"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
