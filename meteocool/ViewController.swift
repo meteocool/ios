@@ -243,12 +243,15 @@ window.downloadForecast(function() {
         description: NSLocalizedString("We won't ask you again about permissions!\n\nIf you change your mind, go to System Settings > Privacy > meteocool.", comment:"we won't ask again"),
         advanceButtonTitle: NSLocalizedString("Done", comment: "done")
     )
-
+    
     override func loadView() {
         super.loadView()
         viewController = self
+        
         webView?.configuration.userContentController.add(self, name: "scriptHandler")
         webView?.configuration.userContentController.add(self, name: "timeHandler")
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        
         self.view.addSubview(webView!)
         self.view.addSubview(slider_ring!)
         self.view.addSubview(slider_button!)
