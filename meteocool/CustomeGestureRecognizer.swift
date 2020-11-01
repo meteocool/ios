@@ -23,7 +23,7 @@ class CustomGestureRecognizer: UIGestureRecognizer {
     let ringAngle = 99.0 //count of degree that are seeable
     let xValueRing = 75.0 //x-size of the ring (picture, half ring)
     let yValueRing = 300.0 // y-size of the ring (picture, half ring)
-    let yRing = 176.0 //y-position of the ring (picture) from the top
+    let yRing = Double(UIScreen.main.bounds.height) - 100.0 - 300.0 //y-position of the ring (picture) from the top
     let slots = 9 //cout of slots of the forcarst
     let timeSteps = 5.0 //the steps of the forcarst in minuts
 

@@ -44,7 +44,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         if (drawerState == .CLOSED) {
             activityIndicator.startAnimating()
             button.alpha = 0.5
-            move_slider_button(pointToMove: CGPoint.init(x: UIScreen.main.bounds.width, y: 209))
+            move_slider_button(pointToMove: CGPoint.init(x: UIScreen.main.bounds.width, y: UIScreen.main.bounds.height-300-100+33))
             drawerState = .LOADING
             button.isEnabled = false
         }
@@ -337,7 +337,7 @@ window.downloadForecast(function() {
         
         //toggleLightMode()
 
-        if let url = URL(string: "https://app.ng.meteocool.com/ios.html") {
+        if let url = URL(string: "https://meteocool.com/?mobile=ios3"/*"https://app.ng.meteocool.com/ios.html"*/) {
             let request = URLRequest(url: url)
             webView.load(request)
         }
