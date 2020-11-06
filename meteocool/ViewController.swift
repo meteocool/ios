@@ -17,6 +17,9 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var settings: UIButton!
     @IBOutlet weak var time: UILabel!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    @IBOutlet weak var trippleButton: UIImageView!
+    @IBOutlet weak var position: UIButton!
+    @IBOutlet weak var play: UIButton!
 
     var onboardingOnThisRun = false
 
@@ -258,7 +261,10 @@ window.downloadForecast(function() {
         self.view.addSubview(button!)
         self.view.addSubview(time!)
         self.view.addSubview(activityIndicator!)
+        self.view.addSubview(trippleButton!)
         self.view.addSubview(settings!)
+        self.view.addSubview(position!)
+        self.view.addSubview(play!)
 
         time.isHidden = true
         time.layer.masksToBounds = true
@@ -337,7 +343,7 @@ window.downloadForecast(function() {
         
         //toggleLightMode()
 
-        if let url = URL(string: "https://meteocool.com/?mobile=ios3"/*"https://app.ng.meteocool.com/ios.html"*/) {
+        if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"*/"https://app.ng.meteocool.com/ios.html") {
             let request = URLRequest(url: url)
             webView.load(request)
         }
