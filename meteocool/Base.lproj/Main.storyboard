@@ -4,6 +4,7 @@
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17504.1"/>
+        <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -72,23 +73,36 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                             </imageView>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Vl3-Fb-G9g">
-                                <rect key="frame" x="356" y="40" width="50" height="50"/>
+                                <rect key="frame" x="358" y="86" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="26"/>
-                                <state key="normal" image="SettingsWeel"/>
+                                <state key="normal">
+                                    <imageReference key="image" image="gearshape" catalog="system" symbolScale="large"/>
+                                </state>
                                 <connections>
                                     <segue destination="kxl-qM-KTC" kind="presentation" id="gKc-Tr-QXn"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Sla-Kf-0cZ">
-                                <rect key="frame" x="354" y="127" width="50" height="50"/>
+                                <rect key="frame" x="358" y="132" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" image="Navigation"/>
+                                <state key="normal">
+                                    <imageReference key="image" image="location" catalog="system" symbolScale="large"/>
+                                </state>
+                                <connections>
+                                    <action selector="locationButtonWithSender:" destination="BYZ-38-t0r" eventType="touchUpInside" id="GfT-2b-y8Y"/>
+                                </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="dcC-P1-Ml2">
-                                <rect key="frame" x="356" y="83" width="50" height="50"/>
+                                <rect key="frame" x="358" y="43" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" image="PlayButton"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="26"/>
+                                <state key="normal">
+                                    <imageReference key="image" image="square.stack.3d.up" catalog="system" symbolScale="large"/>
+                                </state>
+                                <connections>
+                                    <action selector="layerSwitcherWithSender:" destination="BYZ-38-t0r" eventType="touchUpInside" id="mMR-qU-bEO"/>
+                                </connections>
                             </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="hoo-g4-0lM"/>
@@ -112,7 +126,7 @@
                     <connections>
                         <outlet property="activityIndicator" destination="KcY-U7-JEH" id="e6G-op-6Wp"/>
                         <outlet property="button" destination="YLM-To-OTW" id="enJ-iB-iSY"/>
-                        <outlet property="play" destination="dcC-P1-Ml2" id="2td-ZQ-Bwf"/>
+                        <outlet property="layer" destination="dcC-P1-Ml2" id="qoe-D3-c7B"/>
                         <outlet property="position" destination="Sla-Kf-0cZ" id="aRa-8Y-ZEn"/>
                         <outlet property="settings" destination="Vl3-Fb-G9g" id="E7g-I1-xF5"/>
                         <outlet property="slider_button" destination="2rh-rK-OQM" id="2p1-dd-7wc"/>
@@ -338,17 +352,18 @@
                     <connections>
                         <outlet property="settingsBar" destination="7Dd-sJ-2hh" id="GNC-Cj-ILL"/>
                         <outlet property="settingsTable" destination="qUs-CA-GaX" id="cj8-q8-8UD"/>
-                        <segue destination="GjJ-gj-D4n" kind="presentation" identifier="secondSettingsPage" modalPresentationStyle="currentContext" id="0eI-S6-6l3"/>
+                        <segue destination="GjJ-gj-D4n" kind="presentation" identifier="radarColorMappingView" id="B3g-3T-taQ"/>
+                        <segue destination="leh-37-dyE" kind="presentation" identifier="baseLayerMappingView" id="Lql-vg-YQL"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="jUr-Bn-H8b" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1144.9275362318842" y="33.482142857142854"/>
         </scene>
-        <!--Second Setting Page View Controller-->
+        <!--Radar Color Mapping View Controller-->
         <scene sceneID="E4v-h7-aEX">
             <objects>
-                <viewController id="GjJ-gj-D4n" customClass="SecondSettingPageViewController" customModule="meteocool" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController id="GjJ-gj-D4n" customClass="RadarColorMappingViewController" customModule="meteocool" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="Y94-Dk-xeg">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="842"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -359,15 +374,15 @@
                                     <constraint firstAttribute="height" constant="56" id="yfi-Ta-gb8"/>
                                 </constraints>
                                 <items>
-                                    <navigationItem title="Colour Map" id="1lG-Y9-aPj">
+                                    <navigationItem title="Color Map" id="1lG-Y9-aPj">
                                         <barButtonItem key="leftBarButtonItem" systemItem="cancel" id="hjU-bN-gQe">
                                             <connections>
-                                                <action selector="cancelSettings:" destination="GjJ-gj-D4n" id="GNG-2x-N0P"/>
+                                                <action selector="cancelSettings:" destination="GjJ-gj-D4n" id="AU2-PN-cwl"/>
                                             </connections>
                                         </barButtonItem>
                                         <barButtonItem key="rightBarButtonItem" systemItem="save" id="GVV-Ca-r6F">
                                             <connections>
-                                                <action selector="saveSettings:" destination="GjJ-gj-D4n" id="QEJ-ai-jaQ"/>
+                                                <action selector="saveSettings:" destination="GjJ-gj-D4n" id="0gO-pK-MDt"/>
                                             </connections>
                                         </barButtonItem>
                                     </navigationItem>
@@ -377,7 +392,7 @@
                                 <rect key="frame" x="0.0" y="56" width="414" height="786"/>
                                 <color key="backgroundColor" systemColor="systemGroupedBackgroundColor"/>
                                 <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="radarColorMaping" id="chi-Id-8Tq" customClass="RadarColorMapingTableViewCell" customModule="meteocool" customModuleProvider="target">
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="radarColorMapping" id="chi-Id-8Tq" customClass="RadarColorMappingTableViewCell" customModule="meteocool" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="55.5" width="414" height="43.5"/>
                                         <autoresizingMask key="autoresizingMask"/>
                                         <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="chi-Id-8Tq" id="4hi-CE-aR7">
@@ -405,8 +420,8 @@
                                             </constraints>
                                         </tableViewCellContentView>
                                         <connections>
-                                            <outlet property="checkbox" destination="MhM-Hf-fQ0" id="RIU-9c-qnp"/>
-                                            <outlet property="lable" destination="3Ij-jn-tcl" id="dsr-Bt-xGJ"/>
+                                            <outlet property="checkbox" destination="MhM-Hf-fQ0" id="u2u-DK-oDt"/>
+                                            <outlet property="lable" destination="3Ij-jn-tcl" id="lVU-0t-nnI"/>
                                         </connections>
                                     </tableViewCell>
                                 </prototypes>
@@ -426,25 +441,114 @@
                     </view>
                     <navigationItem key="navigationItem" id="Cfp-x9-RNl"/>
                     <connections>
-                        <outlet property="secondPageSettingsBar" destination="0ld-OK-9nI" id="e7y-cD-WPM"/>
-                        <outlet property="secondPageSettingsTable" destination="Oih-oK-ewD" id="5DC-3Q-36l"/>
+                        <outlet property="radarColorMappingSettingsBar" destination="0ld-OK-9nI" id="VjZ-32-Kka"/>
+                        <outlet property="radarColorMappingSettingsTable" destination="Oih-oK-ewD" id="VDw-y2-dEA"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="eu8-s6-vy5" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="2139.130434782609" y="33.482142857142854"/>
         </scene>
+        <!--Base Layer Mapping View Controller-->
+        <scene sceneID="MXW-2b-dD4">
+            <objects>
+                <viewController id="leh-37-dyE" customClass="BaseLayerMappingViewController" customModule="meteocool" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="64B-P9-NCN">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="842"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <navigationBar contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="c5T-lL-yI9">
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="56"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="56" id="6RV-5v-WRC"/>
+                                </constraints>
+                                <items>
+                                    <navigationItem title="Base Layer" id="pu6-iD-emo">
+                                        <barButtonItem key="leftBarButtonItem" systemItem="cancel" id="QED-sj-j8b">
+                                            <connections>
+                                                <action selector="cancelSettings:" destination="leh-37-dyE" id="obz-49-SOo"/>
+                                            </connections>
+                                        </barButtonItem>
+                                        <barButtonItem key="rightBarButtonItem" systemItem="save" id="9Tv-oF-yQ9">
+                                            <connections>
+                                                <action selector="saveSettings:" destination="leh-37-dyE" id="yrd-WB-hiK"/>
+                                            </connections>
+                                        </barButtonItem>
+                                    </navigationItem>
+                                </items>
+                            </navigationBar>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="grouped" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="18" sectionFooterHeight="18" translatesAutoresizingMaskIntoConstraints="NO" id="E0T-tI-OMG">
+                                <rect key="frame" x="0.0" y="56" width="414" height="786"/>
+                                <color key="backgroundColor" systemColor="systemGroupedBackgroundColor"/>
+                                <prototypes>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="baseLayer" id="Y68-Bu-ftm" customClass="BaseLayerMappingTableViewCell" customModule="meteocool" customModuleProvider="target">
+                                        <rect key="frame" x="0.0" y="55.5" width="414" height="43.5"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Y68-Bu-ftm" id="LWv-jF-pEu">
+                                            <rect key="frame" x="0.0" y="0.0" width="414" height="43.5"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ql9-UP-hsG">
+                                                    <rect key="frame" x="20" y="11.5" width="42" height="21"/>
+                                                    <constraints>
+                                                        <constraint firstAttribute="height" constant="21" id="RQW-Bm-fFu"/>
+                                                    </constraints>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                    <nil key="textColor"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="checkmark" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="2mu-tp-W4o">
+                                                    <rect key="frame" x="375.5" y="14" width="18.5" height="16.5"/>
+                                                </imageView>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstItem="ql9-UP-hsG" firstAttribute="centerY" secondItem="LWv-jF-pEu" secondAttribute="centerY" id="F2o-95-Pkn"/>
+                                                <constraint firstItem="2mu-tp-W4o" firstAttribute="trailing" secondItem="LWv-jF-pEu" secondAttribute="trailingMargin" id="Ipi-uk-QMz"/>
+                                                <constraint firstItem="ql9-UP-hsG" firstAttribute="leading" secondItem="LWv-jF-pEu" secondAttribute="leadingMargin" id="Q2w-3E-Sfk"/>
+                                                <constraint firstItem="2mu-tp-W4o" firstAttribute="centerY" secondItem="LWv-jF-pEu" secondAttribute="centerY" id="yWt-Da-K2r"/>
+                                            </constraints>
+                                        </tableViewCellContentView>
+                                        <connections>
+                                            <outlet property="checkbox" destination="2mu-tp-W4o" id="pjS-Nz-DkY"/>
+                                            <outlet property="lable" destination="ql9-UP-hsG" id="FoM-UE-LWB"/>
+                                        </connections>
+                                    </tableViewCell>
+                                </prototypes>
+                            </tableView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="NfZ-uu-WTX"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="c5T-lL-yI9" firstAttribute="top" secondItem="NfZ-uu-WTX" secondAttribute="top" id="6rx-IJ-wdv"/>
+                            <constraint firstItem="c5T-lL-yI9" firstAttribute="trailing" secondItem="NfZ-uu-WTX" secondAttribute="trailing" id="Gua-il-y4Q"/>
+                            <constraint firstItem="E0T-tI-OMG" firstAttribute="leading" secondItem="NfZ-uu-WTX" secondAttribute="leading" id="dQb-hc-wny"/>
+                            <constraint firstItem="c5T-lL-yI9" firstAttribute="leading" secondItem="NfZ-uu-WTX" secondAttribute="leading" id="mg5-2H-uGa"/>
+                            <constraint firstItem="E0T-tI-OMG" firstAttribute="trailing" secondItem="NfZ-uu-WTX" secondAttribute="trailing" id="q7F-rl-5bw"/>
+                            <constraint firstAttribute="bottom" secondItem="E0T-tI-OMG" secondAttribute="bottom" id="rl0-iE-cnc"/>
+                            <constraint firstItem="E0T-tI-OMG" firstAttribute="top" secondItem="c5T-lL-yI9" secondAttribute="bottom" id="s59-Mu-jSo"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" id="vEj-Kh-Evf"/>
+                    <connections>
+                        <outlet property="baseLayerMappingSettingsBar" destination="c5T-lL-yI9" id="Ymc-sx-CgI"/>
+                        <outlet property="baseLayerMappingSettingsTable" destination="E0T-tI-OMG" id="OlS-ru-IKS"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="rYy-gx-Vir" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2139" y="-656"/>
+        </scene>
     </scenes>
     <resources>
-        <image name="Navigation" width="1024" height="1024"/>
-        <image name="PlayButton" width="1024" height="1024"/>
-        <image name="SettingsWeel" width="1024" height="1024"/>
         <image name="Slider_Handle" width="403" height="1066"/>
         <image name="Slider_long" width="3000" height="6000"/>
         <image name="Slider_point" width="181.5" height="181.5"/>
         <image name="TribbleButton" width="1024" height="2814"/>
         <image name="checkmark" catalog="system" width="128" height="114"/>
         <image name="chevron.right" catalog="system" width="96" height="128"/>
+        <image name="gearshape" catalog="system" width="128" height="121"/>
+        <image name="location" catalog="system" width="128" height="121"/>
+        <image name="square.stack.3d.up" catalog="system" width="128" height="124"/>
         <systemColor name="darkTextColor">
             <color white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

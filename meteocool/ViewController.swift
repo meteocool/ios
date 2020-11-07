@@ -20,7 +20,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     @IBOutlet weak var trippleButton: UIImageView!
     @IBOutlet weak var position: UIButton!
-    @IBOutlet weak var play: UIButton!
+    @IBOutlet weak var layer: UIButton!
 
     var onboardingOnThisRun = false
 
@@ -117,13 +117,13 @@ window.downloadForecast(function() {
     }
 
     func notify(location: CLLocation) {
-        webView.evaluateJavaScript("window.injectLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy));")
+        webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy),true);")
     }
 
     @objc func injectSettings() {
         let config = [
             "mapRotation": userDefaults?.value(forKey: "mapRotation"),
-            "radarColorMaping": userDefaults?.value(forKey: "radarColorMaping"),
+            "radarColorMapping": userDefaults?.value(forKey: "radarColorMapping"),
         ]
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)
@@ -268,7 +268,7 @@ window.downloadForecast(function() {
         self.view.addSubview(trippleButton!)
         self.view.addSubview(settings!)
         self.view.addSubview(position!)
-        self.view.addSubview(play!)
+        self.view.addSubview(layer!)
 
         time.isHidden = true
         time.layer.masksToBounds = true
@@ -328,8 +328,11 @@ window.downloadForecast(function() {
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
             userDefaults?.setValue(false, forKey: "mesocyclones")
         }
-        if (userDefaults?.value(forKey: "radarColorMaping") == nil){
-            userDefaults?.setValue("classic", forKey: "radarColorMaping")
+        if (userDefaults?.value(forKey: "radarColorMapping") == nil){
+            userDefaults?.setValue("classic", forKey: "radarColorMapping")
+        }
+        if (userDefaults?.value(forKey: "baseLayer") == nil){
+            userDefaults?.setValue("topographic", forKey: "baseLayer")
         }
 
         if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"*/"https://app.ng.meteocool.com/ios.html") {
@@ -369,5 +372,14 @@ window.downloadForecast(function() {
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background
         webView.evaluateJavaScript("window.ios.refresh();")
+    }
+    
+    @IBAction func locationButton(sender: AnyObject){
+        SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+        //webView.evaluateJavaScript("window.lm.updateLocation(49.1234, 11.456, 100);")
+    }
+    
+    @IBAction func layerSwitcher(sender: AnyObject){
+        //webView.evaluateJavaScript(<#T##javaScript: String##String#>, in: <#T##WKContentWorld#>)
     }
 }

@@ -7,50 +7,48 @@
 
 import UIKit
 
-class RadarColorMapingTableViewCell: UITableViewCell{
+class RadarColorMappingTableViewCell: UITableViewCell{
     @IBOutlet weak var lable: UILabel!
     @IBOutlet weak var checkbox: UIImageView!
 }
 
-class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
+class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
     
-    @IBOutlet weak var secondPageSettingsBar:UINavigationBar!
-    @IBOutlet weak var secondPageSettingsTable:UITableView!
+    @IBOutlet weak var radarColorMappingSettingsBar:UINavigationBar!
+    @IBOutlet weak var radarColorMappingSettingsTable:UITableView!
     
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
     //Content
-    private var radarColorMaping = [
-        NSLocalizedString("classic", comment: "radarColorMaping"),
-        NSLocalizedString("viridis", comment: "radarColorMaping")
+    private var radarColorMapping = [
+        NSLocalizedString("classic", comment: "radarColorMapping"),
+        NSLocalizedString("viridis", comment: "radarColorMapping")
     ]
     
-    var colorMaping:String!
+    var colorMapping:String!
     
     //General View Things
     override func loadView() {
         super.loadView()
-        self.view.addSubview(secondPageSettingsBar)
-        self.view.addSubview(secondPageSettingsTable)
-        print("test")
-        colorMaping = userDefaults?.string(forKey: "radarColorMaping") //(userDefaults?.string(forKey: "radarColorMap") == "classic")
-       // colorMapViridis = !colorMapClassic
+        self.view.addSubview(radarColorMappingSettingsBar)
+        self.view.addSubview(radarColorMappingSettingsTable)
+        colorMapping = userDefaults?.string(forKey: "radarColorMapping")
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        secondPageSettingsTable.estimatedRowHeight = 100
-        secondPageSettingsTable.rowHeight = 44
-        secondPageSettingsTable.delegate = self
-        secondPageSettingsTable.dataSource = self
+        radarColorMappingSettingsTable.estimatedRowHeight = 100
+        radarColorMappingSettingsTable.rowHeight = 44
+        radarColorMappingSettingsTable.delegate = self
+        radarColorMappingSettingsTable.dataSource = self
     }
     
     //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section{
         case 0:
-            return radarColorMaping.count
+            return radarColorMapping.count
         default:
             return 0
         }
@@ -58,15 +56,15 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
     
     //Table Content
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "radarColorMaping",for: indexPath) as! RadarColorMapingTableViewCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: "radarColorMapping",for: indexPath) as! RadarColorMappingTableViewCell
         
         switch indexPath.row {
         case 0: //meteocool Classic
-            cell.lable.text = radarColorMaping[indexPath.row]
-            cell.checkbox.isHidden = colorMaping == "viridis"
+            cell.lable.text = radarColorMapping[indexPath.row]
+            cell.checkbox.isHidden = colorMapping == "viridis"
         case 1: //Viridis
-            cell.lable.text = radarColorMaping[indexPath.row]
-            cell.checkbox.isHidden = colorMaping == "classic"
+            cell.lable.text = radarColorMapping[indexPath.row]
+            cell.checkbox.isHidden = colorMapping == "classic"
         default:
             print("this not happen")
         }
@@ -77,19 +75,18 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
         tableView.deselectRow(at: indexPath, animated: false)
         
         if (indexPath.section == 0 && indexPath.row == 0){ //Classic
-            colorMaping = "classic"
+            colorMapping = "classic"
         }
         if (indexPath.section == 0 && indexPath.row == 1){ //Viridis
-            colorMaping = "viridis"
+            colorMapping = "viridis"
         }
-        secondPageSettingsTable.reloadData()
+        radarColorMappingSettingsTable.reloadData()
     }
     
     //Return Back with Save
     @IBAction func saveSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
-        userDefaults?.setValue(colorMaping, forKey: "radarColorMaping")
-        //userDefaults?.setValue(colorMapClassic ? "viridis" : "classic", forKey: "radarColorMap")
+        userDefaults?.setValue(colorMapping, forKey: "radarColorMapping")
         NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
     }
     

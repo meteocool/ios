@@ -58,7 +58,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var dataMapView = [
         NSLocalizedString("Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto-Zoom after Start", comment: "dataMapView"),
-        NSLocalizedString("Darkmode", comment: "dataMapView"),
+        NSLocalizedString("Base Layer", comment: "dataMapView"),
         NSLocalizedString("Color Map", comment: "dataMapView")
     ]
     private var dataLayers = [
@@ -168,16 +168,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-            case 2: //DarkMode
-                switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "darkMode"))!, animated: false)
-                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-                return switcherCell
+            case 2: //Base Layer
+                linkCell.linkInfoLable.text = dataMapView[indexPath.row]
+                linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "baseLayer"))!, comment: "baseLayer")
+                return linkCell
             case 3: //Radar Color Map
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
-                linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "radarColorMaping"))!, comment: "radarColorMaping")
-                //NSLocalizedString(userDefaults?.string(forKey: "radarColorMap") ?? "classic", comment: "radarColorMap")
+                linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "radarColorMapping"))!, comment: "radarColorMapping")
                 return linkCell
             default:
                 print("This should not happen...")
@@ -274,8 +271,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
-        if (indexPath.section == 0 && indexPath.row == 3){
-            performSegue(withIdentifier: "secondSettingsPage", sender: self)
+        if (indexPath.section == 0 && indexPath.row == 2){ // Base Layer
+            performSegue(withIdentifier: "baseLayerMappingView", sender: self)
+        }
+        if (indexPath.section == 0 && indexPath.row == 3){ // Color Mapping
+            performSegue(withIdentifier: "radarColorMappingView", sender: self)
         }
         if (indexPath.section == 3 && indexPath.row == 0){
             if let url = URL(string: "https://github.com/meteocool/ios") {
@@ -306,9 +306,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 1:
             userDefaults?.setValue(sender.isOn, forKey: "autoZoom")
             viewController?.webView.evaluateJavaScript("window.injectSettings({\"zoomOnForeground\": \(sender.isOn)});")
-        case 2:
-            userDefaults?.setValue(sender.isOn, forKey: "darkMode")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"darkMode\": \(sender.isOn)});")
         //Layers
         case 10:
             userDefaults?.setValue(sender.isOn, forKey: "lightning")
