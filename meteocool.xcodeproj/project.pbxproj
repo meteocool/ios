@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		21CDB629254C6EF90050868B /* SecondSettingPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CDB627254C6EF80050868B /* SecondSettingPageViewController.swift */; };
+		21CDB629254C6EF90050868B /* RadarColorMappingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */; };
 		21CDB62A254C6EF90050868B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CDB628254C6EF80050868B /* SettingsViewController.swift */; };
+		21CE250B255706A4009595D4 /* BaseLayerMappingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */; };
 		5705D3992186A16C00CC5A60 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5705D3982186A16C00CC5A60 /* NotificationManager.swift */; };
 		57589ACF216ADB1000CDEBB7 /* LocationUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57589ACE216ADB1000CDEBB7 /* LocationUpdater.swift */; };
 		57589AD1216ADB5C00CDEBB7 /* NetworkHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57589AD0216ADB5C00CDEBB7 /* NetworkHelper.swift */; };
@@ -48,8 +49,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		21CDB627254C6EF80050868B /* SecondSettingPageViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SecondSettingPageViewController.swift; sourceTree = "<group>"; };
+		21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadarColorMappingViewController.swift; sourceTree = "<group>"; };
 		21CDB628254C6EF80050868B /* SettingsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseLayerMappingViewController.swift; sourceTree = "<group>"; };
 		5705D397218696FB00CC5A60 /* meteocool.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = meteocool.entitlements; sourceTree = "<group>"; };
 		5705D3982186A16C00CC5A60 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		57589ACE216ADB1000CDEBB7 /* LocationUpdater.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationUpdater.swift; sourceTree = "<group>"; };
@@ -182,7 +184,8 @@
 		577666902130C6E300C25E00 /* meteocool */ = {
 			isa = PBXGroup;
 			children = (
-				21CDB627254C6EF80050868B /* SecondSettingPageViewController.swift */,
+				21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */,
+				21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */,
 				21CDB628254C6EF80050868B /* SettingsViewController.swift */,
 				A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */,
 				5705D397218696FB00CC5A60 /* meteocool.entitlements */,
@@ -472,11 +475,12 @@
 			files = (
 				A7F5B2132214D77C005EB78C /* PressureManager.swift in Sources */,
 				577666942130C6E300C25E00 /* ViewController.swift in Sources */,
+				21CE250B255706A4009595D4 /* BaseLayerMappingViewController.swift in Sources */,
 				5705D3992186A16C00CC5A60 /* NotificationManager.swift in Sources */,
 				57589ACF216ADB1000CDEBB7 /* LocationUpdater.swift in Sources */,
 				57589AD1216ADB5C00CDEBB7 /* NetworkHelper.swift in Sources */,
 				A7661F4B2217265700834E1D /* CustomeGestureRecognizer.swift in Sources */,
-				21CDB629254C6EF90050868B /* SecondSettingPageViewController.swift in Sources */,
+				21CDB629254C6EF90050868B /* RadarColorMappingViewController.swift in Sources */,
 				577666922130C6E300C25E00 /* AppDelegate.swift in Sources */,
 				21CDB62A254C6EF90050868B /* SettingsViewController.swift in Sources */,
 			);
