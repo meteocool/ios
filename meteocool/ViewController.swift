@@ -118,6 +118,7 @@ window.downloadForecast(function() {
 
     func notify(location: CLLocation) {
         webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy),true);")
+        //position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
     }
 
     @objc func injectSettings() {
@@ -376,7 +377,6 @@ window.downloadForecast(function() {
     
     @IBAction func locationButton(sender: AnyObject){
         SharedLocationUpdater.requestLocation(observer: self, explicit: true)
-        //webView.evaluateJavaScript("window.lm.updateLocation(49.1234, 11.456, 100);")
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
