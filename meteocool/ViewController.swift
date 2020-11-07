@@ -123,7 +123,7 @@ window.downloadForecast(function() {
     @objc func injectSettings() {
         let config = [
             "mapRotation": userDefaults?.value(forKey: "mapRotation"),
-            "radarColorMap": userDefaults?.value(forKey: "radarColorMap"),
+            "radarColorMaping": userDefaults?.value(forKey: "radarColorMaping"),
         ]
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)
@@ -328,8 +328,8 @@ window.downloadForecast(function() {
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
             userDefaults?.setValue(false, forKey: "mesocyclones")
         }
-        if (userDefaults?.value(forKey: "radarColorMap") == nil){
-            userDefaults?.setValue("classic", forKey: "radarColorMap")
+        if (userDefaults?.value(forKey: "radarColorMaping") == nil){
+            userDefaults?.setValue("classic", forKey: "radarColorMaping")
         }
 
         if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"*/"https://app.ng.meteocool.com/ios.html") {

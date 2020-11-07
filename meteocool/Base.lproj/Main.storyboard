@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17156" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17506" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17126"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17504.1"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -377,36 +377,36 @@
                                 <rect key="frame" x="0.0" y="56" width="414" height="786"/>
                                 <color key="backgroundColor" systemColor="systemGroupedBackgroundColor"/>
                                 <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="colourMap" id="8Jg-Y6-Zhv" customClass="ColourMapTableViewCell" customModule="meteocool" customModuleProvider="target">
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="radarColorMaping" id="chi-Id-8Tq" customClass="RadarColorMapingTableViewCell" customModule="meteocool" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="55.5" width="414" height="43.5"/>
                                         <autoresizingMask key="autoresizingMask"/>
-                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="8Jg-Y6-Zhv" id="W7l-jX-z3b">
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="chi-Id-8Tq" id="4hi-CE-aR7">
                                             <rect key="frame" x="0.0" y="0.0" width="414" height="43.5"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                             <subviews>
-                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="OX9-5R-FRh">
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3Ij-jn-tcl">
                                                     <rect key="frame" x="20" y="11.5" width="42" height="21"/>
                                                     <constraints>
-                                                        <constraint firstAttribute="height" constant="21" id="hpV-eA-Zes"/>
+                                                        <constraint firstAttribute="height" constant="21" id="hlM-GA-UzI"/>
                                                     </constraints>
                                                     <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                                     <nil key="textColor"/>
                                                     <nil key="highlightedColor"/>
                                                 </label>
-                                                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="checkmark" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="14V-4o-wlC">
+                                                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="checkmark" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="MhM-Hf-fQ0">
                                                     <rect key="frame" x="375.5" y="14" width="18.5" height="16.5"/>
                                                 </imageView>
                                             </subviews>
                                             <constraints>
-                                                <constraint firstItem="14V-4o-wlC" firstAttribute="centerY" secondItem="W7l-jX-z3b" secondAttribute="centerY" id="6wF-gM-KOz"/>
-                                                <constraint firstItem="OX9-5R-FRh" firstAttribute="leading" secondItem="W7l-jX-z3b" secondAttribute="leadingMargin" id="axx-P3-fGu"/>
-                                                <constraint firstItem="OX9-5R-FRh" firstAttribute="centerY" secondItem="W7l-jX-z3b" secondAttribute="centerY" id="tdb-cl-IyD"/>
-                                                <constraint firstItem="14V-4o-wlC" firstAttribute="trailing" secondItem="W7l-jX-z3b" secondAttribute="trailingMargin" id="wMN-Fu-87z"/>
+                                                <constraint firstItem="MhM-Hf-fQ0" firstAttribute="centerY" secondItem="4hi-CE-aR7" secondAttribute="centerY" id="NIz-fF-YhY"/>
+                                                <constraint firstItem="3Ij-jn-tcl" firstAttribute="leading" secondItem="4hi-CE-aR7" secondAttribute="leadingMargin" id="Xb4-OA-l5S"/>
+                                                <constraint firstItem="3Ij-jn-tcl" firstAttribute="centerY" secondItem="4hi-CE-aR7" secondAttribute="centerY" id="hPp-Ma-wxG"/>
+                                                <constraint firstItem="MhM-Hf-fQ0" firstAttribute="trailing" secondItem="4hi-CE-aR7" secondAttribute="trailingMargin" id="vGU-RB-ocB"/>
                                             </constraints>
                                         </tableViewCellContentView>
                                         <connections>
-                                            <outlet property="checkbox" destination="14V-4o-wlC" id="oTB-3J-0W1"/>
-                                            <outlet property="lable" destination="OX9-5R-FRh" id="Ght-j6-eFF"/>
+                                            <outlet property="checkbox" destination="MhM-Hf-fQ0" id="RIU-9c-qnp"/>
+                                            <outlet property="lable" destination="3Ij-jn-tcl" id="dsr-Bt-xGJ"/>
                                         </connections>
                                     </tableViewCell>
                                 </prototypes>
@@ -426,8 +426,8 @@
                     </view>
                     <navigationItem key="navigationItem" id="Cfp-x9-RNl"/>
                     <connections>
-                        <outlet property="secondPageSettingsBar" destination="0ld-OK-9nI" id="yc0-EE-bcv"/>
-                        <outlet property="secondPageSettingsTable" destination="Oih-oK-ewD" id="f8q-Wd-iHU"/>
+                        <outlet property="secondPageSettingsBar" destination="0ld-OK-9nI" id="e7y-cD-WPM"/>
+                        <outlet property="secondPageSettingsTable" destination="Oih-oK-ewD" id="5DC-3Q-36l"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="eu8-s6-vy5" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>

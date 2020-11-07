@@ -174,9 +174,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-            case 3: //Colour Map
+            case 3: //Radar Color Map
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
-                linkCell.linkValueLable.text = NSLocalizedString(userDefaults?.string(forKey: "radarColorMap") ?? "classic", comment: "colorMap")
+                linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "radarColorMaping"))!, comment: "radarColorMaping")
+                //NSLocalizedString(userDefaults?.string(forKey: "radarColorMap") ?? "classic", comment: "radarColorMap")
                 return linkCell
             default:
                 print("This should not happen...")
