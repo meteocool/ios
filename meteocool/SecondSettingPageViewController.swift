@@ -3,7 +3,6 @@
 //  meteocool
 //
 //  Created by Nina Loser on 27.10.20.
-//  Copyright © 2020 Florian Mauracher. All rights reserved.
 //
 
 import UIKit
@@ -35,8 +34,8 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
         super.loadView()
         self.view.addSubview(secondPageSettingsBar)
         self.view.addSubview(secondPageSettingsTable)
-        colourMapClassic = (userDefaults?.bool(forKey: "colourMapClassic"))!
-        colourMapViridis = (userDefaults?.bool(forKey: "colourMapViridis"))!
+        colourMapClassic = (userDefaults?.string(forKey: "radarColorMap") == "classic")
+        colourMapViridis = !colourMapClassic
     }
     
     override func viewDidLoad() {
@@ -65,11 +64,9 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
         case 0: //meteocool Classic
             cell.lable.text = colorMaping[indexPath.row]
             cell.checkbox.isHidden = colourMapClassic
-            //viewController?.webView.evaluateJavaScript()
         case 1: //Viridis
             cell.lable.text = colorMaping[indexPath.row]
             cell.checkbox.isHidden = colourMapViridis
-            //viewController?.webView.evaluateJavaScript()
         default:
             print("this not happen")
         }
@@ -93,9 +90,8 @@ class SecondSettingPageViewController: UIViewController, UITableViewDelegate, UI
     //Return Back with Save
     @IBAction func saveSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
-        userDefaults?.setValue(colourMapClassic, forKey: "colourMapClassic")
-        userDefaults?.setValue(colourMapViridis, forKey: "colourMapViridis")
-        NotificationCenter.default.post(name: NSNotification.Name("ColourMapSettingsChanged"), object: nil)
+        userDefaults?.setValue(colourMapClassic ? "viridis" : "classic", forKey: "radarColorMap")
+        NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
     }
     
     //Return Back without Save

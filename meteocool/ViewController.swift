@@ -6,6 +6,7 @@ import OnboardKit
 
 var viewController: ViewController? = nil
 
+@available(iOS 13.0, *)
 class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver{
     let buttonsize = 19.0 as CGFloat
     let lightmode = UIColor(red: 0xf8/255.0, green: 0xf9/255.0, blue: 0xfa/255.0, alpha: 1.0)
@@ -34,6 +35,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
 
     var currentdate = Date()
     let formatter = DateFormatter()
+    let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     func drawer_show() {
         button.isHidden = false
@@ -114,21 +116,26 @@ window.downloadForecast(function() {
         slider_button.frame.origin = CGPoint(x: x_coordiante, y: y_coordinate)
     }
 
-    /*func toggleDarkMode() {
-        // #343a40 = darkmode titelbar color
-        let darkmode = UIColor(red: 0x34/255.0, green: 0x3a/255.0, blue: 0x40/255.0, alpha: 1.0)
-        UIApplication.shared.statusBarView?.backgroundColor = darkmode
-    }*/
-
-    /*func toggleLightMode() {
-        // #f8f9fa = non-darkmode titelbar color
-        UIApplication.shared.statusBarView?.backgroundColor = lightmode
-    }*/
-
     func notify(location: CLLocation) {
         webView.evaluateJavaScript("window.injectLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy));")
     }
 
+    @objc func injectSettings() {
+        let config = [
+            "mapRotation": userDefaults?.value(forKey: "mapRotation"),
+            "radarColorMap": userDefaults?.value(forKey: "radarColorMap"),
+        ]
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)
+            let jsonText = String(data: jsonData, encoding: .utf8) ?? "{}"
+            let command = "window.injectSettings(\(jsonText));"
+            webView.evaluateJavaScript(command)
+            print(command)
+        } catch {
+            print("Config parsing failed")
+        }
+    }
+    
     /* called from javascript */
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         let action = String(describing: message.body)
@@ -138,13 +145,6 @@ window.downloadForecast(function() {
         if message.name == "timeHandler" {
             self.currentdate = NSDate(timeIntervalSince1970: Double(action)!) as Date
         }
-
-        /*if action == "darkmode" {
-            toggleDarkMode()
-        }
-        if action == "lightmode" {
-            toggleLightMode()
-        }*/
 
         if action == "startMonitoringLocationExplicit" {
             SharedLocationUpdater.requestLocation(observer: self, explicit: true)
@@ -185,6 +185,10 @@ window.downloadForecast(function() {
 
         if action == "drawerShow" {
             drawer_show()
+        }
+        
+        if action == "requestSettings" {
+            injectSettings()
         }
     }
 
@@ -291,7 +295,6 @@ window.downloadForecast(function() {
         webView.scrollView.bounces = false
 
         //Settings
-        let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
         if (userDefaults?.value(forKey: "pushNotification") == nil){
             //TODO Conneciton to the main setting page
             userDefaults?.setValue(true, forKey: "pushNotification")
@@ -325,23 +328,9 @@ window.downloadForecast(function() {
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
             userDefaults?.setValue(false, forKey: "mesocyclones")
         }
-        if (userDefaults?.value(forKey: "colourMapClassic") == nil){
-            userDefaults?.setValue(false, forKey: "colourMapClassic")
+        if (userDefaults?.value(forKey: "radarColorMap") == nil){
+            userDefaults?.setValue("classic", forKey: "radarColorMap")
         }
-        if (userDefaults?.value(forKey: "colourMapViridis") == nil){
-            userDefaults?.setValue(true, forKey: "colourMapViridis")
-        }
-        
-        
-        webView.evaluateJavaScript("window.injectSettings({\"mapRotation\": \(String(describing: userDefaults?.value(forKey: "mapRotation")) )});")
-        webView.evaluateJavaScript("window.injectSettings({\"zoomOnForeground\": \(String(describing: userDefaults?.value(forKey: "autoZoom")) )});")
-        webView.evaluateJavaScript("window.injectSettings({\"darkMode\": \(String(describing: userDefaults?.value(forKey: "darkMode")) )});")
-        webView.evaluateJavaScript("window.injectSettings({\"layerLightning\": \(String(describing: userDefaults?.value(forKey: "lightning")) )});")
-        webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(String(describing: userDefaults?.value(forKey: "mesocyclones")) )});")
-        //webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(userDefaults?.value(forKey: "shelters")});")
-        
-        
-        //toggleLightMode()
 
         if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"*/"https://app.ng.meteocool.com/ios.html") {
             let request = URLRequest(url: url)
@@ -349,6 +338,8 @@ window.downloadForecast(function() {
         }
 
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
+                                               name: NSNotification.Name("SettingsChanged"), object: nil)
         SharedLocationUpdater.addObserver(observer: self)
     }
 
@@ -377,6 +368,6 @@ window.downloadForecast(function() {
 
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background
-        webView.evaluateJavaScript("window.manualTileUpdateFn(true);")
+        webView.evaluateJavaScript("window.ios.refresh();")
     }
 }

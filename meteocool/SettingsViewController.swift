@@ -50,16 +50,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Version Nr:  \n\n Copyright:\n© meteocool Contributors \n\n Data from: \n© DWD © blitzortung.org \n© OpenStreetMap © CARTO", comment: "footer")
     ]
     private var dataPushNotification = [
-        NSLocalizedString("Push Notification", comment: "dataPushNotification"),
-        NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification"),
+        NSLocalizedString("Push Notifications", comment: "dataPushNotification"),
+        NSLocalizedString("Include Meteorological Details", comment: "dataPushNotification"),
         NSLocalizedString("Threshold", comment: "dataPushNotification"),
         NSLocalizedString("Time before", comment: "dataPushNotification")
     ]
     private var dataMapView = [
         NSLocalizedString("Map Rotation", comment: "dataMapView"),
-        NSLocalizedString("Auto Zoom after Start", comment: "dataMapView"),
+        NSLocalizedString("Auto-Zoom after Start", comment: "dataMapView"),
         NSLocalizedString("Darkmode", comment: "dataMapView"),
-        NSLocalizedString("Colour Map", comment: "dataMapView")
+        NSLocalizedString("Color Map", comment: "dataMapView")
     ]
     private var dataLayers = [
         NSLocalizedString("⚡️ Lightning", comment: "dataLayers"),
@@ -71,10 +71,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback", comment: "dataAboutLabel"),
         NSLocalizedString("Push Token", comment: "dataAboutLabel")
-    ]
-    private var dataAboutValue = [
-        "","","",
-        NSLocalizedString("Push Token", comment: "dataAboutValue")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -95,7 +91,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         super.viewDidLoad()
         settingsTable.estimatedRowHeight = 100
         settingsTable.rowHeight = 44
-        NotificationCenter.default.addObserver(self, selector: #selector(reload), name: NSNotification.Name("ColourMapSettingsChanged"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reload), name: NSNotification.Name("SettingsChanged"), object: nil)
     }
     
     //Return Back with Done
@@ -180,13 +176,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 return switcherCell
             case 3: //Colour Map
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
-                
-                if (userDefaults?.bool(forKey: "colourMapClassic"))! != true{
-                    linkCell.linkValueLable.text = NSLocalizedString("Classic", comment: "colourMap")
-                }
-                if (userDefaults?.bool(forKey: "colourMapViridis"))! != true{
-                    linkCell.linkValueLable.text = "Viridis"
-                }
+                linkCell.linkValueLable.text = NSLocalizedString(userDefaults?.string(forKey: "radarColorMap") ?? "classic", comment: "colorMap")
                 return linkCell
             default:
                 print("This should not happen...")
@@ -256,7 +246,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 3: //Push Token
                 textCell.textInfoLabel.text = dataAboutLabel[indexPath.row]
-                textCell.textValueLabel.text = dataAboutLabel[indexPath.row]
+                textCell.textValueLabel.text = SharedNotificationManager.getToken() ?? "Not Enabled"
+                // XXX localize
                 return textCell
             
             default: //Feedack and Links to Websides
@@ -286,7 +277,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             performSegue(withIdentifier: "secondSettingsPage", sender: self)
         }
         if (indexPath.section == 3 && indexPath.row == 0){
-            if let url = URL(string: "https://github.com/v4lli/meteocool") {
+            if let url = URL(string: "https://github.com/meteocool/ios") {
                 UIApplication.shared.open(url)
             }
         }
@@ -297,7 +288,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         if (indexPath.section == 3 && indexPath.row == 2){ //Feedback
             let mailAdress = "support@meteocool.com"
-            let token = "test-token"
+            let token = SharedNotificationManager.getToken() ?? "no-token"
             if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=token=\(token)") {
                 UIApplication.shared.open(url)
             }
@@ -309,7 +300,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //Map View
         case 0:
             userDefaults?.setValue(sender.isOn, forKey: "mapRotation")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"mapRotation\": \(sender.isOn)});")
+            print("window.injectSettings({\"mapRotation\": \(sender.isOn)});")
+            viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"mapRotation\": \(sender.isOn)});")
         case 1:
             userDefaults?.setValue(sender.isOn, forKey: "autoZoom")
             viewController?.webView.evaluateJavaScript("window.injectSettings({\"zoomOnForeground\": \(sender.isOn)});")
