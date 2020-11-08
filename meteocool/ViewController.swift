@@ -378,12 +378,16 @@ window.downloadForecast(function() {
         super.viewDidAppear(animated)
 
         let tintColor = UIColor(red: 137.0/255.0, green: 181.0/255.0, blue: 187.0/255.0, alpha: 1.00)
-        let appearanceConfiguration = OnboardViewController.AppearanceConfiguration(tintColor: tintColor, backgroundColor: lightmode)
+        let appearanceConfiguration = OnboardViewController.AppearanceConfiguration(
+            tintColor: tintColor,
+            backgroundColor: lightmode,
+            textFont: UIFont.systemFont(ofSize: UIFont.systemFontSize)
+            )
         if (UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "onboardingDone") == nil) {
             let onboardingVC = OnboardViewController(pageItems: onboardingPages, appearanceConfiguration: appearanceConfiguration)
             onboardingVC.modalPresentationStyle = .formSheet
             onboardingVC.presentFrom(self, animated: true)
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(true, forKey: "onboardingDone")
+            //UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(true, forKey: "onboardingDone")
             self.onboardingOnThisRun = true
         } else {
             if (!self.onboardingOnThisRun && CLLocationManager.authorizationStatus() == .notDetermined) {
