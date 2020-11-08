@@ -126,9 +126,9 @@
                     <connections>
                         <outlet property="activityIndicator" destination="KcY-U7-JEH" id="e6G-op-6Wp"/>
                         <outlet property="button" destination="YLM-To-OTW" id="enJ-iB-iSY"/>
-                        <outlet property="layer" destination="dcC-P1-Ml2" id="qoe-D3-c7B"/>
-                        <outlet property="position" destination="Sla-Kf-0cZ" id="aRa-8Y-ZEn"/>
-                        <outlet property="settings" destination="Vl3-Fb-G9g" id="E7g-I1-xF5"/>
+                        <outlet property="layerSwitcherButton" destination="dcC-P1-Ml2" id="qoe-D3-c7B"/>
+                        <outlet property="positionButton" destination="Sla-Kf-0cZ" id="aRa-8Y-ZEn"/>
+                        <outlet property="settingsButton" destination="Vl3-Fb-G9g" id="E7g-I1-xF5"/>
                         <outlet property="slider_button" destination="2rh-rK-OQM" id="2p1-dd-7wc"/>
                         <outlet property="slider_ring" destination="rrm-xV-iBd" id="mRg-B7-dgz"/>
                         <outlet property="time" destination="BTS-em-eiA" id="pyY-MS-MAP"/>

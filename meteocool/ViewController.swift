@@ -15,12 +15,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var slider_ring: UIImageView!
     @IBOutlet weak var slider_button: UIImageView!
     @IBOutlet weak var button: UIButton!
-    @IBOutlet weak var settings: UIButton!
+    @IBOutlet weak var settingsButton: UIButton!
     @IBOutlet weak var time: UILabel!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     @IBOutlet weak var trippleButton: UIImageView!
-    @IBOutlet weak var position: UIButton!
-    @IBOutlet weak var layer: UIButton!
+    @IBOutlet weak var positionButton: UIButton!
+    @IBOutlet weak var layerSwitcherButton: UIButton!
 
     var onboardingOnThisRun = false
     
@@ -121,7 +121,6 @@ window.downloadForecast(function() {
 
     func notify(location: CLLocation) {
         webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));")
-        print("WICHTIG")
         print(("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));"))
         if (zoomOn){
             zoomOn = !zoomOn
@@ -200,13 +199,19 @@ window.downloadForecast(function() {
             injectSettings()
             
             if ((userDefaults?.bool(forKey: "autoZoom"))!){
-                print("Hier sollte es passieren")
                 zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
                 focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
                 SharedLocationUpdater.requestLocation(observer: self, explicit: true)
                 SharedLocationUpdater.startAccurateLocationUpdates()
-                position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+                positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             }
+        }
+        
+        if action == "layerSwitcherClosed" {
+            trippleButton.isHidden = false
+            settingsButton.isHidden = false
+            layerSwitcherButton.isHidden = false
+            positionButton.isHidden = false
         }
     }
 
@@ -284,9 +289,9 @@ window.downloadForecast(function() {
         self.view.addSubview(time!)
         self.view.addSubview(activityIndicator!)
         self.view.addSubview(trippleButton!)
-        self.view.addSubview(settings!)
-        self.view.addSubview(position!)
-        self.view.addSubview(layer!)
+        self.view.addSubview(settingsButton!)
+        self.view.addSubview(positionButton!)
+        self.view.addSubview(layerSwitcherButton!)
 
         time.isHidden = true
         time.layer.masksToBounds = true
@@ -399,14 +404,18 @@ window.downloadForecast(function() {
             zoomOn = true
             SharedLocationUpdater.requestLocation(observer: self, explicit: true)
             SharedLocationUpdater.startAccurateLocationUpdates()
-            position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
         } else{
-            position.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             focusOn = false
         }
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
         webView.evaluateJavaScript("window.openLayerswitcher();")
+        trippleButton.isHidden = true
+        settingsButton.isHidden = true
+        layerSwitcherButton.isHidden = true
+        positionButton.isHidden = true
     }
 }
