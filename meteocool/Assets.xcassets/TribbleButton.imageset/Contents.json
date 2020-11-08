@@ -1,17 +1,50 @@
 {
   "images" : [
     {
-      "filename" : "TribbleButton.png",
+      "filename" : "TribbleButton-1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "TribbleButton@2x.png",
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "TribbleButtonDark.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "TribbleButton@2x-1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "TribbleButton@3x.png",
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "TribbleButtonDark@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "TribbleButton@3x-1.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "TribbleButtonDark@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

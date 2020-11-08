@@ -5,6 +5,7 @@
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17504.1"/>
         <capability name="Image references" minToolsVersion="12.0"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -76,6 +77,7 @@
                                 <rect key="frame" x="358" y="86" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="26"/>
+                                <color key="tintColor" name="TribbleButtonButtonColor"/>
                                 <state key="normal">
                                     <imageReference key="image" image="gearshape" catalog="system" symbolScale="large"/>
                                 </state>
@@ -86,6 +88,7 @@
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Sla-Kf-0cZ">
                                 <rect key="frame" x="358" y="132" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                <color key="tintColor" name="TribbleButtonButtonColor"/>
                                 <state key="normal">
                                     <imageReference key="image" image="location" catalog="system" symbolScale="large"/>
                                 </state>
@@ -97,6 +100,7 @@
                                 <rect key="frame" x="358" y="43" width="45" height="45"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="26"/>
+                                <color key="tintColor" name="TribbleButtonButtonColor"/>
                                 <state key="normal">
                                     <imageReference key="image" image="square.stack.3d.up" catalog="system" symbolScale="large"/>
                                 </state>
@@ -549,6 +553,9 @@
         <image name="gearshape" catalog="system" width="128" height="121"/>
         <image name="location" catalog="system" width="128" height="121"/>
         <image name="square.stack.3d.up" catalog="system" width="128" height="124"/>
+        <namedColor name="TribbleButtonButtonColor">
+            <color red="0.0" green="0.4779999852180481" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
         <systemColor name="darkTextColor">
             <color white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
