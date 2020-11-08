@@ -7,7 +7,7 @@ import OnboardKit
 var viewController: ViewController? = nil
 
 @available(iOS 13.0, *)
-class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver{
+class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver, UIScrollViewDelegate{
     let buttonsize = 19.0 as CGFloat
     let lightmode = UIColor(red: 0xf8/255.0, green: 0xf9/255.0, blue: 0xfa/255.0, alpha: 1.0)
 
@@ -305,13 +305,18 @@ window.downloadForecast(function() {
         print("Language: " + Locale.preferredLanguages[0].split(separator: "-")[0])
     }
 
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+             scrollView.pinchGestureRecognizer?.isEnabled = false
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         // disable scrolling & bouncing effects
-        webView.scrollView.isScrollEnabled = true
+        webView.scrollView.isScrollEnabled = false
         webView.scrollView.bounces = false
-
+        webView.scrollView.delegate = self
+        
         //Settings
         if (userDefaults?.value(forKey: "pushNotification") == nil){
             //TODO Conneciton to the main setting page
