@@ -201,9 +201,7 @@ window.downloadForecast(function() {
             if ((userDefaults?.bool(forKey: "autoZoom"))!){
                 zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
                 focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
-                SharedLocationUpdater.requestLocation(observer: self, explicit: true)
-                SharedLocationUpdater.startAccurateLocationUpdates()
-                positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+                zoomAndFocusLocation()
             }
         }
         
@@ -329,10 +327,11 @@ window.downloadForecast(function() {
         }
         if (userDefaults?.value(forKey: "intensityValue") == nil){
             userDefaults?.setValue(0, forKey: "intensityValue")
-            // 0 -> any
-            // 1 -> light
-            // 2 -> normal
-            // 3 -> heavy
+            /* 0 -> any
+             * 1 -> light
+             * 2 -> normal
+             * 3 -> heavy
+             */
         }
         if (userDefaults?.value(forKey: "timeBeforeValue") == nil){
             userDefaults?.setValue(2, forKey: "timeBeforeValue")
@@ -401,15 +400,18 @@ window.downloadForecast(function() {
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background
         webView.evaluateJavaScript("window.ios.refresh();")
+        if ((userDefaults?.bool(forKey: "autoZoom"))!){
+            zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
+            focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
+            zoomAndFocusLocation()
+        }
     }
     
     @IBAction func locationButton(sender: AnyObject){
         if (focusOn == false){
             focusOn = true
             zoomOn = true
-            SharedLocationUpdater.requestLocation(observer: self, explicit: true)
-            SharedLocationUpdater.startAccurateLocationUpdates()
-            positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            zoomAndFocusLocation()
         } else{
             positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             focusOn = false
@@ -422,5 +424,11 @@ window.downloadForecast(function() {
         settingsButton.isHidden = true
         layerSwitcherButton.isHidden = true
         positionButton.isHidden = true
+    }
+    
+    private func zoomAndFocusLocation(){
+        SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+        SharedLocationUpdater.startAccurateLocationUpdates()
+        positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
     }
 }
