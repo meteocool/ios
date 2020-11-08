@@ -387,7 +387,7 @@ window.downloadForecast(function() {
             let onboardingVC = OnboardViewController(pageItems: onboardingPages, appearanceConfiguration: appearanceConfiguration)
             onboardingVC.modalPresentationStyle = .formSheet
             onboardingVC.presentFrom(self, animated: true)
-            //UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(true, forKey: "onboardingDone")
+            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(true, forKey: "onboardingDone")
             self.onboardingOnThisRun = true
         } else {
             if (!self.onboardingOnThisRun && CLLocationManager.authorizationStatus() == .notDetermined) {
