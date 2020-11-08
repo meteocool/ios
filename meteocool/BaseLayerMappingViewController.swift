@@ -23,6 +23,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     //Content
     private var baseLayerMapping = [
         NSLocalizedString("topographic", comment: "baseLayer"),
+        NSLocalizedString("osm", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
         NSLocalizedString("light", comment: "baseLayer")
     ]
@@ -64,13 +65,24 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         switch indexPath.row {
         case 0: //topographic
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "dark" || baseLayer == "light")
-        case 1: //dark
+            cell.checkbox.isHidden = (baseLayer == "dark" ||
+                                        baseLayer == "osm" ||
+                                        baseLayer == "light")
+        case 1: //osm
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "topographic" || baseLayer == "light")
-        case 2: //light
+            cell.checkbox.isHidden = (baseLayer == "dark" ||
+                                        baseLayer == "topographic" ||
+                                        baseLayer == "light")
+        case 2: //dark
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "topographic" || baseLayer == "dark")
+            cell.checkbox.isHidden = (baseLayer == "topographic" ||
+                                        baseLayer == "light" ||
+                                        baseLayer == "osm")
+        case 3: //light
+            cell.lable.text = baseLayerMapping[indexPath.row]
+            cell.checkbox.isHidden = (baseLayer == "topographic" ||
+                                        baseLayer == "dark" ||
+                                        baseLayer == "osm")
         default:
             print("this not happen")
         }
@@ -83,10 +95,13 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         if (indexPath.section == 0 && indexPath.row == 0){ //topographic
             baseLayer = "topographic"
         }
-        if (indexPath.section == 0 && indexPath.row == 1){ //dark
+        if (indexPath.section == 0 && indexPath.row == 1){ //osm
+            baseLayer = "osm"
+        }
+        if (indexPath.section == 0 && indexPath.row == 2){ //dark
             baseLayer = "dark"
         }
-        if (indexPath.section == 0 && indexPath.row == 2){ //light
+        if (indexPath.section == 0 && indexPath.row == 3){ //light
             baseLayer = "light"
         }
         baseLayerMappingSettingsTable.reloadData()

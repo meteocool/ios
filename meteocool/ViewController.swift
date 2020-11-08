@@ -23,6 +23,9 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var layer: UIButton!
 
     var onboardingOnThisRun = false
+    
+    var focusOn = false
+    var zoomOn = false
 
     enum DrawerStates {
         case CLOSED
@@ -117,19 +120,24 @@ window.downloadForecast(function() {
     }
 
     func notify(location: CLLocation) {
-        webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy),true);")
-        //position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+        webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));")
+        print("WICHTIG")
+        print(("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));"))
+        if (zoomOn){
+            zoomOn = !zoomOn
+        }
     }
 
     @objc func injectSettings() {
         let config = [
             "mapRotation": userDefaults?.value(forKey: "mapRotation"),
             "radarColorMapping": userDefaults?.value(forKey: "radarColorMapping"),
+            "mapBaseLayer": userDefaults?.value(forKey: "baseLayer"),
         ]
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)
             let jsonText = String(data: jsonData, encoding: .utf8) ?? "{}"
-            let command = "window.injectSettings(\(jsonText));"
+            let command = "window.settings.injectSettings(\(jsonText));"
             webView.evaluateJavaScript(command)
             print(command)
         } catch {
@@ -190,6 +198,15 @@ window.downloadForecast(function() {
         
         if action == "requestSettings" {
             injectSettings()
+            
+            if ((userDefaults?.bool(forKey: "autoZoom"))!){
+                print("Hier sollte es passieren")
+                zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
+                focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
+                SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+                SharedLocationUpdater.startAccurateLocationUpdates()
+                position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            }
         }
     }
 
@@ -344,6 +361,7 @@ window.downloadForecast(function() {
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
+        
         SharedLocationUpdater.addObserver(observer: self)
     }
 
@@ -376,10 +394,19 @@ window.downloadForecast(function() {
     }
     
     @IBAction func locationButton(sender: AnyObject){
-        SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+        if (focusOn == false){
+            focusOn = true
+            zoomOn = true
+            SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+            SharedLocationUpdater.startAccurateLocationUpdates()
+            position.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+        } else{
+            position.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            focusOn = false
+        }
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
-        //webView.evaluateJavaScript(<#T##javaScript: String##String#>, in: <#T##WKContentWorld#>)
+        webView.evaluateJavaScript("window.openLayerswitcher();")
     }
 }

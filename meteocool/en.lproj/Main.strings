@@ -6,5 +6,10 @@
 /* Class = "UINavigationItem"; title = "Settings"; ObjectID = "oAo-u7-TF2"; */
 "oAo-u7-TF2.title" = "Settings";
 
-/* Class = "UINavigationItem"; title = "Colour Map"; ObjectID = "1lG-Y9-aPj"; */
-"1lG-Y9-aPj.title" = "Color Map";
+/* Class = "UINavigationItem"; title = "Color Map"; ObjectID = "0ld-OK-9nI"; */
+"0ld-OK-9nI.title" = "Color Map";
+
+/* Class = "UINavigationItem"; title = "Base Layer"; ObjectID = "pu6-iD-emo"; */
+"pu6-iD-emo.title" = "Base Layer";
+
+
