@@ -21,6 +21,8 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var trippleButton: UIImageView!
     @IBOutlet weak var positionButton: UIButton!
     @IBOutlet weak var layerSwitcherButton: UIButton!
+    @IBOutlet weak var blur: UIVisualEffectView!
+    @IBOutlet weak var logo: UIImageView!
 
     var onboardingOnThisRun = false
     
@@ -290,6 +292,8 @@ window.downloadForecast(function() {
         self.view.addSubview(settingsButton!)
         self.view.addSubview(positionButton!)
         self.view.addSubview(layerSwitcherButton!)
+        self.view.addSubview(blur!)
+        self.view.addSubview(logo!)
 
         time.isHidden = true
         time.layer.masksToBounds = true
