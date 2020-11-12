@@ -213,6 +213,11 @@ window.downloadForecast(function() {
             layerSwitcherButton.isHidden = false
             positionButton.isHidden = false
         }
+        
+        if action == "mapMoveEnd"{
+            SharedLocationUpdater.stopAccurateLocationUpdates()
+            positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+        }
     }
 
     lazy var onboardingPages: [OnboardPage] = {
