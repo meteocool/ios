@@ -44,10 +44,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("About", comment: "header")
     ]
     private var footer = [
-        NSLocalizedString("Customise the appearance and behaviour of the main map.", comment: "footer"),
+        NSLocalizedString("Customize the appearance and behavior of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
         NSLocalizedString("If you want, we can notify you ahead of rain or snow at your current location.", comment: "footer"),
-        NSLocalizedString("Version Nr:  \n\n Copyright:\n© meteocool Contributors \n\n Data from: \n© DWD © blitzortung.org \n© OpenStreetMap © CARTO", comment: "footer")
+        NSLocalizedString("Version:  \n\n Copyright:\n© meteocool Contributors \n\n Data from: \n© DWD © blitzortung.org \n© OpenStreetMap © CARTO", comment: "footer")
     ]
     private var dataPushNotification = [
         NSLocalizedString("Push Notifications", comment: "dataPushNotification"),
