@@ -200,7 +200,7 @@ window.downloadForecast(function() {
         if action == "requestSettings" {
             injectSettings()
             
-            if ((userDefaults?.bool(forKey: "autoZoom"))!){
+            if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
                 zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
                 focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
                 zoomAndFocusLocation()
@@ -238,24 +238,26 @@ window.downloadForecast(function() {
             imageName: "ob_notifications",
             description: NSLocalizedString("Based on this data, do you want us to notify you ahead of rain at your location?\n\nWe put a lot of effort into making the notifications non-intrusive. They disappear as soon as it stops raining.", comment: "Notifications description"),
             advanceButtonTitle: NSLocalizedString("Later", comment:"Later"),
-            actionButtonTitle: NSLocalizedString("Enable Notifications", comment:"Notifications actionButtonTitle"),
-            action: { [weak self] completion in SharedNotificationManager.registerForPushNotifications(completion)
+            actionButtonTitle: NSLocalizedString("Tell Me Before It Rains!", comment:"Notifications actionButtonTitle"),
+            action: { [weak self] completion in
+                SharedNotificationManager.registerForPushNotifications(completion)
+                self?.userDefaults?.setValue(true, forKey: "pushNotification")
             }
         )
 
         let pageFour = OnboardPage(
             title: NSLocalizedString("Location", comment:"Location"),
             imageName: "ob_location",
-            description: NSLocalizedString("Choose \"Always\" in the location permission pop-up if you want notifications to work!\n\nBut don't worry, this won't drain your battery. See for yourself in the iOS Settings after a day or two.", comment: "Location description"),
+            description: NSLocalizedString("Choose \"Allow While Using App\" in the following pop-up if you want notifications to work!\n\nYour iPhone will then soon ask you to enable background location update. Don't worry, this won't drain your battery.", comment: "Location description"),
             advanceButtonTitle: NSLocalizedString("Later", comment:"Later"),
-            actionButtonTitle: NSLocalizedString("Enable Location Services", comment:"Enable Location Services"),
+            actionButtonTitle: NSLocalizedString("Allow Location Access", comment:"Enable Location Services"),
             action: { [weak self] completion in SharedLocationUpdater.requestAuthorization(completion, notDetermined: true) }
         )
 
         let pageFive = OnboardPage(
-            title: NSLocalizedString("Go outside and play!", comment:"Finish title"),
+            title: NSLocalizedString("Go outside!", comment:"Finish title"),
             imageName: "ob_free",
-            description: NSLocalizedString("This service is completely free and open source. It's run and built by volunteers in their free time.\n\nWe don't want your money, just tell your friends or send us feedback!", comment: "Finish description"),
+            description: NSLocalizedString("meteocool is completely free and open source. It's run and built by volunteers in their free time. We don't want to make profit. Tell your friends!", comment: "Finish description"),
             advanceButtonTitle: NSLocalizedString("Done", comment: "done")
         )
 
@@ -350,7 +352,7 @@ window.downloadForecast(function() {
             userDefaults?.setValue(false, forKey: "mapRotation")
         }
         if (userDefaults?.value(forKey: "autoZoom") == nil){
-            userDefaults?.setValue(true, forKey: "autoZoom")
+            userDefaults?.setValue(false, forKey: "autoZoom")
         }
         if (userDefaults?.value(forKey: "lightning") == nil){
             userDefaults?.setValue(true, forKey: "lightning")
@@ -371,7 +373,7 @@ window.downloadForecast(function() {
             userDefaults?.setValue("topographic", forKey: "baseLayer")
         }
 
-        if let url = URL(string: /*"https://meteocool.com/?mobile=ios3"*/"https://app.ng.meteocool.com/ios.html") {
+        if let url = URL(string: "https://app.ng.meteocool.com/ios.html"/*"http://127.0.0.1:8080/ios.html"*/) {
             let request = URLRequest(url: url)
             webView.load(request)
         }
@@ -387,10 +389,18 @@ window.downloadForecast(function() {
         super.viewDidAppear(animated)
 
         let tintColor = UIColor(red: 137.0/255.0, green: 181.0/255.0, blue: 187.0/255.0, alpha: 1.00)
+        
+        var accessibleFont =  UIFont.preferredFont(forTextStyle: .body)
+        if (accessibleFont.pointSize < 18) {
+            accessibleFont = accessibleFont.withSize(18)
+        } else if (accessibleFont.pointSize > 21) {
+            accessibleFont = accessibleFont.withSize(21)
+        }
+
         let appearanceConfiguration = OnboardViewController.AppearanceConfiguration(
             tintColor: tintColor,
             backgroundColor: lightmode,
-            textFont: UIFont.systemFont(ofSize: UIFont.systemFontSize)
+            textFont: accessibleFont
             )
         if (UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "onboardingDone") == nil) {
             let onboardingVC = OnboardViewController(pageItems: onboardingPages, appearanceConfiguration: appearanceConfiguration)

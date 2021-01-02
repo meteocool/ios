@@ -78,6 +78,7 @@
 		57C66BFF21CF25A8004EC825 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		57C66C0121CF25A8004EC825 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomeGestureRecognizer.swift; sourceTree = "<group>"; };
+		A7D6D2B6256094350082064D /* location_changer.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = location_changer.gpx; sourceTree = "<group>"; };
 		A7D9200D226E3E3A0094AB18 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		A7D9200F226E3E660094AB18 /* OnboardKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OnboardKit.framework; path = Carthage/Build/iOS/OnboardKit.framework; sourceTree = "<group>"; };
 		A7F5B2122214D77C005EB78C /* PressureManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PressureManager.swift; sourceTree = "<group>"; };
@@ -159,6 +160,7 @@
 		577666852130C6E300C25E00 = {
 			isa = PBXGroup;
 			children = (
+				A7D6D2B6256094350082064D /* location_changer.gpx */,
 				577666902130C6E300C25E00 /* meteocool */,
 				57C66BEB21CF2590004EC825 /* NotificationContent */,
 				57C66BFE21CF25A8004EC825 /* NotificationService */,

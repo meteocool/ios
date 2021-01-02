@@ -61,7 +61,13 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
 
     func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
         authCompletionHandler = completion
-        locationManager.requestAlwaysAuthorization()
+        if let enabled = userDefaults?.value(forKey: "pushNotification") {
+            if (enabled) as! Bool {
+                locationManager.requestAlwaysAuthorization()
+            } else {
+                locationManager.requestWhenInUseAuthorization()
+            }
+        }
         if (!notDetermined) {
             // XXX this crap needs to go into the completion handler by the ONLY caller that ever sets this awfully named
             // second parameter to false. WTF WAS I THINKING
@@ -104,6 +110,8 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
     func addObserver(observer: LocationObserver) {
         observers.append(observer)
     }
+    
+    let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     // executed when the user taps the locate-me button
     func requestLocation(observer: LocationObserver, explicit: Bool) {
@@ -116,9 +124,22 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
                 }, notDetermined: true)
             }
             if (CLLocationManager.authorizationStatus() == .denied) {
-                if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
-                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                let alertController = UIAlertController(title: "Permission Required", message: "To use the location button, you need to allow access to Location in Settings.\n", preferredStyle: .alert)
+                alertController.addAction(UIAlertAction(title: "Go to Settings", style: .default, handler: {_ in
+                    if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                    }
+                }))
+
+                var rootViewController = UIApplication.shared.keyWindow?.rootViewController
+                if let navigationController = rootViewController as? UINavigationController {
+                    rootViewController = navigationController.viewControllers.first
                 }
+                if let tabBarController = rootViewController as? UITabBarController {
+                    rootViewController = tabBarController.selectedViewController
+                }
+
+                rootViewController?.present(alertController, animated: true, completion: nil)
             }
         }
 
