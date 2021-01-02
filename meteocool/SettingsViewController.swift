@@ -47,17 +47,17 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Customize the appearance and behavior of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
         NSLocalizedString("If you want, we can notify you ahead of rain or snow at your current location.", comment: "footer"),
-        NSLocalizedString("Version:  \n\n Copyright:\n© meteocool Contributors \n\n Data from: \n© DWD © blitzortung.org \n© OpenStreetMap © CARTO", comment: "footer")
+        NSLocalizedString("Version: 2.0\n\nData Providers:\n© DWD © blitzortung.org © Contains Modified Copernicus Sentinel Data (2020)\n\nMap Providers:\n© OpenStreetMap Contributors © CARTO © MapTiler © Who's On First © Natural Earth", comment: "footer")
     ]
     private var dataPushNotification = [
         NSLocalizedString("Push Notifications", comment: "dataPushNotification"),
         NSLocalizedString("Include Meteorological Details", comment: "dataPushNotification"),
-        NSLocalizedString("Threshold", comment: "dataPushNotification"),
-        NSLocalizedString("Time before", comment: "dataPushNotification")
+        NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
+        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
     ]
     private var dataMapView = [
         NSLocalizedString("Map Rotation", comment: "dataMapView"),
-        NSLocalizedString("Auto-Zoom after Start", comment: "dataMapView"),
+        NSLocalizedString("Auto-Zoom After Start", comment: "dataMapView"),
         NSLocalizedString("Base Layer", comment: "dataMapView"),
         NSLocalizedString("Color Map", comment: "dataMapView")
     ]
@@ -67,9 +67,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //NSLocalizedString("☂️ Shelters", comment: "dataLayers")
     ]
     private var dataAboutLabel = [
-        NSLocalizedString("Github", comment: "dataAboutLabel"),
-        NSLocalizedString("Twitter", comment: "dataAboutLabel"),
-        NSLocalizedString("Feedback", comment: "dataAboutLabel"),
+        NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
+        NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
+        NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("Push Token", comment: "dataAboutLabel")
     ]
     private var intensity = [
