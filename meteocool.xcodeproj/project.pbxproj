@@ -27,8 +27,10 @@
 		57C66BF021CF2590004EC825 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 57C66BEE21CF2590004EC825 /* MainInterface.storyboard */; };
 		57C66C0021CF25A8004EC825 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C66BFF21CF25A8004EC825 /* NotificationService.swift */; };
 		A7661F4B2217265700834E1D /* CustomeGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */; };
-		A76B5771254B9EAF0003A7A1 /* OnboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = A76B5770254B9EAF0003A7A1 /* OnboardKit */; };
 		A76B5779254B9EEF0003A7A1 /* StepSlider in Frameworks */ = {isa = PBXBuildFile; productRef = A76B5778254B9EEF0003A7A1 /* StepSlider */; };
+		A7967EC625A1558C0023CA8E /* Onboardings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7967EC525A1558C0023CA8E /* Onboardings.swift */; };
+		A7967ECE25A1568D0023CA8E /* Pages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7967ECD25A1568D0023CA8E /* Pages.swift */; };
+		A7C6D01125A185A50093E876 /* OnboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = A7C6D01025A185A50093E876 /* OnboardKit */; };
 		A7D9200E226E3E3A0094AB18 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D9200D226E3E3A0094AB18 /* WebKit.framework */; };
 		A7F5B2132214D77C005EB78C /* PressureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F5B2122214D77C005EB78C /* PressureManager.swift */; };
 		A7F5B2162214DBAF005EB78C /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A7F5B2152214DBAF005EB78C /* Media.xcassets */; };
@@ -78,6 +80,8 @@
 		57C66BFF21CF25A8004EC825 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		57C66C0121CF25A8004EC825 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomeGestureRecognizer.swift; sourceTree = "<group>"; };
+		A7967EC525A1558C0023CA8E /* Onboardings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboardings.swift; sourceTree = "<group>"; };
+		A7967ECD25A1568D0023CA8E /* Pages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pages.swift; sourceTree = "<group>"; };
 		A7D6D2B6256094350082064D /* location_changer.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = location_changer.gpx; sourceTree = "<group>"; };
 		A7D9200D226E3E3A0094AB18 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		A7D9200F226E3E660094AB18 /* OnboardKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OnboardKit.framework; path = Carthage/Build/iOS/OnboardKit.framework; sourceTree = "<group>"; };
@@ -106,8 +110,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A76B5771254B9EAF0003A7A1 /* OnboardKit in Frameworks */,
 				A76B5779254B9EEF0003A7A1 /* StepSlider in Frameworks */,
+				A7C6D01125A185A50093E876 /* OnboardKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,6 +193,7 @@
 				21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */,
 				21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */,
 				21CDB628254C6EF80050868B /* SettingsViewController.swift */,
+				A7967ECC25A156600023CA8E /* onboarding */,
 				A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */,
 				5705D397218696FB00CC5A60 /* meteocool.entitlements */,
 				57589ACD216ADAEB00CDEBB7 /* lib */,
@@ -245,6 +250,15 @@
 			path = NotificationService;
 			sourceTree = "<group>";
 		};
+		A7967ECC25A156600023CA8E /* onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A7967EC525A1558C0023CA8E /* Onboardings.swift */,
+				A7967ECD25A1568D0023CA8E /* Pages.swift */,
+			);
+			path = onboarding;
+			sourceTree = "<group>";
+		};
 		EA2B77DE2209A9DF00610ED7 /* Widget */ = {
 			isa = PBXGroup;
 			children = (
@@ -274,8 +288,8 @@
 			);
 			name = meteocool;
 			packageProductDependencies = (
-				A76B5770254B9EAF0003A7A1 /* OnboardKit */,
 				A76B5778254B9EEF0003A7A1 /* StepSlider */,
+				A7C6D01025A185A50093E876 /* OnboardKit */,
 			);
 			productName = meteocool;
 			productReference = 5776668E2130C6E300C25E00 /* meteocool.app */;
@@ -409,8 +423,8 @@
 			);
 			mainGroup = 577666852130C6E300C25E00;
 			packageReferences = (
-				A76B576F254B9EAF0003A7A1 /* XCRemoteSwiftPackageReference "OnboardKit" */,
 				A76B5777254B9EEF0003A7A1 /* XCRemoteSwiftPackageReference "StepSlider" */,
+				A7C6D00F25A185A50093E876 /* XCRemoteSwiftPackageReference "onboardkit" */,
 			);
 			productRefGroup = 5776668F2130C6E300C25E00 /* Products */;
 			projectDirPath = "";
@@ -477,9 +491,11 @@
 			files = (
 				A7F5B2132214D77C005EB78C /* PressureManager.swift in Sources */,
 				577666942130C6E300C25E00 /* ViewController.swift in Sources */,
+				A7967EC625A1558C0023CA8E /* Onboardings.swift in Sources */,
 				21CE250B255706A4009595D4 /* BaseLayerMappingViewController.swift in Sources */,
 				5705D3992186A16C00CC5A60 /* NotificationManager.swift in Sources */,
 				57589ACF216ADB1000CDEBB7 /* LocationUpdater.swift in Sources */,
+				A7967ECE25A1568D0023CA8E /* Pages.swift in Sources */,
 				57589AD1216ADB5C00CDEBB7 /* NetworkHelper.swift in Sources */,
 				A7661F4B2217265700834E1D /* CustomeGestureRecognizer.swift in Sources */,
 				21CDB629254C6EF90050868B /* RadarColorMappingViewController.swift in Sources */,
@@ -709,7 +725,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = meteocool/meteocool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 3AM692E9WY;
+				DEVELOPMENT_TEAM = 4Z44USAKX6;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = meteocool/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -717,7 +733,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.ninax;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocoolvalli.ninaxxxxcx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -730,7 +746,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = meteocool/meteocool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 3AM692E9WY;
+				DEVELOPMENT_TEAM = 4Z44USAKX6;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = meteocool/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -738,7 +754,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.ninax;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocoolvalli.ninaxxxxcx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -981,14 +997,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		A76B576F254B9EAF0003A7A1 /* XCRemoteSwiftPackageReference "OnboardKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/NikolaKirev/OnboardKit";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.5.0;
-			};
-		};
 		A76B5777254B9EEF0003A7A1 /* XCRemoteSwiftPackageReference "StepSlider" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/spromicky/StepSlider";
@@ -997,18 +1005,26 @@
 				minimumVersion = 1.8.0;
 			};
 		};
+		A7C6D00F25A185A50093E876 /* XCRemoteSwiftPackageReference "onboardkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/meteocool/onboardkit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.5;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A76B5770254B9EAF0003A7A1 /* OnboardKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A76B576F254B9EAF0003A7A1 /* XCRemoteSwiftPackageReference "OnboardKit" */;
-			productName = OnboardKit;
-		};
 		A76B5778254B9EEF0003A7A1 /* StepSlider */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A76B5777254B9EEF0003A7A1 /* XCRemoteSwiftPackageReference "StepSlider" */;
 			productName = StepSlider;
+		};
+		A7C6D01025A185A50093E876 /* OnboardKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A7C6D00F25A185A50093E876 /* XCRemoteSwiftPackageReference "onboardkit" */;
+			productName = OnboardKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

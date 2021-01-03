@@ -61,12 +61,10 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
 
     func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
         authCompletionHandler = completion
-        if let enabled = userDefaults?.value(forKey: "pushNotification") {
-            if (enabled) as! Bool {
-                locationManager.requestAlwaysAuthorization()
-            } else {
-                locationManager.requestWhenInUseAuthorization()
-            }
+        if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
+            locationManager.requestAlwaysAuthorization()
+        } else {
+            locationManager.requestWhenInUseAuthorization()
         }
         if (!notDetermined) {
             // XXX this crap needs to go into the completion handler by the ONLY caller that ever sets this awfully named
@@ -85,7 +83,11 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         if let authCompletionHandler = authCompletionHandler {
             switch status {
             case .notDetermined:
-                locationManager.requestAlwaysAuthorization()
+                if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
+                    locationManager.requestAlwaysAuthorization()
+                } else {
+                    locationManager.requestWhenInUseAuthorization()
+                }
                 break
             case .authorizedWhenInUse:
                 locationManager.startUpdatingLocation()

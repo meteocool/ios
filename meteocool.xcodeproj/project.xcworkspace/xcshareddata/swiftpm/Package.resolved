@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "OnboardKit",
-        "repositoryURL": "https://github.com/NikolaKirev/OnboardKit",
+        "repositoryURL": "https://github.com/meteocool/onboardkit",
         "state": {
           "branch": null,
-          "revision": "98bd903892618cb8f5de99b7a29d1e3b7afc247e",
-          "version": "1.5.0"
+          "revision": "38d6da7fe326ef693d11a102a73a3cd25a98ebb0",
+          "version": "1.5.5"
         }
       },
       {

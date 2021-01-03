@@ -6,8 +6,52 @@ import CoreMotion
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
+    let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        //Settings
+        if (userDefaults?.value(forKey: "pushNotification") == nil){
+            userDefaults?.setValue(false, forKey: "pushNotification")
+        }
+        if (userDefaults?.value(forKey: "intensityValue") == nil){
+            userDefaults?.setValue(0, forKey: "intensityValue")
+            /* 0 -> any
+             * 1 -> light
+             * 2 -> normal
+             * 3 -> heavy
+             */
+        }
+        if (userDefaults?.value(forKey: "timeBeforeValue") == nil){
+            userDefaults?.setValue(2, forKey: "timeBeforeValue")
+            //Value +1 *5 for minutes
+        }
+        if (userDefaults?.value(forKey: "mapRotation") == nil){
+            userDefaults?.setValue(false, forKey: "mapRotation")
+        }
+        if (userDefaults?.value(forKey: "autoZoom") == nil){
+            userDefaults?.setValue(false, forKey: "autoZoom")
+        }
+        if (userDefaults?.value(forKey: "lightning") == nil){
+            userDefaults?.setValue(true, forKey: "lightning")
+        }
+        if (userDefaults?.value(forKey: "shelters") == nil){
+            userDefaults?.setValue(false, forKey: "shelters")
+        }
+        if (userDefaults?.value(forKey: "withDBZ") == nil){
+            userDefaults?.setValue(false, forKey: "withDBZ")
+        }
+        if (userDefaults?.value(forKey: "mesocyclones") == nil){
+            userDefaults?.setValue(false, forKey: "mesocyclones")
+        }
+        if (userDefaults?.value(forKey: "radarColorMapping") == nil){
+            userDefaults?.setValue("classic", forKey: "radarColorMapping")
+        }
+        if (userDefaults?.value(forKey: "baseLayer") == nil){
+            userDefaults?.setValue("topographic", forKey: "baseLayer")
+        }
+
         return true
     }
 
@@ -95,9 +139,3 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         NSLog("Failed to register for remote notifications with error: \(error)")
     }
 }
-
-/*extension UIApplication {
-    var statusBarView: UIView? {
-        return value(forKey: "statusBar") as? UIView
-    }
-}*/

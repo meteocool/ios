@@ -22,6 +22,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             NSLog("Permission granted: \(granted)")
             // XXX just forward granted to the other completionhandler?
             guard granted else {
+                print("Falsifying completion handler")
                 completion(false, nil)
                 return
             }
