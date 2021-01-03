@@ -54,7 +54,7 @@ class Pages {
     
 
     static let finish = OnboardPage(
-        title: NSLocalizedString("That's It! Now Go Outside!", comment:"Finish title"),
+        title: NSLocalizedString("Now Go Outside!", comment:"Finish title"),
         imageName: "ob_free",
         description: NSLocalizedString("Did you know?\n\nmeteocool is completely free and open source. It's run and built by volunteers in their free time. If you like our App, tell your friends!", comment: "Finish description"),
         advanceButtonTitle: NSLocalizedString("Done", comment: "done")
