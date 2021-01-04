@@ -279,7 +279,7 @@ window.downloadForecast(function() {
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
         SharedLocationUpdater.addObserver(observer: self)
     }
-
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
@@ -287,15 +287,20 @@ window.downloadForecast(function() {
             completion in
             SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
         }
+
+        let notificationAction: OnboardPageAction
+        notificationAction = {
+            [weak self] completion in
+            self?.userDefaults?.setValue(true, forKey: "pushNotification")
+            self?.onboardingOnThisRun = true
+            SharedNotificationManager.registerForPushNotifications(completion)
+        }
         
         if let onboardingDone = userDefaults?.bool(forKey: "onboardingDone"), !onboardingDone {
-            let ob = obFactory.getOnboarding(pages: obFactory.getInitialOnboardingPages(notificationAction: {
-                [weak self] completion in
-                self?.userDefaults?.setValue(true, forKey: "pushNotification")
-                self?.userDefaults?.setValue(true, forKey: "onboardingDone")
-                self?.onboardingOnThisRun = true
-                SharedNotificationManager.registerForPushNotifications(completion)
-            }), completion: {
+            let ob = obFactory.getOnboarding(pages: obFactory.getInitialOnboardingPages(notificationAction: notificationAction), completion: {
+                // Completion handler for first top-level onboarding
+                self.userDefaults?.setValue(true, forKey: "onboardingDone")
+                
                 var secondStageOb: OnboardViewController
                 if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
                     secondStageOb = obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!
@@ -306,12 +311,25 @@ window.downloadForecast(function() {
             })
             ob!.presentFrom(self, animated: true)
         } else {
-            if (!self.onboardingOnThisRun && CLLocationManager.authorizationStatus() == .notDetermined) {
-                obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(locationAction: locationAction))?.presentFrom(self, animated: true)
-                userDefaults?.setValue(true, forKey: "nagDone")
+            if let nagDone = self.userDefaults?.bool(forKey: "nagDone"), (!self.onboardingOnThisRun && (CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse) && !nagDone) {
+                obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(notificationAction: notificationAction), completion: {
+                    self.userDefaults?.setValue(true, forKey: "nagDone")
+                    if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
+                        obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!.presentFrom(self, animated: true)
+                    }
+                })?.presentFrom(self, animated: true)
             }
         }
     }
+    
+    /*
+     self?.userDefaults?.setValue(true, forKey: "pushNotification")
+     self?.userDefaults?.setValue(true, forKey: "onboardingDone")
+     self?.onboardingOnThisRun = true
+     
+     SharedNotificationManager.registerForPushNotifications(completion)
+     
+     */
     
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background

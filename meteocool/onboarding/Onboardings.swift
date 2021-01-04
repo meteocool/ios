@@ -9,22 +9,29 @@ import OnboardKit
 class OnboardingFactory {
     static let tintColor = UIColor(red: 137.0/255.0, green: 181.0/255.0, blue: 187.0/255.0, alpha: 1.00)
     let backgroundLight = UIColor(red: 0xf8/255.0, green: 0xf9/255.0, blue: 0xfa/255.0, alpha: 1.0)
-    var accessibleFont =  UIFont.preferredFont(forTextStyle: .body)
     var appearanceConfiguration:OnboardViewController.AppearanceConfiguration
-    
+    var actionButtonStyling = UIButton()
+
     init() {
+        var accessibleFont =  UIFont.preferredFont(forTextStyle: .body)
+
         if (accessibleFont.pointSize < 18) {
             accessibleFont = accessibleFont.withSize(18)
-        } else if (accessibleFont.pointSize > 21) {
-            accessibleFont = accessibleFont.withSize(21)
+        } else if (accessibleFont.pointSize > 20.5) {
+            accessibleFont = accessibleFont.withSize(20.5)
         }
+        
         self.appearanceConfiguration = OnboardViewController.AppearanceConfiguration(
             tintColor: OnboardingFactory.tintColor,
             backgroundColor: backgroundLight,
-            textFont: accessibleFont)
+            textFont: accessibleFont,
+            advanceButtonStyling: {button in
+                button.titleLabel?.font = UIFont.preferredFont(forTextStyle: .title2)
+                button.setTitleColor(OnboardingFactory.tintColor, for: .normal)
+            })
     }
     
-    public func getOnboarding(pages: [OnboardPage],  completion: (() -> Void)? = nil) -> OnboardViewController? {
+    public func getOnboarding(pages: [OnboardPage], completion: (() -> Void)? = nil) -> OnboardViewController? {
         let ret = OnboardViewController(pageItems: pages, appearanceConfiguration: appearanceConfiguration, completion: completion)
         ret.modalPresentationStyle = .formSheet
         return ret
@@ -35,15 +42,15 @@ class OnboardingFactory {
     }
 
     public func getBackgroundLocationOnboarding(locationAction: OnboardPageAction? = nil) -> [OnboardPage] {
-        return [Pages.getBackgroundLocationPermission(action: locationAction), Pages.satelliteView, Pages.finish]
+        return [Pages.getBackgroundLocationPermission(action: locationAction), Pages.satelliteView, Pages.settingsPage, Pages.finish]
     }
     
     public func getWhileUsingOnboarding(locationAction: OnboardPageAction? = nil) -> [OnboardPage] {
-        return [Pages.getWhileUsingLocationPermission(action: locationAction), Pages.satelliteView, Pages.finish]
+        return [Pages.getWhileUsingLocationPermission(action: locationAction), Pages.satelliteView, Pages.settingsPage, Pages.finish]
     }
     
-    public func getLocationNagOnboarding(locationAction: OnboardPageAction? = nil) -> [OnboardPage] {
-        return [Pages.getLocationNag(action: locationAction), Pages.locationNagSorry]
+    public func getLocationNagOnboarding(notificationAction: OnboardPageAction? = nil) -> [OnboardPage] {
+        return [Pages.getLocationNag(action: notificationAction)]
     }
 }
 

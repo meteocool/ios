@@ -25,12 +25,11 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         NSLocalizedString("classic", comment: "radarColorMapping"),
         NSLocalizedString("viridis", comment: "radarColorMapping")
     ]
-    
 
+    // colormap explanation
     private var explainRadarColorMapping = [
-        NSLocalizedString("foo\nbar", comment: "radarColorMapping"),
+        NSLocalizedString("Radar colormaps change the visualization of precipitation on the map.", comment: "radarColorMapping"),
     ]
-    // please make this right
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         return explainRadarColorMapping[section]
     }

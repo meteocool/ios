@@ -7,6 +7,7 @@
 //
 import UIKit
 import StepSlider
+import CoreLocation
 
 class LinkTableViewCell: UITableViewCell{
     @IBOutlet weak var linkInfoLable: UILabel!
@@ -98,12 +99,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     @IBAction func doneSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
     }
-
+    
     //Nuber of Selections
     func numberOfSections(in tableView: UITableView) -> Int {
         return header.count
     }
-
+    
     //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section{
@@ -125,7 +126,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return 0
         }
     }
-
+    
     //Sections Header
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         return header[section]
@@ -138,7 +139,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         return footer[section]
     }
-
+    
     //Table Content
     func tableView(_ tableView: UITableView,cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         // kind of cells
@@ -194,9 +195,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
             /*case 2: //Shelters
-                switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "shelters"))!, animated: false)
-                return switcherCell
+             switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
+             switcherCell.switcher.setOn((userDefaults?.bool(forKey: "shelters"))!, animated: false)
+             return switcherCell
              */
             default:
                 print("This should not happen...")
@@ -247,7 +248,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 textCell.textValueLabel.text = SharedNotificationManager.getToken() ?? "Not Enabled"
                 // XXX localize
                 return textCell
-            
+                
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
                 linkCell.linkValueLable.text = ""
@@ -296,12 +297,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
     }
     
+    var alertWindow: UIWindow?
+    
     @objc func switchChanged(_ sender : UISwitch!){
         switch sender.tag {
         //Map View
         case 0:
             userDefaults?.setValue(sender.isOn, forKey: "mapRotation")
-            print("window.injectSettings({\"mapRotation\": \(sender.isOn)});")
+            print("window.inject1ngs({\"mapRotation\": \(sender.isOn)});")
             viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"mapRotation\": \(sender.isOn)});")
         case 1:
             userDefaults?.setValue(sender.isOn, forKey: "autoZoom")
@@ -315,11 +318,46 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
         case 12:
             userDefaults?.setValue(sender.isOn, forKey: "shelters")
-            //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
+        //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
         //Push Notification
         case 20:
-            userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
-            settingsTable.reloadData()
+            if (!sender.isOn) {
+                userDefaults?.setValue(false, forKey: "pushNotification")
+                return
+            }
+            switch(CLLocationManager.authorizationStatus()) {
+            case .denied, .authorizedWhenInUse, .notDetermined:
+                let alertController = UIAlertController(title: "Location Permission Required", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.", preferredStyle: UIAlertController.Style.alert)
+                
+                alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
+                    if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                        UIApplication.shared.open(url, options: [:], completionHandler: {_ in
+                            self.userDefaults?.setValue(true, forKey: "pushNotification")
+                            self.alertWindow = nil
+                        })
+                    }
+                }
+                ))
+                alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
+                    self.userDefaults?.setValue(false, forKey: "pushNotification")
+                    self.settingsTable.reloadData()
+                    self.alertWindow = nil
+                }
+                ))
+                
+                alertWindow = UIWindow(frame: UIScreen.main.bounds)
+                alertWindow?.rootViewController = UIViewController()
+                alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+                alertWindow?.makeKeyAndVisible()
+                alertWindow?.rootViewController?.present(alertController, animated: true)
+                break;
+            case .authorizedAlways:
+                userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
+                settingsTable.reloadData()
+                break;
+            default:
+                break;
+            }
         case 22:
             userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
         default:
@@ -331,13 +369,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switch sender.maxCount {
         case 4: //Intensity
             userDefaults?.setValue(sender.index, forKey: "intensityValue")
-            // 0 -> any
-            // 1 -> light
-            // 2 -> normal
-            // 3 -> heavy
+        // 0 -> any
+        // 1 -> light
+        // 2 -> normal
+        // 3 -> heavy
         case 9: //Time before
             userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
-            //Value +1 *5 for minutes
+        //Value +1 *5 for minutes
         default:
             print ("This not happen")
         }

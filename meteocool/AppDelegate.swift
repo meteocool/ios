@@ -46,7 +46,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue(false, forKey: "mesocyclones")
         }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
-            userDefaults?.setValue("classic", forKey: "radarColorMapping")
+            userDefaults?.setValue("viridis", forKey: "radarColorMapping")
         }
         if (userDefaults?.value(forKey: "baseLayer") == nil){
             userDefaults?.setValue("topographic", forKey: "baseLayer")
