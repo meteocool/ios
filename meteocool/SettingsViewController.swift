@@ -71,7 +71,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
-        NSLocalizedString("Push Token", comment: "dataAboutLabel")
+        NSLocalizedString("Push Token", comment: "dataAboutLabel"),
+        NSLocalizedString("Privacy Policy", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -292,6 +293,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let mailAdress = "support@meteocool.com"
             let token = SharedNotificationManager.getToken() ?? "no-token"
             if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=token=\(token)") {
+                UIApplication.shared.open(url)
+            }
+        }
+        if (indexPath.section == 3 && indexPath.row == 4){
+            if let url = URL(string: "https://meteocool.com/privacy.html") {
                 UIApplication.shared.open(url)
             }
         }
