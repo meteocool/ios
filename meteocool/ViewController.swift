@@ -237,9 +237,16 @@ window.downloadForecast(function() {
         self.view.addSubview(settingsButton!)
         self.view.addSubview(positionButton!)
         self.view.addSubview(layerSwitcherButton!)
-        self.view.addSubview(blur!)
         self.view.addSubview(logo!)
+
+        let window = UIApplication.shared.windows[0]
+        let topPadding = (window.safeAreaInsets.top)
         
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        let heightConstraint = NSLayoutConstraint(item: blur, attribute: NSLayoutConstraint.Attribute.height, relatedBy: NSLayoutConstraint.Relation.equal, toItem: nil, attribute: NSLayoutConstraint.Attribute.notAnAttribute, multiplier: 1, constant: topPadding)
+        view.addConstraints([heightConstraint])
+        self.view.addSubview(blur!)
+
         time.isHidden = true
         time.layer.masksToBounds = true
         time.layer.cornerRadius = 8.0
@@ -331,6 +338,8 @@ window.downloadForecast(function() {
      
      */
     
+    var alertWindow: UIWindow?
+    
     @objc func willEnterForeground() {
         // reload tiles if app resumes from background
         //webView.evaluateJavaScript("window.ios.refresh();")
@@ -339,6 +348,40 @@ window.downloadForecast(function() {
             focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
             zoomAndFocusLocation()
         }
+        
+        // Check if background location permissions were revoked while notifications enabled
+        let alertController = UIAlertController(title: "Notifications Require Location Permission", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to continue using notifications.", preferredStyle: UIAlertController.Style.alert)
+        
+        alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
+            if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                UIApplication.shared.open(url, options: [:], completionHandler: {_ in
+                    self.userDefaults?.setValue(true, forKey: "pushNotification")
+                    self.alertWindow = nil
+                })
+            }
+        }
+        ))
+        alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
+            self.userDefaults?.setValue(false, forKey: "pushNotification")
+            self.alertWindow = nil
+            
+            let reenableController = UIAlertController(title: "Notifications Disabled", message: "If you change your mind, you can re-enable rain and snow notifications in the meteocool ⚙️ Settings on the top-right.", preferredStyle: UIAlertController.Style.alert)
+            reenableController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default, handler: {_ in
+                        self.alertWindow = nil
+            }))
+            self.alertWindow = UIWindow(frame: UIScreen.main.bounds)
+            self.alertWindow?.rootViewController = UIViewController()
+            self.alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+            self.alertWindow?.makeKeyAndVisible()
+            self.alertWindow?.rootViewController?.present(reenableController, animated: true)
+        }
+        ))
+        
+        alertWindow = UIWindow(frame: UIScreen.main.bounds)
+        alertWindow?.rootViewController = UIViewController()
+        alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+        alertWindow?.makeKeyAndVisible()
+        alertWindow?.rootViewController?.present(alertController, animated: true)
     }
     
     @IBAction func locationButton(sender: AnyObject){
