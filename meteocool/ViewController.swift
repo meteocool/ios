@@ -25,6 +25,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     
     var onboardingOnThisRun = false
     var autoFocus = false
+    var autoFocusOnce = false
     var zoomOnce = false
 
     enum DrawerStates {
@@ -163,6 +164,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             case .active:
                 SharedLocationUpdater.startAccurateLocationUpdates()
                 self.autoFocus = false
+                self.autoFocusOnce = true
                 self.zoomOnce = true // gets reset to false automatically after the zoom operation
                 SharedLocationUpdater.requestLocation(observer: self, explicit: true)
                 self.positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
@@ -372,11 +374,14 @@ window.downloadForecast(function() {
     }
     
     func notify(location: CLLocation) {
-        let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus));"
+        let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus || autoFocusOnce));"
         webView.evaluateJavaScript(jsCommand)
         print(jsCommand)
         if (zoomOnce){
             zoomOnce = false
+        }
+        if (autoFocusOnce){
+            autoFocusOnce = false
         }
     }
 
