@@ -1,10 +1,3 @@
-//
-//  SettingsController.swift
-//  meteocool
-//
-//  Created by Nina Loser on 30.01.20.
-//  Copyright © 2020 Florian Mauracher. All rights reserved.
-//
 import UIKit
 import StepSlider
 import CoreLocation
@@ -57,10 +50,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
     ]
     private var dataMapView = [
-        NSLocalizedString("Map Rotation", comment: "dataMapView"),
+        NSLocalizedString("Two-Finger Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto-Zoom After Start", comment: "dataMapView"),
-        NSLocalizedString("Base Layer", comment: "dataMapView"),
-        NSLocalizedString("Color Map", comment: "dataMapView")
+        NSLocalizedString("Base Map Layer", comment: "dataMapView"),
+        NSLocalizedString("Radar Color Map", comment: "dataMapView")
     ]
     private var dataLayers = [
         NSLocalizedString("⚡️ Lightning", comment: "dataLayers"),
@@ -94,6 +87,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         settingsTable.estimatedRowHeight = 100
         settingsTable.rowHeight = 44
         NotificationCenter.default.addObserver(self, selector: #selector(reload), name: NSNotification.Name("SettingsChanged"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(SettingsViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
     
     //Return Back with Done
@@ -305,16 +299,63 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     var alertWindow: UIWindow?
     
+    var enableZoomOnStartIfGranted : Bool = false
+    
+    @objc func willEnterForeground() {
+        if (enableZoomOnStartIfGranted) {
+            enableZoomOnStartIfGranted = false
+            let locationAuth = CLLocationManager.authorizationStatus()
+            userDefaults?.setValue((locationAuth == .authorizedAlways || locationAuth == .authorizedWhenInUse), forKey: "autoZoom")
+        }
+        self.settingsTable.reloadData()
+    }
+    
     @objc func switchChanged(_ sender : UISwitch!){
         switch sender.tag {
         //Map View
         case 0:
             userDefaults?.setValue(sender.isOn, forKey: "mapRotation")
-            print("window.inject1ngs({\"mapRotation\": \(sender.isOn)});")
             viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"mapRotation\": \(sender.isOn)});")
         case 1:
             userDefaults?.setValue(sender.isOn, forKey: "autoZoom")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"zoomOnForeground\": \(sender.isOn)});")
+            if (sender.isOn) {
+                let locationAuth = CLLocationManager.authorizationStatus()
+                if (locationAuth != .authorizedAlways && locationAuth != .authorizedWhenInUse) {
+                    switch(CLLocationManager.authorizationStatus()) {
+                    case .denied:
+                        self.userDefaults?.setValue(false, forKey: "autoZoom")
+
+                        let alertController = UIAlertController(title: "Location Permission Required", message: "In order to zoom to your current location when opening meteocool, you need to allow access to your location.\n\nIn your device's Settings, set \"Location\" to \"Allow While Using\" to use this feature.", preferredStyle: UIAlertController.Style.alert)
+                        alertController.addAction(UIAlertAction(title: "Allow in Settings", style: UIAlertAction.Style.default, handler: {_ in
+                            if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                                UIApplication.shared.open(url, options: [:], completionHandler: {_ in
+                                    self.alertWindow = nil
+                                    self.enableZoomOnStartIfGranted = true
+                                })
+                            }
+                        }
+                        ))
+                        alertController.addAction(UIAlertAction(title: "Disable Auto-Zoom", style: UIAlertAction.Style.default, handler: {_ in
+                            self.settingsTable.reloadData()
+                            self.alertWindow = nil
+                        }
+                        ))
+                        
+                        alertWindow = UIWindow(frame: UIScreen.main.bounds)
+                        alertWindow?.rootViewController = UIViewController()
+                        alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+                        alertWindow?.makeKeyAndVisible()
+                        alertWindow?.rootViewController?.present(alertController, animated: true)
+                        break;
+                    case .notDetermined:
+                        // XXX callback
+                        SharedLocationUpdater.requestAuthorization({_,_ in self.settingsTable.reloadData()}, notDetermined: false)
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
         //Layers
         case 10:
             userDefaults?.setValue(sender.isOn, forKey: "lightning")

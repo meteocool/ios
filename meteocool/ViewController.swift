@@ -7,7 +7,7 @@ import OnboardKit
 var viewController: ViewController? = nil
 
 @available(iOS 13.0, *)
-class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver, UIScrollViewDelegate{
+class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver, UIScrollViewDelegate, UIGestureRecognizerDelegate{
     let buttonsize = 19.0 as CGFloat
     
     @IBOutlet weak var webView: WKWebView!
@@ -24,10 +24,9 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var logo: UIImageView!
     
     var onboardingOnThisRun = false
-    
-    var focusOn = false
-    var zoomOn = false
-    
+    var autoFocus = false
+    var zoomOnce = false
+
     enum DrawerStates {
         case CLOSED
         case LOADING
@@ -40,6 +39,258 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     var currentdate = Date()
     let formatter = DateFormatter()
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
+
+    enum LocationState {
+        case off
+        case active
+        case tracking
+    }
+    
+    ///Represents all the triggers a Turnstile can perform
+    enum LocationTrigger {
+        case buttonPress
+        case mapMove
+    }
+    
+    private typealias LocationFSM = SwiftFSMSchema<LocationState, LocationTrigger>
+    private var LocationFSMSchema = LocationFSM(initialState: .off) { (presentState, trigger) -> ViewController.LocationState in
+        var toState: LocationState
+
+        switch presentState {
+        case .off:
+            switch trigger {
+            case .buttonPress:
+                toState = .active
+            case .mapMove:
+                toState = .off
+            }
+        case .active:
+            switch trigger {
+            case .buttonPress:
+                toState = .tracking
+            case .mapMove:
+                toState = .active
+            }
+        case .tracking:
+            switch trigger {
+            case .buttonPress:
+                toState = .off
+            case .mapMove:
+                toState = .active
+            }
+        }
+        return toState
+    }
+    
+    private var locationStateMachine: SwiftFSM<LocationFSM>?
+    
+    @objc func tapOrPan() {
+        if (locationStateMachine?.state == .tracking) {
+            locationStateMachine?.trigger(.mapMove)
+        }
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+      return true
+    }
+    
+    override func loadView() {
+        super.loadView()
+        viewController = self
+        
+        webView?.configuration.userContentController.add(self, name: "scriptHandler")
+        webView?.configuration.userContentController.add(self, name: "timeHandler")
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        
+        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.tapOrPan))
+        let panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.tapOrPan))
+
+        tapRecognizer.numberOfTapsRequired = 1
+        tapRecognizer.delegate = self
+        webView.addGestureRecognizer(tapRecognizer)
+        panRecognizer.minimumNumberOfTouches = 1
+        panRecognizer.maximumNumberOfTouches = 1
+        panRecognizer.delegate = self
+        webView.addGestureRecognizer(panRecognizer)
+        
+        self.view.addSubview(webView!)
+        self.view.addSubview(slider_ring!)
+        self.view.addSubview(slider_button!)
+        self.view.addSubview(button!)
+        self.view.addSubview(time!)
+        self.view.addSubview(activityIndicator!)
+        self.view.addSubview(trippleButton!)
+        self.view.addSubview(settingsButton!)
+        self.view.addSubview(positionButton!)
+        self.view.addSubview(layerSwitcherButton!)
+        self.view.addSubview(logo!)
+        self.view.addSubview(blur!)
+
+        time.isHidden = true
+        time.layer.masksToBounds = true
+        time.layer.cornerRadius = 8.0
+        slider_ring.isHidden = true
+        slider_button.isHidden = true
+
+        formatter.locale = Locale(identifier: "de_De")
+        formatter.dateFormat = "H:mm"
+
+        let gesture = CustomGestureRecognizer(target: self, action: nil)
+        gesture.setView(viewing: self)
+        view.addGestureRecognizer(gesture)
+        drawer_hide()
+
+        print("Language: " + Locale.preferredLanguages[0].split(separator: "-")[0])
+    }
+
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+        scrollView.pinchGestureRecognizer?.isEnabled = false
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        locationStateMachine = SwiftFSM(schema: LocationFSMSchema)
+        locationStateMachine?.logging = .logging({(log: String) -> () in
+            print(log) //Use any logging method you choose in this closure
+        })
+        locationStateMachine?.machineDidTransitState = { (_ fromState: LocationState, _ trigger: LocationTrigger, _ toState: LocationState) -> () in
+            switch(toState) {
+            case .off:
+                self.autoFocus = false
+                SharedLocationUpdater.stopAccurateLocationUpdates()
+                self.positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+                self.webView.evaluateJavaScript("window.lm.updateLocation(-1, -1, -1, false, false);")
+            case .active:
+                SharedLocationUpdater.startAccurateLocationUpdates()
+                self.autoFocus = false
+                self.zoomOnce = true // gets reset to false automatically after the zoom operation
+                SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+                self.positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            case .tracking:
+                self.autoFocus = true // gets reset to false automatically after the zoom operation
+                SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+                self.positionButton.setImage(UIImage(systemName: "location.fill.viewfinder",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
+            }
+        }
+
+        // disable scrolling & bouncing effects
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+        webView.scrollView.delegate = self
+
+        if let url = URL(string: "https://app.ng.meteocool.com/ios.html"/*"http://127.0.0.1:8080/ios.html"*/) {
+            let request = URLRequest(url: url)
+            webView.load(request)
+        }
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
+                                               name: NSNotification.Name("SettingsChanged"), object: nil)
+        SharedLocationUpdater.addObserver(observer: self)
+        self.willEnterForeground()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        let locationAction = {
+            completion in
+            SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
+        }
+
+        let notificationAction: OnboardPageAction
+        notificationAction = {
+            [weak self] completion in
+            self?.userDefaults?.setValue(true, forKey: "pushNotification")
+            self?.onboardingOnThisRun = true
+            SharedNotificationManager.registerForPushNotifications(completion)
+        }
+        
+        if let onboardingDone = userDefaults?.bool(forKey: "onboardingDone"), !onboardingDone {
+            let ob = obFactory.getOnboarding(pages: obFactory.getInitialOnboardingPages(notificationAction: notificationAction), completion: {
+                // Completion handler for first top-level onboarding
+                self.userDefaults?.setValue(true, forKey: "onboardingDone")
+                
+                var secondStageOb: OnboardViewController
+                if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
+                    secondStageOb = obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!
+                } else {
+                    secondStageOb = obFactory.getOnboarding(pages: obFactory.getWhileUsingOnboarding(locationAction: locationAction))!
+                }
+                secondStageOb.presentFrom(self, animated: true)
+            })
+            ob!.presentFrom(self, animated: true)
+        } else {
+            if let nagDone = self.userDefaults?.bool(forKey: "nagDone"), (!self.onboardingOnThisRun && (CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse) && !nagDone) {
+                obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(notificationAction: notificationAction), completion: {
+                    self.userDefaults?.setValue(true, forKey: "nagDone")
+                    if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
+                        obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!.presentFrom(self, animated: true)
+                    }
+                })?.presentFrom(self, animated: true)
+            }
+        }
+    }
+
+    var alertWindow: UIWindow?
+
+    @objc func willEnterForeground() {
+        if ((userDefaults?.bool(forKey: "autoZoom")) ?? false){
+            if (locationStateMachine?.state == .off) {
+                locationStateMachine?.trigger(.buttonPress)
+            }
+            if (locationStateMachine?.state == .active) {
+                locationStateMachine?.trigger(.buttonPress)
+            }
+        }
+
+        if (userDefaults?.bool(forKey: "pushNotification") ?? false && CLLocationManager.authorizationStatus() != .authorizedAlways) {
+            // Check if background location permissions were revoked while notifications enabled
+            let alertController = UIAlertController(title: "Notifications Not Working", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIf you want to continue receiving notifications, go to Settings > Privacy > Location > meteocool and change \"Location\" to \"Always\".", preferredStyle: UIAlertController.Style.alert)
+            alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
+                if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                    UIApplication.shared.open(url, options: [:], completionHandler: {_ in
+                        self.userDefaults?.setValue(true, forKey: "pushNotification")
+                        self.alertWindow = nil
+                    })
+                }
+            }
+            ))
+            alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
+                self.userDefaults?.setValue(false, forKey: "pushNotification")
+                self.alertWindow = nil
+
+                let reenableController = UIAlertController(title: "Notifications Disabled", message: "If you change your mind, you can re-enable rain and snow notifications in the app's ⚙️ Settings on the top-right.", preferredStyle: UIAlertController.Style.alert)
+                reenableController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default, handler: {_ in
+                    self.alertWindow = nil
+                }))
+                self.alertWindow = UIWindow(frame: UIScreen.main.bounds)
+                self.alertWindow?.rootViewController = UIViewController()
+                self.alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+                self.alertWindow?.makeKeyAndVisible()
+                self.alertWindow?.rootViewController?.present(reenableController, animated: true)
+            }
+            ))
+            alertWindow = UIWindow(frame: UIScreen.main.bounds)
+            alertWindow?.rootViewController = UIViewController()
+            alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+            alertWindow?.makeKeyAndVisible()
+            alertWindow?.rootViewController?.present(alertController, animated: true)
+        }
+    }
+
+    @IBAction func locationButton(sender: AnyObject){
+        locationStateMachine?.trigger(.buttonPress)
+    }
+    
+    @IBAction func layerSwitcher(sender: AnyObject){
+        webView.evaluateJavaScript("window.openLayerswitcher();")
+        trippleButton.isHidden = true
+        settingsButton.isHidden = true
+        layerSwitcherButton.isHidden = true
+        positionButton.isHidden = true
+    }
+
     
     func drawer_show() {
         button.isHidden = false
@@ -121,13 +372,14 @@ window.downloadForecast(function() {
     }
     
     func notify(location: CLLocation) {
-        webView.evaluateJavaScript("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));")
-        print(("window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOn) ,\(focusOn));"))
-        if (zoomOn){
-            zoomOn = !zoomOn
+        let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus));"
+        webView.evaluateJavaScript(jsCommand)
+        print(jsCommand)
+        if (zoomOnce){
+            zoomOnce = false
         }
     }
-    
+
     @objc func injectSettings() {
         let config = [
             "mapRotation": userDefaults?.value(forKey: "mapRotation"),
@@ -144,31 +396,16 @@ window.downloadForecast(function() {
             print("Config parsing failed")
         }
     }
-    
+
     /* called from javascript */
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         let action = String(describing: message.body)
-        
+
         // XXX convert to switch/case
-        
         if message.name == "timeHandler" {
             self.currentdate = NSDate(timeIntervalSince1970: Double(action)!) as Date
         }
-        
-        if action == "startMonitoringLocationExplicit" {
-            SharedLocationUpdater.requestLocation(observer: self, explicit: true)
-            SharedLocationUpdater.startAccurateLocationUpdates()
-        }
-        
-        if action == "startMonitoringLocationImplicit" {
-            SharedLocationUpdater.requestLocation(observer: self, explicit: false)
-            SharedLocationUpdater.startAccurateLocationUpdates()
-        }
-        
-        if action == "stopMonitoringLocation" {
-            SharedLocationUpdater.stopAccurateLocationUpdates()
-        }
-        
+
         if action == "forecastDownloaded" {
             time.text = formatter.string(from: Date())
             drawer_open_finish()
@@ -177,17 +414,7 @@ window.downloadForecast(function() {
         if action == "forecastInvalid" {
             drawer_close()
         }
-        
-        if action == "enableScrolling" {
-            webView.scrollView.isScrollEnabled = true
-            webView.scrollView.bounces = true
-        }
-        
-        if action == "disableScrolling" {
-            webView.scrollView.isScrollEnabled = false
-            webView.scrollView.bounces = false
-        }
-        
+
         if action == "drawerHide" {
             drawer_hide()
         }
@@ -199,10 +426,10 @@ window.downloadForecast(function() {
         if action == "requestSettings" {
             injectSettings()
             
-            if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
-                zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
-                focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
-                zoomAndFocusLocation()
+            if (locationStateMachine?.state == .off) {
+                if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
+                    locationStateMachine?.trigger(.buttonPress)
+                }
             }
         }
         
@@ -212,200 +439,5 @@ window.downloadForecast(function() {
             layerSwitcherButton.isHidden = false
             positionButton.isHidden = false
         }
-        
-        if action == "mapMoveEnd"{
-            SharedLocationUpdater.stopAccurateLocationUpdates()
-            positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
-        }
-    }
-    
-    override func loadView() {
-        super.loadView()
-        viewController = self
-        
-        webView?.configuration.userContentController.add(self, name: "scriptHandler")
-        webView?.configuration.userContentController.add(self, name: "timeHandler")
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
-        
-        self.view.addSubview(webView!)
-        self.view.addSubview(slider_ring!)
-        self.view.addSubview(slider_button!)
-        self.view.addSubview(button!)
-        self.view.addSubview(time!)
-        self.view.addSubview(activityIndicator!)
-        self.view.addSubview(trippleButton!)
-        self.view.addSubview(settingsButton!)
-        self.view.addSubview(positionButton!)
-        self.view.addSubview(layerSwitcherButton!)
-        self.view.addSubview(logo!)
-
-        let window = UIApplication.shared.windows[0]
-        let topPadding = (window.safeAreaInsets.top)
-        
-        blur.translatesAutoresizingMaskIntoConstraints = false
-        let heightConstraint = NSLayoutConstraint(item: blur, attribute: NSLayoutConstraint.Attribute.height, relatedBy: NSLayoutConstraint.Relation.equal, toItem: nil, attribute: NSLayoutConstraint.Attribute.notAnAttribute, multiplier: 1, constant: topPadding)
-        view.addConstraints([heightConstraint])
-        self.view.addSubview(blur!)
-
-        time.isHidden = true
-        time.layer.masksToBounds = true
-        time.layer.cornerRadius = 8.0
-        slider_ring.isHidden = true
-        slider_button.isHidden = true
-        
-        formatter.locale = Locale(identifier: "de_De")
-        formatter.dateFormat = "H:mm"
-        
-        let gesture = CustomGestureRecognizer(target: self, action: nil)
-        gesture.setView(viewing: self)
-        view.addGestureRecognizer(gesture)
-        drawer_hide()
-        
-        print("Language: " + Locale.preferredLanguages[0].split(separator: "-")[0])
-    }
-    
-    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
-        scrollView.pinchGestureRecognizer?.isEnabled = false
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        // disable scrolling & bouncing effects
-        webView.scrollView.isScrollEnabled = false
-        webView.scrollView.bounces = false
-        webView.scrollView.delegate = self
-        
-        if let url = URL(string: "https://app.ng.meteocool.com/ios.html"/*"http://127.0.0.1:8080/ios.html"*/) {
-            let request = URLRequest(url: url)
-            webView.load(request)
-        }
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
-                                               name: NSNotification.Name("SettingsChanged"), object: nil)
-        SharedLocationUpdater.addObserver(observer: self)
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        let locationAction = {
-            completion in
-            SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
-        }
-
-        let notificationAction: OnboardPageAction
-        notificationAction = {
-            [weak self] completion in
-            self?.userDefaults?.setValue(true, forKey: "pushNotification")
-            self?.onboardingOnThisRun = true
-            SharedNotificationManager.registerForPushNotifications(completion)
-        }
-        
-        if let onboardingDone = userDefaults?.bool(forKey: "onboardingDone"), !onboardingDone {
-            let ob = obFactory.getOnboarding(pages: obFactory.getInitialOnboardingPages(notificationAction: notificationAction), completion: {
-                // Completion handler for first top-level onboarding
-                self.userDefaults?.setValue(true, forKey: "onboardingDone")
-                
-                var secondStageOb: OnboardViewController
-                if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
-                    secondStageOb = obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!
-                } else {
-                    secondStageOb = obFactory.getOnboarding(pages: obFactory.getWhileUsingOnboarding(locationAction: locationAction))!
-                }
-                secondStageOb.presentFrom(self, animated: true)
-            })
-            ob!.presentFrom(self, animated: true)
-        } else {
-            if let nagDone = self.userDefaults?.bool(forKey: "nagDone"), (!self.onboardingOnThisRun && (CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse) && !nagDone) {
-                obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(notificationAction: notificationAction), completion: {
-                    self.userDefaults?.setValue(true, forKey: "nagDone")
-                    if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
-                        obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!.presentFrom(self, animated: true)
-                    }
-                })?.presentFrom(self, animated: true)
-            }
-        }
-    }
-    
-    /*
-     self?.userDefaults?.setValue(true, forKey: "pushNotification")
-     self?.userDefaults?.setValue(true, forKey: "onboardingDone")
-     self?.onboardingOnThisRun = true
-     
-     SharedNotificationManager.registerForPushNotifications(completion)
-     
-     */
-    
-    var alertWindow: UIWindow?
-    
-    @objc func willEnterForeground() {
-        // reload tiles if app resumes from background
-        //webView.evaluateJavaScript("window.ios.refresh();")
-        if ((userDefaults?.bool(forKey: "autoZoom"))!){
-            zoomOn = (userDefaults?.bool(forKey: "autoZoom"))!
-            focusOn = (userDefaults?.bool(forKey: "autoZoom"))!
-            zoomAndFocusLocation()
-        }
-        
-        // Check if background location permissions were revoked while notifications enabled
-        let alertController = UIAlertController(title: "Notifications Require Location Permission", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to continue using notifications.", preferredStyle: UIAlertController.Style.alert)
-        
-        alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
-            if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
-                UIApplication.shared.open(url, options: [:], completionHandler: {_ in
-                    self.userDefaults?.setValue(true, forKey: "pushNotification")
-                    self.alertWindow = nil
-                })
-            }
-        }
-        ))
-        alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
-            self.userDefaults?.setValue(false, forKey: "pushNotification")
-            self.alertWindow = nil
-            
-            let reenableController = UIAlertController(title: "Notifications Disabled", message: "If you change your mind, you can re-enable rain and snow notifications in the meteocool ⚙️ Settings on the top-right.", preferredStyle: UIAlertController.Style.alert)
-            reenableController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default, handler: {_ in
-                        self.alertWindow = nil
-            }))
-            self.alertWindow = UIWindow(frame: UIScreen.main.bounds)
-            self.alertWindow?.rootViewController = UIViewController()
-            self.alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-            self.alertWindow?.makeKeyAndVisible()
-            self.alertWindow?.rootViewController?.present(reenableController, animated: true)
-        }
-        ))
-        
-        alertWindow = UIWindow(frame: UIScreen.main.bounds)
-        alertWindow?.rootViewController = UIViewController()
-        alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-        alertWindow?.makeKeyAndVisible()
-        alertWindow?.rootViewController?.present(alertController, animated: true)
-    }
-    
-    @IBAction func locationButton(sender: AnyObject){
-        if (focusOn == false){
-            focusOn = true
-            zoomOn = true
-            zoomAndFocusLocation()
-        } else{
-            positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
-            focusOn = false
-        }
-    }
-    
-    @IBAction func layerSwitcher(sender: AnyObject){
-        webView.evaluateJavaScript("window.openLayerswitcher();")
-        trippleButton.isHidden = true
-        settingsButton.isHidden = true
-        layerSwitcherButton.isHidden = true
-        positionButton.isHidden = true
-    }
-    
-    private func zoomAndFocusLocation(){
-        SharedLocationUpdater.requestLocation(observer: self, explicit: true)
-        SharedLocationUpdater.startAccurateLocationUpdates()
-        positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
     }
 }
