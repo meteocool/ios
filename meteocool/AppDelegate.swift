@@ -36,14 +36,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "lightning") == nil){
             userDefaults?.setValue(true, forKey: "lightning")
         }
+        if (userDefaults?.value(forKey: "mesocyclones") == nil){
+            userDefaults?.setValue(true, forKey: "mesocyclones")
+        }
         if (userDefaults?.value(forKey: "shelters") == nil){
             userDefaults?.setValue(false, forKey: "shelters")
         }
         if (userDefaults?.value(forKey: "withDBZ") == nil){
             userDefaults?.setValue(false, forKey: "withDBZ")
-        }
-        if (userDefaults?.value(forKey: "mesocyclones") == nil){
-            userDefaults?.setValue(false, forKey: "mesocyclones")
         }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("viridis", forKey: "radarColorMapping")
