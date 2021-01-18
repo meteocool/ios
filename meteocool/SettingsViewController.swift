@@ -64,7 +64,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
-        NSLocalizedString("Push Token", comment: "dataAboutLabel"),
         NSLocalizedString("Privacy Policy", comment: "dataAboutLabel")
     ]
     private var intensity = [
@@ -238,11 +237,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         case 3: //About
             switch indexPath.row {
-            case 3: //Push Token
-                textCell.textInfoLabel.text = dataAboutLabel[indexPath.row]
-                textCell.textValueLabel.text = SharedNotificationManager.getToken() ?? "Not Enabled"
-                // XXX localize
-                return textCell
                 
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
