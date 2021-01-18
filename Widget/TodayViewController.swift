@@ -24,7 +24,7 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         if let lat = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "lat") {
             if let lon = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "lon") {
                 //print("https://meteocool.com/?mobile=ios_widget#widgetMap=9.5f/\(lat)/\(lon)/0")
-                if let url = URL(string: "https://meteocool.com/?mobile=ios_widget#widgetMap=9.5f/\(lat)/\(lon)/0") {
+                if let url = URL(string: "https://app.ng.meteocool.com/ios.html?mobile=ios_widget#widgetMap=9.5f/\(lat)/\(lon)/0") {
                     let request = URLRequest(url: url)
                     webView.load(request)
                 }
