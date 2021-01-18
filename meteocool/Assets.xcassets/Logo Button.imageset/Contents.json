@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Logo Light@1x.png",
+      "filename" : "Button Light.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
@@ -12,12 +12,12 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Logo Dark@1x.png",
+      "filename" : "Button Dark.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Logo Light@2x.png",
+      "filename" : "Button Light@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
@@ -28,12 +28,12 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Logo Dark@2x.png",
+      "filename" : "Button Dark@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Logo Light@3x.png",
+      "filename" : "Button Light@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     },
@@ -44,7 +44,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Logo Dark@3x.png",
+      "filename" : "Button Dark@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

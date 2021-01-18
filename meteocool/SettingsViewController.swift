@@ -64,7 +64,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
-        NSLocalizedString("Push Token", comment: "dataAboutLabel"),
         NSLocalizedString("Privacy Policy", comment: "dataAboutLabel")
     ]
     private var intensity = [
@@ -205,7 +204,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-            case 1: //with dbZ
+            case 1: //meteorological details
                 switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "withDBZ"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
@@ -238,11 +237,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         case 3: //About
             switch indexPath.row {
-            case 3: //Push Token
-                textCell.textInfoLabel.text = dataAboutLabel[indexPath.row]
-                textCell.textValueLabel.text = SharedNotificationManager.getToken() ?? "Not Enabled"
-                // XXX localize
-                return textCell
                 
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
@@ -368,47 +362,49 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
         //Push Notification
         case 20:
-            if (!sender.isOn) {
-                userDefaults?.setValue(false, forKey: "pushNotification")
-                return
-            }
-            switch(CLLocationManager.authorizationStatus()) {
-            case .denied, .authorizedWhenInUse, .notDetermined:
-                let alertController = UIAlertController(title: "Location Permission Required", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.", preferredStyle: UIAlertController.Style.alert)
-                
-                alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
-                    if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
-                        UIApplication.shared.open(url, options: [:], completionHandler: {_ in
-                            self.userDefaults?.setValue(true, forKey: "pushNotification")
-                            self.alertWindow = nil
-                        })
+            if (sender.isOn) {
+                switch(CLLocationManager.authorizationStatus()) {
+                case .denied, .authorizedWhenInUse, .notDetermined:
+                    let alertController = UIAlertController(title: "Location Permission Required", message: "In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.", preferredStyle: UIAlertController.Style.alert)
+                    
+                    alertController.addAction(UIAlertAction(title: "Change in Settings", style: UIAlertAction.Style.default, handler: {_ in
+                        if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
+                            UIApplication.shared.open(url, options: [:], completionHandler: {_ in
+                                self.userDefaults?.setValue(true, forKey: "pushNotification")
+                                self.alertWindow = nil
+                            })
+                        }
                     }
+                    ))
+                    alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
+                        self.userDefaults?.setValue(false, forKey: "pushNotification")
+                        self.settingsTable.reloadData()
+                        self.alertWindow = nil
+                    }
+                    ))
+                    
+                    alertWindow = UIWindow(frame: UIScreen.main.bounds)
+                    alertWindow?.rootViewController = UIViewController()
+                    alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+                    alertWindow?.makeKeyAndVisible()
+                    alertWindow?.rootViewController?.present(alertController, animated: true)
+                    break;
+                case .authorizedAlways:
+                    self.userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
+                    settingsTable.reloadData()
+                    break;
+                default:
+                    break;
                 }
-                ))
-                alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
-                    self.userDefaults?.setValue(false, forKey: "pushNotification")
-                    self.settingsTable.reloadData()
-                    self.alertWindow = nil
-                }
-                ))
-                
-                alertWindow = UIWindow(frame: UIScreen.main.bounds)
-                alertWindow?.rootViewController = UIViewController()
-                alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-                alertWindow?.makeKeyAndVisible()
-                alertWindow?.rootViewController?.present(alertController, animated: true)
-                break;
-            case .authorizedAlways:
-                userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
-                settingsTable.reloadData()
-                break;
-            default:
-                break;
             }
-        case 22:
+            else {
+                userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
+            }
+            settingsTable.reloadData()
+        case 21:
             userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
         default:
-            print("This not happen")
+            print("This not happen: " + String(sender.tag))
         }
     }
     
