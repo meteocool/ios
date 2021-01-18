@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14460.31" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="M4Y-Lb-cyx">
-    <device id="retina6_1" orientation="portrait">
-        <adaptation id="fullscreen"/>
-    </device>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17506" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="M4Y-Lb-cyx">
+    <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14460.20"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17504.1"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -27,8 +25,20 @@
                                     <wkPreferences key="preferences"/>
                                 </wkWebViewConfiguration>
                             </wkWebView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="2iB-s0-idn">
+                                <rect key="frame" x="0.0" y="0.0" width="359" height="359"/>
+                                <connections>
+                                    <action selector="openApp:" destination="M4Y-Lb-cyx" eventType="touchUpInside" id="C7Z-rc-zYS"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="ssy-KU-ocm"/>
+                        <constraints>
+                            <constraint firstItem="2iB-s0-idn" firstAttribute="top" secondItem="S3S-Oj-5AN" secondAttribute="top" id="49n-lg-Mk1"/>
+                            <constraint firstItem="ssy-KU-ocm" firstAttribute="bottom" secondItem="2iB-s0-idn" secondAttribute="bottom" id="8z7-UM-XOY"/>
+                            <constraint firstItem="ssy-KU-ocm" firstAttribute="trailing" secondItem="2iB-s0-idn" secondAttribute="trailing" id="kMp-R1-BDm"/>
+                            <constraint firstItem="2iB-s0-idn" firstAttribute="leading" secondItem="ssy-KU-ocm" secondAttribute="leading" id="n9Z-jg-Ef1"/>
+                        </constraints>
                     </view>
                     <extendedEdge key="edgesForExtendedLayout"/>
                     <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>

@@ -42,4 +42,14 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         }
         self.webView.frame.size = webView.sizeThatFits(self.preferredContentSize)
     }
+    
+    @IBAction func openApp(_ sender: AnyObject) {
+
+        let url: URL? = URL(string: "meteocool:")!
+
+        if let appurl = url {
+            self.extensionContext!.open(appurl,
+                completionHandler: nil)
+        }
+    }
 }
