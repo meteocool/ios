@@ -43,7 +43,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue(false, forKey: "withDBZ")
         }
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
-            userDefaults?.setValue(false, forKey: "mesocyclones")
+            userDefaults?.setValue(true, forKey: "mesocyclones")
         }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("viridis", forKey: "radarColorMapping")
