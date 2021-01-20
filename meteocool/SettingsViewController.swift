@@ -30,6 +30,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
+    //Kind of cells
+    var stepperSliderCellThreshold: StepperTableViewCell!
+    var stepperSliderCellTime: StepperTableViewCell!
+    var switcherCell: SwitcherTableViewCell!
+    var textCell: TextTableViewCell!
+    var linkCell: LinkTableViewCell!
+    
+    var thresholdSliderLoad = false
+    var timeSliderLoad = false
+    
     //Content
     private var header = [
         NSLocalizedString("Map View", comment: "header"),
@@ -137,15 +147,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     //Table Content
     func tableView(_ tableView: UITableView,cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         // kind of cells
-        let switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as! SwitcherTableViewCell
-        let textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as! TextTableViewCell
-        let stepperSliderCell = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as! StepperTableViewCell
-        let linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as! LinkTableViewCell
-        
-        // StepperSlider
-        let stepperSliderView = StepSlider.init(frame: CGRect(x: 15.0,y: 50.0,width: tableView.frame.width-30,height: 50.0))
-        stepperSliderView.sliderCircleColor = UIColor(red: 233/255, green: 233/255, blue: 235/255, alpha: 1.0)
-        stepperSliderView.labelColor = UIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
+        switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as? SwitcherTableViewCell
+        textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as? TextTableViewCell
+        linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as? LinkTableViewCell
         
         //returnCell = (textCell)!
         switch indexPath.section{
@@ -173,6 +177,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 return linkCell
             default:
                 print("This should not happen...")
+                return textCell
             }
         case 1: //Layers
             switch indexPath.row{
@@ -195,6 +200,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
              */
             default:
                 print("This should not happen...")
+                return textCell
             }
         case 2: //Push Notification
             switch indexPath.row {
@@ -211,29 +217,47 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
             case 2: //Intensity, Threshold
-                stepperSliderCell.addSubview(stepperSliderView)
-                stepperSliderView.maxCount = UInt(intensity.count)
-                stepperSliderView.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "intensityValue"))!)
-                
-                stepperSliderCell.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
-                stepperSliderCell.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
-                
-                stepperSliderView.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
-                
-                return stepperSliderCell
+                if !thresholdSliderLoad{
+                    stepperSliderCellThreshold = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
+                    let stepperSliderViewThreshold = StepSlider.init(frame: CGRect(x: 15.0,y: 50.0,width: tableView.frame.width-30,height: 50.0))
+                    stepperSliderCellThreshold.addSubview(stepperSliderViewThreshold)
+                    
+                    stepperSliderViewThreshold.sliderCircleColor = UIColor(red: 233/255, green: 233/255, blue: 235/255, alpha: 1.0)
+                    stepperSliderViewThreshold.labelColor = UIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
+                    stepperSliderViewThreshold.maxCount = UInt(intensity.count)
+                    stepperSliderViewThreshold.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "intensityValue"))!)
+                    
+                    stepperSliderCellThreshold.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
+                    stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
+                    
+                    stepperSliderViewThreshold.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
+                    
+                    thresholdSliderLoad = true
+                }
+                return stepperSliderCellThreshold
             case 3: //Time before
-                stepperSliderCell.addSubview(stepperSliderView)
-                stepperSliderView.maxCount = 9
-                stepperSliderView.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "timeBeforeValue"))!)
+                if !timeSliderLoad{
+                    stepperSliderCellTime = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
+                    let stepperSliderViewTime = StepSlider.init(frame: CGRect(x: 15.0,y: 50.0,width: tableView.frame.width-30,height: 50.0))
+                    stepperSliderCellTime.addSubview(stepperSliderViewTime)
+                    
+                    stepperSliderViewTime.sliderCircleColor = UIColor(red: 233/255, green: 233/255, blue: 235/255, alpha: 1.0)
+                    stepperSliderViewTime.labelColor = UIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
+                    
+                    stepperSliderViewTime.maxCount = 9
+                    stepperSliderViewTime.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "timeBeforeValue"))!)
+                    
+                    stepperSliderCellTime.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
+                    stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
+                    
+                    stepperSliderViewTime.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
                 
-                stepperSliderCell.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
-                stepperSliderCell.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
-                
-                stepperSliderView.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
-                
-                return stepperSliderCell
+                    timeSliderLoad = true
+                }
+                return stepperSliderCellTime
             default:
                 print("This should not happen...")
+                return textCell
             }
         case 3: //About
             switch indexPath.row {
@@ -245,9 +269,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         default:
             print("This should not happen...")
+            return textCell
         }
         
-        return textCell
+        
     }
     
     //Cell Height
@@ -412,17 +437,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switch sender.maxCount {
         case 4: //Intensity
             userDefaults?.setValue(sender.index, forKey: "intensityValue")
-        // 0 -> any
-        // 1 -> light
-        // 2 -> normal
-        // 3 -> heavy
+            // 0 -> any
+            // 1 -> light
+            // 2 -> normal
+            // 3 -> heavy
+            stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
         case 9: //Time before
             userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
-        //Value +1 *5 for minutes
+            //Value +1 *5 for minutes
+            stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
         default:
             print ("This not happen")
         }
-        settingsTable.reloadData()
     }
     
     @objc func reload(){
