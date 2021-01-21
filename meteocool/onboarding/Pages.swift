@@ -38,7 +38,7 @@ class Pages {
         return OnboardPage(
             title: NSLocalizedString("Location Access", comment:"Location"),
             imageName: "ob_location",
-            description: NSLocalizedString("To show your current location on the weather and satellite map, we need your permission. We won't ever share or store your location data.", comment: "Location description"),
+            description: NSLocalizedString("To show your current location on the weather and satellite map, we need your permission.\n\n We won't ever share or store your location data.", comment: "Location description"),
             advanceButtonTitle: NSLocalizedString("Later", comment:"Later"),
             actionButtonTitle: NSLocalizedString("Allow Location Access", comment:"Enable Location Services"),
             action: action)

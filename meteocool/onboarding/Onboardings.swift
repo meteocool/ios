@@ -24,6 +24,7 @@ class OnboardingFactory {
         self.appearanceConfiguration = OnboardViewController.AppearanceConfiguration(
             tintColor: OnboardingFactory.tintColor,
             backgroundColor: backgroundLight,
+            imageContentMode: .scaleAspectFit,
             textFont: accessibleFont,
             advanceButtonStyling: {button in
                 button.titleLabel?.font = UIFont.preferredFont(forTextStyle: .title2)
