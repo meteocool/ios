@@ -53,6 +53,10 @@ class OnboardingFactory {
     public func getLocationNagOnboarding(notificationAction: OnboardPageAction? = nil) -> [OnboardPage] {
         return [Pages.getLocationNag(action: notificationAction)]
     }
+    
+    public func getUpdateOnboarding() -> [OnboardPage]{
+        return [Pages.welcomeUpdate, Pages.satelliteView, Pages.settingsPage, Pages.finish]
+    }
 }
 
 let obFactory = OnboardingFactory()

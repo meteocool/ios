@@ -3,7 +3,7 @@ import OnboardKit
 
 class Pages {
     static let welcome = OnboardPage(
-        title: NSLocalizedString("Hi there!\n", comment:"Welcome Page Onbording"),
+        title: NSLocalizedString("Hi there!", comment:"Welcome Page Onbording"),
         imageName: "ob_rain_sun",
         description: NSLocalizedString("The meteocool project is an ongoing effort to make freely available meteorological data useful to everyone.\n\nWe process and aggregate data from different sources and try to visualize them in an intuitive way.", comment: "Welcome Page Onbording")
     )
@@ -82,4 +82,10 @@ class Pages {
         description: NSLocalizedString("We won't ask you again about push notifications!\n\nIf you change your mind, you can always enable them in the ⚙️ Settings menu on the top-right.", comment:"Location Nag Sorry"),
         advanceButtonTitle: NSLocalizedString("Done", comment: "Done")
     )
+    
+    static let welcomeUpdate = OnboardPage(
+        title: NSLocalizedString("Hallo again!", comment: "Welcome Update Onbording"),
+        imageName: "ob_rain_sun",
+        description: NSLocalizedString("We have developed new features for our App. You will see what we have done in the next pages.", comment:"Welcome Update Onbording"),
+        advanceButtonTitle: NSLocalizedString("Next", comment: "Next"))
 }

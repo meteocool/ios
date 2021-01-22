@@ -23,7 +23,6 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var blur: UIVisualEffectView!
     @IBOutlet weak var logo: UIImageView!
     
-    var onboardingOnThisRun = false
     var autoFocus = false
     var autoFocusOnce = false
     var zoomOnce = false
@@ -199,13 +198,37 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             completion in
             SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
         }
-
+        
         let notificationAction: OnboardPageAction
         notificationAction = {
             [weak self] completion in
             self?.userDefaults?.setValue(true, forKey: "pushNotification")
-            self?.onboardingOnThisRun = true
             SharedNotificationManager.registerForPushNotifications(completion)
+        }
+        
+        var negDone = false;
+        
+        if (userDefaults?.bool(forKey: "onboardingDone") == true && (self.userDefaults?.integer(forKey: "versionNumber") == nil || (self.userDefaults?.integer(forKey: "versionNumber"))! < 21)){
+            switch(CLLocationManager.authorizationStatus()) {
+            case .denied:
+                break;
+            case .authorizedWhenInUse, .notDetermined:
+                negDone = true
+                break;
+            case .authorizedAlways:
+                self.userDefaults?.setValue(true, forKey: "pushNotification")
+                break;
+            default:
+                break;
+            }
+            
+            let updateOnboarding = obFactory.getOnboarding(pages: obFactory.getUpdateOnboarding(),completion: {
+                                                            if negDone{self.userDefaults?.setValue(false, forKey: "nagDone")}
+            })!
+            
+            updateOnboarding.presentFrom(self, animated: true)
+            
+            self.userDefaults?.setValue(21, forKey: "versionNumber")
         }
         
         if let onboardingDone = userDefaults?.bool(forKey: "onboardingDone"), !onboardingDone {
@@ -222,8 +245,11 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 secondStageOb.presentFrom(self, animated: true)
             })
             ob!.presentFrom(self, animated: true)
+            self.userDefaults?.setValue(21, forKey: "versionNumber")
         } else {
-            if let nagDone = self.userDefaults?.bool(forKey: "nagDone"), (!self.onboardingOnThisRun && (CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse) && !nagDone) {
+            if let nagDone = self.userDefaults?.bool(forKey: "nagDone"),
+                    ((CLLocationManager.authorizationStatus() == .notDetermined ||
+                    CLLocationManager.authorizationStatus() == .authorizedWhenInUse) && !nagDone) {
                 obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(notificationAction: notificationAction), completion: {
                     self.userDefaults?.setValue(true, forKey: "nagDone")
                     if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
