@@ -28,7 +28,7 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
 
     // colormap explanation
     private var explainRadarColorMapping = [
-        NSLocalizedString("Radar colormaps change the visualization of precipitation on the map.", comment: "radarColorMapping"),
+        NSLocalizedString("Change the colormap to change the color scheme of the precipitation-visualization on the map.", comment: "radarColorMapping"),
     ]
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         return explainRadarColorMapping[section]
