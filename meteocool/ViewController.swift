@@ -286,6 +286,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             ))
             alertController.addAction(UIAlertAction(title: "Disable Notifications", style: UIAlertAction.Style.default, handler: {_ in
                 self.userDefaults?.setValue(false, forKey: "pushNotification")
+                NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
                 self.alertWindow = nil
 
                 let reenableController = UIAlertController(title: "Notifications Disabled", message: "If you change your mind, you can re-enable rain and snow notifications in the app's ⚙️ Settings on the top-right.", preferredStyle: UIAlertController.Style.alert)
