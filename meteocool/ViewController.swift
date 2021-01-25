@@ -313,11 +313,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
-        webView.evaluateJavaScript("window.openLayerswitcher();")
         trippleButton.isHidden = true
         settingsButton.isHidden = true
         layerSwitcherButton.isHidden = true
         positionButton.isHidden = true
+        logo.isHidden = true
+        webView.evaluateJavaScript("window.openLayerswitcher();")
     }
 
     
@@ -470,6 +471,7 @@ window.downloadForecast(function() {
             settingsButton.isHidden = false
             layerSwitcherButton.isHidden = false
             positionButton.isHidden = false
+            logo.isHidden = false
         }
     }
 }

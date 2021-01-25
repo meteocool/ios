@@ -86,6 +86,6 @@ class Pages {
     static let welcomeUpdate = OnboardPage(
         title: NSLocalizedString("Hallo again!", comment: "Welcome Update Onbording"),
         imageName: "ob_rain_sun",
-        description: NSLocalizedString("We have developed new features for our App. You will see what we have done in the next pages.", comment:"Welcome Update Onbording"),
+        description: NSLocalizedString("We have developed new features for our App.\n\nYou will see what we have done in the next pages.", comment:"Welcome Update Onbording"),
         advanceButtonTitle: NSLocalizedString("Next", comment: "Next"))
 }
