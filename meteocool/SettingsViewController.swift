@@ -74,7 +74,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
-        NSLocalizedString("Privacy Policy", comment: "dataAboutLabel")
+        NSLocalizedString("Privacy Policy", comment: "dataAboutLabel"),
+        NSLocalizedString("Developer Settings", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -261,7 +262,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         case 3: //About
             switch indexPath.row {
-                
+            case 4:
+                switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
+                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "developerSettings"))!, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+                return switcherCell
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
                 linkCell.linkValueLable.text = ""
@@ -428,6 +434,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             settingsTable.reloadData()
         case 21:
             userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
+        case 34:
+            userDefaults?.setValue(sender.isOn, forKey: "developerSettings")
+            //TODO javaSkript stuff
+            //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
         default:
             print("This not happen: " + String(sender.tag))
         }

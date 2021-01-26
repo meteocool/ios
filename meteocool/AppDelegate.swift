@@ -51,6 +51,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "baseLayer") == nil){
             userDefaults?.setValue("topographic", forKey: "baseLayer")
         }
+        if (userDefaults?.value(forKey: "developerSetting") == nil){
+            userDefaults?.setValue(false, forKey: "developerSetting")
+        }
 
         return true
     }
