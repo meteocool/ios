@@ -26,6 +26,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     var autoFocus = false
     var autoFocusOnce = false
     var zoomOnce = false
+    var appIsAlreadyRunning = false
 
     enum DrawerStates {
         case CLOSED
@@ -187,6 +188,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.didBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -307,6 +309,15 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             alertWindow?.rootViewController?.present(alertController, animated: true)
         }
     }
+    
+    @objc func didBecomeActive(){
+        if appIsAlreadyRunning{
+            self.webView.evaluateJavaScript("window.enterForeground();")
+        }
+        else{
+            appIsAlreadyRunning = true
+        }
+    }
 
     @IBAction func locationButton(sender: AnyObject){
         locationStateMachine?.trigger(.buttonPress)
@@ -320,7 +331,6 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         logo.isHidden = true
         webView.evaluateJavaScript("window.openLayerswitcher();")
     }
-
     
     func drawer_show() {
         button.isHidden = false
