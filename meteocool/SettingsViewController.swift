@@ -390,10 +390,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
         case 12:
             userDefaults?.setValue(sender.isOn, forKey: "shelters")
-        //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
+            //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
         //Push Notification
         case 20:
             if (sender.isOn) {
+                //TODO hier javaSkript Stuff #52
                 switch(CLLocationManager.authorizationStatus()) {
                 case .denied, .authorizedWhenInUse, .notDetermined:
                     let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
@@ -430,10 +431,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
             else {
                 userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
+                //TODO hier javaSkript stuff #52ok 
             }
             settingsTable.reloadData()
         case 21:
             userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
+        //About
         case 34:
             userDefaults?.setValue(sender.isOn, forKey: "developerSettings")
             //TODO javaSkript stuff

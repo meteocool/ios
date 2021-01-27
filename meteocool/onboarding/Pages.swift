@@ -48,14 +48,16 @@ class Pages {
         title: "",
         imageName: "satellite_screenshot",
         description: NSLocalizedString("☀️ Something for cloudless days: A new “near-realtime” satellite layer is now available from the layers menu!\n\n🛰 Satellite overpasses are expected every 5 days with a ground resolution ±10m/pixel.", comment: "Satellite View Onbording"),
-        advanceButtonTitle: NSLocalizedString("Next", comment: "Next")
+        advanceButtonTitle: NSLocalizedString("Next", comment: "Next"),
+        imageContentMode: .center
     )
 
     static let settingsPage = OnboardPage(
         title: "",
         imageName: "dreaming_of_settings",
         description: NSLocalizedString("Notifications 📱 (among other things) can now be configured in the Settings menu.\n\nTo open the Settings menu, click on the ⚙️ on the top-right of the map.", comment: "Settings Page Onboarding"),
-        advanceButtonTitle: NSLocalizedString("Next", comment: "Next")
+        advanceButtonTitle: NSLocalizedString("Next", comment: "Next"),
+        imageContentMode: .center
     )
 
     static let finish = OnboardPage(
