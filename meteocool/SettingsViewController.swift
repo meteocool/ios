@@ -400,7 +400,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 20:
             if (sender.isOn) {
                 switch(CLLocationManager.authorizationStatus()) {
-                case .denied, .authorizedWhenInUse, .notDetermined:
+                case .notDetermined:
+                    self.userDefaults?.setValue(true, forKey: "pushNotification")
+                    SharedLocationUpdater.requestAuthorization({success,error in
+                        if CLLocationManager.authorizationStatus() != .authorizedAlways {
+                            self.userDefaults?.setValue(false, forKey: "pushNotification")
+                        }
+                        self.reload()
+                    } , notDetermined: true)
+                case .denied, .authorizedWhenInUse:
                     let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                     
                     alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
@@ -409,8 +417,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                                 self.userDefaults?.setValue(true, forKey: "pushNotification")
                                 self.alertWindow = nil
                                 
-                                SharedLocationUpdater.locationManager.requestLocation()
-                                SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
+                                if let location = SharedLocationUpdater.getCurrentLocation(){
+                                    SharedLocationUpdater.postLocation(location: location, pressure: -1)
+                                }
                                 SharedNotificationManager.registerForPushNotifications({_,_ in })
                             })
                         }
@@ -432,8 +441,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 case .authorizedAlways:
                     self.userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
                     settingsTable.reloadData()
-                    SharedLocationUpdater.locationManager.requestLocation()
-                    SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
+                    if let location = SharedLocationUpdater.getCurrentLocation(){
+                        SharedLocationUpdater.postLocation(location: location, pressure: -1)
+                    }
                     SharedNotificationManager.registerForPushNotifications({_,_ in })
                     break;
                 default:

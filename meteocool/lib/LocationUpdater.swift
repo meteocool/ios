@@ -10,7 +10,7 @@ let SharedLocationUpdater = LocationUpdater.init()
 // XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
 class LocationUpdater: NSObject, CLLocationManagerDelegate {
     /// location manager instace we're wrapping
-    let locationManager: CLLocationManager = CLLocationManager()
+    private let locationManager: CLLocationManager = CLLocationManager()
     /// device identifier (currently unused...)
     private let deviceID: String = UIDevice.current.identifierForVendor!.uuidString
     /// pressure manager object
@@ -310,5 +310,9 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             }
         }
         task.resume()
+    }
+    
+    func getCurrentLocation() -> CLLocation?{
+        return SharedLocationUpdater.locationManager.location ?? nil
     }
 }
