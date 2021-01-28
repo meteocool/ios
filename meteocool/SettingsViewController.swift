@@ -309,10 +309,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         }
         if (indexPath.section == 3 && indexPath.row == 2){ //Feedback
-            let mailAdress = "support@meteocool.com"
-            let mailBody = ""//TODO Mailbody here
             let token = SharedNotificationManager.getToken() ?? "no-token"
-            if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=\(mailBody)\ntoken=\(token)") {
+            let mailAdress = "support@meteocool.com"
+            let mailBody = NSLocalizedString("Hey,\nthank you for using the Feedback and Support Button. Please subscribe your problem for us.\n\nTo help us please include the following information when reporting your problem. \nToken: ",comment: "mail") + token//TODO Mailbody here
+            let mailSubject = "iOS App"
+
+            print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
+            if let url = URL(string: "mailto:\(mailAdress)?subject=\(mailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&body=\(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)") {
                 UIApplication.shared.open(url)
             }
         }
