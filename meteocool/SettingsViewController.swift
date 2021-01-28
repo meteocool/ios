@@ -310,8 +310,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         if (indexPath.section == 3 && indexPath.row == 2){ //Feedback
             let mailAdress = "support@meteocool.com"
+            let mailBody = ""//TODO Mailbody here
             let token = SharedNotificationManager.getToken() ?? "no-token"
-            if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=token=\(token)") {
+            if let url = URL(string: "mailto:\(mailAdress)?subject=suggestions&body=\(mailBody)\ntoken=\(token)") {
                 UIApplication.shared.open(url)
             }
         }

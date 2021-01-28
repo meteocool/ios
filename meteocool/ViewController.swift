@@ -86,6 +86,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     private var locationStateMachine: SwiftFSM<LocationFSM>?
     
     @objc func tapOrPan() {
+        //print("action")
         if (locationStateMachine?.state == .tracking) {
             locationStateMachine?.trigger(.mapMove)
         }
@@ -103,16 +104,16 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         webView?.configuration.userContentController.add(self, name: "timeHandler")
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
-        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.tapOrPan))
+        //let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.tapOrPan))
         let panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.tapOrPan))
 
-        tapRecognizer.numberOfTapsRequired = 1
-        tapRecognizer.delegate = self
-        webView.addGestureRecognizer(tapRecognizer)
+        //tapRecognizer.numberOfTapsRequired = 1
+        //tapRecognizer.delegate = self
+        //view.addGestureRecognizer(tapRecognizer)
         panRecognizer.minimumNumberOfTouches = 1
         panRecognizer.maximumNumberOfTouches = 1
         panRecognizer.delegate = self
-        webView.addGestureRecognizer(panRecognizer)
+        view.addGestureRecognizer(panRecognizer)
         
         self.view.addSubview(webView!)
         self.view.addSubview(slider_ring!)
