@@ -411,6 +411,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                                 
                                 SharedLocationUpdater.locationManager.requestLocation()
                                 SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
+                                SharedNotificationManager.registerForPushNotifications({_,_ in })
                             })
                         }
                     }
@@ -433,6 +434,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     settingsTable.reloadData()
                     SharedLocationUpdater.locationManager.requestLocation()
                     SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
+                    SharedNotificationManager.registerForPushNotifications({_,_ in })
                     break;
                 default:
                     break;
