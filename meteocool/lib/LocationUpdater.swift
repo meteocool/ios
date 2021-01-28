@@ -10,7 +10,7 @@ let SharedLocationUpdater = LocationUpdater.init()
 // XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
 class LocationUpdater: NSObject, CLLocationManagerDelegate {
     /// location manager instace we're wrapping
-    private let locationManager: CLLocationManager = CLLocationManager()
+    let locationManager: CLLocationManager = CLLocationManager()
     /// device identifier (currently unused...)
     private let deviceID: String = UIDevice.current.identifierForVendor!.uuidString
     /// pressure manager object
@@ -274,6 +274,8 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
             lang = bundle_lang
         }*/
+        
+        let intensityDbzValues = [16,21,26,36,41]
 
         let locationDict = [
             "lat": location.coordinate.latitude as Double,
@@ -286,8 +288,8 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             "course": location.course as Double,
             "pressure": pressure,
             "timestamp": location.timestamp.timeIntervalSince1970 as Double,
-            "ahead": 15,
-            "intensity": 10,
+            "ahead": (userDefaults?.integer(forKey: "timeBeforeValue") ?? 3+1)*5 ,
+            "intensity": intensityDbzValues[userDefaults?.integer(forKey: "intensityValue") ?? 1] ,
             "source": "ios",
             "token": tokenValue,
             ] as [String: Any]

@@ -81,6 +81,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Drizzle", comment: "intensity"),
         NSLocalizedString("Light rain", comment: "intensity"),
         NSLocalizedString("Rain", comment: "intensity"),
+        NSLocalizedString("Intense Rain", comment: "intensity"),
         NSLocalizedString("Hail", comment: "intensity")
     ]
     
@@ -311,7 +312,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         if (indexPath.section == 3 && indexPath.row == 2){ //Feedback
             let token = SharedNotificationManager.getToken() ?? "no-token"
             let mailAdress = "support@meteocool.com"
-            let mailBody = NSLocalizedString("Hey,\nthank you for using the Feedback and Support Button. Please subscribe your problem for us.\n\nTo help us please include the following information when reporting your problem. \nToken: ",comment: "mail") + token//TODO Mailbody here
+            let mailBody = NSLocalizedString("Hey,\nthank you for using the Feedback and Support Button. Please subscribe your problem for us.\n\nTo help us please include the following information when reporting your problem. \nToken: ",comment: "mail") + token
             let mailSubject = "iOS App"
 
             print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
@@ -398,7 +399,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //Push Notification
         case 20:
             if (sender.isOn) {
-                //TODO hier javaSkript Stuff #52
                 switch(CLLocationManager.authorizationStatus()) {
                 case .denied, .authorizedWhenInUse, .notDetermined:
                     let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
@@ -408,6 +408,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                             UIApplication.shared.open(url, options: [:], completionHandler: {_ in
                                 self.userDefaults?.setValue(true, forKey: "pushNotification")
                                 self.alertWindow = nil
+                                
+                                SharedLocationUpdater.locationManager.requestLocation()
+                                SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
                             })
                         }
                     }
@@ -428,6 +431,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 case .authorizedAlways:
                     self.userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
                     settingsTable.reloadData()
+                    SharedLocationUpdater.locationManager.requestLocation()
+                    SharedLocationUpdater.postLocation(location: SharedLocationUpdater.locationManager.location!, pressure: -1)
                     break;
                 default:
                     break;
@@ -435,7 +440,20 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
             else {
                 userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
-                //TODO hier javaSkript stuff #52ok 
+                guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": SharedNotificationManager.getToken() ?? "anon"] as [String: Any]) else{
+                    return
+                }
+                URLSession.shared.dataTask(with: request) { data, response, error in
+                    guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                        return
+                    }
+
+                    if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
+                        if let errorMessage = json?["error"] as? String {
+                            NSLog("ERROR: \(errorMessage)")
+                        }
+                    }
+                }
             }
             settingsTable.reloadData()
         case 21:
@@ -452,19 +470,20 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     @objc func sliderChanged(_ sender: StepSlider!){
         switch sender.maxCount {
-        case 4: //Intensity
+        case 5: //Intensity
             userDefaults?.setValue(sender.index, forKey: "intensityValue")
-            // 0 -> any
+            // 0 -> drizzle
             // 1 -> light
-            // 2 -> normal
-            // 3 -> heavy
+            // 2 -> rain
+            // 3 -> intense
+            // 4 -> hail
             stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
         case 9: //Time before
             userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
             //Value +1 *5 for minutes
             stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
         default:
-            print ("This not happen")
+            print ("This not happen: Slider")
         }
     }
     

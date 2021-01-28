@@ -16,12 +16,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue(false, forKey: "pushNotification")
         }
         if (userDefaults?.value(forKey: "intensityValue") == nil){
-            userDefaults?.setValue(0, forKey: "intensityValue")
-            /* 0 -> any
-             * 1 -> light
-             * 2 -> normal
-             * 3 -> heavy
-             */
+            userDefaults?.setValue(1, forKey: "intensityValue")
+            // 0 -> drizzle
+            // 1 -> light
+            // 2 -> rain
+            // 3 -> intense
+            // 4 -> hail
         }
         if (userDefaults?.value(forKey: "timeBeforeValue") == nil){
             userDefaults?.setValue(2, forKey: "timeBeforeValue")

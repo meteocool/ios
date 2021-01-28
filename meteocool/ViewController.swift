@@ -291,6 +291,21 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 self.userDefaults?.setValue(false, forKey: "pushNotification")
                 NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
                 self.alertWindow = nil
+                
+                guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": SharedNotificationManager.getToken() ?? "anon"] as [String: Any]) else{
+                    return
+                }
+                URLSession.shared.dataTask(with: request) { data, response, error in
+                    guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                        return
+                    }
+
+                    if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
+                        if let errorMessage = json?["error"] as? String {
+                            NSLog("ERROR: \(errorMessage)")
+                        }
+                    }
+                }
 
                 let reenableController = UIAlertController(title: NSLocalizedString("Notifications Disabled",comment: "Alerts"), message: NSLocalizedString("If you change your mind, you can re-enable rain and snow notifications in the app's ⚙️ Settings on the top-right.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                 reenableController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
