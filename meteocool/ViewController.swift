@@ -292,17 +292,19 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
                 self.alertWindow = nil
                 
-                guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": SharedNotificationManager.getToken() ?? "anon"] as [String: Any]) else{
-                    return
-                }
-                URLSession.shared.dataTask(with: request) { data, response, error in
-                    guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                if let token = SharedNotificationManager.getToken()  {
+                    guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
                         return
                     }
+                    URLSession.shared.dataTask(with: request) { data, response, error in
+                        guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                            return
+                        }
 
-                    if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                        if let errorMessage = json?["error"] as? String {
-                            NSLog("ERROR: \(errorMessage)")
+                        if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
+                            if let errorMessage = json?["error"] as? String {
+                                NSLog("ERROR: \(errorMessage)")
+                            }
                         }
                     }
                 }
