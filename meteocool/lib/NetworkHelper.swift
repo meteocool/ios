@@ -1,7 +1,7 @@
 import UIKit
 
 class NetworkHelper {
-    static let apiURL = URL(string: "https://meteocool.com/")!
+    static let apiURL = URL(string: "https://api.ng.meteocool.com/")!
     static let debug: Bool = true
 
     static func createRequest(dst: String, method: String) -> URLRequest? {
