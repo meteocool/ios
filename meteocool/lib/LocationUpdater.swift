@@ -291,6 +291,7 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             "ahead": (userDefaults?.integer(forKey: "timeBeforeValue") ?? 3+1)*5 ,
             "intensity": intensityDbzValues[userDefaults?.integer(forKey: "intensityValue") ?? 1] ,
             "source": "ios",
+            "details": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "token": tokenValue,
             ] as [String: Any]
 
