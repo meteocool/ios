@@ -448,6 +448,7 @@ window.downloadForecast(function() {
             "mapBaseLayer": userDefaults?.value(forKey: "baseLayer"),
             "layerMesocyclones": userDefaults?.value(forKey: "mesocyclones"),
             "layerLightning": userDefaults?.value(forKey: "lightning"),
+            "experimentalFeatures": userDefaults?.value(forKey: "experimentalFeatures"),
         ]
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)

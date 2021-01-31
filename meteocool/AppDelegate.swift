@@ -27,6 +27,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue(2, forKey: "timeBeforeValue")
             //Value +1 *5 for minutes
         }
+        if (userDefaults?.value(forKey: "withDBZ") == nil){
+            userDefaults?.setValue(false, forKey: "withDBZ")
+        }
         if (userDefaults?.value(forKey: "mapRotation") == nil){
             userDefaults?.setValue(false, forKey: "mapRotation")
         }
@@ -42,17 +45,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "shelters") == nil){
             userDefaults?.setValue(false, forKey: "shelters")
         }
-        if (userDefaults?.value(forKey: "withDBZ") == nil){
-            userDefaults?.setValue(false, forKey: "withDBZ")
-        }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("classic", forKey: "radarColorMapping")
         }
         if (userDefaults?.value(forKey: "baseLayer") == nil){
             userDefaults?.setValue("topographic", forKey: "baseLayer")
         }
-        if (userDefaults?.value(forKey: "developerSetting") == nil){
-            userDefaults?.setValue(false, forKey: "developerSetting")
+        if (userDefaults?.value(forKey: "experimentalFeatures") == nil){
+            userDefaults?.setValue(false, forKey: "experimentalFeatures")
         }
 
         return true

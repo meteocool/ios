@@ -265,7 +265,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 4:
                 switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "developerSettings"))!, animated: false)
+                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "experimentalFeatures"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
