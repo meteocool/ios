@@ -265,7 +265,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 4:
                 switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "developerSettings"))!, animated: false)
+                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "experimentalFeatures"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
@@ -475,11 +475,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             settingsTable.reloadData()
         case 21:
             userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
+            
+            if let location = SharedLocationUpdater.getCurrentLocation(){
+                SharedLocationUpdater.postLocation(location: location, pressure: -1)
+            }
         //About
         case 34:
             userDefaults?.setValue(sender.isOn, forKey: "developerSettings")
-            //TODO javaSkript stuff
-            //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
+            viewController?.webView.evaluateJavaScript("window.injectSettings({\"experimentalFeatures\": \(sender.isOn)});")
         default:
             print("This not happen: " + String(sender.tag))
         }
@@ -495,10 +498,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             // 3 -> intense
             // 4 -> hail
             stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
+            
+            if let location = SharedLocationUpdater.getCurrentLocation(){
+                SharedLocationUpdater.postLocation(location: location, pressure: -1)
+            }
         case 9: //Time before
             userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
             //Value +1 *5 for minutes
             stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
+            
+            if let location = SharedLocationUpdater.getCurrentLocation(){
+                SharedLocationUpdater.postLocation(location: location, pressure: -1)
+            }
         default:
             print ("This not happen: Slider")
         }
