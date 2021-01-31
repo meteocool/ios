@@ -75,7 +75,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("Privacy Policy", comment: "dataAboutLabel"),
-        NSLocalizedString("Developer Settings", comment: "dataAboutLabel")
+        NSLocalizedString("Enable Experimental Features", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -320,7 +320,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 UIApplication.shared.open(url)
             }
         }
-        if (indexPath.section == 3 && indexPath.row == 4){
+        if (indexPath.section == 3 && indexPath.row == 3){
             if let url = URL(string: "https://meteocool.com/privacy.html") {
                 UIApplication.shared.open(url)
             }
@@ -454,6 +454,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
                 if let token = SharedNotificationManager.getToken() {
                     guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
+                        print("Would unregister, but no token")
                         return
                     }
                     URLSession.shared.dataTask(with: request) { data, response, error in
@@ -467,6 +468,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                             }
                         }
                     }
+                } else {
+                    print("Would unregister, but no token")
                 }
             }
             settingsTable.reloadData()
