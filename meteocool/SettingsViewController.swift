@@ -54,7 +54,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Version: 2.0\n\nData Providers:\n© DWD © blitzortung.org © Contains Modified Copernicus Sentinel Data (2020)\n\nMap Providers:\n© OpenStreetMap Contributors © CARTO © MapTiler © Who's On First © Natural Earth", comment: "footer")
     ]
     private var dataPushNotification = [
-        NSLocalizedString("Push Notifications", comment: "dataPushNotification"),
+        NSLocalizedString("Activate Notifications", comment: "dataPushNotification"),
         NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification"),
         NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
         NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
@@ -481,7 +481,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         //About
         case 34:
-            userDefaults?.setValue(sender.isOn, forKey: "developerSettings")
+            userDefaults?.setValue(sender.isOn, forKey: "experimentalFeatures")
             viewController?.webView.evaluateJavaScript("window.injectSettings({\"experimentalFeatures\": \(sender.isOn)});")
         default:
             print("This not happen: " + String(sender.tag))
