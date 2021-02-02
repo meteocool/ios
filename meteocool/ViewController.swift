@@ -26,7 +26,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     var autoFocus = false
     var autoFocusOnce = false
     var zoomOnce = false
-    var appIsAlreadyRunning = false
+    var webviewReady = false
 
     enum DrawerStates {
         case CLOSED
@@ -266,12 +266,17 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     var alertWindow: UIWindow?
 
     @objc func willEnterForeground() {
-        if ((userDefaults?.bool(forKey: "autoZoom")) ?? false){
+        if ((userDefaults?.bool(forKey: "autoZoom")) ?? false && webviewReady) {
+            // XXX deduplicate with code in userContentController
             if (locationStateMachine?.state == .off) {
                 locationStateMachine?.trigger(.buttonPress)
             }
             if (locationStateMachine?.state == .active) {
-                locationStateMachine?.trigger(.buttonPress)
+                // XXX this is kind of a hack to re-focus the location upon resume by cycling
+                // through the FSM.
+                locationStateMachine?.trigger(.buttonPress) // track
+                locationStateMachine?.trigger(.buttonPress) // off
+                locationStateMachine?.trigger(.buttonPress) // active with updated location
             }
         }
 
@@ -329,11 +334,8 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
     
     @objc func didBecomeActive(){
-        if appIsAlreadyRunning{
+        if webviewReady {
             self.webView.evaluateJavaScript("window.enterForeground();")
-        }
-        else{
-            appIsAlreadyRunning = true
         }
     }
 
@@ -488,6 +490,7 @@ window.downloadForecast(function() {
         }
         
         if action == "requestSettings" {
+            webviewReady = true
             injectSettings()
             
             if (locationStateMachine?.state == .off) {
