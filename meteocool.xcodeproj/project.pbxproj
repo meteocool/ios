@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		217E1E4825C9AE1500FC35FC /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 217E1E4A25C9AE1500FC35FC /* InfoPlist.strings */; };
 		21CDB629254C6EF90050868B /* RadarColorMappingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */; };
 		21CDB62A254C6EF90050868B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CDB628254C6EF80050868B /* SettingsViewController.swift */; };
 		21CE250B255706A4009595D4 /* BaseLayerMappingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */; };
@@ -52,6 +53,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		217E1E4925C9AE1500FC35FC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		217E1E5025C9AE1B00FC35FC /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		21CDB627254C6EF80050868B /* RadarColorMappingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadarColorMappingViewController.swift; sourceTree = "<group>"; };
 		21CDB628254C6EF80050868B /* SettingsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		21CE250A255706A4009595D4 /* BaseLayerMappingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseLayerMappingViewController.swift; sourceTree = "<group>"; };
@@ -207,6 +210,7 @@
 				5776669A2130C6E300C25E00 /* LaunchScreen.storyboard */,
 				5776669D2130C6E300C25E00 /* Info.plist */,
 				EAD69D2B22B3F7E5009F3138 /* Localizable.strings */,
+				217E1E4A25C9AE1500FC35FC /* InfoPlist.strings */,
 			);
 			path = meteocool;
 			sourceTree = "<group>";
@@ -451,6 +455,7 @@
 				EAD69D2922B3F7E5009F3138 /* Localizable.strings in Resources */,
 				577666992130C6E300C25E00 /* Assets.xcassets in Resources */,
 				577666972130C6E300C25E00 /* Main.storyboard in Resources */,
+				217E1E4825C9AE1500FC35FC /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -553,6 +558,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		217E1E4A25C9AE1500FC35FC /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				217E1E4925C9AE1500FC35FC /* en */,
+				217E1E5025C9AE1B00FC35FC /* de */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		577666952130C6E300C25E00 /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (

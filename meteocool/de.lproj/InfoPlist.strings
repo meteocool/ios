@@ -1,0 +1,3 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Du hast uns darum gebeten, dass wir dich über bevorstehenden Regen an deinem Standort informieren sollen. Wenn du willst, dass die Benachrichtigungen funktionieren musst du die Einstellungen auf \"Immer\" ändern.";
+"NSLocationAlwaysUsageDescription" = "Du hast uns darum gebeten, dass wir dich über bevorstehenden Regen an deinem Standort informieren sollen. Wenn du willst, dass die Benachrichtigungen funktionieren musst du die Einstellungen auf \"Immer\" ändern.";
+"NSLocationWhenInUseUsageDescription" = "Zeigt deinen aktuellen Standort auf der Wetterkarte an.";
