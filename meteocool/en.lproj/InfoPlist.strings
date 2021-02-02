@@ -1,0 +1,3 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "You asked to be notified ahead of rain at your current location. Choose \"Change to Always Allow\" if you want Notifications to work.";
+"NSLocationAlwaysUsageDescription" = "You asked to be notified ahead of rain at your current location. Choose \"Change to Always Allow\" if you want Notifications to work.";
+"NSLocationWhenInUseUsageDescription" = "Display your location on the weather map.";
