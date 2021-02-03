@@ -75,7 +75,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("Privacy Policy", comment: "dataAboutLabel"),
-        NSLocalizedString("Enable Experimental Features", comment: "dataAboutLabel")
+        NSLocalizedString("Experimental Features", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
