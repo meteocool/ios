@@ -36,9 +36,9 @@
 		</dict>
 	</dict>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>You asked to be notified ahead of rain at your current location. Choose "Change to Always Allow" if you want Notifications to work.</string>
+	<string>You asked to be notified ahead of rain at your current location. Choose &quot;Always Allow&quot; if you want Notifications to work.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>You asked to be notified ahead of rain at your current location. Choose "Change to Always Allow" if you want Notifications to work.</string>
+	<string>You asked to be notified ahead of rain at your current location. Choose &quot;Always Allow&quot; if you want Notifications to work.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Display your location on the weather map.</string>
 	<key>UIBackgroundModes</key>
