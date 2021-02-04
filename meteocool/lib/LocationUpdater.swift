@@ -205,11 +205,13 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
     // to the backend.
     private func decideSignificantChange(old: CLLocation?, new: CLLocation?) -> Bool {
         if let old = old, let new = new {
+            if new.horizontalAccuracy < old.horizontalAccuracy {
+                return true
+            }
             if new.verticalAccuracy + 1 < old.verticalAccuracy {
                 return true
             }
             if new.distance(from: old) > 500 && new.timestamp.timeIntervalSince(old.timestamp) >= 60{
-                //print (new.timestamp.timeIntervalSince(old.timestamp))
                 return true
             }
             return false
