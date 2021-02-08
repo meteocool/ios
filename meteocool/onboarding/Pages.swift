@@ -11,7 +11,7 @@ class Pages {
     static let nowcastingExplanation = OnboardPage(
         title: NSLocalizedString("Nowcasting", comment:"Nowcasting Page Onbording"),
         imageName: "ob_jacket",
-        description: NSLocalizedString("We use a super-accurate forecast model (a so-called \"nowcast\") which predicts the path and extent of rain clouds based on factors like wind, air pressure and lightning activity.\n\nObviously, longer terms are less accurate. But in our experience, at least the first 45 minutes are pretty spot-on.", comment:"Nowcasting Page Onbording")
+        description: NSLocalizedString("We use a super-accurate forecast model (a so-called \"nowcast\") to predictr the path and extent of rain clouds based on factors like wind, air pressure and lightning activity.\n\nObviously, longer times are less accurate. But in our experience, at least the first 45 minutes are pretty spot-on.", comment:"Nowcasting Page Onbording")
     )
 
     static func getNotificationExplanation(action: OnboardPageAction? = nil) -> OnboardPage {
@@ -81,13 +81,13 @@ class Pages {
     static let locationNagSorry = OnboardPage(
         title: NSLocalizedString("We'll shut up now.", comment: "Location Nag Sorry"),
         imageName: "ob_bell",
-        description: NSLocalizedString("We won't ask you again about push notifications!\n\nIf you change your mind, you can always enable them in the ⚙️ Settings menu on the top-right.", comment:"Location Nag Sorry"),
+        description: NSLocalizedString("won't ask you again", comment:"Location Nag Sorry"),
         advanceButtonTitle: NSLocalizedString("Done", comment: "Done")
     )
     
     static let welcomeUpdate = OnboardPage(
-        title: NSLocalizedString("Hallo again!", comment: "Welcome Update Onbording"),
+        title: NSLocalizedString("Hello again!", comment: "Welcome Update Onbording"),
         imageName: "ob_rain_sun",
-        description: NSLocalizedString("We have developed new features for our App.\n\nYou will see what we have done in the next pages.", comment:"Welcome Update Onbording"),
+        description: NSLocalizedString("new_features", comment:"Welcome Update Onbording"),
         advanceButtonTitle: NSLocalizedString("Next", comment: "Next"))
 }
