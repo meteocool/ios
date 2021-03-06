@@ -133,7 +133,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         time.layer.cornerRadius = 8.0
         slider_ring.isHidden = true
         slider_button.isHidden = true
-
+        
+        trippleButton.isHidden = true
+        settingsButton.isHidden = true
+        layerSwitcherButton.isHidden = true
+        positionButton.isHidden = true
+        
         formatter.locale = Locale(identifier: "de_De")
         formatter.dateFormat = "H:mm"
 
@@ -498,6 +503,11 @@ window.downloadForecast(function() {
                     locationStateMachine?.trigger(.buttonPress)
                 }
             }
+            
+            trippleButton.isHidden = false
+            settingsButton.isHidden = false
+            layerSwitcherButton.isHidden = false
+            positionButton.isHidden = false
         }
         
         if action == "layerSwitcherClosed" {
