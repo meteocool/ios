@@ -27,6 +27,8 @@
 		57C66BED21CF2590004EC825 /* NotificationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C66BEC21CF2590004EC825 /* NotificationViewController.swift */; };
 		57C66BF021CF2590004EC825 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 57C66BEE21CF2590004EC825 /* MainInterface.storyboard */; };
 		57C66C0021CF25A8004EC825 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C66BFF21CF25A8004EC825 /* NotificationService.swift */; };
+		A75DC57225F3E2B40044E687 /* NotificationContent.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 57C66BE521CF2590004EC825 /* NotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A75DC57525F3E2B40044E687 /* NotificationService.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 57C66BFD21CF25A7004EC825 /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A7661F4B2217265700834E1D /* CustomeGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7661F4A2217265700834E1D /* CustomeGestureRecognizer.swift */; };
 		A76B5779254B9EEF0003A7A1 /* StepSlider in Frameworks */ = {isa = PBXBuildFile; productRef = A76B5778254B9EEF0003A7A1 /* StepSlider */; };
 		A7967EC625A1558C0023CA8E /* Onboardings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7967EC525A1558C0023CA8E /* Onboardings.swift */; };
@@ -50,7 +52,36 @@
 			remoteGlobalIDString = 5776668D2130C6E300C25E00;
 			remoteInfo = meteocool;
 		};
+		A75DC57325F3E2B40044E687 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 577666862130C6E300C25E00 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57C66BE421CF2590004EC825;
+			remoteInfo = NotificationContent;
+		};
+		A75DC57625F3E2B40044E687 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 577666862130C6E300C25E00 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57C66BFC21CF25A7004EC825;
+			remoteInfo = NotificationService;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A75DC57825F3E2B40044E687 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A75DC57225F3E2B40044E687 /* NotificationContent.appex in Embed App Extensions */,
+				A75DC57525F3E2B40044E687 /* NotificationService.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		217E1E4925C9AE1500FC35FC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -288,10 +319,13 @@
 				5776668A2130C6E300C25E00 /* Sources */,
 				5776668B2130C6E300C25E00 /* Frameworks */,
 				5776668C2130C6E300C25E00 /* Resources */,
+				A75DC57825F3E2B40044E687 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A75DC57425F3E2B40044E687 /* PBXTargetDependency */,
+				A75DC57725F3E2B40044E687 /* PBXTargetDependency */,
 			);
 			name = meteocool;
 			packageProductDependencies = (
@@ -555,6 +589,16 @@
 			target = 5776668D2130C6E300C25E00 /* meteocool */;
 			targetProxy = 57A34CEC22C9701E00D9862D /* PBXContainerItemProxy */;
 		};
+		A75DC57425F3E2B40044E687 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 57C66BE421CF2590004EC825 /* NotificationContent */;
+			targetProxy = A75DC57325F3E2B40044E687 /* PBXContainerItemProxy */;
+		};
+		A75DC57725F3E2B40044E687 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 57C66BFC21CF25A7004EC825 /* NotificationService */;
+			targetProxy = A75DC57625F3E2B40044E687 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -743,7 +787,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = meteocool/meteocool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4L2672L4VX;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = meteocool/Info.plist;
@@ -765,7 +809,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = meteocool/meteocool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4L2672L4VX;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = meteocool/Info.plist;
@@ -828,7 +872,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 3AM692E9WY;
 				INFOPLIST_FILE = NotificationContent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -837,6 +881,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent;
@@ -851,7 +896,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 3AM692E9WY;
 				INFOPLIST_FILE = NotificationContent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -860,6 +905,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 2.0;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -873,7 +919,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 3AM692E9WY;
 				INFOPLIST_FILE = NotificationService/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -882,6 +928,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService;
@@ -896,7 +943,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 3AM692E9WY;
 				INFOPLIST_FILE = NotificationService/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -905,6 +952,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 2.0;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService;
 				PRODUCT_NAME = "$(TARGET_NAME)";
