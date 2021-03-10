@@ -99,7 +99,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     override func loadView() {
         super.loadView()
         viewController = self
-        
+
         webView?.configuration.userContentController.add(self, name: "scriptHandler")
         webView?.configuration.userContentController.add(self, name: "timeHandler")
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -203,6 +203,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
+
         let locationAction = {
             completion in
             SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
@@ -267,6 +268,23 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 })?.presentFrom(self, animated: true)
             }
         }
+
+        if (!webviewReady) {
+            performSegue(withIdentifier: "ShowLaunchScreen", sender: nil)
+        }
+    }
+
+    func hideSplash() {
+        let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+
+        if var topController = keyWindow?.rootViewController {
+            while let presentedViewController = topController.presentedViewController {
+                topController = presentedViewController
+            }
+
+            topController.dismiss(animated: true)
+        }
+
     }
 
     var alertWindow: UIWindow?
@@ -504,17 +522,18 @@ window.downloadForecast(function() {
         if action == "requestSettings" {
             webviewReady = true
             injectSettings()
-            
+
             if (locationStateMachine?.state == .off) {
                 if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
                     locationStateMachine?.trigger(.buttonPress)
                 }
             }
-            
+
             trippleButton.isHidden = false
             settingsButton.isHidden = false
             layerSwitcherButton.isHidden = false
             positionButton.isHidden = false
+            hideSplash()
         }
         
         if action == "layerSwitcherClosed" {

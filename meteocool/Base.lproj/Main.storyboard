@@ -197,12 +197,21 @@
                         <outlet property="time" destination="BTS-em-eiA" id="pyY-MS-MAP"/>
                         <outlet property="trippleButton" destination="2qS-BO-egk" id="lfl-4b-uP4"/>
                         <outlet property="webView" destination="JvE-AE-63L" id="rcW-dJ-KNX"/>
+                        <segue destination="kME-lD-ueB" kind="presentation" identifier="ShowLaunchScreen" animates="NO" id="Wnc-EF-ufs"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
                 <gestureRecognizer id="VUV-Tz-dat" customClass="CustomGestureRecognizer" customModule="meteocool" customModuleProvider="target"/>
             </objects>
-            <point key="canvasLocation" x="112.8" y="31.773399014778327"/>
+            <point key="canvasLocation" x="64" y="33"/>
+        </scene>
+        <!--LaunchScreen-->
+        <scene sceneID="Ibo-HE-tyD">
+            <objects>
+                <viewControllerPlaceholder storyboardName="LaunchScreen" id="kME-lD-ueB" sceneMemberID="viewController"/>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="5lt-kk-tS6" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="65" y="485"/>
         </scene>
         <!--Settings View Controller-->
         <scene sceneID="gZn-8e-OCg">
