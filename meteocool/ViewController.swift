@@ -192,6 +192,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         }
         
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willResignActive), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.didBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -269,6 +270,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
 
     var alertWindow: UIWindow?
+
+    @objc func willResignActive() {
+        if webviewReady {
+            self.webView.evaluateJavaScript("window.leaveForeground();")
+        }
+    }
 
     @objc func willEnterForeground() {
         if ((userDefaults?.bool(forKey: "autoZoom")) ?? false && webviewReady) {
