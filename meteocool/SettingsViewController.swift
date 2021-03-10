@@ -405,23 +405,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     SharedLocationUpdater.requestAuthorization({success,error in
                         if CLLocationManager.authorizationStatus() != .authorizedAlways {
                             self.userDefaults?.setValue(false, forKey: "pushNotification")
-                            
-                            if let token = SharedNotificationManager.getToken()  {
-                                guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
-                                    return
-                                }
-                                URLSession.shared.dataTask(with: request) { data, response, error in
-                                    guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                                        return
-                                    }
-
-                                    if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                                        if let errorMessage = json?["error"] as? String {
-                                            NSLog("ERROR: \(errorMessage)")
-                                        }
-                                    }
-                                }
-                            }
+                            self.unregisterToken()
                         }
                         self.reload()
                     } , notDetermined: true)
@@ -444,24 +428,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     ))
                     alertController.addAction(UIAlertAction(title: NSLocalizedString("Disable Notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                         self.userDefaults?.setValue(false, forKey: "pushNotification")
-                        
-                        if let token = SharedNotificationManager.getToken()  {
-                            guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
-                                return
-                            }
-                            URLSession.shared.dataTask(with: request) { data, response, error in
-                                guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                                    return
-                                }
-
-                                if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                                    if let errorMessage = json?["error"] as? String {
-                                        NSLog("ERROR: \(errorMessage)")
-                                    }
-                                }
-                            }
-                        }
-                        
+                        self.unregisterToken()
                         self.settingsTable.reloadData()
                         self.alertWindow = nil
                     }
@@ -556,5 +523,24 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc func unregisterToken(){
+        if let token = SharedNotificationManager.getToken()  {
+            guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
+                return
+            }
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                    return
+                }
+
+                if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
+                    if let errorMessage = json?["error"] as? String {
+                        NSLog("ERROR: \(errorMessage)")
+                    }
+                }
+            }
+        }
     }
 }
