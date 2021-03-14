@@ -884,7 +884,7 @@
 				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -907,7 +907,7 @@
 				);
 				MARKETING_VERSION = 2.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationContent2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -931,7 +931,7 @@
 				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -954,7 +954,7 @@
 				);
 				MARKETING_VERSION = 2.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService;
+				PRODUCT_BUNDLE_IDENTIFIER = org.frcy.app.meteocool.NotificationService2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
