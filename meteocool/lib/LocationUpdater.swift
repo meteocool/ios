@@ -275,7 +275,7 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             lang = bundle_lang
         }*/
         
-        let intensityDbzValues = [16,21,26,36,41]
+        let intensityDbzValues = [14,20,26,36,41]
 
         let locationDict = [
             "lat": location.coordinate.latitude as Double,

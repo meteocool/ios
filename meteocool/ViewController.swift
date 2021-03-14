@@ -47,7 +47,6 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         case tracking
     }
     
-    ///Represents all the triggers a Turnstile can perform
     enum LocationTrigger {
         case buttonPress
         case mapMove
@@ -86,7 +85,6 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     private var locationStateMachine: SwiftFSM<LocationFSM>?
     
     @objc func tapOrPan() {
-        //print("action")
         if (locationStateMachine?.state == .tracking) {
             locationStateMachine?.trigger(.mapMove)
         }
@@ -104,12 +102,8 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         webView?.configuration.userContentController.add(self, name: "timeHandler")
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
-        //let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.tapOrPan))
         let panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.tapOrPan))
 
-        //tapRecognizer.numberOfTapsRequired = 1
-        //tapRecognizer.delegate = self
-        //view.addGestureRecognizer(tapRecognizer)
         panRecognizer.minimumNumberOfTouches = 1
         panRecognizer.maximumNumberOfTouches = 1
         panRecognizer.delegate = self
@@ -171,11 +165,11 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 SharedLocationUpdater.startAccurateLocationUpdates()
                 self.autoFocus = false
                 self.autoFocusOnce = true
-                self.zoomOnce = true // gets reset to false automatically after the zoom operation
                 SharedLocationUpdater.requestLocation(observer: self, explicit: true)
                 self.positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             case .tracking:
                 self.autoFocus = true // gets reset to false automatically after the zoom operation
+                self.zoomOnce = true // gets reset to false automatically after the zoom operation
                 SharedLocationUpdater.requestLocation(observer: self, explicit: true)
                 self.positionButton.setImage(UIImage(systemName: "location.fill.viewfinder",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             }
@@ -296,17 +290,24 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
 
     @objc func willEnterForeground() {
-        if ((userDefaults?.bool(forKey: "autoZoom")) ?? false && webviewReady) {
-            // XXX deduplicate with code in userContentController
-            if (locationStateMachine?.state == .off) {
-                locationStateMachine?.trigger(.buttonPress)
+        if (webviewReady) {
+            if (locationStateMachine?.state != .off) {
+                SharedLocationUpdater.requestLocation(observer: self, explicit: true)
             }
-            if (locationStateMachine?.state == .active) {
-                // XXX this is kind of a hack to re-focus the location upon resume by cycling
-                // through the FSM.
-                locationStateMachine?.trigger(.buttonPress) // track
-                locationStateMachine?.trigger(.buttonPress) // off
-                locationStateMachine?.trigger(.buttonPress) // active with updated location
+            if ((userDefaults?.bool(forKey: "autoZoom")) ?? false) {
+                // XXX deduplicate with code in userContentController
+                if (locationStateMachine?.state == .off) {
+                    self.zoomOnce = true
+                    locationStateMachine?.trigger(.buttonPress)
+                }
+                if (locationStateMachine?.state == .active) {
+                    // XXX this is kind of a hack to re-focus the location upon resume by cycling
+                    // through the FSM.
+                    locationStateMachine?.trigger(.buttonPress) // track
+                    locationStateMachine?.trigger(.buttonPress) // off
+                    self.zoomOnce = true
+                    locationStateMachine?.trigger(.buttonPress) // active with updated location
+                }
             }
         }
 
@@ -523,10 +524,13 @@ window.downloadForecast(function() {
             webviewReady = true
             injectSettings()
 
-            if (locationStateMachine?.state == .off) {
-                if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
-                    locationStateMachine?.trigger(.buttonPress)
-                }
+            if (CLLocationManager.authorizationStatus() == .authorizedWhenInUse || CLLocationManager.authorizationStatus() == .authorizedAlways) {
+                locationStateMachine?.trigger(.buttonPress)
+            }
+            
+            if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
+                self.zoomOnce = true
+                locationStateMachine?.trigger(.buttonPress)
             }
 
             trippleButton.isHidden = false
