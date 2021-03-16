@@ -36,6 +36,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     
     var drawerState = DrawerStates.CLOSED
     var originalButtonPosition: CGRect!
+    var prolongSplashScreen = true
     
     var currentdate = Date()
     let formatter = DateFormatter()
@@ -209,15 +210,15 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             self?.userDefaults?.setValue(true, forKey: "pushNotification")
             SharedNotificationManager.registerForPushNotifications(completion)
         }
-        
-        var negDone = false;
-        
+
+        var nagDone = false
+
         if (userDefaults?.bool(forKey: "onboardingDone") == true && (self.userDefaults?.integer(forKey: "versionNumber") == nil || (self.userDefaults?.integer(forKey: "versionNumber"))! < 21)){
             switch(CLLocationManager.authorizationStatus()) {
             case .denied:
                 break;
             case .authorizedWhenInUse, .notDetermined:
-                negDone = true
+                nagDone = true
                 break;
             case .authorizedAlways:
                 self.userDefaults?.setValue(true, forKey: "pushNotification")
@@ -227,11 +228,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             }
             
             let updateOnboarding = obFactory.getOnboarding(pages: obFactory.getUpdateOnboarding(),completion: {
-                                                            if negDone{self.userDefaults?.setValue(false, forKey: "nagDone")}
+                                                            if nagDone{self.userDefaults?.setValue(false, forKey: "nagDone")}
             })!
             
             updateOnboarding.presentFrom(self, animated: true)
-            
+            prolongSplashScreen = false
+
             self.userDefaults?.setValue(21, forKey: "versionNumber")
         }
         
@@ -249,6 +251,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 secondStageOb.presentFrom(self, animated: true)
             })
             ob!.presentFrom(self, animated: true)
+            prolongSplashScreen = false
             self.userDefaults?.setValue(21, forKey: "versionNumber")
         } else {
             if let nagDone = self.userDefaults?.bool(forKey: "nagDone"),
@@ -260,15 +263,20 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                         obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!.presentFrom(self, animated: true)
                     }
                 })?.presentFrom(self, animated: true)
+                prolongSplashScreen = false
             }
         }
 
-        if (!webviewReady) {
+        if (!webviewReady && prolongSplashScreen) {
             performSegue(withIdentifier: "ShowLaunchScreen", sender: nil)
         }
     }
 
     func hideSplash() {
+        if (!prolongSplashScreen) {
+            return
+        }
+
         let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
 
         if var topController = keyWindow?.rootViewController {
@@ -278,7 +286,6 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
 
             topController.dismiss(animated: true)
         }
-
     }
 
     var alertWindow: UIWindow?
