@@ -49,7 +49,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue("classic", forKey: "radarColorMapping")
         }
         if (userDefaults?.value(forKey: "baseLayer") == nil){
-            userDefaults?.setValue("topographic", forKey: "baseLayer")
+            userDefaults?.setValue("light", forKey: "baseLayer")
         }
         if (userDefaults?.value(forKey: "experimentalFeatures") == nil){
             userDefaults?.setValue(false, forKey: "experimentalFeatures")
