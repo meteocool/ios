@@ -44,14 +44,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var header = [
         NSLocalizedString("Map View", comment: "header"),
         NSLocalizedString("Layers", comment: "header"),
-        NSLocalizedString("Push Notification", comment: "header"),
+        NSLocalizedString("notifications", comment: "header"),
         NSLocalizedString("About", comment: "header")
     ]
     private var footer = [
         NSLocalizedString("Customize the appearance and behavior of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
         NSLocalizedString("If you want, we can inform you about upcoming precipitation at your current location.", comment: "footer"),
-        NSLocalizedString("Version: 2.0\n\nData Providers:\n© DWD © blitzortung.org © Contains Modified Copernicus Sentinel Data (2020)\n\nMap Providers:\n© OpenStreetMap Contributors © CARTO © MapTiler © Who's On First © Natural Earth", comment: "footer")
+        NSLocalizedString("copyright_footer", comment: "footer")
     ]
     private var dataPushNotification = [
         NSLocalizedString("Enable Notifications", comment: "dataPushNotification"),
@@ -141,7 +141,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     //Selection Footer
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if(section == 2 && (userDefaults?.bool(forKey: "pushNotification"))!){
-            return NSLocalizedString("Show Meteorological Details:\nFor advanced users, include meteorological details in the notification text (like dBZ values). \n\nIntensity Threshold:\nOnly send a notification if incoming precipitation is expected to be at least this intense. \n\n Notification Timeframe:\nChange the amount of time before you want to be notified about precipitation.",comment: "selection Footer")
+            return NSLocalizedString("meteorological_details_help" ,comment: "selection Footer")
         }
         return footer[section]
     }

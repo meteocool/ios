@@ -1,12 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "dreaming_of_settings.png",
+      "filename" : "settings.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "dreaming_of_settings-1.png",
+      "filename" : "settings-1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },

@@ -53,17 +53,16 @@ class Pages {
     )
 
     static let settingsPage = OnboardPage(
-        title: "",
+        title: NSLocalizedString("Settings", comment: "settings headline"),
         imageName: "dreaming_of_settings",
-        description: NSLocalizedString("Notifications 📱 (among other things) can now be configured in the Settings menu.\n\nTo open the Settings menu, click on the ⚙️ on the top-right of the map.", comment: "Settings Page Onboarding"),
-        advanceButtonTitle: NSLocalizedString("Next", comment: "Next"),
-        imageContentMode: .center
+        description: NSLocalizedString("settings_onboarding", comment: "Settings Page Onboarding"),
+        advanceButtonTitle: NSLocalizedString("Next", comment: "Next")
     )
 
     static let finish = OnboardPage(
         title: NSLocalizedString("Now Go Outside!", comment:"Finish Page Onbording"),
         imageName: "ob_free",
-        description: NSLocalizedString("Did you know?\n\nmeteocool is completely free and open source. It's run and built by volunteers in their leisure time.\n\nIf you like our App, please tell your friends!", comment: "Finish Page Onbording"),
+        description: NSLocalizedString("onboarding_end_credits", comment: "Finish Page Onbording"),
         advanceButtonTitle: NSLocalizedString("Done", comment: "Done")
     )
 
