@@ -42,8 +42,12 @@ class OnboardingFactory {
         return [Pages.welcome, Pages.nowcastingExplanation, Pages.getNotificationExplanation(action: notificationAction)]
     }
 
-    public func getBackgroundLocationOnboarding(locationAction: OnboardPageAction? = nil) -> [OnboardPage] {
-        return [Pages.getBackgroundLocationPermission(action: locationAction), Pages.satelliteView, Pages.settingsPage, Pages.finish]
+    public func getBackgroundLocationOnboarding(locationAction: OnboardPageAction? = nil, includeFeatureReview: Bool = true) -> [OnboardPage] {
+        var reviewPages = [OnboardPage]()
+        if (includeFeatureReview) {
+            reviewPages = [Pages.satelliteView, Pages.settingsPage]
+        }
+        return [Pages.getBackgroundLocationPermission(action: locationAction)] + reviewPages + [Pages.finish]
     }
     
     public func getWhileUsingOnboarding(locationAction: OnboardPageAction? = nil) -> [OnboardPage] {

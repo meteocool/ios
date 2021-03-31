@@ -244,6 +244,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 
                 var secondStageOb: OnboardViewController
                 if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
+                    self.userDefaults?.setValue(true, forKey: "nagDone")
                     secondStageOb = obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!
                 } else {
                     secondStageOb = obFactory.getOnboarding(pages: obFactory.getWhileUsingOnboarding(locationAction: locationAction))!
@@ -260,7 +261,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 obFactory.getOnboarding(pages: obFactory.getLocationNagOnboarding(notificationAction: notificationAction), completion: {
                     self.userDefaults?.setValue(true, forKey: "nagDone")
                     if let pushNotifications = self.userDefaults?.bool(forKey: "pushNotification"), pushNotifications {
-                        obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction))!.presentFrom(self, animated: true)
+                        obFactory.getOnboarding(pages: obFactory.getBackgroundLocationOnboarding(locationAction: locationAction, includeFeatureReview: false))!.presentFrom(self, animated: true)
                     }
                 })?.presentFrom(self, animated: true)
                 prolongSplashScreen = false
@@ -320,7 +321,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
 
         if (userDefaults?.bool(forKey: "pushNotification") ?? false && CLLocationManager.authorizationStatus() != .authorizedAlways) {
             // Check if background location permissions were revoked while notifications enabled
-            let alertController = UIAlertController(title: NSLocalizedString("Notifications Not Working",comment: "Alerts"), message: NSLocalizedString("In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIf you want to continue receiving notifications, go to Settings > Privacy > Location > meteocool and change \"Location\" to \"Always\".",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+            let alertController = UIAlertController(title: NSLocalizedString("Notifications Not Working",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                 if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                     UIApplication.shared.open(url, options: [:], completionHandler: {_ in
@@ -352,7 +353,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                     }
                 }
 
-                let reenableController = UIAlertController(title: NSLocalizedString("Notifications Disabled",comment: "Alerts"), message: NSLocalizedString("If you change your mind, you can re-enable rain and snow notifications in the app's ⚙️ Settings on the top-right.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+                let reenableController = UIAlertController(title: NSLocalizedString("notifications_disabled",comment: "Alerts"), message: NSLocalizedString("notifications_disabled_text",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                 reenableController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                     self.alertWindow = nil
                 }))
@@ -531,13 +532,13 @@ window.downloadForecast(function() {
             webviewReady = true
             injectSettings()
 
-            if (CLLocationManager.authorizationStatus() == .authorizedWhenInUse || CLLocationManager.authorizationStatus() == .authorizedAlways) {
-                locationStateMachine?.trigger(.buttonPress)
-            }
-            
-            if (userDefaults?.bool(forKey: "autoZoom") ?? false && userDefaults?.bool(forKey: "onboardingDone") ?? false){
-                self.zoomOnce = true
-                locationStateMachine?.trigger(.buttonPress)
+            if (userDefaults?.bool(forKey: "onboardingDone") ?? false) {
+                if (locationStateMachine?.state == .off && (CLLocationManager.authorizationStatus() == .authorizedWhenInUse || CLLocationManager.authorizationStatus() == .authorizedAlways)) {
+                    if ((userDefaults?.bool(forKey: "autoZoom")) ?? false) {
+                        self.zoomOnce = true
+                    }
+                    locationStateMachine?.trigger(.buttonPress)
+                }
             }
 
             trippleButton.isHidden = false

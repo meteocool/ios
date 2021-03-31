@@ -411,7 +411,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                         self.reload()
                     } , notDetermined: true)
                 case .denied, .authorizedWhenInUse:
-                    let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("In order to check your current location for upcoming rain while you're not using the app, background location access is required.\n\nIn your device's Settings, set \"Location\" to \"Always\" to enable notifications.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+                    let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                     
                     alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                         if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
