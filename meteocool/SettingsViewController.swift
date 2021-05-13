@@ -305,7 +305,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         }
         if (indexPath.section == 3 && indexPath.row == 1){
-            if let url = URL(string: "https://twitter.com/meteocool_de") {
+            if let url = URL(string: "https://twitter.com/meteocool_app") {
                 UIApplication.shared.open(url)
             }
         }
@@ -314,7 +314,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let mailAdress = "support@meteocool.com"
             let mailBody = NSLocalizedString("feedback_text_1",comment: "mail") + token
             // XXX store version number somewhere central
-            let mailSubject = "iOS App Feedback (2.0)"
+            let mailSubject = "iOS App Feedback (2.2)"
 
             print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
             if let url = URL(string: "mailto:\(mailAdress)?subject=\(mailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&body=\(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)") {

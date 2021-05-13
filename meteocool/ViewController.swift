@@ -22,7 +22,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     @IBOutlet weak var layerSwitcherButton: UIButton!
     @IBOutlet weak var blur: UIVisualEffectView!
     @IBOutlet weak var logo: UIImageView!
-    
+        
     var autoFocus = false
     var autoFocusOnce = false
     var zoomOnce = false
@@ -181,7 +181,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         webView.scrollView.bounces = false
         webView.scrollView.delegate = self
 
-        if let url = URL(string: "https://app.ng.meteocool.com/ios.html"/*"http://127.0.0.1:8080/ios.html"*/) {
+        var environmentPrefix = "app.ng.";
+        if (userDefaults?.bool(forKey: "experimentalFeatures") ?? false) {
+            environmentPrefix = "better.";
+        }
+        
+        if let url = URL(string: "https://\(environmentPrefix)meteocool.com/ios.html?version=2.2") {
             let request = URLRequest(url: url)
             webView.load(request)
         }
