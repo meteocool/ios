@@ -185,6 +185,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         if (userDefaults?.bool(forKey: "experimentalFeatures") ?? false) {
             environmentPrefix = "better.";
         }
+        print(environmentPrefix)
 
         if let url = URL(string: "https://\(environmentPrefix)meteocool.com/ios.html?version=2.2") {
             let request = URLRequest(url: url)

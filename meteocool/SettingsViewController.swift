@@ -314,7 +314,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let mailAdress = "support@meteocool.com"
             let mailBody = NSLocalizedString("feedback_text_1",comment: "mail") + token
             // XXX store version number somewhere central
-            let mailSubject = "iOS App Feedback (2.2)"
+            let mailSubject = "iOS App Feedback (2.1)"
 
             print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
             if let url = URL(string: "mailto:\(mailAdress)?subject=\(mailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&body=\(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)") {
@@ -390,13 +390,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //Layers
         case 10:
             userDefaults?.setValue(sender.isOn, forKey: "lightning")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerLightning\": \(sender.isOn)});")
+            viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"layerLightning\": \(sender.isOn)});")
         case 11:
             userDefaults?.setValue(sender.isOn, forKey: "mesocyclones")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
+            viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
         case 12:
             userDefaults?.setValue(sender.isOn, forKey: "shelters")
-            //viewController?.webView.evaluateJavaScript("window.injectSettings({\"layerShelters\": \(sender.isOn)});")
         //Push Notification
         case 20:
             if (sender.isOn) {
@@ -485,7 +484,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         //About
         case 34:
             userDefaults?.setValue(sender.isOn, forKey: "experimentalFeatures")
-            viewController?.webView.evaluateJavaScript("window.injectSettings({\"experimentalFeatures\": \(sender.isOn)});")
+
+            let alertController = UIAlertController(title: NSLocalizedString("experimental_features",comment: "Settings"), message: NSLocalizedString("experimental_features_require_restart",comment: "Settings"), preferredStyle: UIAlertController.Style.alert)
+            alertController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Dismiss"), style: UIAlertAction.Style.default, handler: {_ in
+                self.alertWindow = nil
+            }
+            ))
+            alertWindow = UIWindow(frame: UIScreen.main.bounds)
+            alertWindow?.rootViewController = UIViewController()
+            alertWindow?.windowLevel = UIWindow.Level.alert + 1;
+            alertWindow?.makeKeyAndVisible()
+            alertWindow?.rootViewController?.present(alertController, animated: true)
+
         default:
             print("This not happen: " + String(sender.tag))
         }
