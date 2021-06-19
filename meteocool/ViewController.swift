@@ -185,12 +185,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         if (userDefaults?.bool(forKey: "experimentalFeatures") ?? false) {
             environmentPrefix = "better.";
         }
-        
+
         if let url = URL(string: "https://\(environmentPrefix)meteocool.com/ios.html?version=2.2") {
             let request = URLRequest(url: url)
             webView.load(request)
         }
-        
+
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willResignActive), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
@@ -218,7 +218,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
             completion in
             SharedLocationUpdater.requestAuthorization(completion, notDetermined: true)
         }
-        
+
         let notificationAction: OnboardPageAction
         notificationAction = {
             [weak self] completion in

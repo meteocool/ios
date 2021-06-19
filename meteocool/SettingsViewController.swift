@@ -74,7 +74,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Follow on Twitter", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
-        NSLocalizedString("Privacy Policy", comment: "dataAboutLabel"),
+        NSLocalizedString("imprint_privacy", comment: "dataAboutLabel"),
         NSLocalizedString("Experimental Features", comment: "dataAboutLabel")
     ]
     private var intensity = [
