@@ -200,9 +200,19 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         self.willEnterForeground()
     }
 
+    var feedbackLight: UIImpactFeedbackGenerator?
+    var feedbackMedium: UIImpactFeedbackGenerator?
+    var feedbackHeavy: UIImpactFeedbackGenerator?
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
+        feedbackLight = UIImpactFeedbackGenerator(style: .light)
+        feedbackLight?.prepare()
+        feedbackMedium = UIImpactFeedbackGenerator(style: .medium)
+        feedbackMedium?.prepare()
+        feedbackHeavy = UIImpactFeedbackGenerator(style: .heavy)
+        feedbackHeavy?.prepare()
 
         let locationAction = {
             completion in
@@ -507,6 +517,7 @@ window.downloadForecast(function() {
         }
     }
 
+
     /* called from javascript */
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         let action = String(describing: message.body)
@@ -520,7 +531,7 @@ window.downloadForecast(function() {
             time.text = formatter.string(from: Date())
             drawer_open_finish()
         }
-        
+
         if action == "forecastInvalid" {
             drawer_close()
         }
@@ -528,11 +539,23 @@ window.downloadForecast(function() {
         if action == "drawerHide" {
             drawer_hide()
         }
-        
+
         if action == "drawerShow" {
             drawer_show()
         }
-        
+
+        if action == "impactLight" {
+            feedbackLight?.impactOccurred()
+        }
+
+        if action == "impactMedium" {
+            feedbackMedium?.impactOccurred()
+        }
+
+        if action == "impactHeavy" {
+            feedbackHeavy?.impactOccurred()
+        }
+
         if action == "requestSettings" {
             webviewReady = true
             injectSettings()
