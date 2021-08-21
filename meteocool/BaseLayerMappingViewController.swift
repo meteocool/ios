@@ -22,7 +22,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     
     //Content
     private var baseLayerMapping = [
-        NSLocalizedString("topographic", comment: "baseLayer"),
+        NSLocalizedString("cyclosm", comment: "baseLayer"),
         NSLocalizedString("osm", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
         NSLocalizedString("light", comment: "baseLayer")
@@ -63,7 +63,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         
         
         switch indexPath.row {
-        case 0: //topographic
+        case 0: //cyclosm
             cell.lable.text = baseLayerMapping[indexPath.row]
             cell.checkbox.isHidden = (baseLayer == "dark" ||
                                         baseLayer == "osm" ||
@@ -71,20 +71,20 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         case 1: //osm
             cell.lable.text = baseLayerMapping[indexPath.row]
             cell.checkbox.isHidden = (baseLayer == "dark" ||
-                                        baseLayer == "topographic" ||
+                                        baseLayer == "cyclosm" ||
                                         baseLayer == "light")
         case 2: //dark
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "topographic" ||
+            cell.checkbox.isHidden = (baseLayer == "cyclosm" ||
                                         baseLayer == "light" ||
                                         baseLayer == "osm")
         case 3: //light
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "topographic" ||
+            cell.checkbox.isHidden = (baseLayer == "cyclosm" ||
                                         baseLayer == "dark" ||
                                         baseLayer == "osm")
         default:
-            print("this not happen")
+            break;
         }
         return cell
     }
@@ -92,8 +92,8 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
-        if (indexPath.section == 0 && indexPath.row == 0){ //topographic
-            baseLayer = "topographic"
+        if (indexPath.section == 0 && indexPath.row == 0){ //cyclosm
+            baseLayer = "cyclosm"
         }
         if (indexPath.section == 0 && indexPath.row == 1){ //osm
             baseLayer = "osm"

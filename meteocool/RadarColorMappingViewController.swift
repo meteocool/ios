@@ -23,12 +23,12 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
     //Content
     private var radarColorMapping = [
         NSLocalizedString("classic", comment: "radarColorMapping"),
-        NSLocalizedString("viridis", comment: "radarColorMapping")
+        NSLocalizedString("nws", comment: "radarColorMapping")
     ]
 
     // colormap explanation
     private var explainRadarColorMapping = [
-        NSLocalizedString("Change the colormap to change the color scheme of the precipitation-visualization on the map.", comment: "radarColorMapping"),
+        NSLocalizedString("colormap_explanation", comment: "radarColorMapping"),
     ]
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         return explainRadarColorMapping[section]
@@ -69,8 +69,8 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         switch indexPath.row {
         case 0: //meteocool Classic
             cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping == "viridis"
-        case 1: //Viridis
+            cell.checkbox.isHidden = colorMapping == "nws"
+        case 1: //nws
             cell.lable.text = radarColorMapping[indexPath.row]
             cell.checkbox.isHidden = colorMapping == "classic"
         default:
@@ -85,8 +85,8 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         if (indexPath.section == 0 && indexPath.row == 0){ //Classic
             colorMapping = "classic"
         }
-        if (indexPath.section == 0 && indexPath.row == 1){ //Viridis
-            colorMapping = "viridis"
+        if (indexPath.section == 0 && indexPath.row == 1){ //nws
+            colorMapping = "nws"
         }
         radarColorMappingSettingsTable.reloadData()
     }

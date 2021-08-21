@@ -50,7 +50,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var footer = [
         NSLocalizedString("Customize the appearance and behavior of the main map.", comment: "footer"),
         NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
-        NSLocalizedString("If you want, we can inform you about upcoming precipitation at your current location.", comment: "footer"),
+        NSLocalizedString("notifications_explanation", comment: "footer"),
         NSLocalizedString("copyright_footer", comment: "footer")
     ]
     private var dataPushNotification = [
