@@ -23,7 +23,10 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
     //Content
     private var radarColorMapping = [
         NSLocalizedString("classic", comment: "radarColorMapping"),
-        NSLocalizedString("nws", comment: "radarColorMapping")
+        NSLocalizedString("nws", comment: "radarColorMapping"),
+        NSLocalizedString("pyart_stepseq", comment: "radarColorMapping"),
+        NSLocalizedString("homeyer", comment: "radarColorMapping"),
+        NSLocalizedString("lang", comment: "radarColorMapping")
     ]
 
     // colormap explanation
@@ -69,12 +72,21 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         switch indexPath.row {
         case 0: //meteocool Classic
             cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping == "nws"
+            cell.checkbox.isHidden = colorMapping != "classic"
         case 1: //nws
             cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping == "classic"
+            cell.checkbox.isHidden = colorMapping != "nws"
+        case 2: //pyart stepseq
+            cell.lable.text = radarColorMapping[indexPath.row]
+            cell.checkbox.isHidden = colorMapping != "pyart_stepseq"
+        case 3: //homeyer
+            cell.lable.text = radarColorMapping[indexPath.row]
+            cell.checkbox.isHidden = colorMapping != "homeyer"
+        case 4: //lang
+            cell.lable.text = radarColorMapping[indexPath.row]
+            cell.checkbox.isHidden = colorMapping != "lang"
         default:
-            print("this not happen")
+            print("this should not happen")
         }
         return cell
     }
@@ -82,11 +94,20 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
-        if (indexPath.section == 0 && indexPath.row == 0){ //Classic
+        if (indexPath.section == 0 && indexPath.row == 0){
             colorMapping = "classic"
         }
-        if (indexPath.section == 0 && indexPath.row == 1){ //nws
+        if (indexPath.section == 0 && indexPath.row == 1){
             colorMapping = "nws"
+        }
+        if (indexPath.section == 0 && indexPath.row == 2){
+            colorMapping = "pyart_stepseq"
+        }
+        if (indexPath.section == 0 && indexPath.row == 3){
+            colorMapping = "homeyer"
+        }
+        if (indexPath.section == 0 && indexPath.row == 4){
+            colorMapping = "lang"
         }
         radarColorMappingSettingsTable.reloadData()
     }

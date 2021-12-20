@@ -5,22 +5,22 @@ class Pages {
     static let welcome = OnboardPage(
         title: NSLocalizedString("Hi there!", comment:"Welcome Page Onbording"),
         imageName: "ob_rain_sun",
-        description: NSLocalizedString("The meteocool project is an ongoing effort to make freely available meteorological data useful to everyone.\n\nWe process and aggregate data from different sources and try to visualize them in an intuitive way.", comment: "Welcome Page Onbording")
+        description: NSLocalizedString("onboarding_welcome_text", comment: "Welcome Page Onbording")
     )
 
     static let nowcastingExplanation = OnboardPage(
         title: NSLocalizedString("Nowcasting", comment:"Nowcasting Page Onbording"),
         imageName: "ob_jacket",
-        description: NSLocalizedString("We use a super-accurate forecast model (a so-called \"nowcast\") to predictr the path and extent of rain clouds based on factors like wind, air pressure and lightning activity.\n\nObviously, longer times are less accurate. But in our experience, at least the first 45 minutes are pretty spot-on.", comment:"Nowcasting Page Onbording")
+        description: NSLocalizedString("onboarding_nowcasting_text", comment:"Nowcasting Page Onbording")
     )
 
     static func getNotificationExplanation(action: OnboardPageAction? = nil) -> OnboardPage {
         return OnboardPage(
             title: NSLocalizedString("Notifications", comment:"Notifications Page Onbording"),
             imageName: "ob_bell",
-            description: NSLocalizedString("Based on this data, do you want us to inform you about upcoming rain at your location?\n\nWe put a lot of effort into making the notifications non-intrusive. They disappear as soon as it stops raining.", comment: "Notifications Page Onbording"),
+            description: NSLocalizedString("onboarding_notification_text", comment: "Notifications Page Onbording"),
             advanceButtonTitle: NSLocalizedString("Later", comment:"Later"),
-            actionButtonTitle: NSLocalizedString("Tell Me Before It Rains!", comment:"Notifications Page Onbording"),
+            actionButtonTitle: NSLocalizedString("tell_me_before_it_rains", comment:"Notifications Page Onbording"),
             action: action)
     }
 
@@ -28,9 +28,9 @@ class Pages {
         return OnboardPage(
             title: NSLocalizedString("Location Access", comment:"Location Page Onbording"),
             imageName: "ob_umbrella",
-            description: NSLocalizedString("Nice! For notifications, you first need to select \"Allow While Using App\" in the following dialog.\n\nLater your device will ask you to allow background location. Don't worry, this won't drain your battery.", comment: "Location Page Onbording description"),
+            description: NSLocalizedString("onboarding_notification_location_permission_text", comment: "Location Page Onbording description"),
             advanceButtonTitle: NSLocalizedString("", comment:""),
-            actionButtonTitle: NSLocalizedString("Allow Location Access", comment:"Location Page Onbording"),
+            actionButtonTitle: NSLocalizedString("allow_location_access", comment:"Location Page Onbording"),
             action: action)
     }
 
@@ -38,19 +38,11 @@ class Pages {
         return OnboardPage(
             title: NSLocalizedString("Location Access", comment:"Location Page Onbording"),
             imageName: "ob_location",
-            description: NSLocalizedString("To show your current location on the weather and satellite map, we need your permission.\n\n We won't ever share or store your location data.", comment: "Location Page Onbording"),
+            description: NSLocalizedString("onboarding_location_permission", comment: "Location Page Onbording"),
             advanceButtonTitle: NSLocalizedString("Later", comment:"Later"),
-            actionButtonTitle: NSLocalizedString("Allow Location Access", comment:"Location Page Onbording"),
+            actionButtonTitle: NSLocalizedString("allow_location_access", comment:"Location Page Onbording"),
             action: action)
     }
-
-    static let satelliteView = OnboardPage(
-        title: "",
-        imageName: "satellite_screenshot",
-        description: NSLocalizedString("☀️ Something for cloudless days: A new “near-realtime” satellite layer is now available from the layers menu!\n\n🛰 Satellite overpasses are expected every 5 days with a ground resolution ±10m/pixel.", comment: "Satellite View Onbording"),
-        advanceButtonTitle: NSLocalizedString("Next", comment: "Next"),
-        imageContentMode: .center
-    )
 
     static let settingsPage = OnboardPage(
         title: NSLocalizedString("Settings", comment: "settings headline"),
@@ -70,7 +62,7 @@ class Pages {
         return OnboardPage(
             title: NSLocalizedString("Push Notifications", comment:"Location Nag Onbording"),
             imageName: "ob_bell",
-            description: NSLocalizedString("Did you know? meteocool can inform you about upcoming rain up to 45 minutes ahead, even while you're not using the app.\n\nDon't worry, this won't drain your battery.", comment: "Location Nag Onbording"),
+            description: NSLocalizedString("onboarding_nag_text", comment: "Location Nag Onbording"),
             advanceButtonTitle: NSLocalizedString("Use Without Notifications", comment: "Location Nag Onbording"),
             actionButtonTitle: NSLocalizedString("Enable Push Notifications", comment:"Location Nag Onbording"),
             action: action

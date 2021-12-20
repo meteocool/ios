@@ -48,8 +48,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("About", comment: "header")
     ]
     private var footer = [
-        NSLocalizedString("Customize the appearance and behavior of the main map.", comment: "footer"),
-        NSLocalizedString("Enable or disable informational layers on the main map.", comment: "footer"),
+        NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
+        NSLocalizedString("footer_layer_explanation", comment: "footer"),
         NSLocalizedString("notifications_explanation", comment: "footer"),
         NSLocalizedString("copyright_footer", comment: "footer")
     ]
@@ -314,7 +314,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let mailAdress = "support@meteocool.com"
             let mailBody = NSLocalizedString("feedback_text_1",comment: "mail") + token
             // XXX store version number somewhere central
-            let mailSubject = "iOS App Feedback (2.1)"
+            let mailSubject = "iOS App Feedback (2.2)"
 
             print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
             if let url = URL(string: "mailto:\(mailAdress)?subject=\(mailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&body=\(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)") {
@@ -356,7 +356,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     case .denied:
                         self.userDefaults?.setValue(false, forKey: "autoZoom")
 
-                        let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("In order to auto-zoom to your current location when opening meteocool, you need to allow access to your location.\n\nIn your device's Settings, set \"Location\" to \"Allow While Using\" to use this feature.",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+                        let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_autozoom",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                         alertController.addAction(UIAlertAction(title: NSLocalizedString("Allow in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                             if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                                 UIApplication.shared.open(url, options: [:], completionHandler: {_ in
@@ -410,7 +410,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                         self.reload()
                     } , notDetermined: true)
                 case .denied, .authorizedWhenInUse:
-                    let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+                    let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
                     
                     alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                         if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
@@ -426,7 +426,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                         }
                     }
                     ))
-                    alertController.addAction(UIAlertAction(title: NSLocalizedString("Disable Notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
+                    alertController.addAction(UIAlertAction(title: NSLocalizedString("disable_notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                         self.userDefaults?.setValue(false, forKey: "pushNotification")
                         self.unregisterToken()
                         self.settingsTable.reloadData()

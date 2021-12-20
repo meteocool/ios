@@ -22,10 +22,11 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     
     //Content
     private var baseLayerMapping = [
-        NSLocalizedString("cyclosm", comment: "baseLayer"),
-        NSLocalizedString("osm", comment: "baseLayer"),
+        NSLocalizedString("light", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
-        NSLocalizedString("light", comment: "baseLayer")
+        NSLocalizedString("osm", comment: "baseLayer"),
+        NSLocalizedString("cyclosm", comment: "baseLayer"),
+        NSLocalizedString("satellite", comment: "baseLayer")
     ]
     
     var baseLayer:String!
@@ -63,26 +64,21 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         
         
         switch indexPath.row {
-        case 0: //cyclosm
+        case 0: //light
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "dark" ||
-                                        baseLayer == "osm" ||
-                                        baseLayer == "light")
-        case 1: //osm
+            cell.checkbox.isHidden = baseLayer != "light"
+        case 1: //dark
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "dark" ||
-                                        baseLayer == "cyclosm" ||
-                                        baseLayer == "light")
-        case 2: //dark
+            cell.checkbox.isHidden = baseLayer != "dark"
+        case 2: //osm
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "cyclosm" ||
-                                        baseLayer == "light" ||
-                                        baseLayer == "osm")
-        case 3: //light
+            cell.checkbox.isHidden = baseLayer != "osm"
+        case 3: //cyclosm
             cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = (baseLayer == "cyclosm" ||
-                                        baseLayer == "dark" ||
-                                        baseLayer == "osm")
+            cell.checkbox.isHidden = baseLayer != "cyclosm"
+        case 4: //satellite
+            cell.lable.text = baseLayerMapping[indexPath.row]
+            cell.checkbox.isHidden = baseLayer != "satellite"
         default:
             break;
         }
@@ -91,18 +87,20 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
-        
-        if (indexPath.section == 0 && indexPath.row == 0){ //cyclosm
-            baseLayer = "cyclosm"
+        if (indexPath.section == 0 && indexPath.row == 0){ //light
+            baseLayer = "light"
         }
-        if (indexPath.section == 0 && indexPath.row == 1){ //osm
-            baseLayer = "osm"
-        }
-        if (indexPath.section == 0 && indexPath.row == 2){ //dark
+        if (indexPath.section == 0 && indexPath.row == 1){ //dark
             baseLayer = "dark"
         }
-        if (indexPath.section == 0 && indexPath.row == 3){ //light
-            baseLayer = "light"
+        if (indexPath.section == 0 && indexPath.row == 2){ //osm
+            baseLayer = "osm"
+        }
+        if (indexPath.section == 0 && indexPath.row == 3){ //cyclosm
+            baseLayer = "cyclosm"
+        }
+        if (indexPath.section == 0 && indexPath.row == 4){ //satellite
+            baseLayer = "satellite"
         }
         baseLayerMappingSettingsTable.reloadData()
     }

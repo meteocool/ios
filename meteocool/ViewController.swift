@@ -317,6 +317,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         if (webviewReady) {
             if (locationStateMachine?.state != .off) {
                 SharedLocationUpdater.requestLocation(observer: self, explicit: true)
+                SharedLocationUpdater.startAccurateLocationUpdates()
             }
             if ((userDefaults?.bool(forKey: "autoZoom")) ?? false) {
                 // XXX deduplicate with code in userContentController
@@ -337,7 +338,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
 
         if (userDefaults?.bool(forKey: "pushNotification") ?? false && CLLocationManager.authorizationStatus() != .authorizedAlways) {
             // Check if background location permissions were revoked while notifications enabled
-            let alertController = UIAlertController(title: NSLocalizedString("Notifications Not Working",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
+            let alertController = UIAlertController(title: NSLocalizedString("notifications_not_working",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                 if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                     UIApplication.shared.open(url, options: [:], completionHandler: {_ in
@@ -347,7 +348,7 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
                 }
             }
             ))
-            alertController.addAction(UIAlertAction(title: NSLocalizedString("Disable Notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
+            alertController.addAction(UIAlertAction(title: NSLocalizedString("disable_notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
                 self.userDefaults?.setValue(false, forKey: "pushNotification")
                 NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
                 self.alertWindow = nil

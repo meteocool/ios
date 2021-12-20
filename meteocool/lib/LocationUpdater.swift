@@ -126,7 +126,7 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
                 }, notDetermined: true)
             }
             if (CLLocationManager.authorizationStatus() == .denied) {
-                let alertController = UIAlertController(title: NSLocalizedString("Location Permission Required",comment: "Alerts"), message: NSLocalizedString("To use the location button or auto-zoom, you need to allow access to Location in your device's Settings. We won't store or share any location information.\n",comment: "Alerts"), preferredStyle: .alert)
+                let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_general",comment: "Alerts"), preferredStyle: .alert)
                 alertController.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings",comment: "Alerts"), style: .default, handler: {_ in
                     if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                         UIApplication.shared.open(url, options: [:], completionHandler: nil)
