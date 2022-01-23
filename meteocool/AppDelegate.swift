@@ -42,8 +42,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "mesocyclones") == nil){
             userDefaults?.setValue(true, forKey: "mesocyclones")
         }
-        if (userDefaults?.value(forKey: "shelters") == nil){
-            userDefaults?.setValue(false, forKey: "shelters")
+        if (userDefaults?.value(forKey: "snow") == nil){
+            userDefaults?.setValue(true, forKey: "snow")
         }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("classic", forKey: "radarColorMapping")

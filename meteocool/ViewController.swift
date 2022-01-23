@@ -506,6 +506,7 @@ window.downloadForecast(function() {
             "mapBaseLayer": userDefaults?.value(forKey: "baseLayer"),
             "layerMesocyclones": userDefaults?.value(forKey: "mesocyclones"),
             "layerLightning": userDefaults?.value(forKey: "lightning"),
+            "layerSnow": userDefaults?.value(forKey: "snow"),
             "experimentalFeatures": userDefaults?.value(forKey: "experimentalFeatures"),
         ]
         do {

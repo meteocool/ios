@@ -68,7 +68,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var dataLayers = [
         NSLocalizedString("⚡️ Lightning", comment: "dataLayers"),
         NSLocalizedString("🌀 Mesocyclones", comment: "dataLayers"),
-        //NSLocalizedString("☂️ Shelters", comment: "dataLayers")
+        NSLocalizedString("snow", comment: "dataLayers")
     ]
     private var dataAboutLabel = [
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
@@ -195,11 +195,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-            /*case 2: //Shelters
+            case 2: //Snow
              switcherCell.switcherInfoLabel.text = dataLayers[indexPath.row]
-             switcherCell.switcher.setOn((userDefaults?.bool(forKey: "shelters"))!, animated: false)
+             switcherCell.switcher.setOn((userDefaults?.bool(forKey: "snow"))!, animated: false)
+             switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+             switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
              return switcherCell
-             */
             default:
                 print("This should not happen...")
                 return textCell
@@ -395,7 +396,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             userDefaults?.setValue(sender.isOn, forKey: "mesocyclones")
             viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"layerMesocyclones\": \(sender.isOn)});")
         case 12:
-            userDefaults?.setValue(sender.isOn, forKey: "shelters")
+            userDefaults?.setValue(sender.isOn, forKey: "snow")
+            viewController?.webView.evaluateJavaScript("window.settings.meteocool/SettingsViewController.swift({\"layerSnow\": \(sender.isOn)});")
         //Push Notification
         case 20:
             if (sender.isOn) {
