@@ -5,10 +5,11 @@ protocol LocationObserver {
     func notify(location: CLLocation)
 }
 
-let SharedLocationUpdater = LocationUpdater.init()
+@MainActor let SharedLocationUpdater = LocationUpdater()
 
 // XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
-class LocationUpdater: NSObject, CLLocationManagerDelegate {
+@MainActor
+class LocationUpdater: NSObject {
     /// location manager instace we're wrapping
     private let locationManager: CLLocationManager = CLLocationManager()
     /// device identifier (currently unused...)
@@ -41,9 +42,14 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         printAuthorizationStatus()
     }
 
+    var authorizationStatus: CLAuthorizationStatus {
+        locationManager.authorizationStatus
+    }
+
     func printAuthorizationStatus() {
         if CLLocationManager.locationServicesEnabled() {
-            switch CLLocationManager.authorizationStatus() {
+            let status = locationManager.authorizationStatus
+            switch status {
             case .notDetermined, .restricted, .denied:
                 NSLog("Location: No access")
             case .authorizedWhenInUse:
@@ -59,9 +65,11 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    private let settings = SettingsStore()
+
     func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
         authCompletionHandler = completion
-        if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
+        if settings.notificationsEnabled {
             locationManager.requestAlwaysAuthorization()
         } else {
             locationManager.requestWhenInUseAuthorization()
@@ -83,7 +91,7 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         if let authCompletionHandler = authCompletionHandler {
             switch status {
             case .notDetermined:
-                if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
+                if settings.notificationsEnabled {
                     locationManager.requestAlwaysAuthorization()
                 } else {
                     locationManager.requestWhenInUseAuthorization()
@@ -113,29 +121,30 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         observers.append(observer)
     }
     
-    let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
-
     // executed when the user taps the locate-me button
     func requestLocation(observer: LocationObserver, explicit: Bool) {
         if (explicit) {
-            if (CLLocationManager.authorizationStatus() == .notDetermined) {
+            switch locationManager.authorizationStatus {
+            case .notDetermined:
                 requestAuthorization({(_,_) in
-                    if CLLocationManager.authorizationStatus() == .authorizedAlways || CLLocationManager.authorizationStatus() == .authorizedWhenInUse {
+                    if self.locationManager.authorizationStatus == .authorizedAlways || self.locationManager.authorizationStatus == .authorizedWhenInUse {
                         self.requestLocation(observer: observer, explicit: false)
                     }
                 }, notDetermined: true)
-            }
-            if (CLLocationManager.authorizationStatus() == .denied) {
+            case .denied, .restricted:
                 let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_general",comment: "Alerts"), preferredStyle: .alert)
                 alertController.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings",comment: "Alerts"), style: .default, handler: {_ in
                     if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                         UIApplication.shared.open(url, options: [:], completionHandler: nil)
                     }
                 }))
-                userDefaults?.setValue(false, forKey: "autoZoom")
+                settings.autoZoom = false
                 alertController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Alerts"), style: .default))
 
-                let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+                let keyWindow = UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .flatMap { $0.windows }
+                    .first { $0.isKeyWindow }
                 var rootViewController = keyWindow?.rootViewController
                 if let navigationController = rootViewController as? UINavigationController {
                     rootViewController = navigationController.viewControllers.first
@@ -144,6 +153,11 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
                     rootViewController = tabBarController.selectedViewController
                 }
                 rootViewController?.present(alertController, animated: true, completion: nil)
+            case .authorizedAlways, .authorizedWhenInUse:
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.requestLocation()
+            @unknown default:
+                break
             }
         }
 
@@ -291,11 +305,11 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             "course": location.course as Double,
             "pressure": pressure,
             "timestamp": location.timestamp.timeIntervalSince1970 as Double,
-            "ahead": (userDefaults?.integer(forKey: "timeBeforeValue") ?? 3+1)*5 ,
-            "intensity": intensityDbzValues[userDefaults?.integer(forKey: "intensityValue") ?? 1] ,
+            "ahead": (settings.notificationTimeBefore + 1) * 5,
+            "intensity": intensityDbzValues[max(0, min(settings.notificationIntensity, intensityDbzValues.count - 1))],
             "source": "ios",
-            "experimental": userDefaults?.bool(forKey: "experimentalFeatures") ?? false,
-            "details": userDefaults?.bool(forKey: "withDBZ") ?? false,
+            "experimental": settings.experimentalFeatures,
+            "details": settings.notificationShowDbz,
             "token": tokenValue,
             ] as [String: Any]
 
@@ -321,3 +335,5 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         return SharedLocationUpdater.locationManager.location ?? nil
     }
 }
+
+extension LocationUpdater: @MainActor CLLocationManagerDelegate {}

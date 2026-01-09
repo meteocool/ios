@@ -5,6 +5,7 @@
 ## Build generated
 build/
 DerivedData/
+.deriveddata/
 
 ## Various settings
 *.pbxuser
@@ -16,6 +17,8 @@ DerivedData/
 *.perspectivev3
 !default.perspectivev3
 xcuserdata/
+*.xcuserstate
+*.xcuserdatad
 
 ## Other
 *.moved-aside
@@ -39,6 +42,7 @@ playground.xcworkspace
 # Package.pins
 # Package.resolved
 .build/
+.swiftpm/
 
 # CocoaPods
 #
@@ -77,3 +81,9 @@ fastlane/screenshots/
 
 iOSInjectionProject/
 .DS_Store
+*.xcresult
+.swiftpm-cache/
+.swiftpm-config/
+.home/
+_core/
+docs/plans/

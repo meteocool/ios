@@ -1,20 +1,21 @@
 import UIKit
 import UserNotifications
 
-let SharedNotificationManager = NotificationManager.init()
+@MainActor let SharedNotificationManager = NotificationManager()
 
-class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+@MainActor
+class NotificationManager: NSObject {
     private var pushToken: String?
+    private let settings = SettingsStore()
 
     override init() {
         super.init()
-        if (UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "pushEnabled") != nil) {
-            // re-deliver push token to appDelegate
+        if settings.notificationsEnabled {
             self.registerForPushNotifications({_,_ in return})
         }
     }
 
-    func registerForPushNotifications(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
+    func registerForPushNotifications(_ completion: @escaping @Sendable (_ success: Bool, _ error: Error?) -> Void) {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) {
@@ -27,9 +28,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 return
             }
             completion(true, nil)
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(true, forKey: "pushEnabled")
-
-            DispatchQueue.main.async {
+            Task { @MainActor in
+                self.settings.notificationsEnabled = true
                 UIApplication.shared.registerForRemoteNotifications()
             }
         }
@@ -38,8 +38,22 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         center.setNotificationCategories(Set([deafultCategory]))
     }
 
+    @MainActor
+    func register() async throws {
+        let center = UNUserNotificationCenter.current()
+        let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+        if granted {
+            settings.notificationsEnabled = true
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+    }
+
     func clearNotifications() {
-        UIApplication.shared.applicationIconBadgeNumber = 0
+        if #available(iOS 17.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+        } else {
+            UIApplication.shared.applicationIconBadgeNumber = 0
+        }
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
@@ -49,13 +63,16 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     // delivered upon re-registering...
     func setToken(token: String) {
         self.pushToken = token
-        UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(token, forKey: "pushToken")
+        UserDefaults(suiteName: SettingsStore.Keys.suite)?.setValue(token, forKey: "pushToken")
     }
 
     func getToken() -> String? {
         if self.pushToken == nil {
-            self.pushToken = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.value(forKey: "pushToken") as? String
+            self.pushToken = UserDefaults(suiteName: SettingsStore.Keys.suite)?.value(forKey: "pushToken") as? String
         }
         return self.pushToken
     }
 }
+
+@MainActor
+extension NotificationManager: UNUserNotificationCenterDelegate {}
