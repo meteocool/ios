@@ -130,3 +130,70 @@ This document tracks the migration from the old UIKit/WKWebView-based implementa
 - The old app used a remote WKWebView loading `app.ng.meteocool.com/ios.html` - this is now fully native
 - Radar color mapping setting exists but may not be wired to tile rendering (tiles are server-side colored)
 - `SwiftFSM.swift` remains in codebase (may be legacy - LocationUpdater doesn't use FSM anymore)
+
+---
+
+## 🚀 TestFlight Readiness
+
+### ✅ What Works Automatically (Code Verified)
+
+| Step                                           | Trigger                          | Verification                                                      |
+| ---------------------------------------------- | -------------------------------- | ----------------------------------------------------------------- |
+| Onboarding shows location + notification cards | App first launch                 | ✅ `OnboardingView.swift`                                         |
+| Location permission requested                  | User taps "Enable Location"      | ✅ `SharedLocationUpdater.requestAuthorization()`                 |
+| Notification permission requested              | User taps "Enable Notifications" | ✅ `SharedNotificationManager.register()`                         |
+| Push token received from Apple                 | After notification granted       | ✅ `AppDelegate.didRegisterForRemoteNotificationsWithDeviceToken` |
+| Push token saved locally                       | On token receipt                 | ✅ `SharedNotificationManager.setToken()`                         |
+| Location updates start                         | After location granted           | ✅ `locationManager.startUpdatingLocation()` in delegate          |
+| Device registered with server                  | On first location update         | ✅ `postLocation()` sends token + location to `post_location`     |
+| Notification settings synced                   | On each location update          | ✅ intensity, timeframe, details sent in `postLocation()`         |
+
+### ✅ Code Issues (None Critical)
+
+> **Note**: Push notifications are geographically targeted - the server needs location to know where rain is approaching. Registration only on location update is **correct by design**.
+
+1. **Token sent as "anon" if not ready**
+   - **Problem**: If `postLocation()` fires before token arrives, uses `"anon"` fallback
+   - **Current mitigation**: `postLocationDeferred()` waits 4 seconds for token
+   - **Status**: LOW risk - existing mitigation likely sufficient; verify in testing
+
+### 🧪 Manual Testing Required (Simulator/Device)
+
+#### Happy Path
+
+- [ ] Fresh install → complete onboarding → grant both permissions → verify location pin appears on map
+- [ ] Verify Xcode console shows `POST: /post_location` with token (not "anon")
+- [ ] Verify server receives registration (check backend if accessible)
+
+#### Push Notification Testing (Requires physical device + backend)
+
+- [ ] Trigger rain alert from server → verify push received
+- [ ] Tap notification → verify app opens to correct location
+- [ ] Receive push while app in background → verify banner appears
+
+#### Permission Edge Cases
+
+- [ ] Grant location only (deny notifications) → map works, no pushes expected ✓
+- [ ] Grant notifications only (deny location) → no pushes (expected - server needs location to target alerts)
+- [ ] Revoke location after granting → verify app handles gracefully (no crash)
+- [ ] Revoke notifications after granting → verify settings toggle updates
+
+#### Persistence
+
+- [ ] Kill app, relaunch → verify settings persist (no re-onboarding unless toggled)
+- [ ] Change settings, kill app, relaunch → verify changes persist
+
+### 📦 App Store Preparation
+
+- [ ] App icons: all sizes in Assets.xcassets
+- [ ] Screenshots: update for new SwiftUI UI (fastlane)
+- [ ] Info.plist: location/notification usage descriptions
+- [ ] Entitlements: push notification enabled for production
+- [ ] Privacy manifest: required for App Store (new requirement)
+
+### 🔨 Build Verification (Before TestFlight Upload)
+
+- [ ] `xcodebuild -scheme meteocool -configuration Release` succeeds
+- [ ] Archive in Xcode succeeds
+- [ ] Runs on physical device (not just simulator)
+- [ ] iOS 18 deployment target correct
