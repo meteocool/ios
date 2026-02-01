@@ -12,7 +12,7 @@ struct MeteocoolApp: App {
                 .environment(appState)
                 .environment(settings)
                 .task {
-                    await DisplayStyle.applyToAllWindows(settings.displayStyle)
+                    DisplayStyle.applyToAllWindows(settings.displayStyle)
                 }
                 .onChange(of: settings.displayStyle) { _, newValue in
                     Task { @MainActor in

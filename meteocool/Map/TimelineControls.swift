@@ -60,7 +60,7 @@ struct TimelineControls: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .liquidGlass(cornerRadius: 16, material: .thick)
+        .liquidGlassThick(cornerRadius: 16)
         .padding(.horizontal, 4)
     }
 

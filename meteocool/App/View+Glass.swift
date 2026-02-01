@@ -3,11 +3,12 @@ import SwiftUI
 struct LiquidGlass: ViewModifier {
     var cornerRadius: CGFloat = 16
     var material: Material = .regular
-    
+
+    @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
-                .glassEffect(material.interactive(), in: .rect(cornerRadius: cornerRadius))
+                .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
         } else {
             content
                 .background(material, in: RoundedRectangle(cornerRadius: cornerRadius))
@@ -22,11 +23,12 @@ struct LiquidGlass: ViewModifier {
 
 struct LiquidGlassCircle: ViewModifier {
     var material: Material = .regular
-    
+
+    @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
-                .glassEffect(material.interactive(), in: .circle)
+                .glassEffect(.regular, in: .circle)
         } else {
             content
                 .background(material, in: Circle())
@@ -40,11 +42,19 @@ struct LiquidGlassCircle: ViewModifier {
 }
 
 extension View {
-    func liquidGlass(cornerRadius: CGFloat = 16, material: Material = .regular) -> some View {
-        modifier(LiquidGlass(cornerRadius: cornerRadius, material: material))
+    func liquidGlass(cornerRadius: CGFloat = 16) -> some View {
+        modifier(LiquidGlass(cornerRadius: cornerRadius, material: .regular))
     }
-    
-    func liquidGlassCircle(material: Material = .regular) -> some View {
-        modifier(LiquidGlassCircle(material: material))
+
+    func liquidGlassThick(cornerRadius: CGFloat = 16) -> some View {
+        modifier(LiquidGlass(cornerRadius: cornerRadius, material: .thick))
+    }
+
+    func liquidGlassCircle() -> some View {
+        modifier(LiquidGlassCircle(material: .regular))
+    }
+
+    func liquidGlassCircleThick() -> some View {
+        modifier(LiquidGlassCircle(material: .thick))
     }
 }

@@ -166,7 +166,7 @@ private struct TopRightSettingsButton: View {
                 .foregroundStyle(.primary)
         }
         .accessibilityIdentifier("OpenSettings")
-        .liquidGlassCircle(material: .thick)
+        .liquidGlassCircleThick()
     }
 }
 
@@ -187,7 +187,7 @@ private struct BottomRightMapButtons: View {
                     .foregroundStyle(.primary)
             }
             .accessibilityIdentifier("LocateMe")
-            .liquidGlassCircle(material: .thick)
+            .liquidGlassCircleThick()
 
             Button(action: { showLayerSwitcher = true }) {
                 Image(systemName: "square.3.layers.3d")
@@ -196,7 +196,7 @@ private struct BottomRightMapButtons: View {
                     .foregroundStyle(.primary)
             }
             .accessibilityIdentifier("LayerSwitcher")
-            .liquidGlassCircle(material: .thick)
+            .liquidGlassCircleThick()
         }
     }
 }

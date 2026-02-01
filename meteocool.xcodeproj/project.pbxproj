@@ -26,6 +26,7 @@
 		B0A1B2C3D4E5F60718293A58 /* MapCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A56 /* MapCoordinator.swift */; };
 		B0A1B2C3D4E5F60718293A54 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A53 /* SettingsStore.swift */; };
 		B0A1B2C3D4E5F60718293A50 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A4D /* AppState.swift */; };
+		B0A1B2C3D4E5F60718293A87 /* View+Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A86 /* View+Glass.swift */; };
 		B0A1B2C3D4E5F60718293A51 /* MeteocoolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A4E /* MeteocoolApp.swift */; };
 		B0A1B2C3D4E5F60718293A52 /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A1B2C3D4E5F60718293A4F /* MapScreen.swift */; };
 		217E1E4825C9AE1500FC35FC /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 217E1E4A25C9AE1500FC35FC /* InfoPlist.strings */; };
@@ -115,6 +116,7 @@
 		B0A1B2C3D4E5F60718293A82 /* MapOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapOptions.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293A84 /* DisplayStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayStyle.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293A4D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B0A1B2C3D4E5F60718293A86 /* View+Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Glass.swift"; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293A4E /* MeteocoolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteocoolApp.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293A4F /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		217E1E4925C9AE1500FC35FC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -232,6 +234,7 @@
 				B0A1B2C3D4E5F60718293A84 /* DisplayStyle.swift */,
 				B0A1B2C3D4E5F60718293A82 /* MapOptions.swift */,
 				B0A1B2C3D4E5F60718293A53 /* SettingsStore.swift */,
+				B0A1B2C3D4E5F60718293A86 /* View+Glass.swift */,
 				B0A1B2C3D4E5F60718293A4E /* MeteocoolApp.swift */,
 			);
 			path = App;
@@ -606,6 +609,7 @@
 				B0A1B2C3D4E5F60718293A85 /* DisplayStyle.swift in Sources */,
 				B0A1B2C3D4E5F60718293A83 /* MapOptions.swift in Sources */,
 				B0A1B2C3D4E5F60718293A50 /* AppState.swift in Sources */,
+				B0A1B2C3D4E5F60718293A87 /* View+Glass.swift in Sources */,
 				B0A1B2C3D4E5F60718293A5C /* MeteocoolAPI.swift in Sources */,
 				B0A1B2C3D4E5F60718293A5D /* RadarTimelineStore.swift in Sources */,
 				B0A1B2C3D4E5F60718293A61 /* LightningStore.swift in Sources */,

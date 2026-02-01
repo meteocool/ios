@@ -3,11 +3,9 @@
 This repository contains the full
 [meteocool](https://github.com/meteocool/ios) iOS code, including
 background location services, notification code and infrastructure.
-All components and interaction except the main map view are implemented
-natively in Swift 5. The map view and all of its data visualization
-features and interactions are maintained in the
-[meteocool/core](https://github.com/meteocool/core) repository
-(ES6/Svelte).
+All components are implemented natively in Swift 6 with SwiftUI,
+including the map view using native `MKMapView` with custom tile overlays
+for radar, satellite, and weather data visualization.
 
 <a href="https://itunes.apple.com/de/app/meteocool-rain-radar/id1438364623"><img src="https://raw.githubusercontent.com/v4lli/meteocool/master/frontend/assets/download-on-appstore.png" style="width: 49%; float: left;" alt="Download on Apple Appstore"></a>
 

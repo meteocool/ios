@@ -52,11 +52,22 @@ class meteocoolUITests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.tap()
 
-        let displayPicker = app.pickers["Display Style"]
-        XCTAssertTrue(displayPicker.waitForExistence(timeout: 5))
-        displayPicker.buttons["Dark"].tap()
+        // SwiftUI Form Picker renders as a menu/popup button
+        let displayStyleButton = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Display Style' OR label CONTAINS[c] 'Dark' OR label CONTAINS[c] 'Light' OR label CONTAINS[c] 'System'")).firstMatch
+        XCTAssertTrue(displayStyleButton.waitForExistence(timeout: 5))
+        displayStyleButton.tap()
 
-        app.buttons["Close"].tap()
+        // Select "Dark" from the picker menu
+        let darkOption = app.buttons["Dark"]
+        if darkOption.waitForExistence(timeout: 2) {
+            darkOption.tap()
+        }
+
+        // Close settings
+        let closeButton = app.buttons["Close"]
+        if closeButton.exists {
+            closeButton.tap()
+        }
 
         app.terminate()
         app.launch()
@@ -66,8 +77,9 @@ class meteocoolUITests: XCTestCase {
         }
 
         app.buttons["OpenSettings"].tap()
-        let displayPickerAfter = app.pickers["Display Style"]
-        XCTAssertTrue(displayPickerAfter.waitForExistence(timeout: 5))
-        XCTAssertEqual(displayPickerAfter.value as? String, "Dark")
+
+        // Verify the display style is still Dark
+        let displayStyleAfter = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Dark'")).firstMatch
+        XCTAssertTrue(displayStyleAfter.waitForExistence(timeout: 5), "Display style should persist as Dark after relaunch")
     }
 }

@@ -69,7 +69,7 @@ struct OnboardingView: View {
         .background(.ultraThinMaterial)
         .task {
             await refreshNotificationStatus()
-            await refreshLocationStatus()
+            refreshLocationStatus()
         }
     }
 

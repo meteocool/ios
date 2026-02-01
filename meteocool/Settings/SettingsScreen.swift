@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsScreen: View {
     @Environment(SettingsStore.self) private var settings
@@ -6,7 +7,7 @@ struct SettingsScreen: View {
 
     var body: some View {
         @Bindable var settings = settings
-        
+
         Form {
             Section(LocalizedStringKey("settings_section_map")) {
                 Toggle(LocalizedStringKey("Two-Finger Map Rotation"), isOn: $settings.mapRotation)
@@ -42,6 +43,50 @@ struct SettingsScreen: View {
                     settings.onboardingCompleted = false
                 }
             }
+
+            Section(LocalizedStringKey("settings_section_about")) {
+                Link(destination: URL(string: "https://github.com/meteocool")!) {
+                    HStack {
+                        Text(LocalizedStringKey("Contribute on GitHub"))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
+
+                Link(destination: URL(string: "https://twitter.com/meteocool_de")!) {
+                    HStack {
+                        Text(LocalizedStringKey("Follow on X"))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
+
+                Button {
+                    openFeedbackEmail()
+                } label: {
+                    HStack {
+                        Text(LocalizedStringKey("Feedback and Support"))
+                        Spacer()
+                        Image(systemName: "envelope")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
+
+                Link(destination: URL(string: "https://meteocool.com/privacy.html")!) {
+                    HStack {
+                        Text(LocalizedStringKey("imprint_privacy"))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
+            }
         }
         .scrollContentBackground(.hidden)
         .background(Color.clear)
@@ -66,5 +111,13 @@ struct SettingsScreen: View {
                 try? await SharedNotificationManager.register()
             }
         }
+    }
+
+    private func openFeedbackEmail() {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        let subject = "iOS App Feedback (\(version))"
+        guard let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "mailto:support@meteocool.com?subject=\(encodedSubject)") else { return }
+        UIApplication.shared.open(url)
     }
 }

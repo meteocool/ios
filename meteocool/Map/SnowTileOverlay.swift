@@ -3,18 +3,19 @@ import MapKit
 import MVTTools
 import UIKit
 
-final class SnowTileOverlay: MKTileOverlay {
+final class SnowTileOverlay: MKTileOverlay, @unchecked Sendable {
     private let renderQueue = DispatchQueue(label: "meteocool.snow.render", qos: .userInitiated)
 
-    override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
+    override func loadTile(at path: MKTileOverlayPath, result: @escaping @Sendable (Data?, Error?) -> Void) {
         let url = self.url(forTilePath: path)
-        URLSession.shared.dataTask(with: url) { data, _, error in
+        let tileSize = self.tileSize
+        URLSession.shared.dataTask(with: url) { [renderQueue] data, _, error in
             guard let data else {
                 result(nil, error)
                 return
             }
-            self.renderQueue.async {
-                let imageData = SnowTileRenderer.render(tileData: data, tileX: path.x, tileY: path.y, zoom: path.z, tileSize: self.tileSize)
+            renderQueue.async {
+                let imageData = SnowTileRenderer.render(tileData: data, tileX: path.x, tileY: path.y, zoom: path.z, tileSize: tileSize)
                 result(imageData, nil)
             }
         }.resume()
