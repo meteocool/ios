@@ -60,7 +60,7 @@ struct TimelineControls: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .modifier(GlassRoundedBackground())
+        .liquidGlass(cornerRadius: 16, material: .thick)
         .padding(.horizontal, 4)
     }
 
@@ -76,16 +76,4 @@ struct TimelineControls: View {
         formatter.timeStyle = .short
         return formatter
     }()
-}
-
-private struct GlassRoundedBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-        } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
-    }
 }

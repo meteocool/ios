@@ -80,8 +80,8 @@ struct MapScreen: View {
                 centerRequest: centerRequest,
                 userTrackingMode: $userTrackingMode
             )
-                .accessibilityIdentifier("MapScreen")
-                .ignoresSafeArea()
+            .accessibilityIdentifier("MapScreen")
+            .ignoresSafeArea()
 
             TopRightSettingsButton(showSettings: $showSettings)
                 .padding(.top, 12)
@@ -137,11 +137,13 @@ struct MapScreen: View {
         }
         .sheet(isPresented: $showLayerSwitcher) {
             LayerSwitcherView()
+                .presentationBackground(.thinMaterial)
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
                 SettingsScreen()
             }
+            .presentationBackground(.thinMaterial)
         }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
@@ -161,9 +163,10 @@ private struct TopRightSettingsButton: View {
             Image(systemName: "gearshape.fill")
                 .font(.title3)
                 .padding(12)
+                .foregroundStyle(.primary)
         }
         .accessibilityIdentifier("OpenSettings")
-        .modifier(GlassCircleBackground())
+        .liquidGlassCircle(material: .thick)
     }
 }
 
@@ -173,62 +176,27 @@ private struct BottomRightMapButtons: View {
     let onLocate: () -> Void
 
     var body: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: 12) {
-                VStack(spacing: 12) {
-                    Button(action: {
-                        userTrackingMode = .follow
-                        onLocate()
-                    }) {
-                        Image(systemName: "location.fill")
-                            .font(.title3)
-                            .padding(12)
-                    }
-                    .accessibilityIdentifier("LocateMe")
-                    .modifier(GlassCircleBackground())
-
-                    Button(action: { showLayerSwitcher = true }) {
-                        Image(systemName: "square.3.layers.3d")
-                            .font(.title2)
-                            .padding(12)
-                    }
-                    .accessibilityIdentifier("LayerSwitcher")
-                    .modifier(GlassCircleBackground())
-                }
+        VStack(spacing: 12) {
+            Button(action: {
+                userTrackingMode = .follow
+                onLocate()
+            }) {
+                Image(systemName: "location.fill")
+                    .font(.title3)
+                    .padding(12)
+                    .foregroundStyle(.primary)
             }
-        } else {
-            VStack(spacing: 12) {
-                Button(action: {
-                    userTrackingMode = .follow
-                    onLocate()
-                }) {
-                    Image(systemName: "location.fill")
-                        .font(.title3)
-                        .padding(12)
-                }
-                .accessibilityIdentifier("LocateMe")
-                .modifier(GlassCircleBackground())
+            .accessibilityIdentifier("LocateMe")
+            .liquidGlassCircle(material: .thick)
 
-                Button(action: { showLayerSwitcher = true }) {
-                    Image(systemName: "square.3.layers.3d")
-                        .font(.title2)
-                        .padding(12)
-                }
-                .accessibilityIdentifier("LayerSwitcher")
-                .modifier(GlassCircleBackground())
+            Button(action: { showLayerSwitcher = true }) {
+                Image(systemName: "square.3.layers.3d")
+                    .font(.title2)
+                    .padding(12)
+                    .foregroundStyle(.primary)
             }
-        }
-    }
-}
-
-private struct GlassCircleBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .glassEffect(.regular.interactive(), in: .circle)
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Circle())
+            .accessibilityIdentifier("LayerSwitcher")
+            .liquidGlassCircle(material: .thick)
         }
     }
 }

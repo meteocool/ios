@@ -66,7 +66,7 @@ struct OnboardingView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(.ultraThinMaterial)
         .task {
             await refreshNotificationStatus()
             await refreshLocationStatus()
@@ -108,7 +108,7 @@ struct OnboardingView: View {
             .disabled(enabled)
         }
         .padding()
-        .modifier(GlassRoundedBackground())
+        .liquidGlass(cornerRadius: 16)
     }
 
     private func requestLocation() {
@@ -135,17 +135,5 @@ struct OnboardingView: View {
     @MainActor
     private func refreshLocationStatus() {
         locationStatus = SharedLocationUpdater.authorizationStatus
-    }
-}
-
-private struct GlassRoundedBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-        } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
     }
 }

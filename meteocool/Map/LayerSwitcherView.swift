@@ -16,30 +16,44 @@ struct LayerSwitcherView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(LocalizedStringKey("settings_section_layers")) {
+                Section {
                     ForEach(PrimaryLayerOption.allCases) { option in
                         Button {
                             select(option)
                         } label: {
                             HStack {
                                 Text(LocalizedStringKey(option.labelKey))
+                                    .foregroundStyle(.primary)
                                 Spacer()
                                 if activeLayer == option {
                                     Image(systemName: "checkmark")
+                                        .foregroundStyle(.blue)
                                 }
                             }
+                            .padding(.vertical, 4)
                         }
                         .accessibilityIdentifier("Layer\(option.rawValue)")
                     }
+                } header: {
+                    Text(LocalizedStringKey("settings_section_layers"))
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.visible)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(.clear)
             .navigationTitle(LocalizedStringKey("settings_section_layers"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "xmark.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                            .font(.title2)
                     }
                     .accessibilityLabel("Close")
                 }
