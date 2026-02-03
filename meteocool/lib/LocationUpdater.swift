@@ -1,23 +1,26 @@
 import UIKit
 import CoreLocation
 
-protocol LocationObserver {
+protocol LocationObserver: AnyObject {
     func notify(location: CLLocation)
 }
 
-@MainActor let SharedLocationUpdater = LocationUpdater()
+@MainActor let SharedLocationUpdater = LocationUpdater(settings: .shared)
 
 // XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
 @MainActor
 class LocationUpdater: NSObject {
     /// location manager instace we're wrapping
     private let locationManager: CLLocationManager = CLLocationManager()
-    /// device identifier (currently unused...)
-    private let deviceID: String = UIDevice.current.identifierForVendor!.uuidString
     /// pressure manager object
     private let pressure: PressureManager = PressureManager()
     /// Location observers (only notified if app is active and a new location update becomes available)
     private var observers = [LocationObserver]()
+
+    private let postRetryDelays: [TimeInterval] = [2, 5, 10]
+    private var postRetryAttempt: Int = 0
+    private var postRetryWorkItem: DispatchWorkItem?
+    private var activePostId: UUID = UUID()
 
     // accurate location updates are/were enabled before suspend
     private var accurateLocationUpdatesEnabled: Bool = false
@@ -33,8 +36,11 @@ class LocationUpdater: NSObject {
     /// populated with the completion handler from the onboarding thing
     var authCompletionHandler: ((Bool, Error?) -> Void)?
 
+    private let settings: SettingsStore
+
     /// constructor
-    override init() {
+    init(settings: SettingsStore = .shared) {
+        self.settings = settings
         super.init()
         locationManager.delegate = self
         NotificationCenter.default.addObserver(self, selector: #selector(LocationUpdater.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
@@ -64,8 +70,6 @@ class LocationUpdater: NSObject {
             NSLog("Location services are not enabled")
         }
     }
-
-    private let settings = SettingsStore()
 
     func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
         authCompletionHandler = completion
@@ -118,13 +122,19 @@ class LocationUpdater: NSObject {
 
     // =============== Observer pattern ===========
     func addObserver(observer: LocationObserver) {
+        if observers.contains(where: { $0 === observer }) {
+            return
+        }
         observers.append(observer)
     }
     
     // executed when the user taps the locate-me button
     func requestLocation(observer: LocationObserver, explicit: Bool) {
+        addObserver(observer: observer)
+        let status = locationManager.authorizationStatus
+
         if (explicit) {
-            switch locationManager.authorizationStatus {
+            switch status {
             case .notDetermined:
                 requestAuthorization({(_,_) in
                     if self.locationManager.authorizationStatus == .authorizedAlways || self.locationManager.authorizationStatus == .authorizedWhenInUse {
@@ -159,11 +169,19 @@ class LocationUpdater: NSObject {
             @unknown default:
                 break
             }
+        } else {
+            switch status {
+            case .authorizedAlways, .authorizedWhenInUse:
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.requestLocation()
+            default:
+                break
+            }
         }
 
         if let location = self.lastReceivedLocation {
             observer.notify(location: location)
-        } else {
+        } else if explicit {
             NSLog("location requested by observer, but none cached!")
         }
     }
@@ -249,9 +267,10 @@ class LocationUpdater: NSObject {
                 self.lastPostedLocation = location
             }
 
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.latitude, forKey: "lat")
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "lon")
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "accuracy")
+            let defaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
+            defaults?.setValue(location.coordinate.latitude, forKey: "lat")
+            defaults?.setValue(location.coordinate.longitude, forKey: "lon")
+            defaults?.setValue(location.horizontalAccuracy, forKey: "accuracy")
 
             // XXX decide if new location is better than the previous one. does apple guarantee this??
             // XXX apparently not
@@ -284,10 +303,19 @@ class LocationUpdater: NSObject {
         }
     }
 
-    func postLocation(location: CLLocation, pressure: Float) {
+    func postLocation(location: CLLocation, pressure: Float, isRetry: Bool = false, postId: UUID? = nil) {
+        let currentPostId: UUID
+        if isRetry, let postId {
+            currentPostId = postId
+        } else {
+            resetPostRetryState()
+            currentPostId = UUID()
+            activePostId = currentPostId
+        }
         let tokenValue = SharedNotificationManager.getToken() ?? "anon"
 
-        let lang = Locale.preferredLanguages[0].split(separator: "-")[0]
+        let preferredLanguage = Locale.preferredLanguages.first ?? "en"
+        let lang = preferredLanguage.split(separator: "-").first.map(String.init) ?? preferredLanguage
         /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
             lang = bundle_lang
         }*/
@@ -314,11 +342,15 @@ class LocationUpdater: NSObject {
             ] as [String: Any]
 
         guard let request = NetworkHelper.createJSONPostRequest(dst: "post_location", dictionary: locationDict) else {
+            schedulePostLocationRetry(location: location, pressure: pressure, postId: currentPostId)
             return
         }
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                Task { @MainActor in
+                    self.schedulePostLocationRetry(location: location, pressure: pressure, postId: currentPostId)
+                }
                 return
             }
 
@@ -327,12 +359,43 @@ class LocationUpdater: NSObject {
                     NSLog("ERROR: \(errorMessage)")
                 }
             }
+            Task { @MainActor in
+                guard self.activePostId == currentPostId else { return }
+                self.resetPostRetryState()
+            }
         }
         task.resume()
     }
     
     func getCurrentLocation() -> CLLocation?{
         return SharedLocationUpdater.locationManager.location ?? nil
+    }
+
+    private func schedulePostLocationRetry(location: CLLocation, pressure: Float, postId: UUID) {
+        guard activePostId == postId else { return }
+        guard postRetryAttempt < postRetryDelays.count else {
+            resetPostRetryState()
+            return
+        }
+
+        let baseDelay = postRetryDelays[postRetryAttempt]
+        postRetryAttempt += 1
+        let jitter = Double.random(in: -0.3...0.3)
+        let delay = max(0, baseDelay + jitter)
+
+        postRetryWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.activePostId == postId else { return }
+            self.postLocation(location: location, pressure: pressure, isRetry: true, postId: postId)
+        }
+        postRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func resetPostRetryState() {
+        postRetryWorkItem?.cancel()
+        postRetryWorkItem = nil
+        postRetryAttempt = 0
     }
 }
 

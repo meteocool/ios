@@ -42,13 +42,16 @@ extension UNNotificationAttachment {
     static func saveImageToDisk(fileIdentifier: String, data: NSData, options: [NSObject: AnyObject]?) -> UNNotificationAttachment? {
         let fileManager = FileManager.default
         let folderName = ProcessInfo.processInfo.globallyUniqueString
-        let folderURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(folderName, isDirectory: true)
+        guard let folderURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(folderName, isDirectory: true) else {
+            NSLog("Failed to create temp folder URL for notification attachment")
+            return nil
+        }
 
         do {
-            try fileManager.createDirectory(at: folderURL!, withIntermediateDirectories: true, attributes: nil)
-            let fileURL = folderURL?.appendingPathComponent(fileIdentifier)
-            try data.write(to: fileURL!, options: [])
-            let attachment = try UNNotificationAttachment(identifier: fileIdentifier, url: fileURL!, options: options)
+            try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
+            let fileURL = folderURL.appendingPathComponent(fileIdentifier)
+            try data.write(to: fileURL, options: [])
+            let attachment = try UNNotificationAttachment(identifier: fileIdentifier, url: fileURL, options: options)
             return attachment
         } catch let error {
             NSLog("Error \(error)")

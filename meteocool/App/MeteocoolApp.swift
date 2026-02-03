@@ -4,7 +4,7 @@ import SwiftUI
 struct MeteocoolApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState = AppState()
-    @State private var settings = SettingsStore()
+    @State private var settings = SettingsStore.shared
 
     var body: some Scene {
         WindowGroup {

@@ -17,6 +17,7 @@ struct MapScreen: View {
     @State private var centerRequest: MapCenterRequest?
     @State private var locationObserver = LocationObserverBox()
     @State private var showOnboarding: Bool = false
+    @State private var didAutoZoom: Bool = false
 
     private var timestamps: [TimeInterval] {
         guard let frames = radarStore.timeseries?.frames else { return [] }
@@ -134,6 +135,10 @@ struct MapScreen: View {
                 centerRequest = MapCenterRequest(id: UUID(), coordinate: location.coordinate, meters: 1500)
             }
             showOnboarding = !settings.onboardingCompleted
+            if settings.autoZoom, !didAutoZoom {
+                didAutoZoom = true
+                SharedLocationUpdater.requestLocation(observer: locationObserver, explicit: false)
+            }
         }
         .sheet(isPresented: $showLayerSwitcher) {
             LayerSwitcherView()

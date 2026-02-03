@@ -11,7 +11,13 @@ class NetworkHelper {
     }
 
     static func createJSONPostRequest(dst: String, dictionary: [String: Any]) -> URLRequest? {
-        let json = try! JSONSerialization.data(withJSONObject: dictionary)
+        let json: Data
+        do {
+            json = try JSONSerialization.data(withJSONObject: dictionary)
+        } catch {
+            NSLog("ERROR: Failed to serialize JSON for \(dst): \(error)")
+            return nil
+        }
         if let jsonString = String(data: json, encoding: .utf8), debug {
             NSLog("POST: /\(String(describing: dst)) <- \(jsonString)")
         }

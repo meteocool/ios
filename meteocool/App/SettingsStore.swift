@@ -3,6 +3,8 @@ import Observation
 
 @Observable
 final class SettingsStore {
+    static let shared = SettingsStore()
+
     struct Keys {
         static let suite = "group.org.frcy.app.meteocool"
 

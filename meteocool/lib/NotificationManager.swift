@@ -6,9 +6,10 @@ import UserNotifications
 @MainActor
 class NotificationManager: NSObject {
     private var pushToken: String?
-    private let settings = SettingsStore()
+    private let settings: SettingsStore
 
-    override init() {
+    init(settings: SettingsStore = .shared) {
+        self.settings = settings
         super.init()
         if settings.notificationsEnabled {
             self.registerForPushNotifications({_,_ in return})
