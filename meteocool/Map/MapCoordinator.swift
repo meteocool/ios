@@ -185,7 +185,8 @@ final class MapCoordinator: NSObject, MKMapViewDelegate {
 }
 
 final class MeteocoolTileOverlay: MKTileOverlay {
-    private static var didLogInvalidTemplate = false
+    private static var loggedInvalidTemplates: Set<String> = []
+    private static let invalidTemplateLogQueue = DispatchQueue(label: "MeteocoolTileOverlay.invalidTemplateLogQueue")
 
     override func url(forTilePath path: MKTileOverlayPath) -> URL {
         let flippedY = (1 << path.z) - 1 - path.y
@@ -197,9 +198,19 @@ final class MeteocoolTileOverlay: MKTileOverlay {
         if let url = URL(string: urlString), !urlString.isEmpty {
             return url
         }
-        if !Self.didLogInvalidTemplate {
-            Self.didLogInvalidTemplate = true
-            NSLog("Invalid tile URL template: \(String(describing: urlTemplate))")
+        let template = urlTemplate ?? "<nil>"
+        let shouldLog: Bool = {
+            var result = false
+            Self.invalidTemplateLogQueue.sync {
+                if !Self.loggedInvalidTemplates.contains(template) {
+                    Self.loggedInvalidTemplates.insert(template)
+                    result = true
+                }
+            }
+            return result
+        }()
+        if shouldLog {
+            NSLog("Invalid tile URL template: \(template)")
         }
         return URL(string: "about:blank")!
     }

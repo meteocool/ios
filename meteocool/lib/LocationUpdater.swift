@@ -143,7 +143,7 @@ class LocationUpdater: NSObject {
                 }, notDetermined: true)
             case .denied, .restricted:
                 let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_general",comment: "Alerts"), preferredStyle: .alert)
-                alertController.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings",comment: "Alerts"), style: .default, handler: {_ in
+                alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: .default, handler: {_ in
                     if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                         UIApplication.shared.open(url, options: [:], completionHandler: nil)
                     }
@@ -385,8 +385,10 @@ class LocationUpdater: NSObject {
 
         postRetryWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
-            guard let self, self.activePostId == postId else { return }
-            self.postLocation(location: location, pressure: pressure, isRetry: true, postId: postId)
+            Task { @MainActor in
+                guard let self, self.activePostId == postId else { return }
+                self.postLocation(location: location, pressure: pressure, isRetry: true, postId: postId)
+            }
         }
         postRetryWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
