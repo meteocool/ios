@@ -15,9 +15,7 @@ struct MeteocoolApp: App {
                     DisplayStyle.applyToAllWindows(settings.displayStyle)
                 }
                 .onChange(of: settings.displayStyle) { _, newValue in
-                    Task { @MainActor in
-                        DisplayStyle.applyToAllWindows(newValue)
-                    }
+                    DisplayStyle.applyToAllWindows(newValue)
                 }
         }
     }

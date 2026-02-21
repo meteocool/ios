@@ -67,13 +67,6 @@ struct TimelineControls: View {
     private var timeLabel: String? {
         guard let ts = selectedTimestamp else { return nil }
         let date = Date(timeIntervalSince1970: ts)
-        return TimelineControls.timeFormatter.string(from: date)
+        return date.formatted(date: .omitted, time: .shortened)
     }
-
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter
-    }()
 }

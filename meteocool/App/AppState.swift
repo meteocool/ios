@@ -1,5 +1,6 @@
 import Observation
 
+@MainActor
 @Observable
 final class AppState {
     enum Capability: String, CaseIterable, Identifiable {

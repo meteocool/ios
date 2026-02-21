@@ -37,7 +37,8 @@ final class MapCoordinator: NSObject, MKMapViewDelegate {
             overlay.canReplaceMapContent = false
             overlay.tileSize = config.tileSize
             overlay.minimumZ = config.minimumZ
-            overlay.maximumZ = config.maximumZ
+            overlay.serverMaximumZ = config.maximumZ
+            overlay.maximumZ = 18
             radarOverlay = overlay
             radarConfig = config
             mapView.addOverlay(overlay, level: .aboveLabels)
@@ -185,8 +186,11 @@ final class MapCoordinator: NSObject, MKMapViewDelegate {
 }
 
 final class MeteocoolTileOverlay: MKTileOverlay {
-    private static var loggedInvalidTemplates: Set<String> = []
+    nonisolated(unsafe) private static var loggedInvalidTemplates: Set<String> = []
     private static let invalidTemplateLogQueue = DispatchQueue(label: "MeteocoolTileOverlay.invalidTemplateLogQueue")
+
+    /// Maximum zoom level available from the tile server. Tiles beyond this are overzoomed.
+    var serverMaximumZ: Int = 8
 
     override func url(forTilePath path: MKTileOverlayPath) -> URL {
         let flippedY = (1 << path.z) - 1 - path.y
@@ -213,6 +217,49 @@ final class MeteocoolTileOverlay: MKTileOverlay {
             NSLog("Invalid tile URL template: \(template)")
         }
         return URL(string: "about:blank")!
+    }
+
+    override func loadTile(at path: MKTileOverlayPath, result: @escaping @Sendable (Data?, Error?) -> Void) {
+        guard path.z > serverMaximumZ else {
+            super.loadTile(at: path, result: result)
+            return
+        }
+
+        // Overzoom: compute the parent tile at serverMaximumZ and crop the relevant quadrant
+        let diff = path.z - serverMaximumZ
+        var parentPath = path
+        parentPath.z = serverMaximumZ
+        parentPath.x = path.x >> diff
+        parentPath.y = path.y >> diff
+
+        let tileSize = self.tileSize
+        super.loadTile(at: parentPath) { data, error in
+            guard let data, error == nil,
+                  let image = UIImage(data: data),
+                  let cgImage = image.cgImage else {
+                result(data, error)
+                return
+            }
+
+            let scale = 1 << diff
+            let subWidth = CGFloat(cgImage.width) / CGFloat(scale)
+            let subHeight = CGFloat(cgImage.height) / CGFloat(scale)
+            let offsetX = CGFloat(path.x - (parentPath.x << diff)) * subWidth
+            let offsetY = CGFloat(path.y - (parentPath.y << diff)) * subHeight
+            let cropRect = CGRect(x: offsetX, y: offsetY, width: subWidth, height: subHeight)
+
+            guard let cropped = cgImage.cropping(to: cropRect) else {
+                result(data, nil)
+                return
+            }
+
+            // Upscale the cropped portion to fill the tile
+            let renderer = UIGraphicsImageRenderer(size: tileSize)
+            let upscaled = renderer.pngData { ctx in
+                UIImage(cgImage: cropped).draw(in: CGRect(origin: .zero, size: tileSize))
+            }
+            result(upscaled, nil)
+        }
     }
 }
 

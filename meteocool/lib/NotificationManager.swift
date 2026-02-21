@@ -50,11 +50,7 @@ class NotificationManager: NSObject {
     }
 
     func clearNotifications() {
-        if #available(iOS 17.0, *) {
-            UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
-        } else {
-            UIApplication.shared.applicationIconBadgeNumber = 0
-        }
+        UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
