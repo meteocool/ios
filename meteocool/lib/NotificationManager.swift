@@ -53,6 +53,26 @@ class NotificationManager: NSObject {
         }
     }
 
+    func unregisterFromBackend() {
+        guard let token = getToken() else {
+            NSLog("Would unregister, but no token")
+            return
+        }
+        guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token]) else {
+            NSLog("Would unregister, but request creation failed")
+            return
+        }
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
+                return
+            }
+            if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String: Any]??),
+               let errorMessage = json?["error"] as? String {
+                NSLog("ERROR: \(errorMessage)")
+            }
+        }.resume()
+    }
+
     func clearNotifications() {
         UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()

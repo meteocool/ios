@@ -134,7 +134,10 @@ struct SettingsScreen: View {
         }
         .onChange(of: settings.notificationsEnabled) { _, newValue in
             guard !isSyncingPermission else { return }
-            guard newValue else { return }
+            guard newValue else {
+                SharedNotificationManager.unregisterFromBackend()
+                return
+            }
             Task {
                 let authorized = await SharedNotificationManager.checkAuthorizationStatus()
                 if authorized {
