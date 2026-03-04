@@ -39,6 +39,8 @@
 	<string>You asked to be notified ahead of rain at your current location. Choose "Always Allow" if you want notifications to work.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>You asked to be notified ahead of rain at your current location. Choose "Always Allow" if you want notifications to work.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Used to read barometric pressure for more accurate weather notifications.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Display your location on the weather map.</string>
 	<key>UIBackgroundModes</key>

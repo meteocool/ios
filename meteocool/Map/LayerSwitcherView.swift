@@ -55,7 +55,7 @@ struct LayerSwitcherView: View {
                             .foregroundStyle(.secondary)
                             .font(.title2)
                     }
-                    .accessibilityLabel("Close")
+                    .accessibilityLabel(LocalizedStringKey("Close"))
                 }
             }
         }

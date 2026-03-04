@@ -71,6 +71,11 @@ class LocationUpdater: NSObject {
         }
     }
 
+    var isAuthorized: Bool {
+        let status = locationManager.authorizationStatus
+        return status == .authorizedAlways || status == .authorizedWhenInUse
+    }
+
     func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
         authCompletionHandler = completion
         if settings.notificationsEnabled {
@@ -78,46 +83,29 @@ class LocationUpdater: NSObject {
         } else {
             locationManager.requestWhenInUseAuthorization()
         }
-        if (!notDetermined) {
-            // XXX this crap needs to go into the completion handler by the ONLY caller that ever sets this awfully named
-            // second parameter to false. WTF WAS I THINKING
-            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1), execute: {
-                print("completing lost completion handler")
-                if let authCompletionHandler = self.authCompletionHandler {
-                    authCompletionHandler(true, nil)
-                }
-                self.authCompletionHandler = nil
-            })
-        }
     }
 
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
         if let authCompletionHandler = authCompletionHandler {
             switch status {
             case .notDetermined:
-                if settings.notificationsEnabled {
-                    locationManager.requestAlwaysAuthorization()
-                } else {
-                    locationManager.requestWhenInUseAuthorization()
-                }
-                break
+                // Still waiting for user decision, don't call completion yet
+                return
             case .authorizedWhenInUse:
                 locationManager.startUpdatingLocation()
-                break
+                authCompletionHandler(true, nil)
             case .authorizedAlways:
                 locationManager.startUpdatingLocation()
-                SharedNotificationManager.registerForPushNotifications({(_,_) in })
-                break
-            case .restricted:
-                break
-            case .denied:
-                break
-            default:
-                break
+                startSignificantChangeLocationUpdates()
+                authCompletionHandler(true, nil)
+            case .restricted, .denied:
+                authCompletionHandler(false, nil)
+            @unknown default:
+                authCompletionHandler(false, nil)
             }
-            authCompletionHandler(true, nil)
+            self.authCompletionHandler = nil
         }
-        authCompletionHandler = nil
     }
 
     // =============== Observer pattern ===========
@@ -127,7 +115,7 @@ class LocationUpdater: NSObject {
         }
         observers.append(observer)
     }
-    
+
     // executed when the user taps the locate-me button
     func requestLocation(observer: LocationObserver, explicit: Bool) {
         addObserver(observer: observer)
@@ -191,8 +179,10 @@ class LocationUpdater: NSObject {
         if (accurateLocationUpdatesEnabled) {
             self.locationManager.stopUpdatingLocation()
         }
-        locationManager.desiredAccuracy = backgroundAccuracy
-        startSignificantChangeLocationUpdates()
+        if isAuthorized {
+            locationManager.desiredAccuracy = backgroundAccuracy
+            startSignificantChangeLocationUpdates()
+        }
     }
 
     @objc func willEnterForeground() {
@@ -203,6 +193,10 @@ class LocationUpdater: NSObject {
 
     // setters to change between various location modes
     func startSignificantChangeLocationUpdates() {
+        guard locationManager.authorizationStatus == .authorizedAlways else {
+            NSLog("Location: skipping background updates (not authorizedAlways)")
+            return
+        }
         self.locationManager.allowsBackgroundLocationUpdates = true
         self.locationManager.startMonitoringSignificantLocationChanges()
     }
@@ -319,7 +313,7 @@ class LocationUpdater: NSObject {
         /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
             lang = bundle_lang
         }*/
-        
+
         let intensityDbzValues = [14,20,26,36,41]
 
         let locationDict = [
@@ -366,9 +360,9 @@ class LocationUpdater: NSObject {
         }
         task.resume()
     }
-    
-    func getCurrentLocation() -> CLLocation?{
-        return SharedLocationUpdater.locationManager.location ?? nil
+
+    func getCurrentLocation() -> CLLocation? {
+        return locationManager.location
     }
 
     private func schedulePostLocationRetry(location: CLLocation, pressure: Float, postId: UUID) {

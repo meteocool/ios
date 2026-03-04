@@ -93,6 +93,9 @@ struct MapScreen: View {
                 HStack {
                     Spacer()
                     BottomRightMapButtons(showLayerSwitcher: $showLayerSwitcher, userTrackingMode: $userTrackingMode) {
+                        locationObserver.onUpdate = { [self] location in
+                            centerRequest = MapCenterRequest(id: UUID(), coordinate: location.coordinate, meters: 1500)
+                        }
                         SharedLocationUpdater.requestLocation(observer: locationObserver, explicit: true)
                     }
                 }
@@ -131,12 +134,12 @@ struct MapScreen: View {
             try? await precipTypesStore.refresh()
         }
         .onAppear {
-            locationObserver.onUpdate = { location in
-                centerRequest = MapCenterRequest(id: UUID(), coordinate: location.coordinate, meters: 1500)
-            }
             showOnboarding = !settings.onboardingCompleted
             if settings.autoZoom, !didAutoZoom {
                 didAutoZoom = true
+                locationObserver.onUpdate = { location in
+                    centerRequest = MapCenterRequest(id: UUID(), coordinate: location.coordinate, meters: 1500)
+                }
                 SharedLocationUpdater.requestLocation(observer: locationObserver, explicit: false)
             }
         }
@@ -211,5 +214,8 @@ private final class LocationObserverBox: LocationObserver {
 
     func notify(location: CLLocation) {
         onUpdate?(location)
+        // One-shot: stop re-centering after the first fix.
+        // The locate-me button re-arms this each time.
+        onUpdate = nil
     }
 }

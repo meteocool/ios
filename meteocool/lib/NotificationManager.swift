@@ -18,13 +18,15 @@ class NotificationManager: NSObject {
 
     func registerForPushNotifications(_ completion: @escaping @Sendable (_ success: Bool, _ error: Error?) -> Void) {
         let center = UNUserNotificationCenter.current()
-        center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) {
             (granted, _) in
             NSLog("Permission granted: \(granted)")
             // XXX just forward granted to the other completionhandler?
             guard granted else {
                 print("Falsifying completion handler")
+                Task { @MainActor in
+                    self.settings.notificationsEnabled = false
+                }
                 completion(false, nil)
                 return
             }
@@ -46,6 +48,8 @@ class NotificationManager: NSObject {
         if granted {
             settings.notificationsEnabled = true
             UIApplication.shared.registerForRemoteNotifications()
+        } else {
+            settings.notificationsEnabled = false
         }
     }
 
@@ -69,7 +73,20 @@ class NotificationManager: NSObject {
         }
         return self.pushToken
     }
-}
+    /// Check actual OS notification authorization status
+    func checkAuthorizationStatus() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional:
+            return true
+        default:
+            return false
+        }
+    }
 
-@MainActor
-extension NotificationManager: UNUserNotificationCenterDelegate {}
+    /// Sync the `notificationsEnabled` setting with actual OS permission state
+    func syncWithSystemPermission() async {
+        let authorized = await checkAuthorizationStatus()
+        self.settings.notificationsEnabled = authorized
+    }
+}

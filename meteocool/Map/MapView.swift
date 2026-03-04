@@ -29,6 +29,10 @@ struct MapView: UIViewRepresentable {
         MapCoordinator()
     }
 
+    static func dismantleUIView(_ uiView: MKMapView, coordinator: MapCoordinator) {
+        coordinator.onTrackingModeChange = nil
+    }
+
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
         mapView.delegate = context.coordinator
@@ -51,6 +55,10 @@ struct MapView: UIViewRepresentable {
         mapView.isPitchEnabled = true
         if mapView.userTrackingMode != userTrackingMode {
             mapView.setUserTrackingMode(userTrackingMode, animated: true)
+        }
+        // Re-set on every update so the closure captures a fresh binding reference
+        context.coordinator.onTrackingModeChange = { [self] mode in
+            userTrackingMode = mode
         }
         context.coordinator.setBaseLayer(baseLayer)
         context.coordinator.setRadarOverlay(config: primaryOverlay)

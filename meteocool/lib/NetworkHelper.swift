@@ -5,7 +5,11 @@ class NetworkHelper {
     static let debug: Bool = true
 
     static func createRequest(dst: String, method: String) -> URLRequest? {
-        var request = URLRequest(url: URL(string: dst, relativeTo: apiURL)!)
+        guard let url = URL(string: dst, relativeTo: apiURL) else {
+            NSLog("ERROR: Invalid URL for destination: \(dst)")
+            return nil
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         return request
     }

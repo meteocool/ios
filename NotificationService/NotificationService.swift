@@ -4,36 +4,45 @@ class NotificationService: UNNotificationServiceExtension {
 
     var contentHandler: ((UNNotificationContent) -> Void)?
     var bestAttemptContent: UNMutableNotificationContent?
+    private let handlerLock = NSLock()
+    private var didDeliverContent = false
+
+    private func deliverOnce(_ content: UNNotificationContent) {
+        handlerLock.lock()
+        defer { handlerLock.unlock() }
+        guard !didDeliverContent else { return }
+        didDeliverContent = true
+        contentHandler?(content)
+        contentHandler = nil
+    }
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         self.contentHandler = contentHandler
+        didDeliverContent = false
         bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
         guard let bestAttemptContent = bestAttemptContent else {
+            deliverOnce(request.content)
             return
         }
         guard let urlString = request.content.userInfo["preview"] as? String,
             let url = URL(string: urlString) else {
-                contentHandler(bestAttemptContent)
+                deliverOnce(bestAttemptContent)
                 return
         }
-        guard let imageData = NSData(contentsOf: url) else {
-            contentHandler(bestAttemptContent)
-            return
-        }
-        guard let attachment = UNNotificationAttachment.saveImageToDisk(fileIdentifier: "image.png", data: imageData, options: nil) else {
-            contentHandler(bestAttemptContent)
-            return
-        }
-
-        bestAttemptContent.attachments = [ attachment ]
-        contentHandler(bestAttemptContent)
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            if let data = data as NSData?,
+               let attachment = UNNotificationAttachment.saveImageToDisk(fileIdentifier: "image.png", data: data, options: nil) {
+                bestAttemptContent.attachments = [attachment]
+            }
+            self.deliverOnce(bestAttemptContent)
+        }.resume()
     }
 
     override func serviceExtensionTimeWillExpire() {
         // Called just before the extension will be terminated by the system.
         // Use this as an opportunity to deliver your "best attempt" at modified content, otherwise the original push payload will be used.
-        if let contentHandler = contentHandler, let bestAttemptContent =  bestAttemptContent {
-            contentHandler(bestAttemptContent)
+        if let bestAttemptContent = bestAttemptContent {
+            deliverOnce(bestAttemptContent)
         }
     }
 }

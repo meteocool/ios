@@ -1,9 +1,12 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 struct SettingsScreen: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(\.dismiss) private var dismiss
+    @State private var showPermissionDeniedAlert = false
+    @State private var isSyncingPermission = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -34,7 +37,25 @@ struct SettingsScreen: View {
                 Toggle(LocalizedStringKey("Enable Notifications"), isOn: $settings.notificationsEnabled)
                 Toggle(LocalizedStringKey("Show Meteorological Details"), isOn: $settings.notificationShowDbz)
                 Stepper("\(NSLocalizedString("Intensity Threshold", comment: "")): \(settings.notificationIntensity)", value: $settings.notificationIntensity, in: 0...4)
-                Stepper("\(NSLocalizedString("Notification Timeframe", comment: "")): \(settings.notificationTimeBefore + 1) x 5 min", value: $settings.notificationTimeBefore, in: 0...6)
+                VStack(alignment: .leading) {
+                    Text("\(NSLocalizedString("Notification Timeframe", comment: "")): \((settings.notificationTimeBefore + 1) * 5) min")
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.notificationTimeBefore) },
+                            set: { settings.notificationTimeBefore = Int($0.rounded()) }
+                        ),
+                        in: 0...8,
+                        step: 1
+                    ) {
+                        Text(LocalizedStringKey("Notification Timeframe"))
+                    } minimumValueLabel: {
+                        Text("5")
+                            .font(.caption)
+                    } maximumValueLabel: {
+                        Text("45")
+                            .font(.caption)
+                    }
+                }
             }
 
             Section(LocalizedStringKey("settings_section_advanced")) {
@@ -102,14 +123,49 @@ struct SettingsScreen: View {
                         .foregroundStyle(.secondary)
                         .font(.title2)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(LocalizedStringKey("Close"))
             }
         }
+        .task {
+            // Sync notification toggle with actual OS permission state on appear
+            isSyncingPermission = true
+            await SharedNotificationManager.syncWithSystemPermission()
+            isSyncingPermission = false
+        }
         .onChange(of: settings.notificationsEnabled) { _, newValue in
+            guard !isSyncingPermission else { return }
             guard newValue else { return }
             Task {
-                try? await SharedNotificationManager.register()
+                let authorized = await SharedNotificationManager.checkAuthorizationStatus()
+                if authorized {
+                    // Already authorized, just register for push
+                    UIApplication.shared.registerForRemoteNotifications()
+                } else {
+                    // Not yet authorized — check if we can still request
+                    let center = UNUserNotificationCenter.current()
+                    let currentSettings = await center.notificationSettings()
+                    if currentSettings.authorizationStatus == .notDetermined {
+                        // First time: request permission
+                        try? await SharedNotificationManager.register()
+                    } else {
+                        // Denied: guide user to Settings.app
+                        isSyncingPermission = true
+                        settings.notificationsEnabled = false
+                        isSyncingPermission = false
+                        showPermissionDeniedAlert = true
+                    }
+                }
             }
+        }
+        .alert(LocalizedStringKey("notifications_disabled"), isPresented: $showPermissionDeniedAlert) {
+            Button(LocalizedStringKey("Change in Settings")) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button(LocalizedStringKey("Dismiss"), role: .cancel) {}
+        } message: {
+            Text(LocalizedStringKey("notification_permission_denied_message"))
         }
     }
 

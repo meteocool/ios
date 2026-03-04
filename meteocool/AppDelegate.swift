@@ -1,6 +1,5 @@
 import UIKit
 import UserNotifications
-import CoreMotion
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -8,6 +7,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         return true
     }
 

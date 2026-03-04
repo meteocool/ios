@@ -14,8 +14,15 @@ final class MapCoordinator: NSObject, MKMapViewDelegate {
     private let lightningColors: [UIColor] = LightningAnnotation.colors
     private var lastCenterRequestId: UUID?
 
+    /// Called when MKMapView changes tracking mode (e.g. user pans → .none)
+    var onTrackingModeChange: ((MKUserTrackingMode) -> Void)?
+
     func attach(_ mapView: MKMapView) {
         self.mapView = mapView
+    }
+
+    func mapView(_ mapView: MKMapView, didChange mode: MKUserTrackingMode, animated: Bool) {
+        onTrackingModeChange?(mode)
     }
 
     func setRadarOverlay(config: TileOverlayConfig?) {
@@ -233,7 +240,8 @@ final class MeteocoolTileOverlay: MKTileOverlay {
         parentPath.y = path.y >> diff
 
         let tileSize = self.tileSize
-        super.loadTile(at: parentPath) { data, error in
+        let capturedParentPath = parentPath
+        super.loadTile(at: capturedParentPath) { data, error in
             guard let data, error == nil,
                   let image = UIImage(data: data),
                   let cgImage = image.cgImage else {
@@ -244,8 +252,8 @@ final class MeteocoolTileOverlay: MKTileOverlay {
             let scale = 1 << diff
             let subWidth = CGFloat(cgImage.width) / CGFloat(scale)
             let subHeight = CGFloat(cgImage.height) / CGFloat(scale)
-            let offsetX = CGFloat(path.x - (parentPath.x << diff)) * subWidth
-            let offsetY = CGFloat(path.y - (parentPath.y << diff)) * subHeight
+            let offsetX = CGFloat(path.x - (capturedParentPath.x << diff)) * subWidth
+            let offsetY = CGFloat(path.y - (capturedParentPath.y << diff)) * subHeight
             let cropRect = CGRect(x: offsetX, y: offsetY, width: subWidth, height: subHeight)
 
             guard let cropped = cgImage.cropping(to: cropRect) else {
