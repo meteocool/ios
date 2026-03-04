@@ -143,6 +143,7 @@ struct SettingsScreen: View {
                 if authorized {
                     // Already authorized, just register for push
                     UIApplication.shared.registerForRemoteNotifications()
+                    SharedLocationUpdater.syncNotificationRegistrationNow()
                 } else {
                     // Not yet authorized — check if we can still request
                     let center = UNUserNotificationCenter.current()
@@ -150,6 +151,9 @@ struct SettingsScreen: View {
                     if currentSettings.authorizationStatus == .notDetermined {
                         // First time: request permission
                         try? await SharedNotificationManager.register()
+                        if settings.notificationsEnabled {
+                            SharedLocationUpdater.syncNotificationRegistrationNow()
+                        }
                     } else {
                         // Denied: guide user to Settings.app
                         isSyncingPermission = true

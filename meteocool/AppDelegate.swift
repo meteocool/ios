@@ -89,6 +89,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         }.joined()
         NSLog("Device Token: \(token)")
         SharedNotificationManager.setToken(token: token)
+        Task { @MainActor in
+            SharedLocationUpdater.syncNotificationRegistrationNow()
+        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

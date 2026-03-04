@@ -29,6 +29,8 @@ class LocationUpdater: NSObject {
     private var lastPostedLocation: CLLocation?
     // the last received location (might not have been reported to the backend)
     private var lastReceivedLocation: CLLocation?
+    // Forces a one-off backend registration sync on the next location fix.
+    private var pendingForcedSyncPost: Bool = false
 
     /// default accuracy for monitoring significant location changes
     private let backgroundAccuracy = kCLLocationAccuracyKilometer
@@ -254,7 +256,11 @@ class LocationUpdater: NSObject {
         }
 
         if let location = locations.last {
-            if (background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
+            let forcePost = pendingForcedSyncPost
+            if forcePost {
+                pendingForcedSyncPost = false
+            }
+            if (forcePost || background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
                 // take pressure measurement and send json request
                 pressure.getPressure(completion: {
                     pressure in self.postLocationDeferred(location: location, pressure: pressure)  })
@@ -363,6 +369,22 @@ class LocationUpdater: NSObject {
 
     func getCurrentLocation() -> CLLocation? {
         return locationManager.location
+    }
+
+    func syncNotificationRegistrationNow() {
+        if let location = lastReceivedLocation ?? locationManager.location {
+            postLocation(location: location, pressure: -1)
+            return
+        }
+
+        switch locationManager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            pendingForcedSyncPost = true
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            locationManager.requestLocation()
+        default:
+            NSLog("Skipping immediate backend sync: location permission not granted")
+        }
     }
 
     private func schedulePostLocationRetry(location: CLLocation, pressure: Float, postId: UUID) {
