@@ -133,6 +133,8 @@
 "notifications_disabled" = "Notifications Disabled";
 "notifications_disabled_text" = "If you change your mind, you can re-enable rain and snow notifications in the app's ⚙️ Settings on the top-right.";
 "notification_permission_denied_message" = "Notification permission is denied. Enable notifications for meteocool in iOS Settings to receive alerts again.";
+"motion_permission_required" = "Motion & Fitness Permission Required";
+"motion_permission_denied_message" = "Motion & Fitness permission is denied. Enable Motion & Fitness for meteocool in iOS Settings to share pressure sensor data.";
 "experimental_features_require_restart" = "Changes to this setting will only become active after restarting the meteocool App.\n\nPlease note that this setting is intended for development and might cause unexpected behaviour. 🐛";
 "experimental_features" = "Experimental Features";
 "Open" = "Open";
@@ -144,6 +146,7 @@
 "settings_section_map" = "Map";
 "settings_section_layers" = "Layers";
 "settings_section_notifications" = "Notifications";
+"settings_motion_sharing" = "Share Pressure Sensor Data";
 "settings_section_advanced" = "Advanced";
 "base_layer_standard" = "Standard";
 "base_layer_cyclosm" = "CyclOSM";

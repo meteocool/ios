@@ -103,10 +103,4 @@ class NotificationManager: NSObject {
             return false
         }
     }
-
-    /// Sync the `notificationsEnabled` setting with actual OS permission state
-    func syncWithSystemPermission() async {
-        let authorized = await checkAuthorizationStatus()
-        self.settings.notificationsEnabled = authorized
-    }
 }

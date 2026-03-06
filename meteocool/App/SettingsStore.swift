@@ -16,6 +16,7 @@ final class SettingsStore {
         static let layerMesocyclones = "layerMesocyclones"
         static let layerSnow = "layerSnow"
         static let notificationsEnabled = "notificationsEnabled"
+        static let motionSharingEnabled = "motionSharingEnabled"
         static let notificationShowDbz = "notificationShowDbz"
         static let notificationIntensity = "notificationIntensity"
         static let notificationTimeBefore = "notificationTimeBefore"
@@ -64,6 +65,9 @@ final class SettingsStore {
     var notificationsEnabled: Bool = false {
         didSet { userDefaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled) }
     }
+    var motionSharingEnabled: Bool = false {
+        didSet { userDefaults.set(motionSharingEnabled, forKey: Keys.motionSharingEnabled) }
+    }
     var notificationShowDbz: Bool = false {
         didSet { userDefaults.set(notificationShowDbz, forKey: Keys.notificationShowDbz) }
     }
@@ -97,6 +101,7 @@ final class SettingsStore {
         layerMesocyclones = userDefaults.bool(forKey: Keys.layerMesocyclones)
         layerSnow = userDefaults.bool(forKey: Keys.layerSnow)
         notificationsEnabled = userDefaults.bool(forKey: Keys.notificationsEnabled)
+        motionSharingEnabled = userDefaults.bool(forKey: Keys.motionSharingEnabled)
         notificationShowDbz = userDefaults.bool(forKey: Keys.notificationShowDbz)
         notificationIntensity = userDefaults.integer(forKey: Keys.notificationIntensity)
         notificationTimeBefore = userDefaults.integer(forKey: Keys.notificationTimeBefore)
@@ -120,6 +125,7 @@ final class SettingsStore {
         if userDefaults.object(forKey: Keys.notificationsEnabled) == nil,
            userDefaults.object(forKey: Keys.legacyPushNotification) == nil,
            userDefaults.object(forKey: Keys.legacyPushEnabled) == nil { userDefaults.set(false, forKey: Keys.notificationsEnabled) }
+        if userDefaults.object(forKey: Keys.motionSharingEnabled) == nil { userDefaults.set(false, forKey: Keys.motionSharingEnabled) }
         if userDefaults.object(forKey: Keys.notificationShowDbz) == nil,
            userDefaults.object(forKey: Keys.legacyWithDbz) == nil { userDefaults.set(false, forKey: Keys.notificationShowDbz) }
         if userDefaults.object(forKey: Keys.notificationIntensity) == nil,

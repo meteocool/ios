@@ -137,6 +137,8 @@
 "notifications_disabled" = "Benachrichtigungen deaktiviert";
 "notifications_disabled_text" = "Wenn Du es Dir anders überlegst, kannst Du Benachrichtigungen im ⚙️ Einstellungsmenü rechts oben wieder aktivieren.";
 "notification_permission_denied_message" = "Die Benachrichtigungsberechtigung ist deaktiviert. Aktiviere Benachrichtigungen für meteocool in den iOS-Einstellungen, um wieder Warnungen zu erhalten.";
+"motion_permission_required" = "Zugriff auf Bewegung & Fitness benötigt";
+"motion_permission_denied_message" = "Die Berechtigung für Bewegung & Fitness ist deaktiviert. Aktiviere Bewegung & Fitness für meteocool in den iOS-Einstellungen, um Drucksensor-Daten zu teilen.";
 "experimental_features_require_restart" = "Änderungen an dieser Einstellung werden erst nach einem Neustart der App aktiv.\n\nBitte beachte, dass diese Einstellung für Entwickler gedacht ist und Fehler enthalten kann. 🐛";
 "experimental_features" = "Experimentelle Funktionen";
 "Enable Experimental Features" = "Experimentelle Funktionen aktivieren";
@@ -149,6 +151,7 @@
 "settings_section_map" = "Karte";
 "settings_section_layers" = "Ebenen";
 "settings_section_notifications" = "Benachrichtigungen";
+"settings_motion_sharing" = "Drucksensor-Daten teilen";
 "settings_section_advanced" = "Erweitert";
 "base_layer_standard" = "Standard";
 "base_layer_cyclosm" = "CyclOSM";

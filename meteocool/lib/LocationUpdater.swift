@@ -261,9 +261,13 @@ class LocationUpdater: NSObject {
                 pendingForcedSyncPost = false
             }
             if (forcePost || background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
-                // take pressure measurement and send json request
-                pressure.getPressure(completion: {
-                    pressure in self.postLocationDeferred(location: location, pressure: pressure)  })
+                if settings.motionSharingEnabled {
+                    // take pressure measurement and send json request
+                    pressure.getPressure(completion: {
+                        pressure in self.postLocationDeferred(location: location, pressure: pressure)  })
+                } else {
+                    postLocationDeferred(location: location, pressure: -1)
+                }
                 self.lastPostedLocation = location
             }
 

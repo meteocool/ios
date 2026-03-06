@@ -1,13 +1,18 @@
 import CoreLocation
 import CoreMotion
 import SwiftUI
+import UIKit
 import UserNotifications
 
 struct OnboardingView: View {
+    @Environment(SettingsStore.self) private var settings
     let onContinue: () -> Void
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
     @State private var notificationsGranted: Bool = false
     @State private var motionGranted: Bool = false
+    @State private var showNotificationPermissionDeniedAlert = false
+    @State private var showBackgroundLocationAlert = false
+    @State private var showMotionPermissionDeniedAlert = false
 
     private var locationGranted: Bool {
         switch locationStatus {
@@ -82,9 +87,31 @@ struct OnboardingView: View {
         }
         .background(.ultraThinMaterial)
         .task {
-            await refreshNotificationStatus()
-            refreshLocationStatus()
-            refreshMotionStatus()
+            await refreshStatuses()
+        }
+        .alert(LocalizedStringKey("notifications_disabled"), isPresented: $showNotificationPermissionDeniedAlert) {
+            Button(LocalizedStringKey("Change in Settings")) {
+                openSystemSettings()
+            }
+            Button(LocalizedStringKey("Dismiss"), role: .cancel) {}
+        } message: {
+            Text(LocalizedStringKey("notification_permission_denied_message"))
+        }
+        .alert(LocalizedStringKey("location_permission_required"), isPresented: $showBackgroundLocationAlert) {
+            Button(LocalizedStringKey("Change in Settings")) {
+                openSystemSettings()
+            }
+            Button(LocalizedStringKey("Dismiss"), role: .cancel) {}
+        } message: {
+            Text(LocalizedStringKey("enable_background_location_alert"))
+        }
+        .alert(LocalizedStringKey("motion_permission_required"), isPresented: $showMotionPermissionDeniedAlert) {
+            Button(LocalizedStringKey("Change in Settings")) {
+                openSystemSettings()
+            }
+            Button(LocalizedStringKey("Dismiss"), role: .cancel) {}
+        } message: {
+            Text(LocalizedStringKey("motion_permission_denied_message"))
         }
     }
 
@@ -136,38 +163,80 @@ struct OnboardingView: View {
         .liquidGlass(cornerRadius: 16)
     }
 
+    @MainActor
     private func requestLocation() {
         SharedLocationUpdater.requestAuthorization({ _, _ in
             Task { @MainActor in
                 refreshLocationStatus()
+                await refreshNotificationStatus()
             }
         }, notDetermined: true)
     }
 
+    @MainActor
     private func requestNotifications() {
-        Task {
-            try? await SharedNotificationManager.register()
-            await refreshNotificationStatus()
-        }
-    }
+        Task { @MainActor in
+            let center = UNUserNotificationCenter.current()
+            let currentSettings = await center.notificationSettings()
 
-    private func requestMotion() {
-        PressureManager.requestMotionPermission { granted in
-            Task { @MainActor in
-                motionGranted = granted
+            switch currentSettings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                settings.notificationsEnabled = true
+                UIApplication.shared.registerForRemoteNotifications()
+                ensureBackgroundLocationPermissionForNotifications()
+            case .notDetermined:
+                try? await SharedNotificationManager.register()
+                if settings.notificationsEnabled {
+                    ensureBackgroundLocationPermissionForNotifications()
+                } else {
+                    disableNotificationsAndUnregister()
+                    showNotificationPermissionDeniedAlert = true
+                }
+            case .denied:
+                disableNotificationsAndUnregister()
+                showNotificationPermissionDeniedAlert = true
+            @unknown default:
+                disableNotificationsAndUnregister()
             }
         }
     }
 
     @MainActor
-    private func refreshNotificationStatus() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        switch settings.authorizationStatus {
-        case .authorized, .provisional:
-            notificationsGranted = true
-        default:
-            notificationsGranted = false
+    private func requestMotion() {
+        switch PressureManager.motionAuthorizationStatus {
+        case .authorized:
+            settings.motionSharingEnabled = true
+            motionGranted = true
+        case .notDetermined:
+            PressureManager.requestMotionPermission { granted in
+                Task { @MainActor in
+                    settings.motionSharingEnabled = granted
+                    motionGranted = granted
+                    if !granted {
+                        showMotionPermissionDeniedAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            settings.motionSharingEnabled = false
+            motionGranted = false
+            showMotionPermissionDeniedAlert = true
+        @unknown default:
+            settings.motionSharingEnabled = false
+            motionGranted = false
         }
+    }
+
+    @MainActor
+    private func refreshNotificationStatus() async {
+        let notificationsAuthorized = await SharedNotificationManager.checkAuthorizationStatus()
+        let hasBackgroundLocation = SharedLocationUpdater.authorizationStatus == .authorizedAlways
+
+        if settings.notificationsEnabled && (!notificationsAuthorized || !hasBackgroundLocation) {
+            disableNotificationsAndUnregister()
+        }
+
+        notificationsGranted = settings.notificationsEnabled && notificationsAuthorized && hasBackgroundLocation
     }
 
     @MainActor
@@ -178,6 +247,57 @@ struct OnboardingView: View {
     @MainActor
     private func refreshMotionStatus() {
         let status = PressureManager.motionAuthorizationStatus
-        motionGranted = status == .authorized
+        if settings.motionSharingEnabled && status != .authorized {
+            settings.motionSharingEnabled = false
+        }
+        motionGranted = settings.motionSharingEnabled && status == .authorized
+    }
+
+    @MainActor
+    private func refreshStatuses() async {
+        refreshLocationStatus()
+        refreshMotionStatus()
+        await refreshNotificationStatus()
+    }
+
+    @MainActor
+    private func ensureBackgroundLocationPermissionForNotifications() {
+        switch SharedLocationUpdater.authorizationStatus {
+        case .authorizedAlways:
+            notificationsGranted = true
+            SharedLocationUpdater.syncNotificationRegistrationNow()
+        case .authorizedWhenInUse, .notDetermined:
+            SharedLocationUpdater.requestAuthorization({ _, _ in
+                Task { @MainActor in
+                    refreshLocationStatus()
+                    if SharedLocationUpdater.authorizationStatus == .authorizedAlways {
+                        notificationsGranted = true
+                        SharedLocationUpdater.syncNotificationRegistrationNow()
+                    } else {
+                        disableNotificationsAndUnregister()
+                        showBackgroundLocationAlert = true
+                    }
+                }
+            }, notDetermined: true)
+        case .denied, .restricted:
+            disableNotificationsAndUnregister()
+            showBackgroundLocationAlert = true
+        @unknown default:
+            disableNotificationsAndUnregister()
+            showBackgroundLocationAlert = true
+        }
+    }
+
+    @MainActor
+    private func disableNotificationsAndUnregister() {
+        settings.notificationsEnabled = false
+        notificationsGranted = false
+        SharedNotificationManager.unregisterFromBackend()
+    }
+
+    @MainActor
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 }

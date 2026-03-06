@@ -5,6 +5,7 @@
 1. **HIGH**: Add Base Map Layer picker to Settings (parity with LayerSwitcher)
 2. **MEDIUM**: Review/update SwiftUI UI tests for current structure (if any failing)
 3. **MEDIUM**: Verify builds in Xcode for iOS 18 and iOS 26 (Liquid Glass)
+4. **MEDIUM**: Wire `Radar Color Map` setting to actual radar rendering/API path (currently persisted but functionally no-op)
 
 ---
 
