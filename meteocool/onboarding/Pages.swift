@@ -1,7 +1,7 @@
 import Foundation
 import OnboardKit
 
-class Pages {
+@MainActor class Pages {
     static let welcome = OnboardPage(
         title: NSLocalizedString("Hi there!", comment:"Welcome Page Onbording"),
         imageName: "ob_rain_sun",

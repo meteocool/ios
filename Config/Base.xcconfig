@@ -1,0 +1,24 @@
+// Settings shared by every configuration and target.
+//
+// Anything machine- or account-specific (signing team, bundle id prefix)
+// is overridden by the optional, gitignored Local.xcconfig included at the
+// bottom of this file. Copy Local.xcconfig.example to get started.
+
+// ---- Identity -------------------------------------------------------------
+
+// Reverse-DNS prefix all bundle identifiers are built from.
+// Override locally if you sign with your own Apple Developer team.
+BUNDLE_PREFIX = org.frcy.app
+
+// Apple Developer Team ID used for automatic signing.
+DEVELOPMENT_TEAM = 4L2672L4VX
+
+// ---- Versioning -----------------------------------------------------------
+
+MARKETING_VERSION = 2.2
+CURRENT_PROJECT_VERSION = 31
+
+// ---- Local overrides (never committed) ------------------------------------
+// The `?` makes the include optional: builds work without the file.
+#include? "Local.xcconfig"
+#include? "../Local.xcconfig"

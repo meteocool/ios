@@ -1,10 +1,12 @@
-# Uncomment the lines below you want to change by removing the # in the beginning
-
-# A list of devices you want to take the screenshots from
+# Devices to capture App Store screenshots on. These have to exist as
+# simulators in the installed Xcode — check with:
+#
+#     xcrun simctl list devices available
+#
 devices([
-  "iPhone Xs",
-  "iPad Pro (9.7-inch)",
-  "iPad Pro (12.9-inch) (3rd generation)",
+  "iPhone 15 Pro Max",
+  "iPhone 15",
+  "iPad Pro 13-inch (M4)",
 ])
 
 languages([
