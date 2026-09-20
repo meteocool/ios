@@ -1,7 +1,9 @@
 import UIKit
 
 class NetworkHelper {
-    static let apiURL = URL(string: "https://api.ng.meteocool.com/")!
+    /// Resolved per call rather than stored, so the "Experimental Features"
+    /// switch moves the native API along with the web view.
+    static var apiURL: URL { MeteocoolEnvironment.current.apiBaseURL }
     static let debug: Bool = true
 
     static func createRequest(dst: String, method: String) -> URLRequest? {

@@ -1,14 +1,16 @@
 import UIKit
 import CoreLocation
 
-protocol LocationObserver {
+@MainActor protocol LocationObserver {
     func notify(location: CLLocation)
 }
 
-let SharedLocationUpdater = LocationUpdater.init()
+@MainActor let SharedLocationUpdater = LocationUpdater.init()
 
 // XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
-class LocationUpdater: NSObject, CLLocationManagerDelegate {
+// CLLocationManager delivers its delegate callbacks on the queue the manager was
+// created on — always main here — so the @preconcurrency conformance is sound.
+@MainActor class LocationUpdater: NSObject, @preconcurrency CLLocationManagerDelegate {
     /// location manager instace we're wrapping
     private let locationManager: CLLocationManager = CLLocationManager()
     /// device identifier (currently unused...)
@@ -20,6 +22,14 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
 
     // accurate location updates are/were enabled before suspend
     private var accurateLocationUpdatesEnabled: Bool = false
+
+    /// Set while the car screen is up (`CarPlaySceneDelegate`).
+    ///
+    /// The phone leaving the foreground is normally the cue to fall back to
+    /// significant-change updates, which move the map about once a kilometre.
+    /// With CarPlay connected the phone is in a pocket and the dashboard is
+    /// the screen being watched, so the accurate updates have to survive it.
+    var carPlayConnected: Bool = false
 
     // the last location reported to the backend
     private var lastPostedLocation: CLLocation?
@@ -156,6 +166,9 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
 
     // =============== Notification center callbacks ==========
     @objc func willResignActive() {
+        if carPlayConnected {
+            return
+        }
         if (accurateLocationUpdatesEnabled) {
             self.locationManager.stopUpdatingLocation()
         }
@@ -184,8 +197,13 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
         self.locationManager.startUpdatingLocation()
     }*/
 
-    func startAccurateLocationUpdates() {
-        if UIApplication.shared.applicationState != .active {
+    /// - Parameter force: keep the updates coming even with the app in the
+    ///   background. CarPlay needs that: with the phone locked the app is not
+    ///   "active", and the car screen is still the thing the user is looking
+    ///   at. Background delivery is already covered by the `location`
+    ///   background mode and `allowsBackgroundLocationUpdates`.
+    func startAccurateLocationUpdates(force: Bool = false) {
+        if !force && UIApplication.shared.applicationState != .active {
             return
         }
 
@@ -242,11 +260,16 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             // XXX decide if new location is better than the previous one. does apple guarantee this??
             // XXX apparently not
             self.lastReceivedLocation = location
-            if (!background) {
-                for observer in observers {
-                    observer.notify(location: location)
-                }
 
+            // Observers are notified whatever the app's state: the CarPlay map
+            // is an observer, and it is on screen exactly when the phone is
+            // not. The phone's own map updating while it is in the background
+            // costs one JS call that WebKit throttles anyway.
+            for observer in observers {
+                observer.notify(location: location)
+            }
+
+            if (!background) {
                 if location.horizontalAccuracy <= 20 {
                     locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
                 }
@@ -273,7 +296,12 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
     func postLocation(location: CLLocation, pressure: Float) {
         let tokenValue = SharedNotificationManager.getToken() ?? "anon"
 
-        let lang = Locale.preferredLanguages[0].split(separator: "-")[0]
+        // The backend's `lang` is an enum of de/en. Anything else (a device set
+        // to French, say) fails validation there, and the legacy endpoint turns
+        // that into `success: false` — silently dropping the push registration
+        // and the barometric reading along with it. Clamp here instead.
+        let preferredLanguage = Locale.preferredLanguages.first?.split(separator: "-").first.map(String.init)
+        let lang = preferredLanguage == "de" ? "de" : "en"
         /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
             lang = bundle_lang
         }*/
@@ -291,11 +319,20 @@ class LocationUpdater: NSObject, CLLocationManagerDelegate {
             "course": location.course as Double,
             "pressure": pressure,
             "timestamp": location.timestamp.timeIntervalSince1970 as Double,
-            "ahead": (userDefaults?.integer(forKey: "timeBeforeValue") ?? 3+1)*5 ,
+            // The slider is zero-based and its label reads (index + 1) * 5 min,
+            // so the lead time sent here was one step short of what the user
+            // picked — and at the lowest setting it was 0, which the backend
+            // rejects outright (`ahead` must be > 0), taking the whole update
+            // with it. `?? 3+1` parsed as `?? 4`, not `(?? 3) + 1`.
+            "ahead": ((userDefaults?.integer(forKey: "timeBeforeValue") ?? 1) + 1) * 5,
             "intensity": intensityDbzValues[userDefaults?.integer(forKey: "intensityValue") ?? 1] ,
             "source": "ios",
             "experimental": userDefaults?.bool(forKey: "experimentalFeatures") ?? false,
+            // `details` is what the old backend reads, `withDBZ` what the v4 one
+            // does. Both are sent because the app talks to either deployment
+            // depending on the environment, and each ignores the other's key.
             "details": userDefaults?.bool(forKey: "withDBZ") ?? false,
+            "withDBZ": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "token": tokenValue,
             ] as [String: Any]
 

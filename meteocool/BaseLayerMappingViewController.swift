@@ -20,13 +20,17 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
-    //Content
+    /// The basemaps the web map actually draws.
+    ///
+    /// All four come from meteocool's own Protomaps tiles
+    /// (core's `src/layers/base.ts`); they differ in which features earn ink,
+    /// not in provider. Satellite used to be a fifth option and is gone: the
+    /// frontend withdrew the capability along with the OroraTech tiles it read.
     private var baseLayerMapping = [
         NSLocalizedString("light", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
         NSLocalizedString("osm", comment: "baseLayer"),
-        NSLocalizedString("cyclosm", comment: "baseLayer"),
-        NSLocalizedString("satellite", comment: "baseLayer")
+        NSLocalizedString("cyclosm", comment: "baseLayer")
     ]
     
     var baseLayer:String!
@@ -43,10 +47,20 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         super.viewDidLoad()
         baseLayerMappingSettingsTable.estimatedRowHeight = 100
         baseLayerMappingSettingsTable.rowHeight = 44
+        if #available(iOS 26.0, *) {
+            LiquidGlass.float(baseLayerMappingSettingsBar, over: baseLayerMappingSettingsTable, in: view)
+        }
         baseLayerMappingSettingsTable.delegate = self
         baseLayerMappingSettingsTable.dataSource = self
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if #available(iOS 26.0, *) {
+            LiquidGlass.inset(baseLayerMappingSettingsTable, below: baseLayerMappingSettingsBar)
+        }
+    }
+
     //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section{
@@ -76,9 +90,6 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         case 3: //cyclosm
             cell.lable.text = baseLayerMapping[indexPath.row]
             cell.checkbox.isHidden = baseLayer != "cyclosm"
-        case 4: //satellite
-            cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = baseLayer != "satellite"
         default:
             break;
         }
@@ -98,9 +109,6 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         }
         if (indexPath.section == 0 && indexPath.row == 3){ //cyclosm
             baseLayer = "cyclosm"
-        }
-        if (indexPath.section == 0 && indexPath.row == 4){ //satellite
-            baseLayer = "satellite"
         }
         baseLayerMappingSettingsTable.reloadData()
     }
