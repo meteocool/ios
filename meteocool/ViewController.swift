@@ -4,7 +4,7 @@ import WebKit
 import CoreLocation
 import OnboardKit
 
-var viewController: ViewController? = nil
+@MainActor var viewController: ViewController? = nil
 
 @available(iOS 13.0, *)
 class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, LocationObserver, UIScrollViewDelegate, UIGestureRecognizerDelegate{
@@ -35,6 +35,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
     
     var drawerState = DrawerStates.CLOSED
+
+    /// Glass chrome that supersedes the flat blur and the `TribbleButton`
+    /// artwork on iOS 26. Nil on older systems, which keep the shipped look.
+    private var glassControls: UIVisualEffectView?
+    private var glassForecastTime: UIVisualEffectView?
+    private var glassLogo: UIVisualEffectView?
     var originalButtonPosition: CGRect!
     var prolongSplashScreen = true
     
@@ -101,6 +107,10 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
 
         webView?.configuration.userContentController.add(self, name: "scriptHandler")
         webView?.configuration.userContentController.add(self, name: "timeHandler")
+        // Before the page loads: the shim has to be in place for the first
+        // script that might touch navigator.geolocation.
+        webView?.configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
+        webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         let panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.tapOrPan))
@@ -123,16 +133,17 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         self.view.addSubview(logo!)
         self.view.addSubview(blur!)
 
-        time.isHidden = true
+        if #available(iOS 26.0, *) {
+            applyLiquidGlass()
+        }
+
         time.layer.masksToBounds = true
         time.layer.cornerRadius = 8.0
+        setForecastTimeHidden(true)
         slider_ring.isHidden = true
         slider_button.isHidden = true
-        
-        trippleButton.isHidden = true
-        settingsButton.isHidden = true
-        layerSwitcherButton.isHidden = true
-        positionButton.isHidden = true
+
+        setMapControlsHidden(true)
         
         formatter.locale = Locale(identifier: "de_De")
         formatter.dateFormat = "H:mm"
@@ -181,16 +192,12 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         webView.scrollView.bounces = false
         webView.scrollView.delegate = self
 
-        var environmentPrefix = "app.ng.";
-        if (userDefaults?.bool(forKey: "experimentalFeatures") ?? false) {
-            environmentPrefix = "better.";
-        }
-        print(environmentPrefix)
-
-        if let url = URL(string: "https://\(environmentPrefix)meteocool.com/ios.html?version=2.2") {
-            let request = URLRequest(url: url)
-            webView.load(request)
-        }
+        // The version is read from the bundle rather than written out here,
+        // which had drifted: the app was 2.2 in the URL long after the build
+        // had moved on, and the frontend reads it to decide what it may call.
+        let environment = MeteocoolEnvironment.current
+        NSLog("Loading \(environment) frontend: \(environment.webURL)")
+        webView.load(URLRequest(url: environment.webURL))
 
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.willResignActive), name: UIApplication.willResignActiveNotification, object: nil)
@@ -400,11 +407,8 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
-        trippleButton.isHidden = true
-        settingsButton.isHidden = true
-        layerSwitcherButton.isHidden = true
-        positionButton.isHidden = true
-        logo.isHidden = true
+        setMapControlsHidden(true)
+        setLogoHidden(true)
         webView.evaluateJavaScript("window.openLayerswitcher();")
     }
     
@@ -433,10 +437,10 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
         if (drawerState == .LOADING) {
             slider_button.isHidden = false
             slider_ring.isHidden = false
-            time.isHidden = false
+            setForecastTimeHidden(false)
             button.alpha = 1
             button.frame = CGRect(x: button.frame.origin.x-(button.frame.width/2), y: button.frame.origin.y, width: button.frame.width*2, height: button.frame.height)
-            button.setImage(UIImage(named: "Slider_Handle_open"), for: [])
+            setDrawerHandle(open: true)
             activityIndicator.stopAnimating()
             drawerState = .OPEN
             // XXX workaround until we tie the play button to the wheel
@@ -446,13 +450,13 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler, Lo
     }
     
     func drawer_close() {
-        time.isHidden = true
+        setForecastTimeHidden(true)
         slider_ring.isHidden = true
         slider_button.isHidden = true
         button.alpha = 1.0
         
         if (drawerState == .OPEN) {
-            button.setImage(UIImage(named: "Slider_Handle"), for: [])
+            setDrawerHandle(open: false)
             button.frame = originalButtonPosition
         }
         activityIndicator.stopAnimating()
@@ -490,6 +494,9 @@ window.downloadForecast(function() {
     func notify(location: CLLocation) {
         let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus || autoFocusOnce));"
         webView.evaluateJavaScript(jsCommand)
+        // Same fix, in the shape the Geolocation API asks for: this is what
+        // resolves a page-side getCurrentPosition and keeps watchers running.
+        GeolocationBridge.deliver(location, to: webView)
         print(jsCommand)
         if (zoomOnce){
             zoomOnce = false
@@ -500,30 +507,25 @@ window.downloadForecast(function() {
     }
 
     @objc func injectSettings() {
-        let config = [
-            "mapRotation": userDefaults?.value(forKey: "mapRotation"),
-            "radarColorMapping": userDefaults?.value(forKey: "radarColorMapping"),
-            "mapBaseLayer": userDefaults?.value(forKey: "baseLayer"),
-            "layerMesocyclones": userDefaults?.value(forKey: "mesocyclones"),
-            "layerLightning": userDefaults?.value(forKey: "lightning"),
-            "layerSnow": userDefaults?.value(forKey: "snow"),
-            "experimentalFeatures": userDefaults?.value(forKey: "experimentalFeatures"),
-        ]
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes)
-            let jsonText = String(data: jsonData, encoding: .utf8) ?? "{}"
-            let command = "window.settings.injectSettings(\(jsonText));"
-            webView.evaluateJavaScript(command)
-            print(command)
-        } catch {
+        guard let command = WebSettings.injectionJS() else {
             print("Config parsing failed")
+            return
         }
+        webView.evaluateJavaScript(command)
+        print(command)
     }
 
 
     /* called from javascript */
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         let action = String(describing: message.body)
+
+        if message.name == GeolocationBridge.handlerName {
+            if action == GeolocationBridge.requestAction {
+                serveGeolocationRequest()
+            }
+            return
+        }
 
         // XXX convert to switch/case
         if message.name == "timeHandler" {
@@ -572,19 +574,210 @@ window.downloadForecast(function() {
                 }
             }
 
-            trippleButton.isHidden = false
-            settingsButton.isHidden = false
-            layerSwitcherButton.isHidden = false
-            positionButton.isHidden = false
+            setMapControlsHidden(false)
             hideSplash()
         }
         
         if action == "layerSwitcherClosed" {
-            trippleButton.isHidden = false
-            settingsButton.isHidden = false
-            layerSwitcherButton.isHidden = false
-            positionButton.isHidden = false
-            logo.isHidden = false
+            setMapControlsHidden(false)
+            setLogoHidden(false)
+        }
+    }
+}
+
+// MARK: - Geolocation
+
+extension ViewController {
+    /// Answers `navigator.geolocation` out of CoreLocation.
+    ///
+    /// The page reaches this only through `GeolocationBridge`'s shim, so the
+    /// permission in play is the app's own — WebKit's per-origin location
+    /// alert never comes up, and a user who granted location once is not asked
+    /// a second time by the web view.
+    fileprivate func serveGeolocationRequest() {
+        switch CLLocationManager.authorizationStatus() {
+        case .authorizedWhenInUse, .authorizedAlways:
+            if let location = SharedLocationUpdater.getCurrentLocation() {
+                GeolocationBridge.deliver(location, to: webView)
+            } else {
+                // Nothing cached yet. The fix lands in notify(location:),
+                // which hands it to the shim.
+                SharedLocationUpdater.startAccurateLocationUpdates()
+            }
+        case .notDetermined:
+            // The app's own prompt, with the app's purpose string, instead of
+            // WebKit's — and only because the page asked for a position.
+            SharedLocationUpdater.requestAuthorization({ [weak self] _, _ in
+                guard let self else { return }
+                switch CLLocationManager.authorizationStatus() {
+                case .authorizedWhenInUse, .authorizedAlways:
+                    self.serveGeolocationRequest()
+                default:
+                    GeolocationBridge.fail(.permissionDenied, message: "Location access was not granted", to: self.webView)
+                }
+            }, notDetermined: true)
+        case .denied, .restricted:
+            GeolocationBridge.fail(.permissionDenied, message: "Location access for meteocool is turned off", to: webView)
+        @unknown default:
+            GeolocationBridge.fail(.positionUnavailable, message: "Location is unavailable", to: webView)
+        }
+    }
+}
+
+// MARK: - Liquid Glass
+
+extension ViewController {
+    /// Swaps the flat map chrome for glass. Only the navigation layer is
+    /// touched — the radar map underneath is content and stays untreated.
+    @available(iOS 26.0, *)
+    fileprivate func applyLiquidGlass() {
+        // Status bar backdrop. The storyboard nests a 2pt vibrancy sliver in
+        // here; vibrancy cannot live inside glass, and it has not been visible
+        // for years anyway.
+        blur.contentView.subviews.forEach { $0.removeFromSuperview() }
+        blur.effect = UIGlassEffect(style: .regular)
+
+        installGlassControls()
+        installGlassForecastTime()
+        installGlassLogo()
+
+        // The forecast drawer handle becomes a glass tab instead of a bitmap.
+        var handle = UIButton.Configuration.glass()
+        handle.cornerStyle = .capsule
+        button.configuration = handle
+        setDrawerHandle(open: false)
+    }
+
+    /// Replaces the `TribbleButton` slab, and the three buttons glued on top of
+    /// it, with a glass container holding three interactive glass elements.
+    /// The container is what makes them read as one pill: glass cannot sample
+    /// other glass, so ungrouped neighbours each sample the map instead.
+    @available(iOS 26.0, *)
+    private func installGlassControls() {
+        let controls = [layerSwitcherButton!, settingsButton!, positionButton!]
+
+        // These were pinned to the artwork and to each other; reparenting them
+        // leaves those constraints dangling across the hierarchy.
+        LiquidGlass.dropConstraints(on: view, referencing: controls + [trippleButton])
+        trippleButton.removeFromSuperview()
+
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        for control in controls {
+            control.removeFromSuperview()
+            control.translatesAutoresizingMaskIntoConstraints = false
+            control.tintColor = .label
+
+            let glass = LiquidGlass.element()
+            glass.contentView.addSubview(control)
+            NSLayoutConstraint.activate([
+                glass.widthAnchor.constraint(equalToConstant: 52),
+                glass.heightAnchor.constraint(equalToConstant: 52),
+                control.centerXAnchor.constraint(equalTo: glass.contentView.centerXAnchor),
+                control.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
+            ])
+            stack.addArrangedSubview(glass)
+        }
+
+        let container = LiquidGlass.container(spacing: 10)
+        container.contentView.addSubview(stack)
+        view.addSubview(container)
+        glassControls = container
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.contentView.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor),
+            view.safeAreaLayoutGuide.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: 12),
+            container.topAnchor.constraint(equalTo: blur.bottomAnchor, constant: 12),
+        ])
+    }
+
+    /// Lifts the logo off the opaque plate baked into the `Logo Button`
+    /// artwork and onto a glass disc that mirrors the control column on the
+    /// other edge of the screen — the same swap `TribbleButton` got, since a
+    /// painted-on slab next to real glass reads as a sticker.
+    @available(iOS 26.0, *)
+    private func installGlassLogo() {
+        // Pinned to the safe area and sized for the artwork; both go with it.
+        LiquidGlass.dropConstraints(on: view, referencing: [logo])
+        NSLayoutConstraint.deactivate(logo.constraints)
+        logo.removeFromSuperview()
+
+        logo.image = UIImage(named: "Logo")
+        logo.contentMode = .scaleAspectFit
+        logo.translatesAutoresizingMaskIntoConstraints = false
+
+        let glass = LiquidGlass.element(interactive: false)
+        glass.contentView.addSubview(logo)
+        view.addSubview(glass)
+        glassLogo = glass
+
+        NSLayoutConstraint.activate([
+            glass.widthAnchor.constraint(equalToConstant: 52),
+            glass.heightAnchor.constraint(equalToConstant: 52),
+            glass.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            glass.topAnchor.constraint(equalTo: blur.bottomAnchor, constant: 12),
+            logo.centerXAnchor.constraint(equalTo: glass.contentView.centerXAnchor),
+            logo.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
+            logo.widthAnchor.constraint(equalToConstant: 30),
+            logo.heightAnchor.constraint(equalToConstant: 30),
+        ])
+    }
+
+    /// Puts the forecast timestamp on a glass pill instead of the hardcoded
+    /// blue rectangle, which never had a dark mode.
+    @available(iOS 26.0, *)
+    private func installGlassForecastTime() {
+        time.backgroundColor = .clear
+        time.textColor = .label
+
+        let glass = LiquidGlass.element(interactive: false)
+        view.insertSubview(glass, belowSubview: time)
+        glassForecastTime = glass
+
+        NSLayoutConstraint.activate([
+            glass.leadingAnchor.constraint(equalTo: time.leadingAnchor, constant: -16),
+            glass.trailingAnchor.constraint(equalTo: time.trailingAnchor, constant: 16),
+            glass.topAnchor.constraint(equalTo: time.topAnchor, constant: -9),
+            glass.bottomAnchor.constraint(equalTo: time.bottomAnchor, constant: 9),
+        ])
+    }
+
+    /// The floating map controls, shown and hidden as one unit — which side of
+    /// the iOS 26 divide we are on decides what that unit actually is.
+    func setMapControlsHidden(_ hidden: Bool) {
+        if let glassControls {
+            glassControls.isHidden = hidden
+        } else {
+            trippleButton.isHidden = hidden
+            settingsButton.isHidden = hidden
+            layerSwitcherButton.isHidden = hidden
+            positionButton.isHidden = hidden
+        }
+    }
+
+    func setForecastTimeHidden(_ hidden: Bool) {
+        time.isHidden = hidden
+        glassForecastTime?.isHidden = hidden
+    }
+
+    /// The logo, hidden as one unit with the glass disc it sits on — hiding
+    /// only the mark would leave an empty puck floating over the map.
+    func setLogoHidden(_ hidden: Bool) {
+        logo.isHidden = hidden
+        glassLogo?.isHidden = hidden
+    }
+
+    func setDrawerHandle(open: Bool) {
+        if button.configuration != nil {
+            button.configuration?.image = UIImage(systemName: open ? "chevron.compact.right" : "chevron.compact.left")
+        } else {
+            button.setImage(UIImage(named: open ? "Slider_Handle_open" : "Slider_Handle"), for: [])
         }
     }
 }

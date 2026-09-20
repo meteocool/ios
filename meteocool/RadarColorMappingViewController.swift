@@ -53,8 +53,18 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         radarColorMappingSettingsTable.rowHeight = 44
         radarColorMappingSettingsTable.delegate = self
         radarColorMappingSettingsTable.dataSource = self
+        if #available(iOS 26.0, *) {
+            LiquidGlass.float(radarColorMappingSettingsBar, over: radarColorMappingSettingsTable, in: view)
+        }
     }
-    
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if #available(iOS 26.0, *) {
+            LiquidGlass.inset(radarColorMappingSettingsTable, below: radarColorMappingSettingsBar)
+        }
+    }
+
     //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section{

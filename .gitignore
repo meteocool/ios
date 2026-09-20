@@ -77,3 +77,8 @@ fastlane/screenshots/
 
 iOSInjectionProject/
 .DS_Store
+
+# XcodeGen-generated project and local signing overrides
+meteocool.xcodeproj/
+Local.xcconfig
+build/

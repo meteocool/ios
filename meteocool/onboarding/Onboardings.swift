@@ -6,7 +6,7 @@ import CoreLocation
 import OnboardKit
 
 
-class OnboardingFactory {
+@MainActor class OnboardingFactory {
     static let tintColor = UIColor(red: 137.0/255.0, green: 181.0/255.0, blue: 187.0/255.0, alpha: 1.00)
     let backgroundLight = UIColor(red: 0xf8/255.0, green: 0xf9/255.0, blue: 0xfa/255.0, alpha: 1.0)
     var appearanceConfiguration:OnboardViewController.AppearanceConfiguration
@@ -63,4 +63,4 @@ class OnboardingFactory {
     }
 }
 
-let obFactory = OnboardingFactory()
+@MainActor let obFactory = OnboardingFactory()

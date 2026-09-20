@@ -1,9 +1,9 @@
 import UIKit
 import UserNotifications
 
-let SharedNotificationManager = NotificationManager.init()
+@MainActor let SharedNotificationManager = NotificationManager.init()
 
-class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+@MainActor class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private var pushToken: String?
 
     override init() {

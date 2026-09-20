@@ -2,10 +2,8 @@ import UIKit
 import UserNotifications
 import CoreMotion
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
-
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -36,19 +34,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "autoZoom") == nil){
             userDefaults?.setValue(false, forKey: "autoZoom")
         }
-        if (userDefaults?.value(forKey: "lightning") == nil){
-            userDefaults?.setValue(true, forKey: "lightning")
-        }
-        if (userDefaults?.value(forKey: "mesocyclones") == nil){
-            userDefaults?.setValue(true, forKey: "mesocyclones")
-        }
-        if (userDefaults?.value(forKey: "snow") == nil){
-            userDefaults?.setValue(true, forKey: "snow")
-        }
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("classic", forKey: "radarColorMapping")
         }
         if (userDefaults?.value(forKey: "baseLayer") == nil){
+            userDefaults?.setValue("light", forKey: "baseLayer")
+        }
+        // Satellite was withdrawn from the web map, so a stored "satellite"
+        // now selects nothing in the picker and draws the default anyway.
+        if (userDefaults?.string(forKey: "baseLayer") == "satellite"){
             userDefaults?.setValue("light", forKey: "baseLayer")
         }
         if (userDefaults?.value(forKey: "experimentalFeatures") == nil){
@@ -66,18 +60,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    }
-
-    func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
-        SharedNotificationManager.clearNotifications()
-    }
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-
-        // XXX call this only when there are >0 notifications on launch! saves 1 useless request.
-        acknowledgeNotification(retry: true, from: "foreground")
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

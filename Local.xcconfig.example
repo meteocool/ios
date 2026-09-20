@@ -1,0 +1,16 @@
+// Copy to Local.xcconfig (gitignored) and edit.
+//
+//   cp Local.xcconfig.example Local.xcconfig
+//
+// Only needed if you sign with a team other than the project default.
+
+DEVELOPMENT_TEAM = YOURTEAMID
+
+// If you use your own team you also need your own bundle id prefix,
+// because org.frcy.app.* is registered to the meteocool team.
+BUNDLE_PREFIX = com.example
+
+// NOTE: the App Group id (group.org.frcy.app.meteocool) is hardcoded in
+// the .entitlements files and in Swift. Building against your own team
+// additionally requires changing it in both places, or dropping the
+// App Group capability for local-only builds.
