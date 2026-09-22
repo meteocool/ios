@@ -20,11 +20,12 @@ enum MeteocoolEnvironment {
 
     /// Selected by the "Experimental Features" setting. Changing it needs a
     /// restart, which is what the settings screen already tells the user, so
-    /// this is only read when a URL is actually needed.
-    static var current: MeteocoolEnvironment {
+    /// the selection is fixed for this process. Native and web requests must
+    /// not split across deployments before that restart.
+    static let current: MeteocoolEnvironment = {
         let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
         return defaults?.bool(forKey: "experimentalFeatures") == true ? .staging : .production
-    }
+    }()
 
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
@@ -40,14 +41,13 @@ enum MeteocoolEnvironment {
         }
     }
 
-    /// Host serving the map. Staging has no custom domain — the Worker is
-    /// published to workers.dev (`wrangler deploy --env staging`).
+    /// Web hosts; staging follows core/wrangler.jsonc's custom domain.
     private var webHost: String {
         switch self {
         case .production:
-            return "https://app.ng.meteocool.com"
+            return "https://meteocool.com"
         case .staging:
-            return "https://meteocool-staging.meteo.workers.dev"
+            return "https://web.staging.meteocool.com"
         }
     }
 
@@ -57,7 +57,12 @@ enum MeteocoolEnvironment {
     /// the Worker is configured with `html_handling: "none"` so the `.html`
     /// suffix keeps resolving instead of redirecting to `/ios`.
     var webURL: URL {
-        page()
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["MC_TEST_MAP"] == "1", let local = NetworkHelper.simulatorTestAPI {
+            return local.appendingPathComponent("ios.html")
+        }
+        #endif
+        return page()
     }
 
     /// The same map, stripped for the car.

@@ -28,47 +28,6 @@
                                     <wkPreferences key="preferences"/>
                                 </wkWebViewConfiguration>
                             </wkWebView>
-                            <imageView clipsSubviews="YES" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Slider_long" translatesAutoresizingMaskIntoConstraints="NO" id="rrm-xV-iBd">
-                                <rect key="frame" x="354" y="526" width="150" height="300"/>
-                                <constraints>
-                                    <constraint firstAttribute="height" constant="300" id="thh-G0-5ti"/>
-                                    <constraint firstAttribute="width" constant="150" id="wvS-ko-5Fc"/>
-                                </constraints>
-                            </imageView>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" insetsLayoutMarginsFromSafeArea="NO" image="Slider_point" id="2rh-rK-OQM">
-                                <rect key="frame" x="409" y="555" width="19" height="19"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" constant="19" id="67k-xb-Yqo"/>
-                                    <constraint firstAttribute="height" constant="19" id="B9E-4a-bzk"/>
-                                </constraints>
-                            </imageView>
-                            <button opaque="NO" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="YLM-To-OTW">
-                                <rect key="frame" x="408" y="645" width="24" height="62"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                <state key="normal" image="Slider_Handle">
-                                    <color key="titleColor" white="0.0" alpha="1" colorSpace="calibratedWhite"/>
-                                </state>
-                                <connections>
-                                    <action selector="slider_show_buttonWithSender:" destination="BYZ-38-t0r" eventType="touchUpInside" id="fbi-Qv-ZGG"/>
-                                </connections>
-                            </button>
-                            <activityIndicatorView hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" hidesWhenStopped="YES" style="gray" translatesAutoresizingMaskIntoConstraints="NO" id="KcY-U7-JEH">
-                                <rect key="frame" x="326" y="68" width="20" height="20"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <rect key="contentStretch" x="1" y="1" width="1" height="1"/>
-                                <color key="color" systemColor="darkTextColor"/>
-                            </activityIndicatorView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0 min" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BTS-em-eiA">
-                                <rect key="frame" x="184" y="50" width="60" height="17"/>
-                                <color key="backgroundColor" red="0.4760928750038147" green="0.58250075578689575" blue="0.72943240404129028" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="60" id="HZE-aZ-CkT"/>
-                                </constraints>
-                                <fontDescription key="fontDescription" style="UICTFontTextStyleBody"/>
-                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <nil key="highlightedColor"/>
-                            </label>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="TribbleButton" translatesAutoresizingMaskIntoConstraints="NO" id="2qS-BO-egk">
                                 <rect key="frame" x="372" y="50" width="52" height="137"/>
                                 <constraints>
@@ -158,8 +117,6 @@
                         <gestureRecognizers/>
                         <constraints>
                             <constraint firstItem="hoo-g4-0lM" firstAttribute="trailing" secondItem="Sla-Kf-0cZ" secondAttribute="trailing" constant="7" id="16H-Gc-dlY"/>
-                            <constraint firstItem="YLM-To-OTW" firstAttribute="centerY" secondItem="rrm-xV-iBd" secondAttribute="centerY" id="1o2-Y1-VPX"/>
-                            <constraint firstAttribute="bottom" secondItem="rrm-xV-iBd" secondAttribute="bottom" constant="100" id="1yT-zI-qCc"/>
                             <constraint firstItem="3Ch-Cm-5GN" firstAttribute="top" secondItem="cDh-gy-KMX" secondAttribute="bottom" constant="6" id="5UN-e4-Y3W"/>
                             <constraint firstItem="JvE-AE-63L" firstAttribute="leading" secondItem="hoo-g4-0lM" secondAttribute="leading" id="8nr-JA-JaN"/>
                             <constraint firstItem="JvE-AE-63L" firstAttribute="trailing" secondItem="hoo-g4-0lM" secondAttribute="trailing" id="9Nc-5J-emt"/>
@@ -168,8 +125,6 @@
                             <constraint firstItem="cDh-gy-KMX" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="Dvq-u9-azd"/>
                             <constraint firstItem="dcC-P1-Ml2" firstAttribute="top" secondItem="2qS-BO-egk" secondAttribute="top" constant="2" id="HBu-cv-J2E"/>
                             <constraint firstItem="Sla-Kf-0cZ" firstAttribute="top" secondItem="Vl3-Fb-G9g" secondAttribute="bottom" constant="-1" id="Hth-WD-10S"/>
-                            <constraint firstAttribute="trailing" secondItem="rrm-xV-iBd" secondAttribute="trailing" constant="-76" id="JDf-GD-7TH"/>
-                            <constraint firstItem="BTS-em-eiA" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" constant="50" id="NF7-5V-BnW"/>
                             <constraint firstItem="2qS-BO-egk" firstAttribute="top" secondItem="cDh-gy-KMX" secondAttribute="bottom" constant="6" id="SjV-cC-ccy"/>
                             <constraint firstItem="hoo-g4-0lM" firstAttribute="trailing" secondItem="2qS-BO-egk" secondAttribute="trailing" constant="4" id="VTZ-TS-2vY"/>
                             <constraint firstItem="3Ch-Cm-5GN" firstAttribute="leading" secondItem="hoo-g4-0lM" secondAttribute="leading" id="YmJ-8c-ieF"/>
@@ -180,38 +135,22 @@
                             <constraint firstItem="Vl3-Fb-G9g" firstAttribute="top" secondItem="dcC-P1-Ml2" secondAttribute="bottom" constant="-1" id="oEo-u9-Nd7"/>
                             <constraint firstItem="hoo-g4-0lM" firstAttribute="trailing" secondItem="dcC-P1-Ml2" secondAttribute="trailing" constant="7" id="qQV-s9-WOR"/>
                             <constraint firstItem="cDh-gy-KMX" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="vcY-v5-7Ve"/>
-                            <constraint firstItem="BTS-em-eiA" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="yZX-Rp-ovG"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="pxd-FG-BoV"/>
                     <connections>
-                        <outlet property="activityIndicator" destination="KcY-U7-JEH" id="e6G-op-6Wp"/>
                         <outlet property="blur" destination="cDh-gy-KMX" id="AwM-K2-xdj"/>
-                        <outlet property="button" destination="YLM-To-OTW" id="enJ-iB-iSY"/>
                         <outlet property="layerSwitcherButton" destination="dcC-P1-Ml2" id="qoe-D3-c7B"/>
                         <outlet property="logo" destination="3Ch-Cm-5GN" id="E14-19-BhC"/>
                         <outlet property="positionButton" destination="Sla-Kf-0cZ" id="aRa-8Y-ZEn"/>
                         <outlet property="settingsButton" destination="Vl3-Fb-G9g" id="E7g-I1-xF5"/>
-                        <outlet property="slider_button" destination="2rh-rK-OQM" id="2p1-dd-7wc"/>
-                        <outlet property="slider_ring" destination="rrm-xV-iBd" id="mRg-B7-dgz"/>
-                        <outlet property="time" destination="BTS-em-eiA" id="pyY-MS-MAP"/>
                         <outlet property="trippleButton" destination="2qS-BO-egk" id="lfl-4b-uP4"/>
                         <outlet property="webView" destination="JvE-AE-63L" id="rcW-dJ-KNX"/>
-                        <segue destination="kME-lD-ueB" kind="presentation" identifier="ShowLaunchScreen" animates="NO" id="Wnc-EF-ufs"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
-                <gestureRecognizer id="VUV-Tz-dat" customClass="CustomGestureRecognizer" customModule="meteocool" customModuleProvider="target"/>
             </objects>
             <point key="canvasLocation" x="64" y="33"/>
-        </scene>
-        <!--LaunchScreen-->
-        <scene sceneID="Ibo-HE-tyD">
-            <objects>
-                <viewControllerPlaceholder storyboardName="LaunchScreen" id="kME-lD-ueB" sceneMemberID="viewController"/>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="5lt-kk-tS6" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="65" y="485"/>
         </scene>
         <!--Settings View Controller-->
         <scene sceneID="gZn-8e-OCg">

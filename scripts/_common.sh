@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Use Xcode 27 without changing the machine's global xcode-select setting.
+export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+
 PROJECT="meteocool.xcodeproj"
 SCHEME="${MC_SCHEME:-meteocool}"
 APP_NAME="meteocool"
@@ -20,8 +23,7 @@ ok()   { printf "\n\033[1;32m✓ %s\033[0m\n" "$*"; }
 
 preflight() {
     command -v xcodegen >/dev/null || fail "xcodegen not installed - run: brew install xcodegen"
-    [ "$(xcode-select -p)" = "/Applications/Xcode.app/Contents/Developer" ] || \
-        info "note: xcode-select points at $(xcode-select -p)"
+    xcodebuild -version >/dev/null || fail "Xcode setup is incomplete at $DEVELOPER_DIR"
 }
 
 # XcodeGen resolves `sources:` by walking the directories, so a file that was

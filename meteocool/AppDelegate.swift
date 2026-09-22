@@ -1,12 +1,16 @@
 import UIKit
 import UserNotifications
-import CoreMotion
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-reset") {
+            userDefaults?.removePersistentDomain(forName: "group.org.frcy.app.meteocool")
+        }
+        #endif
         // Override point for customization after application launch.
 
         //Settings
@@ -49,43 +53,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.setValue(false, forKey: "experimentalFeatures")
         }
 
+        if let userDefaults {
+            userDefaults.set(min(max(userDefaults.integer(forKey: "intensityValue"), 0), 4), forKey: "intensityValue")
+            userDefaults.set(min(max(userDefaults.integer(forKey: "timeBeforeValue"), 0), 8), forKey: "timeBeforeValue")
+        }
+        SharedNotificationManager.refreshAuthorization()
         return true
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
-    }
-
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    }
-
-    func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-    }
-
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        if let clear_all = userInfo["clear_all"] as? Bool {
-            if (clear_all) {
-                SharedNotificationManager.clearNotifications()
-                acknowledgeNotification(retry: true, from: "push")
-
-                /*UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.removeObject(forKey: "alert")
-                UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.removeObject(forKey: "message")*/
-            }
+        guard userInfo["clear_all"] as? Bool == true else {
+            completionHandler(.noData)
+            return
         }
-        completionHandler(.newData)
+        SharedNotificationManager.clearNotifications()
+        acknowledgeNotification(retry: true, from: "push") { success in
+            completionHandler(success ? .newData : .failed)
+        }
     }
 
-    func acknowledgeNotification(retry: Bool, from: String) {
+    func acknowledgeNotification(retry: Bool, from: String, completion: @escaping (Bool) -> Void = { _ in }) {
         guard let token = SharedNotificationManager.getToken() else {
-            //NSLog("acknowledgeNotification: no push token")
             if (retry) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(4), execute: {
-                    self.acknowledgeNotification(retry: false, from: from)
+                    self.acknowledgeNotification(retry: false, from: from, completion: completion)
                 })
+            } else {
+                completion(false)
             }
             return
         }
@@ -93,34 +87,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let locationDict = ["token": token, "from": from] as [String: Any]
 
         guard let request = NetworkHelper.createJSONPostRequest(dst: "clear_notification", dictionary: locationDict) else {
+            completion(false)
             return
         }
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                return
-            }
-
-            if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                if let errorMessage = json?["error"] as? String {
-                    NSLog("ERROR: \(errorMessage)")
-                }
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                completion(NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil)
+            } catch {
+                completion(false)
             }
         }
-        task.resume()
     }
 }
 
-extension AppDelegate: UNUserNotificationCenterDelegate {
+extension AppDelegate {
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { data -> String in
             return String(format: "%02.2hhx", data)
         }.joined()
-        NSLog("Device Token: \(token)")
         SharedNotificationManager.setToken(token: token)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        NSLog("Failed to register for remote notifications with error: \(error)")
+        SharedNotificationManager.registrationFailed()
+        NSLog("APNs registration failed")
     }
 }
