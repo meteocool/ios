@@ -18,14 +18,9 @@ enum MeteocoolEnvironment {
     /// staging namespace.
     case staging
 
-    /// Selected by the "Experimental Features" setting. Changing it needs a
-    /// restart, which is what the settings screen already tells the user, so
-    /// the selection is fixed for this process. Native and web requests must
-    /// not split across deployments before that restart.
-    static let current: MeteocoolEnvironment = {
-        let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
-        return defaults?.bool(forKey: "experimentalFeatures") == true ? .staging : .production
-    }()
+    /// This build only ever talks to staging, regardless of the
+    /// "Experimental Features" setting.
+    static let current: MeteocoolEnvironment = .staging
 
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
