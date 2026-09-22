@@ -10,6 +10,10 @@ import UIKit
 class RadarColorMappingTableViewCell: UITableViewCell{
     @IBOutlet weak var lable: UILabel!
     @IBOutlet weak var checkbox: UIImageView!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [lable], accessory: checkbox) }
+    }
 }
 
 class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
@@ -50,7 +54,7 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
     override func viewDidLoad() {
         super.viewDidLoad()
         radarColorMappingSettingsTable.estimatedRowHeight = 100
-        radarColorMappingSettingsTable.rowHeight = 44
+        radarColorMappingSettingsTable.rowHeight = UITableView.automaticDimension
         radarColorMappingSettingsTable.delegate = self
         radarColorMappingSettingsTable.dataSource = self
         if #available(iOS 26.0, *) {
@@ -98,6 +102,7 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         default:
             print("this should not happen")
         }
+        cell.accessibilityTraits = cell.checkbox.isHidden ? [.button] : [.button, .selected]
         return cell
     }
     

@@ -10,6 +10,10 @@ import UIKit
 class BaseLayerMappingTableViewCell: UITableViewCell{
     @IBOutlet weak var lable: UILabel!
     @IBOutlet weak var checkbox: UIImageView!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [lable], accessory: checkbox) }
+    }
 }
 
 class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
@@ -46,7 +50,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     override func viewDidLoad() {
         super.viewDidLoad()
         baseLayerMappingSettingsTable.estimatedRowHeight = 100
-        baseLayerMappingSettingsTable.rowHeight = 44
+        baseLayerMappingSettingsTable.rowHeight = UITableView.automaticDimension
         if #available(iOS 26.0, *) {
             LiquidGlass.float(baseLayerMappingSettingsBar, over: baseLayerMappingSettingsTable, in: view)
         }
@@ -93,6 +97,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         default:
             break;
         }
+        cell.accessibilityTraits = cell.checkbox.isHidden ? [.button] : [.button, .selected]
         return cell
     }
     

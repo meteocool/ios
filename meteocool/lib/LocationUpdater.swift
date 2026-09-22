@@ -1,24 +1,20 @@
 import UIKit
 import CoreLocation
 
-@MainActor protocol LocationObserver {
+@MainActor protocol LocationObserver: AnyObject {
     func notify(location: CLLocation)
 }
 
 @MainActor let SharedLocationUpdater = LocationUpdater.init()
 
-// XXX is there a way to make this class not instanciable? it should be a singleton (FUCKING JAVA BROKE ME)
 // CLLocationManager delivers its delegate callbacks on the queue the manager was
 // created on — always main here — so the @preconcurrency conformance is sound.
 @MainActor class LocationUpdater: NSObject, @preconcurrency CLLocationManagerDelegate {
     /// location manager instace we're wrapping
-    private let locationManager: CLLocationManager = CLLocationManager()
-    /// device identifier (currently unused...)
-    private let deviceID: String = UIDevice.current.identifierForVendor!.uuidString
+    private let locationManager: CLLocationManager
     /// pressure manager object
     private let pressure: PressureManager = PressureManager()
-    /// Location observers (only notified if app is active and a new location update becomes available)
-    private var observers = [LocationObserver]()
+    private let observers = NSHashTable<AnyObject>.weakObjects()
 
     // accurate location updates are/were enabled before suspend
     private var accurateLocationUpdatesEnabled: Bool = false
@@ -33,94 +29,89 @@ import CoreLocation
 
     // the last location reported to the backend
     private var lastPostedLocation: CLLocation?
-    // the last received location (might not have been reported to the backend)
-    private var lastReceivedLocation: CLLocation?
+    private var postTask: Task<Void, Never>?
 
     /// default accuracy for monitoring significant location changes
     private let backgroundAccuracy = kCLLocationAccuracyKilometer
 
-    /// populated with the completion handler from the onboarding thing
-    var authCompletionHandler: ((Bool, Error?) -> Void)?
+    private var authorizationCallbacks: [(Bool, Error?) -> Void] = []
 
     /// constructor
-    override init() {
+    init(locationManager: CLLocationManager = CLLocationManager()) {
+        self.locationManager = locationManager
         super.init()
         locationManager.delegate = self
-        NotificationCenter.default.addObserver(self, selector: #selector(LocationUpdater.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(LocationUpdater.willResignActive), name: UIApplication.willResignActiveNotification, object: nil)
         printAuthorizationStatus()
     }
 
-    func printAuthorizationStatus() {
-        if CLLocationManager.locationServicesEnabled() {
-            switch CLLocationManager.authorizationStatus() {
-            case .notDetermined, .restricted, .denied:
-                NSLog("Location: No access")
-            case .authorizedWhenInUse:
-                NSLog("Location: WhenInUse")
-            case .authorizedAlways:
-                NSLog("Location: Always")
-                startSignificantChangeLocationUpdates()
-            @unknown default:
-                NSLog("Location: unknown case")
-            }
-        } else {
-            NSLog("Location services are not enabled")
+    var authorizationStatus: CLAuthorizationStatus { locationManager.authorizationStatus }
+
+    func printAuthorizationStatus() { updateBackgroundMonitoring() }
+
+    func requestAuthorization(_ completion: @escaping (Bool, Error?) -> Void) {
+        switch authorizationStatus {
+        case .notDetermined:
+            authorizationCallbacks.append(completion)
+            if authorizationCallbacks.count == 1 { locationManager.requestWhenInUseAuthorization() }
+        case .authorizedWhenInUse, .authorizedAlways:
+            startAccurateLocationUpdates()
+            completion(true, nil)
+        default:
+            completion(false, nil)
         }
     }
 
-    func requestAuthorization(_ completion: @escaping (_ success: Bool, _ error: Error?) -> Void, notDetermined: Bool) {
-        authCompletionHandler = completion
-        if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
-            locationManager.requestAlwaysAuthorization()
+    func requestBackgroundAuthorization() {
+        guard authorizationStatus == .authorizedWhenInUse else { return }
+        locationManager.requestAlwaysAuthorization()
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        guard status != .notDetermined else { return }
+        let granted = status == .authorizedWhenInUse || status == .authorizedAlways
+        let completions = authorizationCallbacks
+        authorizationCallbacks.removeAll()
+        if granted {
+            startAccurateLocationUpdates()
         } else {
-            locationManager.requestWhenInUseAuthorization()
+            locationManager.stopUpdatingLocation()
+            lastPostedLocation = nil
+            userDefaults?.set(false, forKey: "autoZoom")
         }
-        if (!notDetermined) {
-            // XXX this crap needs to go into the completion handler by the ONLY caller that ever sets this awfully named
-            // second parameter to false. WTF WAS I THINKING
-            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1), execute: {
-                print("completing lost completion handler")
-                if let authCompletionHandler = self.authCompletionHandler {
-                    authCompletionHandler(true, nil)
-                }
-                self.authCompletionHandler = nil
-            })
+        updateBackgroundMonitoring()
+        completions.forEach { $0(granted, nil) }
+        if granted {
+            refreshNotificationRegistration()
+        } else {
+            SharedNotificationManager.unregister()
+        }
+        NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
+    }
+
+    func updateBackgroundMonitoring() {
+        let enabled = userDefaults?.bool(forKey: "pushNotification") == true
+        if enabled && authorizationStatus == .authorizedAlways {
+            startSignificantChangeLocationUpdates()
+        } else {
+            locationManager.stopMonitoringSignificantLocationChanges()
+            locationManager.allowsBackgroundLocationUpdates = carPlayConnected
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        if let authCompletionHandler = authCompletionHandler {
-            switch status {
-            case .notDetermined:
-                if let enabled = userDefaults?.bool(forKey: "pushNotification"), enabled {
-                    locationManager.requestAlwaysAuthorization()
-                } else {
-                    locationManager.requestWhenInUseAuthorization()
-                }
-                break
-            case .authorizedWhenInUse:
-                locationManager.startUpdatingLocation()
-                break
-            case .authorizedAlways:
-                locationManager.startUpdatingLocation()
-                SharedNotificationManager.registerForPushNotifications({(_,_) in })
-                break
-            case .restricted:
-                break
-            case .denied:
-                break
-            default:
-                break
-            }
-            authCompletionHandler(true, nil)
+    func refreshNotificationRegistration() {
+        updateBackgroundMonitoring()
+        guard SharedNotificationManager.canRegister else { return }
+        if let location = getCurrentLocation() {
+            postLocation(location: location, pressure: -1)
+        } else if authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse {
+            locationManager.requestLocation()
         }
-        authCompletionHandler = nil
     }
 
     // =============== Observer pattern ===========
     func addObserver(observer: LocationObserver) {
-        observers.append(observer)
+        observers.add(observer)
     }
     
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
@@ -128,14 +119,14 @@ import CoreLocation
     // executed when the user taps the locate-me button
     func requestLocation(observer: LocationObserver, explicit: Bool) {
         if (explicit) {
-            if (CLLocationManager.authorizationStatus() == .notDetermined) {
+            if (authorizationStatus == .notDetermined) {
                 requestAuthorization({(_,_) in
-                    if CLLocationManager.authorizationStatus() == .authorizedAlways || CLLocationManager.authorizationStatus() == .authorizedWhenInUse {
+                    if self.authorizationStatus == .authorizedAlways || self.authorizationStatus == .authorizedWhenInUse {
                         self.requestLocation(observer: observer, explicit: false)
                     }
-                }, notDetermined: true)
+                })
             }
-            if (CLLocationManager.authorizationStatus() == .denied) {
+            if (authorizationStatus == .denied || authorizationStatus == .restricted) {
                 let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_general",comment: "Alerts"), preferredStyle: .alert)
                 alertController.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings",comment: "Alerts"), style: .default, handler: {_ in
                     if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
@@ -145,7 +136,7 @@ import CoreLocation
                 userDefaults?.setValue(false, forKey: "autoZoom")
                 alertController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Alerts"), style: .default))
 
-                let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+                let keyWindow = viewController?.view.window
                 var rootViewController = keyWindow?.rootViewController
                 if let navigationController = rootViewController as? UINavigationController {
                     rootViewController = navigationController.viewControllers.first
@@ -157,10 +148,10 @@ import CoreLocation
             }
         }
 
-        if let location = self.lastReceivedLocation {
+        if let location = getCurrentLocation() {
             observer.notify(location: location)
-        } else {
-            NSLog("location requested by observer, but none cached!")
+        } else if authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse {
+            locationManager.requestLocation()
         }
     }
 
@@ -173,10 +164,11 @@ import CoreLocation
             self.locationManager.stopUpdatingLocation()
         }
         locationManager.desiredAccuracy = backgroundAccuracy
-        startSignificantChangeLocationUpdates()
+        updateBackgroundMonitoring()
     }
 
     @objc func willEnterForeground() {
+        updateBackgroundMonitoring()
         if (accurateLocationUpdatesEnabled) {
             startAccurateLocationUpdates()
         }
@@ -188,21 +180,13 @@ import CoreLocation
         self.locationManager.startMonitoringSignificantLocationChanges()
     }
 
-    /* unused */
-    /*func startBackgroundLocationUpdates() {
-        self.locationManager.allowsBackgroundLocationUpdates = true
-        self.locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-        self.locationManager.pausesLocationUpdatesAutomatically = true
-        self.locationManager.activityType = CLActivityType.other
-        self.locationManager.startUpdatingLocation()
-    }*/
-
     /// - Parameter force: keep the updates coming even with the app in the
     ///   background. CarPlay needs that: with the phone locked the app is not
     ///   "active", and the car screen is still the thing the user is looking
     ///   at. Background delivery is already covered by the `location`
     ///   background mode and `allowsBackgroundLocationUpdates`.
     func startAccurateLocationUpdates(force: Bool = false) {
+        guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else { return }
         if !force && UIApplication.shared.applicationState != .active {
             return
         }
@@ -215,6 +199,8 @@ import CoreLocation
     }
 
     func stopAccurateLocationUpdates() {
+        // The phone's location control must not stop the car's active stream.
+        guard !carPlayConnected else { return }
         self.locationManager.stopUpdatingLocation()
         accurateLocationUpdatesEnabled = false
     }
@@ -245,8 +231,9 @@ import CoreLocation
             background = false
         }
 
-        if let location = locations.last {
-            if (background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
+        if let location = locations.last, location.horizontalAccuracy >= 0,
+           abs(location.timestamp.timeIntervalSinceNow) < 300 {
+            if SharedNotificationManager.canRegister && (background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
                 // take pressure measurement and send json request
                 pressure.getPressure(completion: {
                     pressure in self.postLocationDeferred(location: location, pressure: pressure)  })
@@ -255,18 +242,14 @@ import CoreLocation
 
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.latitude, forKey: "lat")
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "lon")
-            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "accuracy")
-
-            // XXX decide if new location is better than the previous one. does apple guarantee this??
-            // XXX apparently not
-            self.lastReceivedLocation = location
+            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.horizontalAccuracy, forKey: "accuracy")
 
             // Observers are notified whatever the app's state: the CarPlay map
             // is an observer, and it is on screen exactly when the phone is
             // not. The phone's own map updating while it is in the background
             // costs one JS call that WebKit throttles anyway.
-            for observer in observers {
-                observer.notify(location: location)
+            for observer in observers.allObjects {
+                (observer as? LocationObserver)?.notify(location: location)
             }
 
             if (!background) {
@@ -283,18 +266,15 @@ import CoreLocation
 
     // interface methods to the backend
     func postLocationDeferred(location: CLLocation, pressure: Float) {
-        // XXX not sure we need this hack... if there is no token, don't use background location stuff
-        if SharedNotificationManager.getToken() != nil {
-            postLocation(location: location, pressure: pressure)
-        } else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(4), execute: {
-                self.postLocation(location: location, pressure: pressure)
-            })
-        }
+        postLocation(location: location, pressure: pressure)
     }
 
     func postLocation(location: CLLocation, pressure: Float) {
-        let tokenValue = SharedNotificationManager.getToken() ?? "anon"
+        guard SharedNotificationManager.canRegister,
+              let tokenValue = SharedNotificationManager.getToken(),
+              authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse,
+              location.horizontalAccuracy >= 0,
+              abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
 
         // The backend's `lang` is an enum of de/en. Anything else (a device set
         // to French, say) fails validation there, and the legacy endpoint turns
@@ -324,10 +304,10 @@ import CoreLocation
             // picked — and at the lowest setting it was 0, which the backend
             // rejects outright (`ahead` must be > 0), taking the whole update
             // with it. `?? 3+1` parsed as `?? 4`, not `(?? 3) + 1`.
-            "ahead": ((userDefaults?.integer(forKey: "timeBeforeValue") ?? 1) + 1) * 5,
-            "intensity": intensityDbzValues[userDefaults?.integer(forKey: "intensityValue") ?? 1] ,
+            "ahead": (min(max(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2, 0), 8) + 1) * 5,
+            "intensity": intensityDbzValues[min(max(userDefaults?.integer(forKey: "intensityValue") ?? 1, 0), 4)] ,
             "source": "ios",
-            "experimental": userDefaults?.bool(forKey: "experimentalFeatures") ?? false,
+            "experimental": MeteocoolEnvironment.current == .staging,
             // `details` is what the old backend reads, `withDBZ` what the v4 one
             // does. Both are sent because the app talks to either deployment
             // depending on the environment, and each ignores the other's key.
@@ -340,21 +320,29 @@ import CoreLocation
             return
         }
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                return
-            }
-
-            if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                if let errorMessage = json?["error"] as? String {
-                    NSLog("ERROR: \(errorMessage)")
-                }
+        let previous = postTask
+        postTask = Task {
+            await previous?.value
+            guard SharedNotificationManager.canRegister,
+                  SharedNotificationManager.getToken() == tokenValue,
+                  abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
+            SharedNotificationManager.registrationWillBegin()
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let success = NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil
+                if !success { self.lastPostedLocation = nil }
+                SharedNotificationManager.registrationFinished(success: success)
+            } catch {
+                self.lastPostedLocation = nil
+                SharedNotificationManager.registrationFinished(success: false)
             }
         }
-        task.resume()
     }
-    
+
     func getCurrentLocation() -> CLLocation?{
-        return SharedLocationUpdater.locationManager.location ?? nil
+        guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse,
+              let location = locationManager.location, location.horizontalAccuracy >= 0,
+              abs(location.timestamp.timeIntervalSinceNow) < 300 else { return nil }
+        return location
     }
 }

@@ -3,6 +3,8 @@
 This repository contains the full
 [meteocool](https://github.com/meteocool/ios) iOS code, including
 background location services, notification code and infrastructure.
+Supports iOS 18, 26, and 27; build with Xcode 27.
+
 All components and interaction except the main map view are implemented
 natively in Swift (Swift 6 language mode). The map view and all of its data visualization
 features and interactions are maintained in the
@@ -52,3 +54,8 @@ All code is offered under the AGPL-3.0 license to encourage
 collaboration and open-source innovation in meteorology and earth
 sciences. Please be aware that we can only accept contributions if
 they are also licensed AGPL-3.0.
+
+## Integration verification
+
+See [AUDIT.md](AUDIT.md) for Xcode 27 test results, screenshots and release gates.
+Run `bash scripts/check.sh` for the standalone checks. Native UI has no Swift package dependencies.
