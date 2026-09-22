@@ -42,7 +42,7 @@ enum GeolocationBridge {
     }
 
     static var userScript: WKUserScript {
-        WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     }
 
     /// Hands a fix to the shim, which resolves pending `getCurrentPosition`
@@ -64,8 +64,8 @@ enum GeolocationBridge {
         webView.evaluateJavaScript("window.__mcGeo && window.__mcGeo.push(\(json));")
     }
 
-    /// Fails everything the page is waiting on. A denied authorization is
-    /// terminal for the page, so the shim stops asking after this.
+    /// Fails current requests. A later request rechecks native permission,
+    /// so returning from Settings does not require a page reload.
     static func fail(_ code: ErrorCode, message: String, to webView: WKWebView) {
         guard let json = encode(["code": code.rawValue, "message": message]) else { return }
         webView.evaluateJavaScript("window.__mcGeo && window.__mcGeo.fail(\(json));")
@@ -78,7 +78,7 @@ enum GeolocationBridge {
         return String(data: data, encoding: .utf8)
     }
 
-    /// Runs before the page's own scripts, in every frame.
+    /// Runs before the trusted main page's own scripts.
     ///
     /// Raw string: the JS is full of `\(` -- free in a Swift string literal,
     /// interpolation in an ordinary one.
@@ -97,7 +97,6 @@ enum GeolocationBridge {
       var pending = [];        // one-shot getCurrentPosition calls
       var watchers = {};       // id -> { success, error }
       var last = null;         // the most recent fix the host delivered
-      var denied = null;       // set once the host says no; terminal
 
       function position(fix) {
         return {
@@ -144,18 +143,17 @@ enum GeolocationBridge {
         /* Called by the host for every fix it receives. */
         push: function (fix) {
           last = fix;
-          denied = null;
           var waiting = pending;
           pending = [];
           waiting.forEach(function (request) { settle(request, fix); });
           Object.keys(watchers).forEach(function (id) {
-            invoke(watchers[id].success, position(fix));
+            if (watchers[id]) settle(watchers[id], fix);
           });
         },
 
         /* Called by the host when it cannot produce one. */
         fail: function (reason) {
-          denied = reason.code === PERMISSION_DENIED ? reason : null;
+          if (reason.code === PERMISSION_DENIED) last = null;
           var waiting = pending;
           pending = [];
           waiting.forEach(function (request) {
@@ -163,24 +161,25 @@ enum GeolocationBridge {
             invoke(request.error, error(reason.code, reason.message));
           });
           Object.keys(watchers).forEach(function (id) {
-            invoke(watchers[id].error, error(reason.code, reason.message));
+            var watcher = watchers[id];
+            if (!watcher) return;
+            if (watcher.timer) clearTimeout(watcher.timer);
+            if (reason.code === PERMISSION_DENIED) delete watchers[id];
+            invoke(watcher.error, error(reason.code, reason.message));
           });
         },
       };
 
-      function ask(success, failure, options) {
-        if (denied) {
-          invoke(failure, error(denied.code, denied.message));
-          return;
-        }
-
-        var maximumAge = options && typeof options.maximumAge === "number" ? options.maximumAge : 0;
-        if (last && Date.now() - last.timestamp <= maximumAge) {
-          invoke(success, position(last));
-          return;
-        }
-
+      function ask(success, failure, options, watchId) {
         var request = { success: success, error: failure, timer: null };
+        if (watchId) watchers[watchId] = request;
+        var maximumAge = options && typeof options.maximumAge === "number" ? Math.max(0, options.maximumAge) : 0;
+        if (last && maximumAge > 0 && Date.now() - last.timestamp <= maximumAge) {
+          var cached = last;
+          request.timer = setTimeout(function () { settle(request, cached); }, 0);
+          return;
+        }
+
         if (options && typeof options.timeout === "number" && options.timeout >= 0 && isFinite(options.timeout)) {
           request.timer = setTimeout(function () {
             var index = pending.indexOf(request);
@@ -188,7 +187,7 @@ enum GeolocationBridge {
             invoke(failure, error(TIMEOUT, "Timed out waiting for the app's location"));
           }, options.timeout);
         }
-        pending.push(request);
+        if (!watchId) pending.push(request);
         handler.postMessage("requestPosition");
       }
 
@@ -199,14 +198,14 @@ enum GeolocationBridge {
 
         watchPosition: function (success, failure, options) {
           var id = nextId++;
-          watchers[id] = { success: success, error: failure };
           /* A watcher is expected to report the current position too, and the
              host keeps sending fixes for as long as its updates run. */
-          ask(success, failure, options);
+          ask(success, failure, options, id);
           return id;
         },
 
         clearWatch: function (id) {
+          if (watchers[id] && watchers[id].timer) clearTimeout(watchers[id].timer);
           delete watchers[id];
         },
       };

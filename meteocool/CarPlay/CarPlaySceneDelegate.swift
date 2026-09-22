@@ -27,6 +27,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                                   to window: CPWindow) {
         self.interfaceController = interfaceController
         SharedLocationUpdater.carPlayConnected = true
+        SharedLocationUpdater.updateBackgroundMonitoring()
 
         let map = CarPlayMapViewController()
         window.rootViewController = map
@@ -39,10 +40,14 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+                                  didDisconnectInterfaceController interfaceController: CPInterfaceController,
+                                  from window: CPWindow) {
         self.interfaceController = nil
+        mapController?.disconnect()
+        window.rootViewController = nil
         mapController = nil
         SharedLocationUpdater.carPlayConnected = false
+        SharedLocationUpdater.updateBackgroundMonitoring()
 
         // The car screen was the only reason for the high-accuracy updates the
         // map controller asked for. If the phone is in front of the user its

@@ -5,7 +5,7 @@
 
 import UIKit
 
-/// The scene-based life cycle, which the iOS 26 SDK requires: an app built
+/// The scene-based life cycle, which the iOS 27 SDK requires: an app built
 /// against it that still relies on the old `UIApplicationDelegate` window
 /// callbacks refuses to launch at all.
 ///
@@ -23,7 +23,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// that is untangled, only the car gets a second scene.
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
         let otherWindowScenes = UIApplication.shared.connectedScenes.contains {
-            $0 !== scene && $0 is UIWindowScene
+            $0 !== scene && $0.session.role == .windowApplication
         }
         if otherWindowScenes {
             UIApplication.shared.requestSceneSessionDestruction(session, options: nil)
@@ -32,9 +32,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         SharedNotificationManager.clearNotifications()
+        SharedNotificationManager.refreshAuthorization()
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        viewController?.willResignActive()
+        SharedLocationUpdater.willResignActive()
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
+        SharedLocationUpdater.willEnterForeground()
+        viewController?.willEnterForeground()
+        viewController?.didBecomeActive()
         // XXX call this only when there are >0 notifications on launch! saves 1 useless request.
         (UIApplication.shared.delegate as? AppDelegate)?.acknowledgeNotification(retry: true, from: "foreground")
     }

@@ -1,59 +1,72 @@
 import UserNotifications
 
-class NotificationService: UNNotificationServiceExtension {
-
-    var contentHandler: ((UNNotificationContent) -> Void)?
-    var bestAttemptContent: UNMutableNotificationContent?
+/// The download and expiration callbacks can race. The lock protects the
+/// completion and mutable content so the original alert is delivered once.
+final class NotificationService: UNNotificationServiceExtension, @unchecked Sendable {
+    private let lock = NSLock()
+    private var handler: ((UNNotificationContent) -> Void)?
+    private var content: UNMutableNotificationContent?
+    private var download: URLSessionDownloadTask?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        self.contentHandler = contentHandler
-        bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
-        guard let bestAttemptContent = bestAttemptContent else {
+        guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else {
+            contentHandler(request.content)
             return
         }
-        guard let urlString = request.content.userInfo["preview"] as? String,
-            let url = URL(string: urlString) else {
-                contentHandler(bestAttemptContent)
-                return
+        lock.withLock {
+            self.handler = contentHandler
+            self.content = content
         }
-        guard let imageData = NSData(contentsOf: url) else {
-            contentHandler(bestAttemptContent)
+        guard let preview = content.userInfo["preview"] as? String,
+              let url = URL(string: preview), url.scheme == "https", url.host != nil else {
+            finish()
             return
         }
-        guard let attachment = UNNotificationAttachment.saveImageToDisk(fileIdentifier: "image.png", data: imageData, options: nil) else {
-            contentHandler(bestAttemptContent)
-            return
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let task = URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
+            var attachment: UNNotificationAttachment?
+            if error == nil, let file, let response = response as? HTTPURLResponse,
+               response.statusCode == 200, response.url?.scheme == "https",
+               response.mimeType == "image/png",
+               let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+               size > 0, size <= 10 * 1024 * 1024 {
+                let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                do {
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    let image = folder.appendingPathComponent("radar.png")
+                    try FileManager.default.moveItem(at: file, to: image)
+                    attachment = try UNNotificationAttachment(identifier: "radar", url: image)
+                } catch {
+                    // The text alert must survive a failed preview.
+                    NSLog("Notification preview unavailable")
+                }
+            }
+            self?.finish(attachment: attachment)
         }
-
-        bestAttemptContent.attachments = [ attachment ]
-        contentHandler(bestAttemptContent)
+        let shouldStart = lock.withLock {
+            guard handler != nil else { return false }
+            download = task
+            return true
+        }
+        if shouldStart { task.resume() } else { task.cancel() }
     }
 
-    override func serviceExtensionTimeWillExpire() {
-        // Called just before the extension will be terminated by the system.
-        // Use this as an opportunity to deliver your "best attempt" at modified content, otherwise the original push payload will be used.
-        if let contentHandler = contentHandler, let bestAttemptContent =  bestAttemptContent {
-            contentHandler(bestAttemptContent)
+    override func serviceExtensionTimeWillExpire() { finish() }
+
+    private func finish(attachment: UNNotificationAttachment? = nil) {
+        lock.lock()
+        guard let handler, let content else {
+            lock.unlock()
+            return
         }
-    }
-}
-
-extension UNNotificationAttachment {
-    static func saveImageToDisk(fileIdentifier: String, data: NSData, options: [NSObject: AnyObject]?) -> UNNotificationAttachment? {
-        let fileManager = FileManager.default
-        let folderName = ProcessInfo.processInfo.globallyUniqueString
-        let folderURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(folderName, isDirectory: true)
-
-        do {
-            try fileManager.createDirectory(at: folderURL!, withIntermediateDirectories: true, attributes: nil)
-            let fileURL = folderURL?.appendingPathComponent(fileIdentifier)
-            try data.write(to: fileURL!, options: [])
-            let attachment = try UNNotificationAttachment(identifier: fileIdentifier, url: fileURL!, options: options)
-            return attachment
-        } catch let error {
-            NSLog("Error \(error)")
-        }
-
-        return nil
+        if let attachment { content.attachments = [attachment] }
+        let task = download
+        self.handler = nil
+        self.content = nil
+        download = nil
+        lock.unlock()
+        task?.cancel()
+        handler(content)
     }
 }

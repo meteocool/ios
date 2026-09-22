@@ -24,20 +24,7 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>127.0.0.1:8080</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>You asked to be notified ahead of rain at your current location. Choose "Always Allow" if you want notifications to work.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
 	<string>You asked to be notified ahead of rain at your current location. Choose "Always Allow" if you want notifications to work.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Display your location on the weather map.</string>
@@ -80,10 +67,6 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>armv7</string>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

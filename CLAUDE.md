@@ -85,10 +85,9 @@ xcrun devicectl device install app --device <UDID> path/to/meteocool.app
 
 | Target | Type | Notes |
 | --- | --- | --- |
-| `meteocool` | app | main app; embeds the two notification extensions |
+| `meteocool` | app | main app; embeds the notification service extension |
 | `NotificationService` | app extension | mutates incoming pushes (`UNNotificationServiceExtension`) |
-| `NotificationContent` | app extension | custom push UI; deprecated by Apple since iOS 17 but still functional |
-| `meteocoolUITests` | UI tests | fastlane snapshot screenshots |
+| `meteocoolUITests` | UI tests | onboarding, controls, denial recovery and local API contracts |
 
 The legacy *Today* widget (`Widget/`, `NCWidgetProviding`) was removed during the
 XcodeGen conversion: it had not been embedded in the app for years and iOS 18+
@@ -139,13 +138,12 @@ never hardcode a host at a call site:
 
 | | Production | Staging |
 | --- | --- | --- |
-| Web map (`WKWebView`) | `app.ng.meteocool.com/ios.html` | `meteocool-staging.meteo.workers.dev/ios.html` |
+| Web map (`WKWebView`) | `meteocool.com/ios.html` | `web.staging.meteocool.com/ios.html` |
 | Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `staging.meteocool.com` |
 
-Staging is the v4 backend from [meteocool/ng](https://github.com/meteocool/ng)
+Staging is the rewritten backend from [meteocool/ng](https://github.com/meteocool/ng)
 plus the `--mode staging` build of [meteocool/core](https://github.com/meteocool/core).
-The staging frontend Worker has no custom domain, so it is served from
-workers.dev (`wrangler deploy --env staging`).
+The staging frontend uses the custom domain configured in core/wrangler.jsonc.
 
 The web map and the native API must move together: the staging frontend is built
 against the staging backend's contract, and a push registration posted to the
@@ -197,15 +195,14 @@ Glass, built in [`meteocool/lib/LiquidGlass.swift`](meteocool/lib/LiquidGlass.sw
   dropped and the buttons are reparented into a `UIGlassContainerEffect` —
   glass cannot sample other glass, so neighbouring elements have to share a
   container or they drift apart visually;
-- the status bar blur, the forecast timestamp and the drawer handle become
-  glass too, and the settings tables scroll *under* their navigation bars,
+- the status bar backdrop becomes glass too, and the settings tables scroll *under* their navigation bars,
   because a glass bar with nothing passing beneath it renders as a flat slab.
 
 Everything is behind `if #available(iOS 26.0, *)`; the deployment target is
-still iOS 15, which keeps the shipped blur-and-PNG look. Glass is for the
+iOS 18, which keeps the shipped blur-and-PNG look. Glass is for the
 navigation layer only — the radar map itself is content and stays untreated.
 
-The iOS 26 SDK refuses to launch an app that has not adopted the UIScene life
+The iOS 27 SDK refuses to launch an app that has not adopted the UIScene life
 cycle, so `SceneDelegate` owns the foreground/active hooks that used to sit on
 `AppDelegate` (those `application…` callbacks stop firing once
 `UIApplicationSceneManifest` is present in `Info.plist`).
@@ -221,3 +218,32 @@ change `BUNDLE_PREFIX`, change it in both places too.
 `fastlane beta` (see `fastlane/Fastfile`) bumps the build number and uploads to
 TestFlight. `./scripts/release.sh` produces the same signed `.ipa` locally
 without fastlane.
+
+## Audit changes (21 September 2026)
+
+Use Xcode 27. Scripts default `DEVELOPER_DIR` to `/Applications/Xcode.app/Contents/Developer`
+without changing global selection. Deployment target is iOS 18; UIKit glass is
+available on iOS 26 and 27. `AUDIT.md` tracks verification and remaining work.
+
+The web frontend owns forecast playback. The obsolete native forecast drawer
+and its custom gesture recognizer were removed because its JavaScript entry
+points no longer exist. Native settings use UISlider; StepSlider was removed.
+
+`NotificationManager` owns opt-in, foreground authorization refresh, token
+registration, removal and visible sync-failure state. Stored APNs tokens are
+used only for removal; new registrations need the current launch's APNs token.
+The selected deployment is fixed for the process so changing Experimental
+Features cannot split web and native requests before restart.
+
+Onboarding is one sequence and denial/skip are valid completion paths. Location
+starts with When In Use; background access is requested separately for alerts.
+Pressure is optional and must not delay registration indefinitely or trigger
+an unrelated permission prompt.
+
+Run `bash scripts/check.sh` for network, geolocation and notification fallback checks.
+The UI tests use `--ui-test-reset`, supported only in Debug simulator builds,
+to reset app preferences between cases. They do not reset OS permissions.
+
+Onboarding uses a native scrolling UIKit controller so large text does not truncate permission explanations. Both former Swift packages (OnboardKit and StepSlider) are removed; the retained package lock has no pins. Settings rows wrap and self-size.
+
+The production web host follows core/wrangler.jsonc. Its currently deployed UI differs from staging and fails the rewritten playback accessibility test; see AUDIT.md before releasing. Switching environments removes the last recorded registration from its original API before registering on the new API.

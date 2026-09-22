@@ -58,6 +58,7 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
         webView.load(URLRequest(url: environment.carPlayURL))
 
         SharedLocationUpdater.addObserver(observer: self)
+        NotificationCenter.default.addObserver(self, selector: #selector(injectSettings), name: NSNotification.Name("SettingsChanged"), object: nil)
         // The driver's position is the whole point of the car screen, so this
         // asks for updates whether or not the phone's own UI is in front —
         // with the phone locked the app is not "active" and the ordinary
@@ -67,6 +68,18 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
     }
 
     // MARK: - LocationObserver
+
+    func disconnect() {
+        NotificationCenter.default.removeObserver(self)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "scriptHandler")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: GeolocationBridge.handlerName)
+        webView.stopLoading()
+    }
+
+    @objc private func injectSettings() {
+        guard webviewReady, let command = WebSettings.injectionJS() else { return }
+        webView.evaluateJavaScript(command)
+    }
 
     func notify(location: CLLocation) {
         guard webviewReady else {
@@ -83,12 +96,18 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
     // MARK: - WKScriptMessageHandler
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              message.frameInfo.securityOrigin.host == MeteocoolEnvironment.current.carPlayURL.host else { return }
         let action = String(describing: message.body)
 
         if message.name == GeolocationBridge.handlerName {
             if action == GeolocationBridge.requestAction {
                 if let location = SharedLocationUpdater.getCurrentLocation() {
                     GeolocationBridge.deliver(location, to: webView)
+                } else if SharedLocationUpdater.authorizationStatus == .authorizedAlways || SharedLocationUpdater.authorizationStatus == .authorizedWhenInUse {
+                    SharedLocationUpdater.startAccurateLocationUpdates(force: true)
+                } else {
+                    GeolocationBridge.fail(.permissionDenied, message: "Enable location access on your iPhone", to: webView)
                 }
             }
             return
@@ -99,9 +118,7 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
         // the one message that matters here: it means the map is up.
         if action == "requestSettings" {
             webviewReady = true
-            if let command = WebSettings.injectionJS() {
-                webView.evaluateJavaScript(command)
-            }
+            injectSettings()
             if let pendingLocation {
                 self.pendingLocation = nil
                 notify(location: pendingLocation)

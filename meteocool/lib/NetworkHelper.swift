@@ -1,46 +1,50 @@
-import UIKit
+import Foundation
 
 class NetworkHelper {
-    /// Resolved per call rather than stored, so the "Experimental Features"
-    /// switch moves the native API along with the web view.
-    static var apiURL: URL { MeteocoolEnvironment.current.apiBaseURL }
-    static let debug: Bool = true
+    static var apiURL: URL { simulatorTestAPI ?? MeteocoolEnvironment.current.apiBaseURL }
+
+    /// UI tests exercise real HTTP requests against a loopback recorder.
+    /// Release builds and physical devices cannot override the API origin.
+    static var simulatorTestAPI: URL? {
+        #if DEBUG && targetEnvironment(simulator)
+        guard let value = ProcessInfo.processInfo.environment["MC_TEST_API_URL"],
+              let url = URL(string: value), url.scheme == "http", url.host == "127.0.0.1" else { return nil }
+        return url
+        #else
+        return nil
+        #endif
+    }
 
     static func createRequest(dst: String, method: String) -> URLRequest? {
-        var request = URLRequest(url: URL(string: dst, relativeTo: apiURL)!)
+        guard let url = URL(string: dst, relativeTo: apiURL) else { return nil }
+        var request = URLRequest(url: url)
         request.httpMethod = method
+        request.timeoutInterval = 20
         return request
     }
 
     static func createJSONPostRequest(dst: String, dictionary: [String: Any]) -> URLRequest? {
-        let json = try! JSONSerialization.data(withJSONObject: dictionary)
-        if let jsonString = String(data: json, encoding: .utf8), debug {
-            NSLog("POST: /\(String(describing: dst)) <- \(jsonString)")
-        }
-
-        var request = createRequest(dst: dst, method: "POST")
-        request?.httpBody = json
-        request?.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        guard JSONSerialization.isValidJSONObject(dictionary),
+              let json = try? JSONSerialization.data(withJSONObject: dictionary),
+              var request = createRequest(dst: dst, method: "POST") else { return nil }
+        request.httpBody = json
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         return request
     }
 
     static func checkResponse(data: Data?, response: URLResponse?, error: Error?) -> Data? {
-        guard let data = data, error == nil else {
-            NSLog("ERROR: \(String(describing: error))")
+        guard error == nil, let response = response as? HTTPURLResponse,
+              (200..<300).contains(response.statusCode), let data,
+              let status = try? JSONDecoder().decode(Status.self, from: data),
+              status.success else {
+            // Payloads contain device tokens and precise locations. Log only status.
+            NSLog("API request failed (HTTP %d)", (response as? HTTPURLResponse)?.statusCode ?? 0)
             return nil
-        }
-
-        let dst = response?.url?.path ?? ""
-        if let httpStatus = response as? HTTPURLResponse, httpStatus.statusCode != 200 {
-            NSLog("RESP: \(String(describing: dst)) -> \(httpStatus.statusCode)")
-            return nil
-        }
-        if let responseString = String(data: data, encoding: .utf8) {
-            if (debug) {
-                NSLog("RESP: \(String(describing: dst)) -> \(responseString)")
-            }
         }
         return data
+    }
+
+    private struct Status: Decodable {
+        let success: Bool
     }
 }
