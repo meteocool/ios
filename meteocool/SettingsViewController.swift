@@ -1,26 +1,67 @@
 import UIKit
-import StepSlider
 import CoreLocation
+
+/// Replace fixed storyboard rows with self-sizing, wrapping native labels.
+@MainActor func layoutSettingsCell(_ cell: UITableViewCell, labels: [UILabel], accessory: UIView? = nil, bottom: Bool = true) {
+    NSLayoutConstraint.deactivate(cell.contentView.constraints)
+    for label in labels {
+        NSLayoutConstraint.deactivate(label.constraints)
+        label.font = .preferredFont(forTextStyle: .body)
+        label.adjustsFontForContentSizeCategory = true
+        label.numberOfLines = 0
+        label.textAlignment = .natural
+    }
+    let column = UIStackView(arrangedSubviews: labels)
+    column.axis = .vertical
+    column.spacing = 4
+    let row = UIStackView(arrangedSubviews: [column] + (accessory.map { [$0] } ?? []))
+    row.spacing = 12
+    row.alignment = .center
+    row.translatesAutoresizingMaskIntoConstraints = false
+    cell.contentView.addSubview(row)
+    NSLayoutConstraint.activate([
+        row.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 12),
+        row.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
+        row.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
+    ])
+    if bottom { row.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -12).isActive = true }
+}
 
 class LinkTableViewCell: UITableViewCell{
     @IBOutlet weak var linkInfoLable: UILabel!
     @IBOutlet weak var linkValueLable: UILabel!
     @IBOutlet weak var linkArrow: UIImageView!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [linkInfoLable, linkValueLable], accessory: linkArrow) }
+    }
 }
 
 class StepperTableViewCell: UITableViewCell{
     @IBOutlet weak var stepperSliderInfoLabel: UILabel!
     @IBOutlet weak var stepperSliderValueLabel: UILabel!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [stepperSliderInfoLabel, stepperSliderValueLabel], bottom: false) }
+    }
 }
 
 class SwitcherTableViewCell: UITableViewCell{
     @IBOutlet weak var switcherInfoLabel: UILabel!
     @IBOutlet weak var switcher:UISwitch!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [switcherInfoLabel], accessory: switcher) }
+    }
 }
 
 class TextTableViewCell: UITableViewCell{
     @IBOutlet weak var textInfoLabel: UILabel!
     @IBOutlet weak var textValueLabel: UILabel!
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [textInfoLabel, textValueLabel]) }
+    }
 }
 
 class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
@@ -96,7 +137,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     override func viewDidLoad() {
         super.viewDidLoad()
         settingsTable.estimatedRowHeight = 100
-        settingsTable.rowHeight = 44
+        settingsTable.rowHeight = UITableView.automaticDimension
         if #available(iOS 26.0, *) {
             LiquidGlass.float(settingsBar, over: settingsTable, in: view)
         }
@@ -148,8 +189,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     //Selection Footer
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if(section == 0 && (userDefaults?.bool(forKey: "pushNotification"))!){
-            return NSLocalizedString("meteorological_details_help" ,comment: "selection Footer")
+        if section == 0 {
+            if SharedNotificationManager.syncFailed {
+                return NSLocalizedString("notification_sync_failed", comment: "")
+            }
+            if SharedNotificationManager.enabled {
+                if !SharedNotificationManager.authorized || SharedLocationUpdater.authorizationStatus != .authorizedAlways {
+                    return NSLocalizedString("notification_permissions_help", comment: "")
+                }
+                return NSLocalizedString("meteorological_details_help", comment: "")
+            }
         }
         return footer[section]
     }
@@ -167,12 +216,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 0: //Notificatino On/Off
                 switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataPushNotification[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "pushNotification"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
             case 1: //meteorological details
                 switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataPushNotification[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "withDBZ"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
@@ -180,14 +231,17 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             case 2: //Intensity, Threshold
                 if !thresholdSliderLoad{
                     stepperSliderCellThreshold = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
-                    let stepperSliderViewThreshold = StepSlider()
+                    let stepperSliderViewThreshold = UISlider()
                     pin(stepperSliderViewThreshold, in: stepperSliderCellThreshold)
-                    stepperSliderViewThreshold.maxCount = UInt(intensity.count)
-                    stepperSliderViewThreshold.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "intensityValue"))!)
+                    stepperSliderViewThreshold.maximumValue = Float(intensity.count - 1)
+                    stepperSliderViewThreshold.tag = 5
+                    stepperSliderViewThreshold.accessibilityLabel = dataPushNotification[indexPath.row]
+                    stepperSliderViewThreshold.value = Float(userDefaults?.integer(forKey: "intensityValue") ?? 1)
                     
                     stepperSliderCellThreshold.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
                     stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
                     
+                    stepperSliderViewThreshold.accessibilityValue = stepperSliderCellThreshold.stepperSliderValueLabel.text
                     stepperSliderViewThreshold.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
                     
                     thresholdSliderLoad = true
@@ -196,14 +250,17 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             case 3: //Time before
                 if !timeSliderLoad{
                     stepperSliderCellTime = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
-                    let stepperSliderViewTime = StepSlider()
+                    let stepperSliderViewTime = UISlider()
                     pin(stepperSliderViewTime, in: stepperSliderCellTime)
-                    stepperSliderViewTime.maxCount = 9
-                    stepperSliderViewTime.index = UInt.init(bitPattern: (userDefaults?.integer(forKey: "timeBeforeValue"))!)
+                    stepperSliderViewTime.maximumValue = 8
+                    stepperSliderViewTime.tag = 9
+                    stepperSliderViewTime.accessibilityLabel = dataPushNotification[indexPath.row]
+                    stepperSliderViewTime.value = Float(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2)
                     
                     stepperSliderCellTime.stepperSliderInfoLabel.text = dataPushNotification[indexPath.row]
                     stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
                     
+                    stepperSliderViewTime.accessibilityValue = stepperSliderCellTime.stepperSliderValueLabel.text
                     stepperSliderViewTime.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
                 
                     timeSliderLoad = true
@@ -217,12 +274,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 0: //Map Rotation
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataMapView[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "mapRotation"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
             case 1: //Auto Zoom
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataMapView[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "autoZoom"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
@@ -243,6 +302,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             switch indexPath.row {
             case 3:
                 switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataAboutLabel[indexPath.row]
                 switcherCell.switcher.setOn((userDefaults?.bool(forKey: "experimentalFeatures"))!, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
@@ -265,27 +325,26 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     /// It used to be positioned with a hardcoded frame derived from the table
     /// width, which overflows an inset-grouped cell, and painted with two fixed
     /// light-mode colors, which disappeared in dark mode.
-    private func pin(_ slider: StepSlider, in cell: StepperTableViewCell) {
+    private func pin(_ slider: UISlider, in cell: StepperTableViewCell) {
+        slider.isContinuous = false
         slider.translatesAutoresizingMaskIntoConstraints = false
         cell.contentView.addSubview(slider)
         NSLayoutConstraint.activate([
             slider.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
             slider.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
-            slider.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 46),
+            slider.topAnchor.constraint(equalTo: cell.stepperSliderValueLabel.bottomAnchor, constant: 8),
             slider.heightAnchor.constraint(equalToConstant: 50),
+            slider.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
         ])
 
-        slider.trackColor = .tertiarySystemFill
-        slider.sliderCircleColor = .tintColor
-        slider.labelColor = .secondaryLabel
+        slider.maximumTrackTintColor = .tertiarySystemFill
+        slider.minimumTrackTintColor = .tintColor
+        slider.thumbTintColor = .tintColor
     }
 
     //Cell Height
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if(indexPath.section == 0 && (indexPath.row == 2 || indexPath.row == 3)){
-            return 100
-        }
-        return tableView.rowHeight
+        return UITableView.automaticDimension
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -303,13 +362,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         }
         if (indexPath.section == 2 && indexPath.row == 1){ //Feedback
-            let token = SharedNotificationManager.getToken() ?? "no-token"
             let mailAdress = "support@meteocool.com"
-            let mailBody = NSLocalizedString("feedback_text_1",comment: "mail") + token
+            let mailBody = NSLocalizedString("feedback_body", comment: "mail")
             // XXX store version number somewhere central
-            let mailSubject = "iOS App Feedback (2.2)"
+            let mailSubject = "iOS App Feedback (\(Self.version))"
 
-            print(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
             if let url = URL(string: "mailto:\(mailAdress)?subject=\(mailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&body=\(mailBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)") {
                 UIApplication.shared.open(url)
             }
@@ -321,174 +378,78 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
     }
     
-    var alertWindow: UIWindow?
-    
-    var enableZoomOnStartIfGranted : Bool = false
-    
     @objc func willEnterForeground() {
-        if (enableZoomOnStartIfGranted) {
-            enableZoomOnStartIfGranted = false
-            let locationAuth = CLLocationManager.authorizationStatus()
-            userDefaults?.setValue((locationAuth == .authorizedAlways || locationAuth == .authorizedWhenInUse), forKey: "autoZoom")
-        }
-        self.settingsTable.reloadData()
+        SharedNotificationManager.refreshAuthorization()
+        settingsTable.reloadData()
     }
-    
-    @objc func switchChanged(_ sender : UISwitch!){
-        switch sender.tag {
-        //Map View
-        case 10:
-            userDefaults?.setValue(sender.isOn, forKey: "mapRotation")
-            viewController?.webView.evaluateJavaScript("window.settings.injectSettings({\"mapRotation\": \(sender.isOn)});")
-        case 11:
-            userDefaults?.setValue(sender.isOn, forKey: "autoZoom")
-            if (sender.isOn) {
-                let locationAuth = CLLocationManager.authorizationStatus()
-                if (locationAuth != .authorizedAlways && locationAuth != .authorizedWhenInUse) {
-                    switch(CLLocationManager.authorizationStatus()) {
-                    case .denied:
-                        self.userDefaults?.setValue(false, forKey: "autoZoom")
 
-                        let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_autozoom",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
-                        alertController.addAction(UIAlertAction(title: NSLocalizedString("Allow in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
-                            if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
-                                UIApplication.shared.open(url, options: [:], completionHandler: {_ in
-                                    self.alertWindow = nil
-                                    self.enableZoomOnStartIfGranted = true
-                                })
-                            }
-                        }
-                        ))
-                        alertController.addAction(UIAlertAction(title: NSLocalizedString("Disable Auto-Zoom",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
-                            self.settingsTable.reloadData()
-                            self.alertWindow = nil
-                        }
-                        ))
-                        
-                        alertWindow = UIWindow(frame: UIScreen.main.bounds)
-                        alertWindow?.rootViewController = UIViewController()
-                        alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-                        alertWindow?.makeKeyAndVisible()
-                        alertWindow?.rootViewController?.present(alertController, animated: true)
-                        break;
-                    case .notDetermined:
-                        // XXX callback
-                        SharedLocationUpdater.requestAuthorization({_,_ in self.settingsTable.reloadData()}, notDetermined: false)
-                        break;
-                    default:
-                        break;
-                    }
-                }
+    private func permissionHelp() {
+        let alert = UIAlertController(title: NSLocalizedString("notification_permissions_title", comment: ""),
+                                      message: NSLocalizedString("notification_permissions_help", comment: ""), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings", comment: ""), style: .default) { _ in
+            UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+        })
+        alert.addAction(UIAlertAction(title: NSLocalizedString("Dismiss", comment: ""), style: .cancel))
+        present(alert, animated: true)
+    }
+
+    @objc func switchChanged(_ sender: UISwitch) {
+        switch sender.tag {
+        case 10:
+            userDefaults?.set(sender.isOn, forKey: "mapRotation")
+            NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
+        case 11:
+            userDefaults?.set(sender.isOn, forKey: "autoZoom")
+            if sender.isOn {
+                SharedLocationUpdater.requestAuthorization({ [weak self] granted, _ in
+                    self?.userDefaults?.set(granted, forKey: "autoZoom")
+                    self?.settingsTable.reloadData()
+                    if !granted { self?.permissionHelp() }
+                })
             }
-        //Push Notification
         case 0:
-            if (sender.isOn) {
-                switch(CLLocationManager.authorizationStatus()) {
-                case .notDetermined:
-                    self.userDefaults?.setValue(true, forKey: "pushNotification")
-                    SharedLocationUpdater.requestAuthorization({success,error in
-                        if CLLocationManager.authorizationStatus() != .authorizedAlways {
-                            self.userDefaults?.setValue(false, forKey: "pushNotification")
-                            self.unregisterToken()
-                        }
-                        self.reload()
-                    } , notDetermined: true)
-                case .denied, .authorizedWhenInUse:
-                    let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("enable_background_location_alert",comment: "Alerts"), preferredStyle: UIAlertController.Style.alert)
-                    
-                    alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
-                        if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
-                            UIApplication.shared.open(url, options: [:], completionHandler: {_ in
-                                self.userDefaults?.setValue(true, forKey: "pushNotification")
-                                self.alertWindow = nil
-                                
-                                if let location = SharedLocationUpdater.getCurrentLocation(){
-                                    SharedLocationUpdater.postLocation(location: location, pressure: -1)
-                                }
-                                SharedNotificationManager.registerForPushNotifications({_,_ in })
-                            })
-                        }
-                    }
-                    ))
-                    alertController.addAction(UIAlertAction(title: NSLocalizedString("disable_notifications",comment: "Alerts"), style: UIAlertAction.Style.default, handler: {_ in
-                        self.userDefaults?.setValue(false, forKey: "pushNotification")
-                        self.unregisterToken()
+            if !sender.isOn {
+                SharedNotificationManager.disable()
+            } else {
+                SharedNotificationManager.registerForPushNotifications { [weak self] granted, _ in
+                    guard let self else { return }
+                    guard granted else {
                         self.settingsTable.reloadData()
-                        self.alertWindow = nil
-                    }
-                    ))
-                    
-                    alertWindow = UIWindow(frame: UIScreen.main.bounds)
-                    alertWindow?.rootViewController = UIViewController()
-                    alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-                    alertWindow?.makeKeyAndVisible()
-                    alertWindow?.rootViewController?.present(alertController, animated: true)
-                    break;
-                case .authorizedAlways:
-                    self.userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
-                    settingsTable.reloadData()
-                    if let location = SharedLocationUpdater.getCurrentLocation(){
-                        SharedLocationUpdater.postLocation(location: location, pressure: -1)
-                    }
-                    SharedNotificationManager.registerForPushNotifications({_,_ in })
-                    break;
-                default:
-                    break;
-                }
-            }
-            else {
-                userDefaults?.setValue(sender.isOn, forKey: "pushNotification")
-                if let token = SharedNotificationManager.getToken() {
-                    guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
-                        print("Would unregister, but no token")
+                        self.permissionHelp()
                         return
                     }
-                    URLSession.shared.dataTask(with: request) { data, response, error in
-                        guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                            return
+                    SharedLocationUpdater.requestAuthorization({ [weak self] locationGranted, _ in
+                        guard let self else { return }
+                        if locationGranted {
+                            SharedLocationUpdater.requestBackgroundAuthorization()
+                            SharedLocationUpdater.refreshNotificationRegistration()
+                        } else {
+                            self.permissionHelp()
                         }
-
-                        if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                            if let errorMessage = json?["error"] as? String {
-                                NSLog("ERROR: \(errorMessage)")
-                            }
-                        }
-                    }
-                } else {
-                    print("Would unregister, but no token")
+                        self.settingsTable.reloadData()
+                    })
                 }
             }
-            settingsTable.reloadData()
         case 1:
-            userDefaults?.setValue(sender.isOn, forKey: "withDBZ")
-            
-            if let location = SharedLocationUpdater.getCurrentLocation(){
-                SharedLocationUpdater.postLocation(location: location, pressure: -1)
-            }
-        //About
+            userDefaults?.set(sender.isOn, forKey: "withDBZ")
+            SharedLocationUpdater.refreshNotificationRegistration()
         case 23:
-            userDefaults?.setValue(sender.isOn, forKey: "experimentalFeatures")
-
-            let alertController = UIAlertController(title: NSLocalizedString("experimental_features",comment: "Settings"), message: NSLocalizedString("experimental_features_require_restart",comment: "Settings"), preferredStyle: UIAlertController.Style.alert)
-            alertController.addAction(UIAlertAction(title: NSLocalizedString("Dismiss",comment: "Dismiss"), style: UIAlertAction.Style.default, handler: {_ in
-                self.alertWindow = nil
-            }
-            ))
-            alertWindow = UIWindow(frame: UIScreen.main.bounds)
-            alertWindow?.rootViewController = UIViewController()
-            alertWindow?.windowLevel = UIWindow.Level.alert + 1;
-            alertWindow?.makeKeyAndVisible()
-            alertWindow?.rootViewController?.present(alertController, animated: true)
-
+            userDefaults?.set(sender.isOn, forKey: "experimentalFeatures")
+            let alert = UIAlertController(title: NSLocalizedString("experimental_features", comment: ""),
+                                          message: NSLocalizedString("experimental_features_require_restart", comment: ""), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("Dismiss", comment: ""), style: .default))
+            present(alert, animated: true)
         default:
-            print("This not happen: " + String(sender.tag))
+            assertionFailure("Unknown settings switch")
         }
+        settingsTable.reloadData()
     }
-    
-    @objc func sliderChanged(_ sender: StepSlider!){
-        switch sender.maxCount {
+
+    @objc func sliderChanged(_ sender: UISlider!){
+        sender.value = sender.value.rounded()
+        switch sender.tag {
         case 5: //Intensity
-            userDefaults?.setValue(sender.index, forKey: "intensityValue")
+            userDefaults?.setValue(Int(sender.value), forKey: "intensityValue")
             // 0 -> drizzle
             // 1 -> light
             // 2 -> rain
@@ -496,14 +457,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             // 4 -> hail
             stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
             
+            sender.accessibilityValue = sender.tag == 5 ? stepperSliderCellThreshold.stepperSliderValueLabel.text : stepperSliderCellTime.stepperSliderValueLabel.text
             if let location = SharedLocationUpdater.getCurrentLocation(){
                 SharedLocationUpdater.postLocation(location: location, pressure: -1)
             }
         case 9: //Time before
-            userDefaults?.setValue(sender.index, forKey: "timeBeforeValue")
+            userDefaults?.setValue(Int(sender.value), forKey: "timeBeforeValue")
             //Value +1 *5 for minutes
             stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
             
+            sender.accessibilityValue = sender.tag == 5 ? stepperSliderCellThreshold.stepperSliderValueLabel.text : stepperSliderCellTime.stepperSliderValueLabel.text
             if let location = SharedLocationUpdater.getCurrentLocation(){
                 SharedLocationUpdater.postLocation(location: location, pressure: -1)
             }
@@ -520,22 +483,4 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NotificationCenter.default.removeObserver(self)
     }
     
-    @objc func unregisterToken(){
-        if let token = SharedNotificationManager.getToken()  {
-            guard let request = NetworkHelper.createJSONPostRequest(dst: "unregister", dictionary: ["token": token] as [String: Any]) else{
-                return
-            }
-            URLSession.shared.dataTask(with: request) { data, response, error in
-                guard let data = NetworkHelper.checkResponse(data: data, response: response, error: error) else {
-                    return
-                }
-
-                if let json = ((try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]) as [String : Any]??) {
-                    if let errorMessage = json?["error"] as? String {
-                        NSLog("ERROR: \(errorMessage)")
-                    }
-                }
-            }
-        }
-    }
 }

@@ -9,12 +9,12 @@ import UIKit
 
 /// Liquid Glass chrome, built on `UIGlassEffect`.
 ///
-/// The app still deploys back to iOS 15, so nothing in here is reachable
+/// The app deploys back to iOS 18, so nothing in here is reachable
 /// without an availability check — older systems keep the flat blur and the
 /// `TribbleButton` artwork the app shipped with.
 ///
 /// Glass belongs to the navigation layer only: the floating map controls, the
-/// status bar backdrop, the forecast readout. The radar map itself is content
+/// status bar backdrop. The radar map itself is content
 /// and never gets a glass treatment.
 @MainActor
 enum LiquidGlass {
