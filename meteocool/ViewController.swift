@@ -388,6 +388,16 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             setMapControlsHidden(false)
             setLogoHidden(false)
         }
+
+        if action == "detailSheetExpanded" {
+            setMapControlsHidden(true)
+            setLogoHidden(true)
+        }
+
+        if action == "detailSheetCollapsed" {
+            setMapControlsHidden(false)
+            setLogoHidden(false)
+        }
     }
 }
 
