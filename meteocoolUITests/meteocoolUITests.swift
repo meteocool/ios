@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class meteocoolUITests: XCTestCase {
     let app = XCUIApplication()
@@ -20,6 +21,254 @@ final class meteocoolUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    func testPickerSelectionKeepsRowGeometry() {
+        verifyPickerSelectionGeometry()
+    }
+
+    func testPickerSelectionWithLargeText() {
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        verifyPickerSelectionGeometry()
+    }
+
+    @MainActor
+    func testSavedPickerChoicesReachWebViewAndSurviveRelaunch() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        tap("Next")
+        tap("Next")
+        tap("Later")
+        tap("Later")
+        tap("Next")
+        tap("Done")
+        XCTAssertTrue(app.webViews.staticTexts["mapBaseLayer=light;radarColorMapping=classic"].waitForExistence(timeout: 15))
+        tap("map.settings")
+        for (title, choice) in [("Base Map Layer", "OpenStreetMap"), ("Radar Color Map", "Homeyer (Color Vision Deficiency)")] {
+            app.staticTexts[title].tap()
+            app.tables["settings.options"].staticTexts[choice].tap()
+            tap("Save")
+        }
+        tap("Done")
+        let expected = "mapBaseLayer=osm;radarColorMapping=homeyer"
+        XCTAssertTrue(app.webViews.staticTexts[expected].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts[expected].waitForExistence(timeout: 15))
+        tap("map.settings")
+        for (title, saved, cancelled) in [("Base Map Layer", "OpenStreetMap", "Dark"),
+                                         ("Radar Color Map", "Homeyer (Color Vision Deficiency)", "Lang")] {
+            app.staticTexts[title].tap()
+            let table = app.tables["settings.options"]
+            for cell in table.cells.allElementsBoundByIndex {
+                XCTAssertEqual(try hasVisibleCheckmark(cell), cell.staticTexts[saved].exists)
+            }
+            table.staticTexts[cancelled].tap()
+            tap("Cancel")
+        }
+        tap("Done")
+        XCTAssertTrue(app.webViews.staticTexts[expected].waitForExistence(timeout: 5), "Cancel must not change the map's settings")
+    }
+
+    // Read rendered pixels, independently of the cell's selected accessibility trait.
+    // UIKit may change accessory visibility after the data source configures the cell.
+    private func hasVisibleCheckmark(_ cell: XCUIElement) throws -> Bool {
+        let image = try XCTUnwrap(cell.screenshot().image.cgImage)
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        try pixels.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        var bluePixels = 0
+        for y in 0..<height {
+            for x in (width * 3 / 4)..<width {
+                let offset = (y * width + x) * 4
+                let red = Int(pixels[offset]), green = Int(pixels[offset + 1]), blue = Int(pixels[offset + 2])
+                if blue > 150 && blue > red + 60 && green > red + 30 { bluePixels += 1 }
+            }
+        }
+        return bluePixels > 5
+    }
+
+    private func verifyPickerSelectionGeometry() {
+        tap("Next")
+        tap("Next")
+        tap("Later")
+        tap("Later")
+        tap("Next")
+        tap("Done")
+        tap("map.settings")
+        for (title, options) in [
+            ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
+            ("Radar Color Map", ["Classic", "NWS Reflectivity", "PyArt StepSeq", "Homeyer (Color Vision Deficiency)", "Lang"])
+        ] {
+            app.staticTexts[title].tap()
+            XCTAssertTrue(app.staticTexts[options[0]].waitForExistence(timeout: 5))
+            let table = app.tables["settings.options"]
+            var previousIndex = 0
+            for index in Array(0..<options.count) + Array((0..<options.count).reversed()) {
+                let label = table.staticTexts[options[index]]
+                for _ in 0..<8 {
+                    if label.isHittable { break }
+                    if index < previousIndex { table.swipeDown() } else { table.swipeUp() }
+                }
+                XCTAssertTrue(label.isHittable)
+                // Tables materialize offscreen rows on demand. Measure the actual
+                // visible rows immediately before each selection, not estimated offscreen frames.
+                let visible = options.compactMap { option -> (String, CGFloat, CGSize)? in
+                    let cell = table.cells.containing(.staticText, identifier: option).firstMatch
+                    guard cell.exists else { return nil }
+                    return (option, cell.frame.height, table.staticTexts[option].frame.size)
+                }
+                label.tap()
+                XCTAssertTrue(table.cells.containing(.staticText, identifier: options[index]).firstMatch.isSelected,
+                              "The tapped option must be checked")
+                for (option, height, textSize) in visible {
+                    let cell = table.cells.containing(.staticText, identifier: option).firstMatch
+                    guard cell.exists else { continue }
+                    XCTAssertEqual(cell.frame.height, height, accuracy: 0.5, "\(title): \(option) resized")
+                    let size = table.staticTexts[option].frame.size
+                    XCTAssertEqual(size.width, textSize.width, accuracy: 0.5, "\(option) text width changed")
+                    XCTAssertEqual(size.height, textSize.height, accuracy: 0.5, "\(option) text reflowed")
+                    if cell.frame.minY >= app.buttons["Save"].frame.maxY &&
+                        cell.frame.maxY <= min(table.frame.maxY, app.frame.maxY) {
+                        XCTAssertEqual(try? hasVisibleCheckmark(cell), option == options[index],
+                                       "\(title): \(option) rendered the wrong checkmark state")
+                        XCTAssertEqual(cell.isSelected, option == options[index])
+                    }
+                }
+                previousIndex = index
+            }
+            screenshot("\(title) after selecting every option")
+            tap("Save")
+            let settings = app.tables.element(boundBy: app.tables.count - 1)
+            XCTAssertTrue(settings.staticTexts[options[0]].waitForExistence(timeout: 5))
+            settings.staticTexts[title].tap()
+            let picker = app.tables["settings.options"]
+            let lastOption = picker.staticTexts[options.last!]
+            for _ in 0..<8 {
+                if lastOption.isHittable { break }
+                picker.swipeUp()
+            }
+            XCTAssertTrue(lastOption.isHittable)
+            lastOption.tap()
+            let firstOption = picker.staticTexts[options[0]]
+            for _ in 0..<8 {
+                if firstOption.isHittable { break }
+                picker.swipeDown()
+            }
+            XCTAssertTrue(firstOption.isHittable)
+            XCTAssertFalse(picker.cells.containing(.staticText, identifier: options[0]).firstMatch.isSelected,
+                           "An offscreen old choice must be unchecked when it returns")
+            for _ in 0..<8 {
+                if lastOption.isHittable { break }
+                picker.swipeUp()
+            }
+            XCTAssertTrue(lastOption.isHittable)
+            XCTAssertTrue(picker.cells.containing(.staticText, identifier: options.last!).firstMatch.isSelected)
+            tap("Cancel")
+            XCTAssertTrue(settings.staticTexts[options[0]].waitForExistence(timeout: 5), "Cancel must preserve the saved choice")
+        }
+    }
+
+    func testSettingsRowAlignment() {
+        tap("Next")
+        tap("Next")
+        tap("Later")
+        tap("Later")
+        tap("Next")
+        tap("Done")
+        tap("map.settings")
+        screenshot("Settings alignment")
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+        let table = app.tables.firstMatch
+        let label = table.staticTexts["Enable Notifications"]
+        let toggle = table.switches["Enable Notifications"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        let cell = table.cells.containing(.switch, identifier: "Enable Notifications").firstMatch
+        XCTAssertGreaterThan(label.frame.minX, cell.frame.minX + 8)
+        XCTAssertLessThanOrEqual(label.frame.maxX + 8, toggle.frame.minX)
+        XCTAssertLessThan(toggle.frame.maxX, cell.frame.maxX)
+        XCTAssertLessThan(cell.frame.maxX - toggle.frame.maxX, 32)
+        XCTAssertEqual(label.frame.midY, toggle.frame.midY, accuracy: 2)
+    }
+
+    @MainActor
+    func testLocalPlaybackLayout() async throws {
+        let page = URL(string: "http://127.0.0.1:18765/ios.html")!
+        guard let (data, _) = try? await URLSession.shared.data(from: page),
+              String(data: data, encoding: .utf8)?.contains("/src/entrypoints/ios.ts") == true else {
+            throw XCTSkip("Start core with npm run dev -- --host 127.0.0.1 --port 18765")
+        }
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": "http://127.0.0.1:18765/", "MC_TEST_MAP": "1"]
+        app.launch()
+        tap("Next")
+        tap("Next")
+        tap("Later")
+        tap("Later")
+        tap("Next")
+        tap("Done")
+        let expand = app.buttons["Playback Controls"]
+        XCTAssertTrue(expand.waitForExistence(timeout: 45))
+        screenshot("Local collapsed playback")
+        let bottomGap = app.frame.maxY - expand.frame.maxY
+        XCTAssertGreaterThanOrEqual(bottomGap, 12)
+        XCTAssertLessThanOrEqual(bottomGap, 48, "Collapsed controls should sit close to the bottom edge")
+        expand.tap()
+        XCTAssertTrue(app.buttons["Collapse playback controls"].waitForExistence(timeout: 10))
+        let status = app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'updated'")).firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 30))
+        screenshot("Local expanded playback")
+        XCTAssertEqual(status.frame.midX, app.webViews.firstMatch.frame.midX, accuracy: 14)
+        // The app supports rotation on iPad; iPhone is portrait-only.
+        if app.frame.width > 600 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            defer { XCUIDevice.shared.orientation = .portrait }
+            let rotated = expectation(for: NSPredicate { _, _ in self.app.frame.width > self.app.frame.height }, evaluatedWith: app)
+            await fulfillment(of: [rotated], timeout: 5)
+            screenshot("Local expanded playback landscape")
+            XCTAssertEqual(status.frame.midX, app.webViews.firstMatch.frame.midX, accuracy: 14)
+        }
+        tap("Collapse playback controls")
+    }
+
+    func testNotificationSliderLayout() {
+        app.terminate()
+        app.launchArguments += ["-pushNotification", "YES"]
+        app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
+        app.launch()
+        tap("Next")
+        tap("Next")
+        tap("Later")
+        tap("Later")
+        tap("Next")
+        tap("Done")
+        tap("map.settings")
+        for title in ["Intensity Threshold", "Notification Timeframe"] {
+            let slider = app.sliders[title]
+            XCTAssertTrue(slider.waitForExistence(timeout: 5))
+            let cell = app.tables.cells.containing(.slider, identifier: title).firstMatch
+            XCTAssertGreaterThanOrEqual(slider.frame.minX, cell.frame.minX + 8)
+            XCTAssertLessThanOrEqual(slider.frame.maxX, cell.frame.maxX - 8)
+            XCTAssertGreaterThan(slider.frame.minY, cell.staticTexts[title].frame.maxY)
+            slider.adjust(toNormalizedSliderPosition: 1)
+        }
+        XCTAssertEqual(app.sliders["Notification Timeframe"].value as? String, "45 min")
+        screenshot("Notification slider settings")
     }
 
     func testOnboardingWithoutPermissionsAndSettings() {
@@ -57,6 +306,7 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(base.exists)
         base.tap()
         XCTAssertTrue(app.staticTexts["Dark"].waitForExistence(timeout: 5))
+        screenshot("Basemap settings")
         app.staticTexts["Dark"].tap()
         tap("Save")
         XCTAssertTrue(base.waitForExistence(timeout: 5))
@@ -67,6 +317,7 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(base.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Dark"].exists, "Cancel must preserve the saved basemap")
         app.staticTexts["Radar Color Map"].tap()
+        screenshot("Radar color settings")
         app.staticTexts["NWS Reflectivity"].tap()
         tap("Save")
         XCTAssertTrue(app.staticTexts["NWS Reflectivity"].waitForExistence(timeout: 5))
@@ -83,6 +334,7 @@ final class meteocoolUITests: XCTestCase {
             app.tables.firstMatch.swipeUp()
         }
         XCTAssertTrue(experimental.isHittable, "Experimental Features must expose its own accessibility label")
+        screenshot("Settings lower rows")
         tap("Done")
         screenshot("Dark basemap")
         app.terminate()
