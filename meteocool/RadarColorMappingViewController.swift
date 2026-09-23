@@ -7,20 +7,13 @@
 
 import UIKit
 
-class RadarColorMappingTableViewCell: UITableViewCell{
-    @IBOutlet weak var lable: UILabel!
-    @IBOutlet weak var checkbox: UIImageView!
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [lable], accessory: checkbox) }
-    }
-}
-
 class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
     
     @IBOutlet weak var radarColorMappingSettingsBar:UINavigationBar!
-    @IBOutlet weak var radarColorMappingSettingsTable:UITableView!
+    @IBOutlet weak var radarColorMappingList:UITableView!
     
+    private let optionKeys = ["classic", "nws", "pyart_stepseq", "homeyer", "lang"]
+
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
@@ -33,100 +26,65 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         NSLocalizedString("lang", comment: "radarColorMapping")
     ]
 
-    // colormap explanation
-    private var explainRadarColorMapping = [
-        NSLocalizedString("colormap_explanation", comment: "radarColorMapping"),
-    ]
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        return explainRadarColorMapping[section]
+        NSLocalizedString("colormap_explanation", comment: "radarColorMapping")
     }
-    
+
     var colorMapping:String!
     
     //General View Things
     override func loadView() {
         super.loadView()
         self.view.addSubview(radarColorMappingSettingsBar)
-        self.view.addSubview(radarColorMappingSettingsTable)
+        self.view.addSubview(radarColorMappingList)
         colorMapping = userDefaults?.string(forKey: "radarColorMapping")
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        radarColorMappingSettingsTable.estimatedRowHeight = 100
-        radarColorMappingSettingsTable.rowHeight = UITableView.automaticDimension
-        radarColorMappingSettingsTable.delegate = self
-        radarColorMappingSettingsTable.dataSource = self
+        radarColorMappingList.register(UITableViewCell.self, forCellReuseIdentifier: "radarColorMapping")
+        radarColorMappingList.accessibilityIdentifier = "settings.options"
+        radarColorMappingList.delegate = self
+        radarColorMappingList.dataSource = self
         if #available(iOS 26.0, *) {
-            LiquidGlass.float(radarColorMappingSettingsBar, over: radarColorMappingSettingsTable, in: view)
+            LiquidGlass.float(radarColorMappingSettingsBar, over: radarColorMappingList, in: view)
         }
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         if #available(iOS 26.0, *) {
-            LiquidGlass.inset(radarColorMappingSettingsTable, below: radarColorMappingSettingsBar)
+            LiquidGlass.inset(radarColorMappingList, below: radarColorMappingSettingsBar)
         }
     }
 
-    //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        switch section{
-        case 0:
-            return radarColorMapping.count
-        default:
-            return 0
-        }
+        return optionKeys.count
     }
-    
-    //Table Content
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "radarColorMapping",for: indexPath) as! RadarColorMappingTableViewCell
-        
-        switch indexPath.row {
-        case 0: //meteocool Classic
-            cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping != "classic"
-        case 1: //nws
-            cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping != "nws"
-        case 2: //pyart stepseq
-            cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping != "pyart_stepseq"
-        case 3: //homeyer
-            cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping != "homeyer"
-        case 4: //lang
-            cell.lable.text = radarColorMapping[indexPath.row]
-            cell.checkbox.isHidden = colorMapping != "lang"
-        default:
-            print("this should not happen")
-        }
-        cell.accessibilityTraits = cell.checkbox.isHidden ? [.button] : [.button, .selected]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "radarColorMapping", for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        content.text = radarColorMapping[indexPath.row]
+        content.textProperties.numberOfLines = 0
+        cell.contentConfiguration = content
+        let selected = optionKeys[indexPath.row] == colorMapping
+        let checkmark = UIImage(systemName: "checkmark")!
+        let accessory = UIImageView(frame: CGRect(origin: .zero, size: checkmark.size))
+        // Reserve the symbol's width. UIKit manages accessory alpha during layout,
+        // so represent an unchecked row with no image instead of transparency.
+        accessory.image = selected ? checkmark : nil
+        cell.accessoryView = accessory
+        cell.accessibilityTraits = selected ? [.button, .selected] : [.button]
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: false)
-        
-        if (indexPath.section == 0 && indexPath.row == 0){
-            colorMapping = "classic"
-        }
-        if (indexPath.section == 0 && indexPath.row == 1){
-            colorMapping = "nws"
-        }
-        if (indexPath.section == 0 && indexPath.row == 2){
-            colorMapping = "pyart_stepseq"
-        }
-        if (indexPath.section == 0 && indexPath.row == 3){
-            colorMapping = "homeyer"
-        }
-        if (indexPath.section == 0 && indexPath.row == 4){
-            colorMapping = "lang"
-        }
-        radarColorMappingSettingsTable.reloadData()
+        colorMapping = optionKeys[indexPath.row]
+        tableView.reconfigureRows(at: optionKeys.indices.map { IndexPath(row: $0, section: 0) })
+        tableView.deselectRow(at: indexPath, animated: true)
     }
-    
+
     //Return Back with Save
     @IBAction func saveSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)

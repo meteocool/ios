@@ -14,7 +14,15 @@ http.createServer(async (request, response) => {
   if (request.url === '/ios.html') {
     if (!mapAvailable) { response.destroy(); return; }
     response.setHeader('Content-Type', 'text/html');
-    response.end('<!doctype html><title>Map recovery fixture</title><p>Map connection restored</p><script>window.settings={injectSettings(){}};webkit.messageHandlers.scriptHandler.postMessage("requestSettings");</script>');
+    response.end(`<!doctype html><title>Map recovery fixture</title>
+      <p>Map connection restored</p><p id="settings"></p>
+      <script>
+        window.settings = { injectSettings(settings) {
+          document.getElementById("settings").textContent =
+            "mapBaseLayer=" + settings.mapBaseLayer + ";radarColorMapping=" + settings.radarColorMapping;
+        }};
+        webkit.messageHandlers.scriptHandler.postMessage("requestSettings");
+      </script>`);
     return;
   }
   if (request.method === 'GET' && request.url === '/requests') {

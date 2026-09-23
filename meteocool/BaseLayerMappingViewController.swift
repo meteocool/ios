@@ -7,20 +7,13 @@
 
 import UIKit
 
-class BaseLayerMappingTableViewCell: UITableViewCell{
-    @IBOutlet weak var lable: UILabel!
-    @IBOutlet weak var checkbox: UIImageView!
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [lable], accessory: checkbox) }
-    }
-}
-
 class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
     
     @IBOutlet weak var baseLayerMappingSettingsBar:UINavigationBar!
-    @IBOutlet weak var baseLayerMappingSettingsTable:UITableView!
+    @IBOutlet weak var baseLayerMappingList:UITableView!
     
+    private let optionKeys = ["light", "dark", "osm", "cyclosm"]
+
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
@@ -43,81 +36,55 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     override func loadView() {
         super.loadView()
         self.view.addSubview(baseLayerMappingSettingsBar)
-        self.view.addSubview(baseLayerMappingSettingsTable)
+        self.view.addSubview(baseLayerMappingList)
         baseLayer = userDefaults?.string(forKey: "baseLayer")
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        baseLayerMappingSettingsTable.estimatedRowHeight = 100
-        baseLayerMappingSettingsTable.rowHeight = UITableView.automaticDimension
+        baseLayerMappingList.register(UITableViewCell.self, forCellReuseIdentifier: "baseLayer")
+        baseLayerMappingList.accessibilityIdentifier = "settings.options"
         if #available(iOS 26.0, *) {
-            LiquidGlass.float(baseLayerMappingSettingsBar, over: baseLayerMappingSettingsTable, in: view)
+            LiquidGlass.float(baseLayerMappingSettingsBar, over: baseLayerMappingList, in: view)
         }
-        baseLayerMappingSettingsTable.delegate = self
-        baseLayerMappingSettingsTable.dataSource = self
+        baseLayerMappingList.delegate = self
+        baseLayerMappingList.dataSource = self
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         if #available(iOS 26.0, *) {
-            LiquidGlass.inset(baseLayerMappingSettingsTable, below: baseLayerMappingSettingsBar)
+            LiquidGlass.inset(baseLayerMappingList, below: baseLayerMappingSettingsBar)
         }
     }
 
-    //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        switch section{
-        case 0:
-            return baseLayerMapping.count
-        default:
-            return 0
-        }
+        return optionKeys.count
     }
-    
-    //Table Content
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "baseLayer",for: indexPath) as! BaseLayerMappingTableViewCell
-        
-        
-        
-        switch indexPath.row {
-        case 0: //light
-            cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = baseLayer != "light"
-        case 1: //dark
-            cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = baseLayer != "dark"
-        case 2: //osm
-            cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = baseLayer != "osm"
-        case 3: //cyclosm
-            cell.lable.text = baseLayerMapping[indexPath.row]
-            cell.checkbox.isHidden = baseLayer != "cyclosm"
-        default:
-            break;
-        }
-        cell.accessibilityTraits = cell.checkbox.isHidden ? [.button] : [.button, .selected]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "baseLayer", for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        content.text = baseLayerMapping[indexPath.row]
+        content.textProperties.numberOfLines = 0
+        cell.contentConfiguration = content
+        let selected = optionKeys[indexPath.row] == baseLayer
+        let checkmark = UIImage(systemName: "checkmark")!
+        let accessory = UIImageView(frame: CGRect(origin: .zero, size: checkmark.size))
+        // Reserve the symbol's width. UIKit manages accessory alpha during layout,
+        // so represent an unchecked row with no image instead of transparency.
+        accessory.image = selected ? checkmark : nil
+        cell.accessoryView = accessory
+        cell.accessibilityTraits = selected ? [.button, .selected] : [.button]
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: false)
-        if (indexPath.section == 0 && indexPath.row == 0){ //light
-            baseLayer = "light"
-        }
-        if (indexPath.section == 0 && indexPath.row == 1){ //dark
-            baseLayer = "dark"
-        }
-        if (indexPath.section == 0 && indexPath.row == 2){ //osm
-            baseLayer = "osm"
-        }
-        if (indexPath.section == 0 && indexPath.row == 3){ //cyclosm
-            baseLayer = "cyclosm"
-        }
-        baseLayerMappingSettingsTable.reloadData()
+        baseLayer = optionKeys[indexPath.row]
+        tableView.reconfigureRows(at: optionKeys.indices.map { IndexPath(row: $0, section: 0) })
+        tableView.deselectRow(at: indexPath, animated: true)
     }
-    
+
     //Return Back with Save
     @IBAction func saveSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
