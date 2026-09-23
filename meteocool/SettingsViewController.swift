@@ -3,7 +3,8 @@ import CoreLocation
 
 /// Replace fixed storyboard rows with self-sizing, wrapping native labels.
 @MainActor func layoutSettingsCell(_ cell: UITableViewCell, labels: [UILabel], accessory: UIView? = nil, bottom: Bool = true) {
-    NSLayoutConstraint.deactivate(cell.contentView.constraints)
+    // Preserve UIKit's constraints that tie the layout margins to the cell.
+    LiquidGlass.dropConstraints(on: cell.contentView, referencing: labels + (accessory.map { [$0] } ?? []))
     for label in labels {
         NSLayoutConstraint.deactivate(label.constraints)
         label.font = .preferredFont(forTextStyle: .body)
@@ -14,6 +15,8 @@ import CoreLocation
     let column = UIStackView(arrangedSubviews: labels)
     column.axis = .vertical
     column.spacing = 4
+    accessory?.setContentHuggingPriority(.required, for: .horizontal)
+    accessory?.setContentCompressionResistancePriority(.required, for: .horizontal)
     let row = UIStackView(arrangedSubviews: [column] + (accessory.map { [$0] } ?? []))
     row.spacing = 12
     row.alignment = .center
