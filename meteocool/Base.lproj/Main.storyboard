@@ -402,40 +402,6 @@
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="insetGrouped" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="18" sectionFooterHeight="18" translatesAutoresizingMaskIntoConstraints="NO" id="Oih-oK-ewD">
                                 <rect key="frame" x="0.0" y="56" width="428" height="816"/>
                                 <color key="backgroundColor" systemColor="systemGroupedBackgroundColor"/>
-                                <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="radarColorMapping" id="chi-Id-8Tq" customClass="RadarColorMappingTableViewCell" customModule="meteocool" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="49" width="428" height="43.666667938232422"/>
-                                        <autoresizingMask key="autoresizingMask"/>
-                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="chi-Id-8Tq" id="4hi-CE-aR7">
-                                            <rect key="frame" x="0.0" y="0.0" width="428" height="43.666667938232422"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <subviews>
-                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3Ij-jn-tcl">
-                                                    <rect key="frame" x="20.000000000000004" y="13.333333333333336" width="35.333333333333343" height="17"/>
-                                                    <constraints>
-                                                        <constraint firstAttribute="width" relation="lessThanOrEqual" constant="360" id="QtY-fi-Umz"/>
-                                                    </constraints>
-                                                    <fontDescription key="fontDescription" style="UICTFontTextStyleBody"/>
-                                                    <nil key="textColor"/>
-                                                    <nil key="highlightedColor"/>
-                                                </label>
-                                                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="checkmark" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="MhM-Hf-fQ0">
-                                                    <rect key="frame" x="389.66666666666669" y="13.999999999999998" width="18.333333333333314" height="16.333333333333329"/>
-                                                </imageView>
-                                            </subviews>
-                                            <constraints>
-                                                <constraint firstItem="MhM-Hf-fQ0" firstAttribute="centerY" secondItem="4hi-CE-aR7" secondAttribute="centerY" id="NIz-fF-YhY"/>
-                                                <constraint firstItem="3Ij-jn-tcl" firstAttribute="leading" secondItem="4hi-CE-aR7" secondAttribute="leadingMargin" id="Xb4-OA-l5S"/>
-                                                <constraint firstItem="3Ij-jn-tcl" firstAttribute="centerY" secondItem="4hi-CE-aR7" secondAttribute="centerY" id="hPp-Ma-wxG"/>
-                                                <constraint firstItem="MhM-Hf-fQ0" firstAttribute="trailing" secondItem="4hi-CE-aR7" secondAttribute="trailingMargin" id="vGU-RB-ocB"/>
-                                            </constraints>
-                                        </tableViewCellContentView>
-                                        <connections>
-                                            <outlet property="checkbox" destination="MhM-Hf-fQ0" id="u2u-DK-oDt"/>
-                                            <outlet property="lable" destination="3Ij-jn-tcl" id="lVU-0t-nnI"/>
-                                        </connections>
-                                    </tableViewCell>
-                                </prototypes>
                             </tableView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Sxh-om-8RC"/>
@@ -453,7 +419,7 @@
                     <navigationItem key="navigationItem" id="Cfp-x9-RNl"/>
                     <connections>
                         <outlet property="radarColorMappingSettingsBar" destination="0ld-OK-9nI" id="VjZ-32-Kka"/>
-                        <outlet property="radarColorMappingSettingsTable" destination="Oih-oK-ewD" id="VDw-y2-dEA"/>
+                        <outlet property="radarColorMappingList" destination="Oih-oK-ewD" id="VDw-y2-dEA"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="eu8-s6-vy5" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -491,40 +457,6 @@
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="insetGrouped" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="18" sectionFooterHeight="18" translatesAutoresizingMaskIntoConstraints="NO" id="E0T-tI-OMG">
                                 <rect key="frame" x="0.0" y="56" width="428" height="816"/>
                                 <color key="backgroundColor" systemColor="systemGroupedBackgroundColor"/>
-                                <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="baseLayer" id="Y68-Bu-ftm" customClass="BaseLayerMappingTableViewCell" customModule="meteocool" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="49" width="428" height="43.666667938232422"/>
-                                        <autoresizingMask key="autoresizingMask"/>
-                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Y68-Bu-ftm" id="LWv-jF-pEu">
-                                            <rect key="frame" x="0.0" y="0.0" width="428" height="43.666667938232422"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <subviews>
-                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ql9-UP-hsG">
-                                                    <rect key="frame" x="20.000000000000004" y="13.333333333333336" width="35.333333333333343" height="17"/>
-                                                    <constraints>
-                                                        <constraint firstAttribute="width" relation="lessThanOrEqual" constant="360" id="wFA-2e-1rc"/>
-                                                    </constraints>
-                                                    <fontDescription key="fontDescription" style="UICTFontTextStyleBody"/>
-                                                    <nil key="textColor"/>
-                                                    <nil key="highlightedColor"/>
-                                                </label>
-                                                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="checkmark" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="2mu-tp-W4o">
-                                                    <rect key="frame" x="389.66666666666669" y="13.999999999999998" width="18.333333333333314" height="16.333333333333329"/>
-                                                </imageView>
-                                            </subviews>
-                                            <constraints>
-                                                <constraint firstItem="ql9-UP-hsG" firstAttribute="centerY" secondItem="LWv-jF-pEu" secondAttribute="centerY" id="F2o-95-Pkn"/>
-                                                <constraint firstItem="2mu-tp-W4o" firstAttribute="trailing" secondItem="LWv-jF-pEu" secondAttribute="trailingMargin" id="Ipi-uk-QMz"/>
-                                                <constraint firstItem="ql9-UP-hsG" firstAttribute="leading" secondItem="LWv-jF-pEu" secondAttribute="leadingMargin" id="Q2w-3E-Sfk"/>
-                                                <constraint firstItem="2mu-tp-W4o" firstAttribute="centerY" secondItem="LWv-jF-pEu" secondAttribute="centerY" id="yWt-Da-K2r"/>
-                                            </constraints>
-                                        </tableViewCellContentView>
-                                        <connections>
-                                            <outlet property="checkbox" destination="2mu-tp-W4o" id="pjS-Nz-DkY"/>
-                                            <outlet property="lable" destination="ql9-UP-hsG" id="FoM-UE-LWB"/>
-                                        </connections>
-                                    </tableViewCell>
-                                </prototypes>
                             </tableView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="NfZ-uu-WTX"/>
@@ -542,7 +474,7 @@
                     <navigationItem key="navigationItem" id="vEj-Kh-Evf"/>
                     <connections>
                         <outlet property="baseLayerMappingSettingsBar" destination="c5T-lL-yI9" id="Ymc-sx-CgI"/>
-                        <outlet property="baseLayerMappingSettingsTable" destination="E0T-tI-OMG" id="OlS-ru-IKS"/>
+                        <outlet property="baseLayerMappingList" destination="E0T-tI-OMG" id="OlS-ru-IKS"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="rYy-gx-Vir" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
