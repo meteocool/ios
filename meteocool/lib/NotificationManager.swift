@@ -16,7 +16,7 @@ import UserNotifications
         guard NetworkHelper.simulatorTestAPI == nil,
               let value = defaults?.string(forKey: "registrationOrigin"),
               let url = URL(string: value),
-              [MeteocoolEnvironment.production.apiBaseURL, MeteocoolEnvironment.staging.apiBaseURL].contains(url) else { return nil }
+              MeteocoolEnvironment.allCases.map(\.apiBaseURL).contains(url) else { return nil }
         return url
     }
     var canRegister: Bool {

@@ -157,7 +157,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("imprint_privacy", comment: "dataAboutLabel"),
-        NSLocalizedString("Experimental Features", comment: "dataAboutLabel")
+        NSLocalizedString("Experimental Features", comment: "dataAboutLabel"),
+        NSLocalizedString("Demo Mode", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -343,10 +344,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         case 2: //About
             switch indexPath.row {
-            case 3:
+            case 3, 4: // Experimental Features (staging), Demo Mode (demo)
                 switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
                 switcherCell.switcher.accessibilityLabel = dataAboutLabel[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "experimentalFeatures"))!, animated: false)
+                let key = indexPath.row == 3 ? "experimentalFeatures" : "demoMode"
+                switcherCell.switcher.setOn(userDefaults?.bool(forKey: key) ?? false, animated: false)
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
@@ -484,10 +486,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 1:
             userDefaults?.set(sender.isOn, forKey: "withDBZ")
             SharedLocationUpdater.refreshNotificationRegistration()
-        case 23:
-            userDefaults?.set(sender.isOn, forKey: "experimentalFeatures")
-            let alert = UIAlertController(title: NSLocalizedString("experimental_features", comment: ""),
-                                          message: NSLocalizedString("experimental_features_require_restart", comment: ""), preferredStyle: .alert)
+        case 23, 24:
+            // Each picks a deployment (`MeteocoolEnvironment.current`), so at
+            // most one is on: turning one on turns the other off.
+            let demo = sender.tag == 24
+            userDefaults?.set(sender.isOn, forKey: demo ? "demoMode" : "experimentalFeatures")
+            if sender.isOn { userDefaults?.set(false, forKey: demo ? "experimentalFeatures" : "demoMode") }
+            let alert = UIAlertController(title: NSLocalizedString(demo ? "demo_mode" : "experimental_features", comment: ""),
+                                          message: NSLocalizedString(demo ? "demo_mode_require_restart" : "experimental_features_require_restart", comment: ""), preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: NSLocalizedString("Dismiss", comment: ""), style: .default))
             present(alert, animated: true)
         default:

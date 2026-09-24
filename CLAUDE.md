@@ -131,15 +131,21 @@ downgrade and observers are notified regardless of application state.
 
 ## Environments
 
-The app talks to one of two deployments, chosen by the **Experimental Features**
-switch in Settings (changing it needs a restart, which the settings screen says).
-Both URLs live in [`meteocool/lib/Environment.swift`](meteocool/lib/Environment.swift) —
-never hardcode a host at a call site:
+This build talks to staging, or to demo when **Demo Mode** (under About in
+Settings) is on. **Experimental Features** means staging, and turning either
+switch on turns the other off. A change needs a restart, which the settings
+screen says. Production is never selected until it has been cut over to the
+v4 backend; its URLs stay for that day. The URLs live in
+[`meteocool/lib/Environment.swift`](meteocool/lib/Environment.swift) — never
+hardcode a host at a call site:
 
-| | Production | Staging |
-| --- | --- | --- |
-| Web map (`WKWebView`) | `meteocool.com/ios.html` | `web.staging.meteocool.com/ios.html` |
-| Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `staging.meteocool.com` |
+| | Production | Staging | Demo |
+| --- | --- | --- | --- |
+| Web map (`WKWebView`) | `meteocool.com/ios.html` | `web.staging.meteocool.com/ios.html` | `demo.meteocool.com/ios.html` |
+| Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `staging.meteocool.com` | `api-demo.meteocool.com` |
+
+Demo is the staging code in its own namespace, replaying a recorded storm as if
+it were happening now.
 
 Staging is the rewritten backend from [meteocool/ng](https://github.com/meteocool/ng)
 plus the `--mode staging` build of [meteocool/core](https://github.com/meteocool/core).
@@ -233,7 +239,7 @@ points no longer exist. Native settings use UISlider; StepSlider was removed.
 registration, removal and visible sync-failure state. Stored APNs tokens are
 used only for removal; new registrations need the current launch's APNs token.
 The selected deployment is fixed for the process so changing Experimental
-Features cannot split web and native requests before restart.
+Features or Demo Mode cannot split web and native requests before restart.
 
 Onboarding is one sequence and denial/skip are valid completion paths. Location
 starts with When In Use; background access is requested separately for alerts.
