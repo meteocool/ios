@@ -11,16 +11,26 @@ import Foundation
 /// Before this existed the "Experimental Features" switch moved only the web
 /// view: native API calls kept going to production, so a staging session
 /// registered its push token with the wrong cluster.
-enum MeteocoolEnvironment {
+enum MeteocoolEnvironment: CaseIterable {
     /// The deployment App Store builds talk to.
     case production
-    /// The staging cluster, deployed from core's `develop` branch and ng's
-    /// staging namespace.
+    /// The staging cluster: ng's `v4` in the staging namespace, and core's
+    /// `--mode staging` build.
     case staging
+    /// The demo namespace on the same cluster: the staging code replaying a
+    /// recorded storm as if it were happening now, and core's `--mode demo`
+    /// build.
+    case demo
 
-    /// This build only ever talks to staging, regardless of the
-    /// "Experimental Features" setting.
-    static let current: MeteocoolEnvironment = .staging
+    /// Demo when Settings' "Demo Mode" is on, staging otherwise --
+    /// "Experimental Features" or not. Never production: it has not been cut
+    /// over to the v4 backend this build is written against.
+    ///
+    /// Read once per process, so flipping the switch cannot split the web map
+    /// and the native API across deployments before the restart the settings
+    /// screen asks for.
+    static let current: MeteocoolEnvironment =
+        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "demoMode") == true ? .demo : .staging
 
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
@@ -33,16 +43,20 @@ enum MeteocoolEnvironment {
             return URL(string: "https://api.ng.meteocool.com/")!
         case .staging:
             return URL(string: "https://staging.meteocool.com/")!
+        case .demo:
+            return URL(string: "https://api-demo.meteocool.com/")!
         }
     }
 
-    /// Web hosts; staging follows core/wrangler.jsonc's custom domain.
+    /// Web hosts; staging and demo follow core/wrangler.jsonc's custom domains.
     private var webHost: String {
         switch self {
         case .production:
             return "https://meteocool.com"
         case .staging:
             return "https://web.staging.meteocool.com"
+        case .demo:
+            return "https://demo.meteocool.com"
         }
     }
 
