@@ -72,10 +72,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     
     private var locationStateMachine: SwiftFSM<LocationFSM>?
     
-    @objc func tapOrPan() {
-        if (locationStateMachine?.state == .tracking) {
-            locationStateMachine?.trigger(.mapMove)
-        }
+    /// Any gesture that moves the map ends follow mode. Only `.began` counts:
+    /// the recognizers also fire on every `.changed`, and one transition per
+    /// gesture is all the state machine needs.
+    @objc func mapGesture(_ recognizer: UIGestureRecognizer) {
+        guard recognizer.state == .began, locationStateMachine?.state == .tracking else { return }
+        locationStateMachine?.trigger(.mapMove)
     }
     
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -93,12 +95,18 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
-        let panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.tapOrPan))
-
-        panRecognizer.minimumNumberOfTouches = 1
-        panRecognizer.maximumNumberOfTouches = 1
-        panRecognizer.delegate = self
-        view.addGestureRecognizer(panRecognizer)
+        // Pinch and rotation count too: while following, every fix re-centres
+        // the map, and those animations would fight a zoom or a turn.
+        let recognizers: [UIGestureRecognizer] = [
+            UIPanGestureRecognizer(target: self, action: #selector(mapGesture(_:))),
+            UIPinchGestureRecognizer(target: self, action: #selector(mapGesture(_:))),
+            UIRotationGestureRecognizer(target: self, action: #selector(mapGesture(_:))),
+        ]
+        for recognizer in recognizers {
+            recognizer.cancelsTouchesInView = false
+            recognizer.delegate = self
+            view.addGestureRecognizer(recognizer)
+        }
         
         self.view.addSubview(webView!)
         self.view.addSubview(trippleButton!)
@@ -136,9 +144,18 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             switch(toState) {
             case .off:
                 self.autoFocus = false
+                self.autoFocusOnce = false
+                self.zoomOnce = false
                 SharedLocationUpdater.stopAccurateLocationUpdates()
                 self.positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
                 self.webView.evaluateJavaScript("window.lm.updateLocation(-1, -1, -1, false, false);")
+            case .active where trigger == .mapMove:
+                // The user dragged the map away while following: stop
+                // following, but leave the map where they put it.
+                self.autoFocus = false
+                self.autoFocusOnce = false
+                self.zoomOnce = false
+                self.positionButton.setImage(UIImage(systemName: "location.fill",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
             case .active:
                 SharedLocationUpdater.startAccurateLocationUpdates()
                 self.autoFocus = false
@@ -216,6 +233,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             guard let self else { return }
             self.userDefaults?.set(true, forKey: "onboardingDone")
             self.onboardingPresented = false
+            self.activateLocationIfAuthorized()
             if SharedNotificationManager.enabled {
                 SharedLocationUpdater.requestBackgroundAuthorization()
                 SharedLocationUpdater.refreshNotificationRegistration()
@@ -225,6 +243,18 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     private var onboardingPresented = false
+
+    /// Shows the user's position once the map is up, without a tap, whenever
+    /// permission is already there — at launch, or right after onboarding.
+    private func activateLocationIfAuthorized() {
+        let status = SharedLocationUpdater.authorizationStatus
+        guard webviewReady, locationStateMachine?.state == .off,
+              status == .authorizedWhenInUse || status == .authorizedAlways else { return }
+        if userDefaults?.bool(forKey: "autoZoom") == true {
+            zoomOnce = true
+        }
+        locationStateMachine?.trigger(.buttonPress)
+    }
 
     @objc private func loadMap() {
         loadTimeout?.cancel()
@@ -310,11 +340,14 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     
     func notify(location: CLLocation) {
         guard webviewReady else { return }
-        let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus || autoFocusOnce));"
-        webView.evaluateJavaScript(jsCommand)
         // Same fix, in the shape the Geolocation API asks for: this is what
         // resolves a page-side getCurrentPosition and keeps watchers running.
         GeolocationBridge.deliver(location, to: webView)
+        // Fixes keep arriving while the button is off (significant-change
+        // monitoring for alerts, CarPlay), and must not bring the dot back.
+        guard locationStateMachine?.state != .off else { return }
+        let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus || autoFocusOnce));"
+        webView.evaluateJavaScript(jsCommand)
         if (zoomOnce){
             zoomOnce = false
         }
@@ -367,12 +400,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             injectSettings()
 
             if (userDefaults?.bool(forKey: "onboardingDone") ?? false) {
-                if (locationStateMachine?.state == .off && (SharedLocationUpdater.authorizationStatus == .authorizedWhenInUse || SharedLocationUpdater.authorizationStatus == .authorizedAlways)) {
-                    if ((userDefaults?.bool(forKey: "autoZoom")) ?? false) {
-                        self.zoomOnce = true
-                    }
-                    locationStateMachine?.trigger(.buttonPress)
-                }
+                activateLocationIfAuthorized()
             }
 
             setMapControlsHidden(false)
