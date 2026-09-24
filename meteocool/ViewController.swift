@@ -211,8 +211,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 completion(true, nil)
             })
         }
-        let pages = [Pages.welcome, Pages.nowcastingExplanation, Pages.getNotificationExplanation(action: notifications),
-                     Pages.getWhileUsingLocationPermission(action: location), Pages.settingsPage, Pages.finish]
+        let pages = [Pages.welcome, Pages.location(action: location), Pages.notifications(action: notifications)]
         let onboarding = OnboardingViewController(pages: pages) { [weak self] in
             guard let self else { return }
             self.userDefaults?.set(true, forKey: "onboardingDone")
