@@ -214,6 +214,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         feedbackHeavy = UIImpactFeedbackGenerator(style: .heavy)
         feedbackHeavy?.prepare()
 
+        presentDemoNoticeIfNeeded()
+
         guard userDefaults?.bool(forKey: "onboardingDone") != true,
               presentedViewController == nil, !onboardingPresented else { return }
         onboardingPresented = true
@@ -243,6 +245,30 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     private var onboardingPresented = false
+
+    /// Once per launch in demo mode: the map is about to show a recorded storm
+    /// as if it were happening now, and someone who forgot the switch was on
+    /// must not take it for real weather. Not over onboarding -- demo mode is
+    /// only reachable from Settings, after it.
+    private func presentDemoNoticeIfNeeded() {
+        guard MeteocoolEnvironment.current == .demo, !demoNoticeShown,
+              userDefaults?.bool(forKey: "onboardingDone") == true,
+              presentedViewController == nil else { return }
+        demoNoticeShown = true
+        let alert = UIAlertController(title: NSLocalizedString("demo_notice_title", comment: ""),
+                                      message: NSLocalizedString("demo_notice_message", comment: ""),
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: NSLocalizedString("demo_notice_disable", comment: ""), style: .destructive) { [weak self] _ in
+            MeteocoolEnvironment.leaveDemo()
+            self?.loadMap()
+        })
+        let proceed = UIAlertAction(title: NSLocalizedString("demo_notice_continue", comment: ""), style: .default)
+        alert.addAction(proceed)
+        alert.preferredAction = proceed
+        present(alert, animated: true)
+    }
+
+    private var demoNoticeShown = false
 
     /// Shows the user's position once the map is up, without a tap, whenever
     /// permission is already there — at launch, or right after onboarding.
