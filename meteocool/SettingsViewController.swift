@@ -88,14 +88,52 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var header = [
         NSLocalizedString("notifications", comment: "header"),
         NSLocalizedString("Map View", comment: "header"),
-        NSLocalizedString("About", comment: "header")
+        NSLocalizedString("About", comment: "header"),
+        NSLocalizedString("data_sources_header", comment: "header")
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
         NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
         // The build's own version rather than a number typed into the
         // translations, which had drifted from the app it shipped in.
-        SettingsViewController.version + "\n\n" + NSLocalizedString("copyright_footer", comment: "footer")
+        SettingsViewController.version,
+        NSLocalizedString("data_sources_footer", comment: "footer")
+    ]
+
+    /// Everyone whose data or artwork the app shows, the licence it comes
+    /// under and where that licence lives. The web map's own attribution is
+    /// hidden in the app, so this list is the app's credit: keep it in step
+    /// with core's `layers/attributions.ts` and the imprint's `#data`.
+    private struct DataSource {
+        let name: String
+        let detailKey: String
+        let url: String
+    }
+    private let dataSources = [
+        DataSource(name: "© Deutscher Wetterdienst (DWD)", detailKey: "source_dwd",
+                   url: "https://www.dwd.de/EN/service/copyright/copyright_node.html"),
+        DataSource(name: "© MeteoSwiss", detailKey: "source_meteoswiss",
+                   url: "https://opendatadocs.meteoswiss.ch/general/terms-of-use"),
+        DataSource(name: "© Météo-France", detailKey: "source_meteofrance",
+                   url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence/"),
+        DataSource(name: "© Český hydrometeorologický ústav (ČHMÚ)", detailKey: "source_chmi",
+                   url: "https://www.chmi.cz/o-chmu/caste-dotazy-faq/open-data"),
+        DataSource(name: "© IMGW-PIB", detailKey: "source_imgw",
+                   url: "https://danepubliczne.imgw.pl/regulations"),
+        DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
+                   url: "https://www.weather.gov/disclaimer"),
+        DataSource(name: "© Blitzortung.org", detailKey: "source_blitzortung",
+                   url: "https://www.blitzortung.org/"),
+        DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
+                   url: "https://open-meteo.com/en/licence"),
+        DataSource(name: "Copernicus Sentinel · © OroraTech", detailKey: "source_copernicus",
+                   url: "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"),
+        DataSource(name: "© OpenStreetMap contributors", detailKey: "source_osm",
+                   url: "https://www.openstreetmap.org/copyright"),
+        DataSource(name: "© Protomaps", detailKey: "source_protomaps",
+                   url: "https://protomaps.com"),
+        DataSource(name: "Freepik · Flaticon", detailKey: "source_freepik",
+                   url: "https://www.flaticon.com"),
     ]
 
     /// `Version: 2.2`, from the bundle.
@@ -180,6 +218,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return dataMapView.count
         case 2: //About
             return dataAboutLabel.count
+        case 3: //Data sources
+            return dataSources.count
         default:
             return 0
         }
@@ -315,6 +355,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkValueLable.text = ""
                 return linkCell
             }
+        case 3: //Data sources
+            let source = dataSources[indexPath.row]
+            linkCell.linkInfoLable.text = source.name
+            linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
+            return linkCell
         default:
             print("This should not happen...")
             return textCell
@@ -378,6 +423,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             if let url = URL(string: "https://meteocool.com/privacy.html") {
                 UIApplication.shared.open(url)
             }
+        }
+        if indexPath.section == 3, let url = URL(string: dataSources[indexPath.row].url) {
+            UIApplication.shared.open(url)
         }
     }
     
