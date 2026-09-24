@@ -16,6 +16,12 @@ final class meteocoolUITests: XCTestCase {
         button.tap()
     }
 
+    private func completeOnboardingWithoutPermissions() {
+        tap("Continue")
+        tap("Not Now") // location is optional
+        tap("Not Now") // notifications are optional
+    }
+
     private func screenshot(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
@@ -42,12 +48,7 @@ final class meteocoolUITests: XCTestCase {
         app.terminate()
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         XCTAssertTrue(app.webViews.staticTexts["mapBaseLayer=light;radarColorMapping=classic"].waitForExistence(timeout: 15))
         tap("map.settings")
         for (title, choice) in [("Base Map Layer", "OpenStreetMap"), ("Radar Color Map", "Homeyer (Color Vision Deficiency)")] {
@@ -102,12 +103,7 @@ final class meteocoolUITests: XCTestCase {
     }
 
     private func verifyPickerSelectionGeometry() {
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         tap("map.settings")
         for (title, options) in [
             ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
@@ -183,12 +179,7 @@ final class meteocoolUITests: XCTestCase {
     }
 
     func testSettingsRowAlignment() {
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         tap("map.settings")
         screenshot("Settings alignment")
         let hierarchy = XCTAttachment(string: app.debugDescription)
@@ -216,12 +207,7 @@ final class meteocoolUITests: XCTestCase {
         app.terminate()
         app.launchEnvironment = ["MC_TEST_API_URL": "http://127.0.0.1:18765/", "MC_TEST_MAP": "1"]
         app.launch()
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         let expand = app.buttons["Playback Controls"]
         XCTAssertTrue(expand.waitForExistence(timeout: 45))
         screenshot("Local collapsed playback")
@@ -251,12 +237,7 @@ final class meteocoolUITests: XCTestCase {
         app.launchArguments += ["-pushNotification", "YES"]
         app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
         app.launch()
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         tap("map.settings")
         for title in ["Intensity Threshold", "Notification Timeframe"] {
             let slider = app.sliders[title]
@@ -272,14 +253,9 @@ final class meteocoolUITests: XCTestCase {
     }
 
     func testOnboardingWithoutPermissionsAndSettings() {
-        if app.staticTexts["Hi there!"].waitForExistence(timeout: 5) {
+        if app.staticTexts["Welcome to meteocool"].waitForExistence(timeout: 5) {
             screenshot("Onboarding")
-            tap("Next")
-            tap("Next")
-            tap("Later") // notifications are optional
-            tap("Later") // location is optional
-            tap("Next")
-            tap("Done")
+            completeOnboardingWithoutPermissions()
         }
         XCTAssertTrue(app.buttons["map.settings"].waitForExistence(timeout: 10))
         screenshot("Map")
@@ -341,7 +317,7 @@ final class meteocoolUITests: XCTestCase {
         app.launchArguments.removeAll { $0 == "--ui-test-reset" }
         app.launch()
         XCTAssertTrue(app.buttons["map.settings"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["Hi there!"].exists, "Completed onboarding must not return")
+        XCTAssertFalse(app.staticTexts["Welcome to meteocool"].exists, "Completed onboarding must not return")
     }
 
     func testDarkLargeTextAndRotation() {
@@ -349,12 +325,7 @@ final class meteocoolUITests: XCTestCase {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
         screenshot("Large text onboarding")
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         tap("map.settings")
         screenshot("Large text settings portrait")
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -381,12 +352,7 @@ final class meteocoolUITests: XCTestCase {
         app.terminate()
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         XCTAssertTrue(app.buttons["map.retry"].waitForExistence(timeout: 35))
         XCTAssertFalse(app.buttons["map.layers"].isEnabled)
         tap("map.settings")
@@ -401,21 +367,18 @@ final class meteocoolUITests: XCTestCase {
     }
 
     func testDeniedPermissionsRemainUsable() {
-        XCTAssertTrue(app.staticTexts["Hi there!"].waitForExistence(timeout: 10), "Run this test on a fresh installation")
+        XCTAssertTrue(app.staticTexts["Welcome to meteocool"].waitForExistence(timeout: 10), "Run this test on a fresh installation")
         addUIInterruptionMonitor(withDescription: "Deny system permission") { alert in
             let deny = alert.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch
             guard deny.exists else { return false }
             deny.tap()
             return true
         }
-        tap("Next")
-        tap("Next")
-        tap("Tell Me Before It Rains!")
-        app.tap()
+        tap("Continue")
         tap("Allow Location Access")
         app.tap()
-        tap("Next")
-        tap("Done")
+        tap("Tell Me Before It Rains!")
+        app.tap()
         tap("map.location")
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         screenshot("Location denied recovery")
@@ -433,12 +396,7 @@ final class meteocoolUITests: XCTestCase {
     }
 
     func testLocationRecoveryFromSystemSettings() {
-        tap("Next")
-        tap("Next")
-        tap("Later")
-        tap("Later")
-        tap("Next")
-        tap("Done")
+        completeOnboardingWithoutPermissions()
         tap("map.location")
         tap("Change In Settings")
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
@@ -490,14 +448,11 @@ final class meteocoolUITests: XCTestCase {
             }
             return false
         }
-        tap("Next")
-        tap("Next")
-        tap("Tell Me Before It Rains!")
-        app.tap()
+        tap("Continue")
         tap("Allow Location Access")
         app.tap()
-        tap("Next")
-        tap("Done")
+        tap("Tell Me Before It Rains!")
+        app.tap()
         app.tap()
         tap("map.settings")
         let timeframe = app.sliders["Notification Timeframe"]
