@@ -28,9 +28,21 @@ enum MeteocoolEnvironment: CaseIterable {
     ///
     /// Read once per process, so flipping the switch cannot split the web map
     /// and the native API across deployments before the restart the settings
-    /// screen asks for.
-    static let current: MeteocoolEnvironment =
+    /// screen asks for. The one exception is `leaveDemo()`, whose caller
+    /// moves both at once.
+    // Written only on the main thread, by `leaveDemo()`.
+    nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment =
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "demoMode") == true ? .demo : .staging
+
+    /// Switch a demo session to staging without a restart: the launch notice's
+    /// "Disable Demo Mode". The caller reloads the map; a push registration
+    /// made on demo is moved by `refreshAuthorization`, which removes it from
+    /// demo's API before registering with staging's.
+    @MainActor static func leaveDemo() {
+        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(false, forKey: "demoMode")
+        current = .staging
+        SharedNotificationManager.refreshAuthorization()
+    }
 
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
