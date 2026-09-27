@@ -55,10 +55,20 @@ enum MeteocoolEnvironment: CaseIterable {
         case .production:
             return URL(string: "https://api.ng.meteocool.com/")!
         case .staging:
-            return URL(string: "https://staging.meteocool.com/")!
+            return URL(string: "https://api-next.meteocool.com/")!
         case .demo:
             return URL(string: "https://api-demo.meteocool.com/")!
         }
+    }
+
+    /// The API URL a stored registration origin is known by now, or nil if it
+    /// is not one of this app's APIs.
+    /// Staging's API was renamed from `staging.meteocool.com` to
+    /// `api-next.meteocool.com`. Both names reach the same API, so a
+    /// registration stored under the old name belongs to staging.
+    static func apiBaseURL(forStored stored: URL) -> URL? {
+        if stored == URL(string: "https://staging.meteocool.com/") { return staging.apiBaseURL }
+        return allCases.map(\.apiBaseURL).first { $0 == stored }
     }
 
     /// Web hosts. Staging and demo use the custom domains set in core/wrangler.jsonc.
@@ -67,7 +77,7 @@ enum MeteocoolEnvironment: CaseIterable {
         case .production:
             return "https://meteocool.com"
         case .staging:
-            return "https://web.staging.meteocool.com"
+            return "https://next.meteocool.com"
         case .demo:
             return "https://demo.meteocool.com"
         }

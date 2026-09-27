@@ -142,8 +142,8 @@ hardcode a host at a call site:
 
 | | Production | Staging | Demo |
 | --- | --- | --- | --- |
-| Web map (`WKWebView`) | `meteocool.com/ios.html` | `web.staging.meteocool.com/ios.html` | `demo.meteocool.com/ios.html` |
-| Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `staging.meteocool.com` | `api-demo.meteocool.com` |
+| Web map (`WKWebView`) | `meteocool.com/ios.html` | `next.meteocool.com/ios.html` | `demo.meteocool.com/ios.html` |
+| Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `api-next.meteocool.com` | `api-demo.meteocool.com` |
 
 Demo is the staging code in its own namespace, replaying a recorded storm as if
 it were happening now.
