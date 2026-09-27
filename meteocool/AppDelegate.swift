@@ -79,7 +79,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func acknowledgeNotification(retry: Bool, from: String, completion: @escaping (Bool) -> Void = { _ in }) {
-        guard let token = SharedNotificationManager.getToken() else {
+        // A clear push can launch the app in the background, before APNs hands
+        // this launch its token. The stored token names the same registration,
+        // so the acknowledgement does not have to wait for it.
+        guard let token = SharedNotificationManager.getToken() ?? userDefaults?.string(forKey: "pushToken") else {
             if (retry) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(4), execute: {
                     self.acknowledgeNotification(retry: false, from: from, completion: completion)
