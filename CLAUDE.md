@@ -132,29 +132,36 @@ downgrade and observers are notified regardless of application state.
 
 ## Environments
 
-This build talks to staging, or to demo when **Demo Mode** (under About in
-Settings) is on. **Experimental Features** means staging, and turning either
-switch on turns the other off. A change needs a restart, which the settings
-screen says. Production is never selected until it has been cut over to the
-v4 backend; its URLs stay for that day. The URLs live in
+By default the app talks to **app** (`app.meteocool.com`). With
+**Experimental Features** on it talks to staging, and with **Demo Mode** on
+(under About in Settings) to demo. Turning either switch on turns the other off.
+A change needs a restart, which the settings screen says. The URLs live in
 [`meteocool/lib/Environment.swift`](meteocool/lib/Environment.swift) — never
 hardcode a host at a call site:
 
-| | Production | Staging | Demo |
+| | App (default) | Staging | Demo |
 | --- | --- | --- | --- |
-| Web map (`WKWebView`) | `meteocool.com/ios.html` | `next.meteocool.com/ios.html` | `demo.meteocool.com/ios.html` |
-| Native API (`NetworkHelper`) | `api.ng.meteocool.com` | `api-next.meteocool.com` | `api-demo.meteocool.com` |
+| Web map (`WKWebView`) | `app.meteocool.com/ios.html` | `next.meteocool.com/ios.html` | `demo.meteocool.com/ios.html` |
+| Native API (`NetworkHelper`) | `app.meteocool.com` | `api-next.meteocool.com` | `api-demo.meteocool.com` |
+
+`app.meteocool.com` belongs to no environment of its own. It is a custom domain
+of one of core's Workers (currently staging's, see core/wrangler.jsonc), and that
+Worker forwards the app's API calls to its own backend (core's `worker/api.ts`).
+The production cutover is therefore a change in core, not an app release: move
+the domain to the production Worker and move the push registrations from
+staging's database to production's in the same step. Otherwise staging goes on
+notifying the phones too, because the app sees the same URL and never
+unregisters from staging.
 
 Demo is the staging code in its own namespace, replaying a recorded storm as if
 it were happening now.
 
 Staging is the rewritten backend from [meteocool/ng](https://github.com/meteocool/ng)
 plus the `--mode staging` build of [meteocool/core](https://github.com/meteocool/core).
-The staging frontend uses the custom domain configured in core/wrangler.jsonc.
 
-The web map and the native API must move together: the staging frontend is built
-against the staging backend's contract, and a push registration posted to the
-wrong cluster simply never produces a notification.
+The web map and the native API must move together: each frontend build is built
+against one backend's contract, and a push registration posted to the wrong
+cluster never produces a notification.
 
 ### Talking to the v4 backend
 
