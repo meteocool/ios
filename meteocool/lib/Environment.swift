@@ -3,57 +3,66 @@ import Foundation
 /// Which meteocool deployment the app talks to.
 ///
 /// The web map and the native API must always use the same deployment:
-/// - The staging frontend is built against the staging backend's contract
-///   (`--mode staging` in meteocool/core).
+/// - Each core build is built against one backend's contract
+///   (`--mode staging` or `--mode demo` in meteocool/core).
 /// - A push registration posted to the wrong deployment never produces a notification.
 ///
 /// Both URLs are defined here. Call sites read `MeteocoolEnvironment.current`
 /// and never hardcode a host.
 enum MeteocoolEnvironment: CaseIterable {
-    /// The deployment App Store builds talk to.
-    case production
-    /// Staging: the staging API, and core's
-    /// `--mode staging` build.
+    /// The default: app.meteocool.com, for the map and the API alike.
+    /// It is a custom domain of whichever core Worker the app should use, and
+    /// that Worker forwards the API calls to its own backend (core's
+    /// `worker/api.ts`). Moving the domain to another Worker moves the app,
+    /// map and registrations together, without an app release.
+    case app
+    /// Staging, with "Experimental Features" on: the staging API
+    ///, and core's `--mode staging` build.
     case staging
-    /// Demo: the staging code replaying a
-    /// recorded storm as if it were happening now, and core's `--mode demo`
-    /// build.
+    /// Demo, with "Demo Mode" on: the staging
+    /// code replaying a recorded storm as if it were happening now, and core's
+    /// `--mode demo` build.
     case demo
 
-    /// Demo when Settings' "Demo Mode" is on, otherwise staging.
-    /// "Experimental Features" does not change the result.
-    /// Never production: production has not moved to the v4 backend this build
-    /// is written against.
+    /// Demo when Settings' "Demo Mode" is on, staging when "Experimental
+    /// Features" is on, otherwise app. Settings keeps the two switches exclusive.
     ///
-    /// Read once per process. Changing the switch therefore cannot put the web
+    /// Read once per process. Changing a switch therefore cannot put the web
     /// map and the native API on different deployments before the restart that
     /// the settings screen asks for.
     /// Exception: `leaveDemo()` changes it at runtime, and its caller switches
     /// both at once.
     // Written only on the main thread, by `leaveDemo()`.
-    nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment =
-        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "demoMode") == true ? .demo : .staging
+    nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment = selected()
 
-    /// Switches a demo session to staging without a restart.
+    private static func selected() -> MeteocoolEnvironment {
+        let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
+        if defaults?.bool(forKey: "demoMode") == true { return .demo }
+        if defaults?.bool(forKey: "experimentalFeatures") == true { return .staging }
+        return .app
+    }
+
+    /// Switches a demo session to app, or to staging with "Experimental
+    /// Features" on, without a restart.
     /// Used by "Disable Demo Mode" in the launch notice.
     /// The caller reloads the map and calls `refreshAuthorization`, which moves
     /// a push registration made on demo: it removes it from demo's API, then
-    /// registers with staging's.
+    /// registers with the new one.
     /// No app dependencies here: the check scripts compile this file alone.
     @MainActor static func leaveDemo() {
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(false, forKey: "demoMode")
-        current = .staging
+        current = selected()
     }
 
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
     ///
-    /// On staging these are served by the v4 backend's legacy compatibility
-    /// router, which accepts the same payloads as the old Flask service.
+    /// These are served by the v4 backend's legacy compatibility router, which
+    /// accepts the same payloads as the old Flask service.
     var apiBaseURL: URL {
         switch self {
-        case .production:
-            return URL(string: "https://api.ng.meteocool.com/")!
+        case .app:
+            return URL(string: "https://app.meteocool.com/")!
         case .staging:
             return URL(string: "https://api-next.meteocool.com/")!
         case .demo:
@@ -71,11 +80,11 @@ enum MeteocoolEnvironment: CaseIterable {
         return allCases.map(\.apiBaseURL).first { $0 == stored }
     }
 
-    /// Web hosts. Staging and demo use the custom domains set in core/wrangler.jsonc.
+    /// Web hosts: custom domains of core's Workers, set in core/wrangler.jsonc.
     private var webHost: String {
         switch self {
-        case .production:
-            return "https://meteocool.com"
+        case .app:
+            return "https://app.meteocool.com"
         case .staging:
             return "https://next.meteocool.com"
         case .demo:
