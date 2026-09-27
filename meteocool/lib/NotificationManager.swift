@@ -15,9 +15,8 @@ import UserNotifications
     private var registrationOrigin: URL? {
         guard NetworkHelper.simulatorTestAPI == nil,
               let value = defaults?.string(forKey: "registrationOrigin"),
-              let url = URL(string: value),
-              MeteocoolEnvironment.allCases.map(\.apiBaseURL).contains(url) else { return nil }
-        return url
+              let stored = URL(string: value) else { return nil }
+        return MeteocoolEnvironment.apiBaseURL(forStored: stored)
     }
     var canRegister: Bool {
         let location = SharedLocationUpdater.authorizationStatus
