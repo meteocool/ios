@@ -7,22 +7,21 @@
 
 import UIKit
 
-/// Liquid Glass chrome, built on `UIGlassEffect`.
+/// Helpers that build Liquid Glass views with `UIGlassEffect`.
 ///
-/// The app deploys back to iOS 18, so nothing in here is reachable
-/// without an availability check — older systems keep the flat blur and the
-/// `TribbleButton` artwork the app shipped with.
+/// The deployment target is iOS 18, so every call needs an availability
+/// check. Before iOS 26 the app keeps the flat blur and the `TribbleButton`
+/// artwork.
 ///
-/// Glass belongs to the navigation layer only: the floating map controls, the
-/// status bar backdrop. The radar map itself is content
-/// and never gets a glass treatment.
+/// Use glass only for the navigation layer: the floating map controls and
+/// the status bar backdrop. The radar map is content and gets no glass.
 @MainActor
 enum LiquidGlass {
-    /// A single glass element.
+    /// Creates a single glass element.
     ///
-    /// Glass cannot sample other glass, so elements that sit next to each other
-    /// have to be nested in `container(spacing:)` — ungrouped neighbours each
-    /// sample the map instead and drift apart visually.
+    /// Glass cannot sample other glass. Put neighbouring elements in a
+    /// `container(spacing:)`. Without it, each element samples the map and
+    /// the elements look visually separate.
     @available(iOS 26.0, *)
     static func element(interactive: Bool = true, tint: UIColor? = nil) -> UIVisualEffectView {
         let effect = UIGlassEffect(style: .regular)
@@ -48,8 +47,8 @@ enum LiquidGlass {
     /// Deactivates the constraints `owner` holds on `views`.
     ///
     /// Moving a storyboard view into a glass container leaves its old
-    /// constraints pointing across the hierarchy; UIKit only complains about
-    /// that at layout time, so clear them up front.
+    /// constraints pointing across the hierarchy. UIKit reports that only at
+    /// layout time, so remove them before moving the view.
     static func dropConstraints(on owner: UIView, referencing views: [UIView]) {
         let dangling = owner.constraints.filter { constraint in
             views.contains { view in
@@ -59,22 +58,24 @@ enum LiquidGlass {
         NSLayoutConstraint.deactivate(dangling)
     }
 
-    /// How far a sheet's navigation bar has to drop to clear its own corners.
+    /// Distance a sheet's navigation bar moves down to clear the sheet's
+    /// rounded top corners.
     ///
-    /// A presented sheet has a large corner radius on iOS 26, and a bar pinned
-    /// flush with its top edge puts the trailing glass button straight into
-    /// that arc: the circle rides over the rounded corner and reads as
+    /// A presented sheet has a large corner radius on iOS 26. A bar flush
+    /// with the sheet's top edge places the trailing glass button inside that
+    /// curve. The button then overlaps the rounded corner and looks
     /// misaligned. Apple's own sheets start their bar content below the curve.
     @available(iOS 26.0, *)
     static let sheetCornerClearance: CGFloat = 12
 
-    /// Lets `table` scroll underneath `bar` instead of starting below it.
+    /// Lets `table` scroll under `bar` instead of starting below it.
     ///
-    /// A glass bar with nothing passing under it renders as a flat slab — the
-    /// material only reads as glass when content refracts through it. The
-    /// settings screens pin their table to the bar's bottom edge, so re-pin it
-    /// to the top of the screen and pay for the bar with content insets
-    /// (`inset(_:below:)`, from `viewDidLayoutSubviews`).
+    /// A glass bar with no content under it renders as a flat slab. The
+    /// material looks like glass only when content refracts through it.
+    /// The settings screens pin their table to the bar's bottom edge. This
+    /// re-pins the table to the top of the screen. Content insets then keep
+    /// rows clear of the bar (`inset(_:below:)`, called from
+    /// `viewDidLayoutSubviews`).
     @available(iOS 26.0, *)
     static func float(_ bar: UINavigationBar, over table: UITableView, in owner: UIView) {
         guard let topConstraint = owner.constraints.first(where: {
@@ -86,7 +87,7 @@ enum LiquidGlass {
         table.contentInsetAdjustmentBehavior = .never
         owner.bringSubviewToFront(bar)
 
-        // The bar itself comes down off the sheet's rounded corners.
+        // Move the bar down, clear of the sheet's rounded corners.
         if let barTop = owner.constraints.first(where: {
             ($0.firstItem as? UIView) === bar && $0.firstAttribute == .top
         }) {

@@ -7,19 +7,18 @@
 
 import Foundation
 
-/// The one place that knows which stored settings the web map is told about.
+/// Defines which stored settings are sent to the web map.
 ///
-/// Two web views read this now — the phone's map and CarPlay's — and a setting
-/// that reaches one but not the other is a bug that only shows up in a car.
+/// The phone map and the CarPlay map both use it. A setting that reaches
+/// only one of them is a bug that shows up only in a car.
 @MainActor
 enum WebSettings {
-    /// `window.settings.injectSettings({...})`, or nil if the dictionary
-    /// cannot be serialized.
+    /// Returns the `window.settings.injectSettings({...})` call, or nil if the
+    /// dictionary cannot be serialized.
     ///
-    /// The overlay layers (lightning, mesocyclones, snow) are deliberately
-    /// absent: the web map owns those toggles and persists them itself, so
-    /// injecting a native copy would overwrite the user's choice on every
-    /// launch.
+    /// The overlay layers (lightning, mesocyclones, snow) are not included.
+    /// The web map owns those toggles and stores them itself. Injecting a
+    /// native copy would overwrite the user's choice on every launch.
     static func injectionJS() -> String? {
         let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
         let config = [

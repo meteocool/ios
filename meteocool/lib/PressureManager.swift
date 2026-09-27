@@ -7,8 +7,9 @@ import Foundation
     private var timeout: Task<Void, Never>?
 
     func getPressure(completion: @escaping (Float) -> Void) {
-        // Pressure is optional telemetry. Never delay rain-alert registration
-        // for a motion prompt or a sensor that cannot provide a reading.
+        // Return -1 at once without altimeter access. Pressure is optional telemetry.
+        // Rain-alert registration must not wait for a motion prompt or a sensor
+        // that cannot provide a reading.
         guard CMAltimeter.isRelativeAltitudeAvailable(), CMAltimeter.authorizationStatus() == .authorized else {
             completion(-1)
             return

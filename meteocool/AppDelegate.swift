@@ -44,8 +44,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "baseLayer") == nil){
             userDefaults?.setValue("light", forKey: "baseLayer")
         }
-        // Satellite was withdrawn from the web map, so a stored "satellite"
-        // now selects nothing in the picker and draws the default anyway.
+        // Replace a stored "satellite" base layer with "light". The web map
+        // no longer offers satellite: a stored "satellite" selects nothing in
+        // the picker, and the map draws the default layer.
         if (userDefaults?.string(forKey: "baseLayer") == "satellite"){
             userDefaults?.setValue("light", forKey: "baseLayer")
         }

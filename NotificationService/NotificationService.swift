@@ -1,7 +1,9 @@
 import UserNotifications
 
-/// The download and expiration callbacks can race. The lock protects the
-/// completion and mutable content so the original alert is delivered once.
+/// Attaches the radar image from a push's `preview` URL before the alert is shown.
+/// The download callback and the expiration callback can run at the same time.
+/// The lock guards the completion handler and the mutable content, so the alert
+/// is delivered exactly once.
 final class NotificationService: UNNotificationServiceExtension, @unchecked Sendable {
     private let lock = NSLock()
     private var handler: ((UNNotificationContent) -> Void)?
@@ -38,7 +40,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
                     try FileManager.default.moveItem(at: file, to: image)
                     attachment = try UNNotificationAttachment(identifier: "radar", url: image)
                 } catch {
-                    // The text alert must survive a failed preview.
+                    // Deliver the text alert without the image if the preview fails.
                     NSLog("Notification preview unavailable")
                 }
             }

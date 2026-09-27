@@ -1,8 +1,8 @@
 import UIKit
 import CoreLocation
 
-// Isolate OS permissions/APNs and the optional sensor. The production location
-// updater, queue, payload serialization and URLSession execution remain real.
+// Stubs for OS permissions, APNs and the optional pressure sensor.
+// LocationUpdater, its queue, payload serialization and URLSession run unmodified.
 @MainActor let viewController: UIViewController? = nil
 @MainActor final class PressureManager {
     func getPressure(completion: @escaping (Float) -> Void) { completion(-1) }
@@ -24,7 +24,8 @@ final class LocationManagerSpy: CLLocationManager {
     override func stopMonitoringSignificantLocationChanges() {}
 }
 
-// Delay the first transport completion until the second queued fix expires.
+// Completes each request after 0.5 s, so the second queued fix expires while
+// the first request is still in flight.
 final class DelayedTransport: URLProtocol, @unchecked Sendable {
     static let lock = NSLock()
     nonisolated(unsafe) static var count = 0

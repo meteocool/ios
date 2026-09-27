@@ -26,19 +26,19 @@ preflight() {
     xcodebuild -version >/dev/null || fail "Xcode setup is incomplete at $DEVELOPER_DIR"
 }
 
-# XcodeGen resolves `sources:` by walking the directories, so a file that was
-# merely added or deleted changes the project too. Regenerating is well under a
-# second, so it is unconditional rather than guarded by a staleness check that
-# would silently miss exactly that case.
+# Regenerates the project on every run, without a staleness check.
+# XcodeGen builds `sources:` by walking the directories, so adding or deleting
+# a file changes the project. A staleness check would not detect that.
+# Regeneration takes under a second.
 regenerate() {
     step "Regenerating project"
     xcodegen generate
     restore_package_pins
 }
 
-# The generated workspace carries SwiftPM's Package.resolved, which is thrown
-# away on every regeneration — so the pins are kept at the repo root and copied
-# back in. Update them with ./scripts/update-packages.sh.
+# Copies ./Package.resolved into the generated workspace.
+# Regeneration deletes the workspace's own Package.resolved, so the pins are
+# kept at the repo root. Update them with ./scripts/update-packages.sh.
 restore_package_pins() {
     local dest="$PROJECT/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
     [ -f Package.resolved ] || return 0

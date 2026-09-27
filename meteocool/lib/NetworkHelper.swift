@@ -3,7 +3,8 @@ import Foundation
 class NetworkHelper {
     static var apiURL: URL { simulatorTestAPI ?? MeteocoolEnvironment.current.apiBaseURL }
 
-    /// UI tests exercise real HTTP requests against a loopback recorder.
+    /// API origin override for UI tests (`MC_TEST_API_URL`).
+    /// UI tests send real HTTP requests to a loopback recorder.
     /// Release builds and physical devices cannot override the API origin.
     static var simulatorTestAPI: URL? {
         #if DEBUG && targetEnvironment(simulator)
@@ -37,7 +38,7 @@ class NetworkHelper {
               (200..<300).contains(response.statusCode), let data,
               let status = try? JSONDecoder().decode(Status.self, from: data),
               status.success else {
-            // Payloads contain device tokens and precise locations. Log only status.
+            // Log only the HTTP status. Payloads contain device tokens and precise locations.
             NSLog("API request failed (HTTP %d)", (response as? HTTPURLResponse)?.statusCode ?? 0)
             return nil
         }

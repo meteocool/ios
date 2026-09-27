@@ -8,25 +8,22 @@
 import CoreLocation
 import WebKit
 
-/// `navigator.geolocation`, backed by the app's own location.
+/// Replaces `navigator.geolocation` in the web map with a shim fed by the app's CoreLocation fixes.
 ///
-/// The app has always fed the map its position natively (`window.lm.updateLocation`)
-/// precisely so the page never has to ask for one: a `navigator.geolocation`
-/// call inside a `WKWebView` raises WebKit's own per-origin permission alert
-/// ("Allow … to use your location?") on top of the permission the app already
-/// holds, which is a second prompt for something the user granted once.
+/// Why: a `navigator.geolocation` call inside a `WKWebView` shows WebKit's own
+/// per-origin permission alert ("Allow … to use your location?"). The app
+/// already holds location permission, so that is a second prompt.
+/// The app sends the map its position natively (`window.lm.updateLocation`)
+/// for the same reason.
 ///
-/// Gating the call in the frontend only works for the code paths the frontend
-/// knows about. This closes it at the source instead: a document-start user
-/// script replaces `navigator.geolocation` with a shim that asks the host, so
-/// whatever the page — or a library inside it — calls, WebKit's geolocation
-/// machinery is never reached and no prompt can appear.
+/// A check in the frontend covers only the call sites the frontend knows about.
+/// This user script runs at document start and replaces `navigator.geolocation`
+/// for every caller, including libraries inside the page. WebKit's geolocation
+/// code is never called, so its prompt cannot appear.
 ///
-/// The shim implements the parts of the Geolocation API the web app can reach:
-/// `getCurrentPosition`, `watchPosition` and `clearWatch`. Positions arrive
-/// through `deliver(_:to:)`, which `ViewController.notify(location:)` calls for
-/// every fix the app receives, so watchers keep updating for as long as the
-/// native updates run.
+/// The shim implements `getCurrentPosition`, `watchPosition` and `clearWatch`.
+/// Positions arrive through `deliver(_:to:)`. `ViewController.notify(location:)`
+/// calls it for every fix, so watchers update while native updates run.
 @MainActor
 enum GeolocationBridge {
     /// The message handler the shim posts to. Registered by `ViewController`.
@@ -48,8 +45,8 @@ enum GeolocationBridge {
     /// Hands a fix to the shim, which resolves pending `getCurrentPosition`
     /// calls and fires every active watcher.
     static func deliver(_ location: CLLocation, to webView: WKWebView) {
-        // CoreLocation reports "unknown" as a negative value; the Geolocation
-        // API spells the same thing `null`.
+        // CoreLocation reports "unknown" as a negative value.
+        // The Geolocation API reports it as `null`.
         let position: [String: Any] = [
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude,
@@ -64,8 +61,9 @@ enum GeolocationBridge {
         webView.evaluateJavaScript("window.__mcGeo && window.__mcGeo.push(\(json));")
     }
 
-    /// Fails current requests. A later request rechecks native permission,
-    /// so returning from Settings does not require a page reload.
+    /// Fails pending requests and active watchers.
+    /// A later request checks native permission again, so returning from
+    /// Settings does not need a page reload.
     static func fail(_ code: ErrorCode, message: String, to webView: WKWebView) {
         guard let json = encode(["code": code.rawValue, "message": message]) else { return }
         webView.evaluateJavaScript("window.__mcGeo && window.__mcGeo.fail(\(json));")
@@ -80,8 +78,8 @@ enum GeolocationBridge {
 
     /// Runs before the trusted main page's own scripts.
     ///
-    /// Raw string: the JS is full of `\(` -- free in a Swift string literal,
-    /// interpolation in an ordinary one.
+    /// Raw string literal, because the JS contains many `\(` sequences.
+    /// An ordinary Swift string would treat them as interpolation.
     private static let source = #"""
     (function () {
       var handler = window.webkit

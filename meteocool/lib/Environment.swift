@@ -2,15 +2,13 @@ import Foundation
 
 /// Which meteocool deployment the app talks to.
 ///
-/// The web map and the native API have to move together. The staging frontend
-/// is built against the staging backend's contract (`--mode staging` in
-/// meteocool/core), and a push registration posted to the wrong deployment
-/// simply never produces a notification — so both URLs live here and every
-/// call site asks `MeteocoolEnvironment.current` rather than hardcoding a host.
+/// The web map and the native API must always use the same deployment:
+/// - The staging frontend is built against the staging backend's contract
+///   (`--mode staging` in meteocool/core).
+/// - A push registration posted to the wrong deployment never produces a notification.
 ///
-/// Before this existed the "Experimental Features" switch moved only the web
-/// view: native API calls kept going to production, so a staging session
-/// registered its push token with the wrong deployment.
+/// Both URLs are defined here. Call sites read `MeteocoolEnvironment.current`
+/// and never hardcode a host.
 enum MeteocoolEnvironment: CaseIterable {
     /// The deployment App Store builds talk to.
     case production
@@ -22,22 +20,25 @@ enum MeteocoolEnvironment: CaseIterable {
     /// build.
     case demo
 
-    /// Demo when Settings' "Demo Mode" is on, staging otherwise --
-    /// "Experimental Features" or not. Never production: it has not been cut
-    /// over to the v4 backend this build is written against.
+    /// Demo when Settings' "Demo Mode" is on, otherwise staging.
+    /// "Experimental Features" does not change the result.
+    /// Never production: production has not moved to the v4 backend this build
+    /// is written against.
     ///
-    /// Read once per process, so flipping the switch cannot split the web map
-    /// and the native API across deployments before the restart the settings
-    /// screen asks for. The one exception is `leaveDemo()`, whose caller
-    /// moves both at once.
+    /// Read once per process. Changing the switch therefore cannot put the web
+    /// map and the native API on different deployments before the restart that
+    /// the settings screen asks for.
+    /// Exception: `leaveDemo()` changes it at runtime, and its caller switches
+    /// both at once.
     // Written only on the main thread, by `leaveDemo()`.
     nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment =
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "demoMode") == true ? .demo : .staging
 
-    /// Switch a demo session to staging without a restart: the launch notice's
-    /// "Disable Demo Mode". The caller reloads the map; a push registration
-    /// made on demo is moved by `refreshAuthorization`, which removes it from
-    /// demo's API before registering with staging's.
+    /// Switches a demo session to staging without a restart.
+    /// Used by "Disable Demo Mode" in the launch notice.
+    /// The caller reloads the map.
+    /// `refreshAuthorization` moves a push registration made on demo: it removes
+    /// it from demo's API, then registers with staging's.
     @MainActor static func leaveDemo() {
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(false, forKey: "demoMode")
         current = .staging
@@ -60,7 +61,7 @@ enum MeteocoolEnvironment: CaseIterable {
         }
     }
 
-    /// Web hosts; staging and demo follow core/wrangler.jsonc's custom domains.
+    /// Web hosts. Staging and demo use the custom domains set in core/wrangler.jsonc.
     private var webHost: String {
         switch self {
         case .production:
@@ -74,9 +75,9 @@ enum MeteocoolEnvironment: CaseIterable {
 
     /// The page the map `WKWebView` loads.
     ///
-    /// `ios.html` is a named entry point of core's multi-page Vite build, and
-    /// the Worker is configured with `html_handling: "none"` so the `.html`
-    /// suffix keeps resolving instead of redirecting to `/ios`.
+    /// `ios.html` is a named entry point of core's multi-page Vite build.
+    /// The Worker is configured with `html_handling: "none"`, so the `.html`
+    /// URL resolves directly and is not redirected to `/ios`.
     var webURL: URL {
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MC_TEST_MAP"] == "1", let local = NetworkHelper.simulatorTestAPI {
@@ -86,12 +87,12 @@ enum MeteocoolEnvironment: CaseIterable {
         return page()
     }
 
-    /// The same map, stripped for the car.
+    /// The map page for CarPlay, without controls.
     ///
-    /// `toolbar=no` is a URL-sourced setting in core (`src/App.svelte`): it
-    /// drops the bottom toolbar, the forecast strip and the padding they
-    /// reserve, which leaves the live radar and nothing to tap. The logo and
-    /// the layer switcher are already off for app builds.
+    /// `toolbar=no` is a URL setting read by core (`src/App.svelte`).
+    /// It removes the bottom toolbar, the forecast strip and their padding.
+    /// The result is the live radar with nothing to tap.
+    /// App builds already hide the logo and the layer switcher.
     var carPlayURL: URL {
         page(query: ["toolbar": "no"])
     }

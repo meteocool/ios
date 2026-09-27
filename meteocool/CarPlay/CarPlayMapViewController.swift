@@ -9,36 +9,39 @@ import CoreLocation
 import UIKit
 import WebKit
 
-/// The live radar map, for the `CPWindow`.
+/// The live radar map shown in the `CPWindow`.
 ///
-/// Same web map as the phone, loaded from `carPlayURL` so it comes up without
-/// the toolbar or the forecast strip — in a car there is nothing to tap and
-/// nothing to read, only the radar around the car.
+/// Loads the phone's web map from `carPlayURL`, which hides the toolbar and
+/// the forecast strip. The car screen shows only the radar around the car,
+/// with nothing to tap and nothing to read.
 ///
-/// It runs its own `WKWebView` rather than sharing the phone's: a view can only
-/// live in one window, and the phone's map keeps its own camera, which the
-/// driver is not looking at.
+/// Uses its own `WKWebView` instead of the phone's:
+/// - a view can be in only one window;
+/// - the phone's map keeps its own camera position, which the driver does
+///   not see.
 @MainActor
 final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, LocationObserver {
     private var webView: WKWebView!
 
-    /// Set once the page has mounted and asked for its settings. Before that
+    /// Set when the page has mounted and requested its settings. Before that,
     /// `window.lm` does not exist and an injected location is dropped.
     private var webviewReady = false
 
     /// The last fix that arrived before the page was ready, replayed on mount.
     private var pendingLocation: CLLocation?
 
-    /// The first fix zooms the map in to driving range; later ones only keep
-    /// the car centred, so the view does not re-animate every few seconds.
+    /// The first fix zooms the map in to driving range. Later fixes only keep
+    /// the car centred, so the map does not repeat the zoom animation every
+    /// few seconds.
     private var hasZoomed = false
 
     override func loadView() {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.userContentController.add(self, name: "scriptHandler")
-        // Without this the page's `postMessage("requestSettings")` throws on a
-        // missing handler, and the throw takes the rest of the mount with it.
+        // `scriptHandler` above is required. Without it the page's
+        // `postMessage("requestSettings")` throws on a missing handler, and
+        // the exception aborts the rest of the page mount.
         configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
         configuration.userContentController.addUserScript(GeolocationBridge.userScript)
 
@@ -59,10 +62,10 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
 
         SharedLocationUpdater.addObserver(observer: self)
         NotificationCenter.default.addObserver(self, selector: #selector(injectSettings), name: NSNotification.Name("SettingsChanged"), object: nil)
-        // The driver's position is the whole point of the car screen, so this
-        // asks for updates whether or not the phone's own UI is in front —
-        // with the phone locked the app is not "active" and the ordinary
-        // entry point would decline.
+        // Request high-accuracy updates even when the phone UI is not in
+        // front (`force: true`). The car screen needs the driver's position.
+        // With the phone locked the app is not active, and the call without
+        // `force` would not start updates.
         SharedLocationUpdater.startAccurateLocationUpdates(force: true)
         SharedLocationUpdater.requestLocation(observer: self, explicit: false)
     }
@@ -113,9 +116,9 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
             return
         }
 
-        // Everything else the page posts is chrome the car screen does not
-        // have — the drawer, the layer switcher, haptics. `requestSettings` is
-        // the one message that matters here: it means the map is up.
+        // Ignore every other page message. They are for UI the car screen
+        // does not have (drawer, layer switcher, haptics).
+        // `requestSettings` means the map has loaded.
         if action == "requestSettings" {
             webviewReady = true
             injectSettings()

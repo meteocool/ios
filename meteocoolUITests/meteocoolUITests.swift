@@ -78,8 +78,8 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(app.webViews.staticTexts[expected].waitForExistence(timeout: 5), "Cancel must not change the map's settings")
     }
 
-    // Read rendered pixels, independently of the cell's selected accessibility trait.
-    // UIKit may change accessory visibility after the data source configures the cell.
+    // Detects the checkmark from rendered pixels, not from the cell's selected trait.
+    // UIKit can change accessory visibility after the data source configures the cell.
     private func hasVisibleCheckmark(_ cell: XCUIElement) throws -> Bool {
         let image = try XCTUnwrap(cell.screenshot().image.cgImage)
         let width = image.width
@@ -120,8 +120,8 @@ final class meteocoolUITests: XCTestCase {
                     if index < previousIndex { table.swipeDown() } else { table.swipeUp() }
                 }
                 XCTAssertTrue(label.isHittable)
-                // Tables materialize offscreen rows on demand. Measure the actual
-                // visible rows immediately before each selection, not estimated offscreen frames.
+                // Measures only the rows visible right before each selection.
+                // Tables create offscreen rows on demand, so offscreen frames are estimates.
                 let visible = options.compactMap { option -> (String, CGFloat, CGSize)? in
                     let cell = table.cells.containing(.staticText, identifier: option).firstMatch
                     guard cell.exists else { return nil }
