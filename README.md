@@ -57,5 +57,4 @@ they are also licensed AGPL-3.0.
 
 ## Integration verification
 
-See [AUDIT.md](AUDIT.md) for Xcode 27 test results, screenshots and release gates.
 Run `bash scripts/check.sh` for the standalone checks. Native UI has no Swift package dependencies.

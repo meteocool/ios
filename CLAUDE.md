@@ -229,7 +229,7 @@ without fastlane.
 
 Use Xcode 27. Scripts default `DEVELOPER_DIR` to `/Applications/Xcode.app/Contents/Developer`
 without changing global selection. Deployment target is iOS 18; UIKit glass is
-available on iOS 26 and 27. `AUDIT.md` tracks verification and remaining work.
+available on iOS 26 and 27.
 
 The web frontend owns forecast playback. The obsolete native forecast drawer
 and its custom gesture recognizer were removed because its JavaScript entry
@@ -252,4 +252,4 @@ to reset app preferences between cases. They do not reset OS permissions.
 
 Onboarding is SwiftUI (`meteocool/onboarding/OnboardingView.swift`) hosted in a UIHostingController sheet: a welcome feature list, then Location, then Rain Alerts. Location comes first so the background upgrade requested after alerts builds on When In Use. Pages scroll so large text does not truncate, and at accessibility sizes the buttons scroll with the page rather than being pinned. Buttons are glass on iOS 26 and later. Both former Swift packages (OnboardKit and StepSlider) are removed; the retained package lock has no pins. Settings rows wrap and self-size.
 
-The production web host follows core/wrangler.jsonc. Its currently deployed UI differs from staging and fails the rewritten playback accessibility test; see AUDIT.md before releasing. Switching environments removes the last recorded registration from its original API before registering on the new API.
+The production web host follows core/wrangler.jsonc. Its currently deployed UI differs from staging and fails the rewritten playback accessibility test. Run that test against production before releasing. Switching environments removes the last recorded registration from its original API before registering on the new API.
