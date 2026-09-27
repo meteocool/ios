@@ -41,14 +41,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.value(forKey: "radarColorMapping") == nil){
             userDefaults?.setValue("classic", forKey: "radarColorMapping")
         }
+        // New installs follow the appearance, as on the web.
+        // A stored choice, including the old "light" default, is kept.
         if (userDefaults?.value(forKey: "baseLayer") == nil){
-            userDefaults?.setValue("light", forKey: "baseLayer")
+            userDefaults?.setValue("system", forKey: "baseLayer")
         }
-        // Replace a stored "satellite" base layer with "light". The web map
+        // Replace a stored "satellite" base layer with "system". The web map
         // no longer offers satellite: a stored "satellite" selects nothing in
         // the picker, and the map draws the default layer.
         if (userDefaults?.string(forKey: "baseLayer") == "satellite"){
-            userDefaults?.setValue("light", forKey: "baseLayer")
+            userDefaults?.setValue("system", forKey: "baseLayer")
         }
         if (userDefaults?.value(forKey: "experimentalFeatures") == nil){
             userDefaults?.setValue(false, forKey: "experimentalFeatures")

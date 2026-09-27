@@ -49,7 +49,7 @@ final class meteocoolUITests: XCTestCase {
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
         completeOnboardingWithoutPermissions()
-        XCTAssertTrue(app.webViews.staticTexts["mapBaseLayer=light;radarColorMapping=classic"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.staticTexts["mapBaseLayer=system;radarColorMapping=classic"].waitForExistence(timeout: 15))
         tap("map.settings")
         for (title, choice) in [("Base Map Layer", "OpenStreetMap"), ("Radar Color Map", "Homeyer (Color Vision Deficiency)")] {
             app.staticTexts[title].tap()
@@ -106,7 +106,7 @@ final class meteocoolUITests: XCTestCase {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
         for (title, options) in [
-            ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
+            ("Base Map Layer", ["Match System", "Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
             ("Radar Color Map", ["Classic", "NWS Reflectivity", "PyArt StepSeq", "Homeyer (Color Vision Deficiency)", "Lang"])
         ] {
             app.staticTexts[title].tap()
