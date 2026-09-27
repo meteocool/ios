@@ -25,7 +25,10 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return
         }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 15
+        // The preview is rendered on request, and a cold render takes 13 to 20 s.
+        // The system gives the extension about 30 s; if that runs out first,
+        // `serviceExtensionTimeWillExpire` delivers the alert without the image.
+        request.timeoutInterval = 28
         let task = URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
             var attachment: UNNotificationAttachment?
             if error == nil, let file, let response = response as? HTTPURLResponse,
