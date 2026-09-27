@@ -44,6 +44,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         SharedLocationUpdater.willResignActive()
     }
 
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        WebCache.trimIfNeeded()
+    }
+
     func sceneDidBecomeActive(_ scene: UIScene) {
         SharedLocationUpdater.willEnterForeground()
         viewController?.willEnterForeground()
