@@ -263,6 +263,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: NSLocalizedString("demo_notice_disable", comment: ""), style: .destructive) { [weak self] _ in
             MeteocoolEnvironment.leaveDemo()
+            SharedNotificationManager.refreshAuthorization()
             self?.loadMap()
         })
         let proceed = UIAlertAction(title: NSLocalizedString("demo_notice_continue", comment: ""), style: .default)
