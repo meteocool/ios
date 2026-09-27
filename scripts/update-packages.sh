@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Resolve Swift package dependencies to the newest versions allowed by
-# project.yml and write the new pins back to ./Package.resolved (which is the
-# checked-in source of truth, because the generated workspace is not).
+# Resolves Swift package dependencies to the newest versions project.yml allows
+# and writes the pins to ./Package.resolved.
+# ./Package.resolved is the checked-in copy of the pins, because the generated
+# workspace is not in the repo.
 source "$(dirname "$0")/_common.sh"
 
 preflight

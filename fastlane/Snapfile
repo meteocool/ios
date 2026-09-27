@@ -1,5 +1,5 @@
-# Devices to capture App Store screenshots on. These have to exist as
-# simulators in the installed Xcode — check with:
+# Devices to capture App Store screenshots on.
+# Each one must exist as a simulator in the installed Xcode. List them with:
 #
 #     xcrun simctl list devices available
 #

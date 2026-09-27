@@ -23,8 +23,9 @@ struct OnboardingFeature: Identifiable {
     var footnote: String? = nil
     var primaryTitle: String = NSLocalizedString("Continue", comment: "")
     var secondaryTitle: String? = nil
-    /// Runs on the primary button. The page advances once it calls back, whatever
-    /// the outcome: declining a permission is a valid way through onboarding.
+    /// Runs when the primary button is tapped.
+    /// The page advances after it calls back, whatever the outcome.
+    /// Declining a permission is a valid way to finish onboarding.
     var action: OnboardingAction? = nil
 }
 
@@ -78,8 +79,8 @@ struct OnboardingView: View {
     private static let readableWidth: CGFloat = 540
 
     var body: some View {
-        // At accessibility sizes the buttons would cover most of the screen if
-        // pinned, so they scroll with the page instead.
+        // At accessibility sizes, pinned buttons would cover most of the screen.
+        // The buttons scroll with the page instead.
         if typeSize.isAccessibilitySize {
             pages(includingButtons: true)
         } else {
@@ -100,7 +101,7 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
-            // Short permission pages sit in the middle rather than under a void.
+            // Centers short permission pages vertically instead of placing them at the top above empty space.
             .defaultScrollAnchor(.center, for: .alignment)
             .id(model.index)
             .transition(reduceMotion ? .opacity : .push(from: .trailing))
@@ -235,8 +236,9 @@ private extension View {
         }
     }
 
-    /// A bar the page scrolls under. iOS 26 fades content out beneath it with the
-    /// scroll edge effect; earlier versions get the classic bar material.
+    /// Bottom bar that the page scrolls under.
+    /// On iOS 26 the scroll edge effect fades content out beneath it.
+    /// Earlier versions use the standard bar material.
     @ViewBuilder func onboardingBottomBar(@ViewBuilder _ content: () -> some View) -> some View {
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .bottom) { content() }

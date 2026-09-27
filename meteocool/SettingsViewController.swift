@@ -3,7 +3,7 @@ import CoreLocation
 
 /// Replace fixed storyboard rows with self-sizing, wrapping native labels.
 @MainActor func layoutSettingsCell(_ cell: UITableViewCell, labels: [UILabel], accessory: UIView? = nil, bottom: Bool = true) {
-    // Preserve UIKit's constraints that tie the layout margins to the cell.
+    // Drops only constraints that reference these views, so UIKit's layout-margin constraints on the cell stay.
     LiquidGlass.dropConstraints(on: cell.contentView, referencing: labels + (accessory.map { [$0] } ?? []))
     for label in labels {
         NSLayoutConstraint.deactivate(label.constraints)
@@ -94,16 +94,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
         NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
-        // The build's own version rather than a number typed into the
-        // translations, which had drifted from the app it shipped in.
+        // Read from the bundle, not from the translations.
+        // A version number typed into the translations went out of date.
         SettingsViewController.version,
         NSLocalizedString("data_sources_footer", comment: "footer")
     ]
 
-    /// Everyone whose data or artwork the app shows, the licence it comes
-    /// under and where that licence lives. The web map's own attribution is
-    /// hidden in the app, so this list is the app's credit: keep it in step
-    /// with core's `layers/attributions.ts` and the imprint's `#data`.
+    /// Each source of data or artwork the app shows, with its licence and the licence URL.
+    /// The app hides the web map's attribution, so this list is the app's credit.
+    /// Keep it in sync with core's `layers/attributions.ts` and the imprint's `#data`.
     private struct DataSource {
         let name: String
         let detailKey: String
@@ -136,7 +135,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                    url: "https://www.flaticon.com"),
     ]
 
-    /// `Version: 2.2`, from the bundle.
+    /// Footer text such as `Version: 2.2`, built from the bundle's marketing version.
     private static var version: String {
         let marketing = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         return NSLocalizedString("version_label", comment: "footer") + " " + marketing
@@ -370,11 +369,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         
     }
     
-    /// Lays a step slider out inside its cell and gives it adaptive colors.
+    /// Pins a step slider inside its cell with Auto Layout and gives it adaptive colors.
     ///
-    /// It used to be positioned with a hardcoded frame derived from the table
-    /// width, which overflows an inset-grouped cell, and painted with two fixed
-    /// light-mode colors, which disappeared in dark mode.
+    /// - A frame derived from the table width overflows an inset-grouped cell.
+    /// - Fixed light-mode colors are invisible in dark mode.
     private func pin(_ slider: UISlider, in cell: StepperTableViewCell) {
         slider.isContinuous = false
         slider.translatesAutoresizingMaskIntoConstraints = false
@@ -487,8 +485,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             userDefaults?.set(sender.isOn, forKey: "withDBZ")
             SharedLocationUpdater.refreshNotificationRegistration()
         case 23, 24:
-            // Each picks a deployment (`MeteocoolEnvironment.current`), so at
-            // most one is on: turning one on turns the other off.
+            // Each switch selects a deployment (`MeteocoolEnvironment.current`).
+            // At most one can be on, so turning one on turns the other off.
             let demo = sender.tag == 24
             userDefaults?.set(sender.isOn, forKey: demo ? "demoMode" : "experimentalFeatures")
             if sender.isOn { userDefaults?.set(false, forKey: demo ? "experimentalFeatures" : "demoMode") }

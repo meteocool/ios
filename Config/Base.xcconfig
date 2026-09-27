@@ -1,8 +1,8 @@
 // Settings shared by every configuration and target.
 //
-// Anything machine- or account-specific (signing team, bundle id prefix)
-// is overridden by the optional, gitignored Local.xcconfig included at the
-// bottom of this file. Copy Local.xcconfig.example to get started.
+// Local.xcconfig overrides machine- or account-specific values (signing team,
+// bundle id prefix). It is optional, gitignored, and included at the bottom of
+// this file. Copy Local.xcconfig.example to create it.
 
 // ---- Identity -------------------------------------------------------------
 

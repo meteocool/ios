@@ -63,7 +63,8 @@ import UserNotifications
         }
     }
 
-    /// Called on launch and after returning from Settings; never prompts here.
+    /// Rereads notification permission and registers or unregisters to match.
+    /// Called on launch and after returning from Settings. Never shows a prompt.
     func refreshAuthorization() {
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -101,8 +102,10 @@ import UserNotifications
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    /// Keep the old token only to remove an existing server registration. New
-    /// registrations always use the fresh token delivered by APNs this launch.
+    /// Removes the server registration. Falls back to the stored token if APNs
+    /// has not delivered one this launch.
+    /// The stored token is used only for removal. New registrations use the
+    /// token APNs delivers in the current launch.
     func unregister() {
         if unregistering {
             removalPending = true
@@ -121,7 +124,7 @@ import UserNotifications
             }
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
-                // Deleting an already absent registration is also complete.
+                // A "not registered" answer counts as a successful removal.
                 let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 let absent = (response as? HTTPURLResponse)?.statusCode == 200 && body?["message"] as? String == "not registered"
                 syncFailed = NetworkHelper.checkResponse(data: data, response: response, error: nil) == nil && !absent
@@ -130,7 +133,7 @@ import UserNotifications
                 syncFailed = true
             }
             changed()
-            // A user may have switched back on while removal was in flight.
+            // Register again if the user turned alerts back on during the removal request.
             if canRegister { SharedLocationUpdater.refreshNotificationRegistration() }
         }
     }
@@ -138,7 +141,7 @@ import UserNotifications
     func registrationFinished(success: Bool) {
         syncFailed = !success
         if success && canRegister { registrationWillBegin() }
-        // If the switch changed during an in-flight POST, remove its result.
+        // Remove the new registration if alerts were turned off while the POST was running.
         if !canRegister { unregister() }
         changed()
     }

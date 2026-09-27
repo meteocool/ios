@@ -24,7 +24,7 @@ import Foundation
         ]
     )
 
-    /// Asked first: alerts later upgrade When In Use to background access.
+    /// Shown before the alerts page, because the alerts page upgrades When In Use to background access.
     static func location(action: @escaping OnboardingAction) -> OnboardingPage {
         OnboardingPage(
             artwork: .symbol("location.fill"),

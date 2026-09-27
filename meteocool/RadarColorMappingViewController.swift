@@ -71,8 +71,8 @@ class RadarColorMappingViewController: UIViewController, UITableViewDelegate, UI
         let selected = optionKeys[indexPath.row] == colorMapping
         let checkmark = UIImage(systemName: "checkmark")!
         let accessory = UIImageView(frame: CGRect(origin: .zero, size: checkmark.size))
-        // Reserve the symbol's width. UIKit manages accessory alpha during layout,
-        // so represent an unchecked row with no image instead of transparency.
+        // The accessory keeps the checkmark's width on every row.
+        // An unchecked row gets no image, not alpha 0, because UIKit sets accessory alpha during layout.
         accessory.image = selected ? checkmark : nil
         cell.accessoryView = accessory
         cell.accessibilityTraits = selected ? [.button, .selected] : [.button]

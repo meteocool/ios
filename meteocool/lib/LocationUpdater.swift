@@ -7,8 +7,8 @@ import CoreLocation
 
 @MainActor let SharedLocationUpdater = LocationUpdater.init()
 
-// CLLocationManager delivers its delegate callbacks on the queue the manager was
-// created on — always main here — so the @preconcurrency conformance is sound.
+// @preconcurrency is safe here: CLLocationManager calls its delegate on the
+// queue it was created on, and that is always the main queue in this app.
 @MainActor class LocationUpdater: NSObject, @preconcurrency CLLocationManagerDelegate {
     /// location manager instace we're wrapping
     private let locationManager: CLLocationManager
@@ -19,12 +19,12 @@ import CoreLocation
     // accurate location updates are/were enabled before suspend
     private var accurateLocationUpdatesEnabled: Bool = false
 
-    /// Set while the car screen is up (`CarPlaySceneDelegate`).
+    /// True while the CarPlay screen is connected (set by `CarPlaySceneDelegate`).
     ///
-    /// The phone leaving the foreground is normally the cue to fall back to
+    /// When the app leaves the foreground it normally switches to
     /// significant-change updates, which move the map about once a kilometre.
-    /// With CarPlay connected the phone is in a pocket and the dashboard is
-    /// the screen being watched, so the accurate updates have to survive it.
+    /// With CarPlay connected the phone is often locked and the car screen is
+    /// the one in use, so accurate updates keep running.
     var carPlayConnected: Bool = false
 
     // the last location reported to the backend
@@ -180,11 +180,11 @@ import CoreLocation
         self.locationManager.startMonitoringSignificantLocationChanges()
     }
 
-    /// - Parameter force: keep the updates coming even with the app in the
-    ///   background. CarPlay needs that: with the phone locked the app is not
-    ///   "active", and the car screen is still the thing the user is looking
-    ///   at. Background delivery is already covered by the `location`
-    ///   background mode and `allowsBackgroundLocationUpdates`.
+    /// - Parameter force: start updates even when the app is not active.
+    ///   CarPlay passes true: with the phone locked the app is not "active",
+    ///   but the car screen is still in use. Delivery in the background is
+    ///   handled by the `location` background mode and
+    ///   `allowsBackgroundLocationUpdates`.
     func startAccurateLocationUpdates(force: Bool = false) {
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else { return }
         if !force && UIApplication.shared.applicationState != .active {
@@ -199,7 +199,7 @@ import CoreLocation
     }
 
     func stopAccurateLocationUpdates() {
-        // The phone's location control must not stop the car's active stream.
+        // Keep updates running for CarPlay, even when the phone UI asks to stop.
         guard !carPlayConnected else { return }
         self.locationManager.stopUpdatingLocation()
         accurateLocationUpdatesEnabled = false
@@ -244,10 +244,10 @@ import CoreLocation
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "lon")
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.horizontalAccuracy, forKey: "accuracy")
 
-            // Observers are notified whatever the app's state: the CarPlay map
-            // is an observer, and it is on screen exactly when the phone is
-            // not. The phone's own map updating while it is in the background
-            // costs one JS call that WebKit throttles anyway.
+            // Notify observers in every app state.
+            // The CarPlay map is an observer, and it is on screen while the phone is not.
+            // For the phone's own map in the background this costs one JS call,
+            // which WebKit throttles.
             for observer in observers.allObjects {
                 (observer as? LocationObserver)?.notify(location: location)
             }
@@ -276,10 +276,10 @@ import CoreLocation
               location.horizontalAccuracy >= 0,
               abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
 
-        // The backend's `lang` is an enum of de/en. Anything else (a device set
-        // to French, say) fails validation there, and the legacy endpoint turns
-        // that into `success: false` — silently dropping the push registration
-        // and the barometric reading along with it. Clamp here instead.
+        // Clamp `lang` to de or en: the backend accepts only those two values.
+        // Any other value (for example French) fails validation.
+        // The legacy endpoint then answers `success: false` and drops both the
+        // push registration and the barometric reading, without an error.
         let preferredLanguage = Locale.preferredLanguages.first?.split(separator: "-").first.map(String.init)
         let lang = preferredLanguage == "de" ? "de" : "en"
         /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
@@ -299,18 +299,17 @@ import CoreLocation
             "course": location.course as Double,
             "pressure": pressure,
             "timestamp": location.timestamp.timeIntervalSince1970 as Double,
-            // The slider is zero-based and its label reads (index + 1) * 5 min,
-            // so the lead time sent here was one step short of what the user
-            // picked — and at the lowest setting it was 0, which the backend
-            // rejects outright (`ahead` must be > 0), taking the whole update
-            // with it. `?? 3+1` parsed as `?? 4`, not `(?? 3) + 1`.
+            // `+ 1` because the slider index is zero-based and its label reads (index + 1) * 5 min.
+            // Without it the lead time was one step short, and 0 at the lowest setting.
+            // The backend requires `ahead` > 0 and rejects the whole update otherwise.
+            // Keep the parentheses: `?? 3+1` parses as `?? 4`, not `(?? 3) + 1`.
             "ahead": (min(max(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2, 0), 8) + 1) * 5,
             "intensity": intensityDbzValues[min(max(userDefaults?.integer(forKey: "intensityValue") ?? 1, 0), 4)] ,
             "source": "ios",
             "experimental": MeteocoolEnvironment.current == .staging,
-            // `details` is what the old backend reads, `withDBZ` what the v4 one
-            // does. Both are sent because the app talks to either deployment
-            // depending on the environment, and each ignores the other's key.
+            // Send the same value under both keys: the old backend reads `details`,
+            // the v4 backend reads `withDBZ`. The app talks to either one depending
+            // on the environment, and each ignores the other's key.
             "details": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "withDBZ": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "token": tokenValue,

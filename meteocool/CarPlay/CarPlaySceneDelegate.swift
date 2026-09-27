@@ -8,16 +8,18 @@
 import CarPlay
 import UIKit
 
-/// meteocool on the car's screen.
+/// Scene delegate for the CarPlay screen.
 ///
-/// CarPlay splits a map app in two: the templates (`CPInterfaceController`),
-/// which the system draws and which are the only thing the driver can touch,
-/// and the map itself, an ordinary `UIViewController` in the `CPWindow`
-/// underneath them. This app has nothing to put in a template yet, so the
-/// root template is an empty `CPMapTemplate` and the whole screen is the radar.
+/// CarPlay splits a map app in two parts:
+/// - templates (`CPInterfaceController`): drawn by the system, and the only
+///   part the driver can touch;
+/// - the map: an ordinary `UIViewController` in the `CPWindow` under the
+///   templates.
+/// The app has nothing to put in a template yet. The root template is an
+/// empty `CPMapTemplate`, and the radar fills the screen.
 ///
-/// Drawing into the `CPWindow` at all requires the `com.apple.developer.carplay-maps`
-/// entitlement, which Apple grants per app on request — see CLAUDE.md.
+/// Drawing into the `CPWindow` requires the `com.apple.developer.carplay-maps`
+/// entitlement. Apple grants it per app on request (see CLAUDE.md).
 class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var interfaceController: CPInterfaceController?
     private var mapController: CarPlayMapViewController?
@@ -33,9 +35,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         window.rootViewController = map
         mapController = map
 
-        // An empty map template is what keeps the window visible: CarPlay
-        // shows nothing until a root template is set, however ready the
-        // window's view controller is.
+        // Set an empty map template as root. CarPlay shows nothing until a
+        // root template is set, even when the window's view controller is
+        // ready.
         interfaceController.setRootTemplate(CPMapTemplate(), animated: false, completion: nil)
     }
 
@@ -49,9 +51,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         SharedLocationUpdater.carPlayConnected = false
         SharedLocationUpdater.updateBackgroundMonitoring()
 
-        // The car screen was the only reason for the high-accuracy updates the
-        // map controller asked for. If the phone is in front of the user its
-        // own screen is driving them and they stay on.
+        // Stop the high-accuracy updates the CarPlay map requested. If the
+        // phone app is active, its own map uses those updates, so they stay
+        // on.
         if UIApplication.shared.applicationState != .active {
             SharedLocationUpdater.stopAccurateLocationUpdates()
         }
