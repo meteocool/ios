@@ -22,8 +22,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var loadTimeout: Task<Void, Never>?
     private let retryButton = UIButton(type: .system)
 
-    /// Glass chrome that supersedes the flat blur and the `TribbleButton`
-    /// artwork on iOS 26. Nil on older systems, which keep the shipped look.
+    /// Glass views that replace the flat blur and the `TribbleButton` artwork
+    /// on iOS 26. Nil before iOS 26, where the storyboard blur and artwork stay.
     private var glassControls: UIVisualEffectView?
     private var glassLogo: UIVisualEffectView?
     
@@ -72,9 +72,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     
     private var locationStateMachine: SwiftFSM<LocationFSM>?
     
-    /// Any gesture that moves the map ends follow mode. Only `.began` counts:
-    /// the recognizers also fire on every `.changed`, and one transition per
-    /// gesture is all the state machine needs.
+    /// Ends follow mode when a gesture moves the map.
+    /// Only `.began` triggers a transition. The recognizers also fire on every
+    /// `.changed`, and the state machine needs one transition per gesture.
     @objc func mapGesture(_ recognizer: UIGestureRecognizer) {
         guard recognizer.state == .began, locationStateMachine?.state == .tracking else { return }
         locationStateMachine?.trigger(.mapMove)
@@ -89,14 +89,15 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         viewController = self
 
         webView?.configuration.userContentController.add(self, name: "scriptHandler")
-        // Before the page loads: the shim has to be in place for the first
-        // script that might touch navigator.geolocation.
+        // Registered before the page loads. The shim must exist before the
+        // first script that reads navigator.geolocation.
         webView?.configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
         webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
-        // Pinch and rotation count too: while following, every fix re-centres
-        // the map, and those animations would fight a zoom or a turn.
+        // Pinch and rotation also end follow mode, not only pan. While
+        // following, every fix re-centres the map, and that animation would
+        // conflict with a zoom or a rotation.
         let recognizers: [UIGestureRecognizer] = [
             UIPanGestureRecognizer(target: self, action: #selector(mapGesture(_:))),
             UIPinchGestureRecognizer(target: self, action: #selector(mapGesture(_:))),
@@ -150,8 +151,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 self.positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
                 self.webView.evaluateJavaScript("window.lm.updateLocation(-1, -1, -1, false, false);")
             case .active where trigger == .mapMove:
-                // The user dragged the map away while following: stop
-                // following, but leave the map where they put it.
+                // The user moved the map while following. Stop following and
+                // keep the map where the user moved it.
                 self.autoFocus = false
                 self.autoFocusOnce = false
                 self.zoomOnce = false
@@ -175,9 +176,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         webView.scrollView.bounces = false
         webView.scrollView.delegate = self
 
-        // The version is read from the bundle rather than written out here,
-        // which had drifted: the app was 2.2 in the URL long after the build
-        // had moved on, and the frontend reads it to decide what it may call.
+        // The map URL carries the app version from the bundle
+        // (`MeteocoolEnvironment`). The frontend reads it to decide which
+        // native calls it may make. Do not hardcode it: a hardcoded "2.2"
+        // stayed in the URL after the app version changed.
         webView.navigationDelegate = self
         retryButton.setTitle(NSLocalizedString("map_load_failed", comment: "") + "\n" + NSLocalizedString("retry", comment: ""), for: .normal)
         retryButton.titleLabel?.numberOfLines = 0
@@ -221,7 +223,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         onboardingPresented = true
         let notifications: OnboardingAction = { completion in
             SharedNotificationManager.registerForPushNotifications { _, _ in
-                // Permission denial is a valid choice, so onboarding proceeds.
+                // Onboarding continues when the user denies permission.
                 completion(true, nil)
             }
         }
@@ -246,10 +248,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
     private var onboardingPresented = false
 
-    /// Once per launch in demo mode: the map is about to show a recorded storm
-    /// as if it were happening now, and someone who forgot the switch was on
-    /// must not take it for real weather. Not over onboarding -- demo mode is
-    /// only reachable from Settings, after it.
+    /// Shows a demo mode alert once per launch.
+    /// The map shows a recorded storm as if it were happening now. A user who
+    /// forgot that demo mode is on must not take it for real weather.
+    /// Not shown over onboarding: demo mode is only in Settings, which the
+    /// user reaches after onboarding.
     private func presentDemoNoticeIfNeeded() {
         guard MeteocoolEnvironment.current == .demo, !demoNoticeShown,
               userDefaults?.bool(forKey: "onboardingDone") == true,
@@ -270,8 +273,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
     private var demoNoticeShown = false
 
-    /// Shows the user's position once the map is up, without a tap, whenever
-    /// permission is already there — at launch, or right after onboarding.
+    /// Shows the user's position without a tap when the map has loaded and
+    /// location permission is already granted.
+    /// Called when the map finishes loading and when onboarding ends.
     private func activateLocationIfAuthorized() {
         let status = SharedLocationUpdater.authorizationStatus
         guard webviewReady, locationStateMachine?.state == .off,
@@ -366,11 +370,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     
     func notify(location: CLLocation) {
         guard webviewReady else { return }
-        // Same fix, in the shape the Geolocation API asks for: this is what
-        // resolves a page-side getCurrentPosition and keeps watchers running.
+        // Pass the same fix to the geolocation shim. This resolves pending
+        // getCurrentPosition calls in the page and updates its watchers.
         GeolocationBridge.deliver(location, to: webView)
-        // Fixes keep arriving while the button is off (significant-change
-        // monitoring for alerts, CarPlay), and must not bring the dot back.
+        // Fixes still arrive while the location button is off
+        // (significant-change monitoring for alerts, CarPlay). They must not
+        // show the location dot again.
         guard locationStateMachine?.state != .off else { return }
         let jsCommand = "window.lm.updateLocation(\(location.coordinate.latitude), \(location.coordinate.longitude), \(location.horizontalAccuracy), \(zoomOnce), \(autoFocus || autoFocusOnce));"
         webView.evaluateJavaScript(jsCommand)
@@ -457,25 +462,27 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 // MARK: - Geolocation
 
 extension ViewController {
-    /// Answers `navigator.geolocation` out of CoreLocation.
+    /// Answers a `navigator.geolocation` request from the page with a
+    /// CoreLocation fix.
     ///
-    /// The page reaches this only through `GeolocationBridge`'s shim, so the
-    /// permission in play is the app's own — WebKit's per-origin location
-    /// alert never comes up, and a user who granted location once is not asked
-    /// a second time by the web view.
+    /// The page reaches this only through the `GeolocationBridge` shim, so the
+    /// app's own location permission applies. WebKit's per-origin location
+    /// alert does not appear. A user who granted location once is not asked
+    /// again by the web view.
     fileprivate func serveGeolocationRequest() {
         switch SharedLocationUpdater.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             if let location = SharedLocationUpdater.getCurrentLocation() {
                 GeolocationBridge.deliver(location, to: webView)
             } else {
-                // Nothing cached yet. The fix lands in notify(location:),
-                // which hands it to the shim.
+                // No cached fix yet. The next fix arrives in
+                // notify(location:), which passes it to the shim.
                 SharedLocationUpdater.startAccurateLocationUpdates()
             }
         case .notDetermined:
-            // The app's own prompt, with the app's purpose string, instead of
-            // WebKit's — and only because the page asked for a position.
+            // Show the app's own prompt, with the app's purpose string,
+            // instead of WebKit's. The prompt appears here only because the
+            // page asked for a position.
             SharedLocationUpdater.requestAuthorization({ [weak self] _, _ in
                 guard let self else { return }
                 switch SharedLocationUpdater.authorizationStatus {
@@ -496,13 +503,13 @@ extension ViewController {
 // MARK: - Liquid Glass
 
 extension ViewController {
-    /// Swaps the flat map chrome for glass. Only the navigation layer is
-    /// touched — the radar map underneath is content and stays untreated.
+    /// Replaces the flat map controls and status bar backdrop with glass.
+    /// The radar map underneath is content and gets no glass.
     @available(iOS 26.0, *)
     fileprivate func applyLiquidGlass() {
-        // Status bar backdrop. The storyboard nests a 2pt vibrancy sliver in
-        // here; vibrancy cannot live inside glass, and it has not been visible
-        // for years anyway.
+        // Status bar backdrop. Remove the 2pt vibrancy view the storyboard
+        // nests here: vibrancy cannot be placed inside glass. The view has
+        // not been visible for years, so removing it changes nothing.
         blur.contentView.subviews.forEach { $0.removeFromSuperview() }
         blur.effect = UIGlassEffect(style: .regular)
 
@@ -511,16 +518,17 @@ extension ViewController {
 
     }
 
-    /// Replaces the `TribbleButton` slab, and the three buttons glued on top of
-    /// it, with a glass container holding three interactive glass elements.
-    /// The container is what makes them read as one pill: glass cannot sample
-    /// other glass, so ungrouped neighbours each sample the map instead.
+    /// Replaces the `TribbleButton` slab and the three buttons on top of it
+    /// with a glass container holding three interactive glass elements.
+    /// The container makes them render as one pill shape. Glass cannot sample
+    /// other glass, so ungrouped neighbours would each sample the map instead.
     @available(iOS 26.0, *)
     private func installGlassControls() {
         let controls = [layerSwitcherButton!, settingsButton!, positionButton!]
 
-        // These were pinned to the artwork and to each other; reparenting them
-        // leaves those constraints dangling across the hierarchy.
+        // The buttons are constrained to the artwork and to each other.
+        // Reparenting them would leave those constraints pointing across the
+        // hierarchy.
         LiquidGlass.dropConstraints(on: view, referencing: controls + [trippleButton])
         trippleButton.removeFromSuperview()
 
@@ -563,13 +571,15 @@ extension ViewController {
         ])
     }
 
-    /// Lifts the logo off the opaque plate baked into the `Logo Button`
-    /// artwork and onto a glass disc that mirrors the control column on the
-    /// other edge of the screen — the same swap `TribbleButton` got, since a
-    /// painted-on slab next to real glass reads as a sticker.
+    /// Moves the logo off the opaque plate in the `Logo Button` artwork and
+    /// onto a glass disc.
+    /// The disc matches the glass control column on the other side of the
+    /// screen. `TribbleButton` got the same change, because a painted slab
+    /// next to real glass looks out of place.
     @available(iOS 26.0, *)
     private func installGlassLogo() {
-        // Pinned to the safe area and sized for the artwork; both go with it.
+        // Remove the storyboard constraints: they pin the logo to the safe
+        // area and size it for the old artwork.
         LiquidGlass.dropConstraints(on: view, referencing: [logo])
         NSLayoutConstraint.deactivate(logo.constraints)
         logo.removeFromSuperview()
@@ -595,8 +605,9 @@ extension ViewController {
         ])
     }
 
-    /// The floating map controls, shown and hidden as one unit — which side of
-    /// the iOS 26 divide we are on decides what that unit actually is.
+    /// Shows or hides the floating map controls as one unit.
+    /// On iOS 26 and later the unit is the glass container. Before iOS 26 it
+    /// is the `TribbleButton` artwork and the three buttons.
     func setMapControlsHidden(_ hidden: Bool) {
         if let glassControls {
             glassControls.isHidden = hidden
@@ -608,8 +619,8 @@ extension ViewController {
         }
     }
 
-    /// The logo, hidden as one unit with the glass disc it sits on — hiding
-    /// only the mark would leave an empty puck floating over the map.
+    /// Shows or hides the logo together with its glass disc.
+    /// Hiding only the logo would leave an empty glass disc over the map.
     func setLogoHidden(_ hidden: Bool) {
         logo.isHidden = hidden
         glassLogo?.isHidden = hidden

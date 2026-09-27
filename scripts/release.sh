@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Clean release pipeline: regenerate → archive → export a signed App Store .ipa.
+# Regenerates the project, archives it and exports a signed App Store .ipa.
 #
-# Upload is intentionally left to fastlane, which already owns the build-number
-# bump and TestFlight submission:
+# Does not upload. fastlane bumps the build number and uploads to TestFlight:
 #
 #     bundle exec fastlane beta
 #

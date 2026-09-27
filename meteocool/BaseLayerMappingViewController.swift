@@ -17,12 +17,11 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
     
-    /// The basemaps the web map actually draws.
+    /// The basemaps the web map draws.
     ///
-    /// All four come from meteocool's own Protomaps tiles
-    /// (core's `src/layers/base.ts`); they differ in which features earn ink,
-    /// not in provider. Satellite used to be a fifth option and is gone: the
-    /// frontend withdrew the capability along with the OroraTech tiles it read.
+    /// All four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`).
+    /// They differ in which map features they draw, not in tile provider.
+    /// There is no Satellite option: the frontend removed it together with the OroraTech tiles it used.
     private var baseLayerMapping = [
         NSLocalizedString("light", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
@@ -71,8 +70,8 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         let selected = optionKeys[indexPath.row] == baseLayer
         let checkmark = UIImage(systemName: "checkmark")!
         let accessory = UIImageView(frame: CGRect(origin: .zero, size: checkmark.size))
-        // Reserve the symbol's width. UIKit manages accessory alpha during layout,
-        // so represent an unchecked row with no image instead of transparency.
+        // The accessory keeps the checkmark's width on every row.
+        // An unchecked row gets no image, not alpha 0, because UIKit sets accessory alpha during layout.
         accessory.image = selected ? checkmark : nil
         cell.accessoryView = accessory
         cell.accessibilityTraits = selected ? [.button, .selected] : [.button]

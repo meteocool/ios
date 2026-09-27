@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Fast, unsigned simulator build. No certificates, no provisioning, no Xcode UI.
-# This is the loop to use while iterating on code.
+# Unsigned simulator build. Needs no certificates, provisioning or Xcode UI.
+# Use it for fast compile checks while editing code.
 source "$(dirname "$0")/_common.sh"
 
 preflight
