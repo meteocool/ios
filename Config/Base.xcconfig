@@ -15,7 +15,7 @@ DEVELOPMENT_TEAM = 4L2672L4VX
 
 // ---- Versioning -----------------------------------------------------------
 
-MARKETING_VERSION = 2.2
+MARKETING_VERSION = 4.0.0
 CURRENT_PROJECT_VERSION = 31
 
 // ---- Local overrides (never committed) ------------------------------------
