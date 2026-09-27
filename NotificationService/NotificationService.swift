@@ -10,6 +10,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     private var content: UNMutableNotificationContent?
     private var download: URLSessionDownloadTask?
 
+    /// How long the alert waits for the preview image. After that it is shown
+    /// without the image. A rendered preview downloads in well under a second;
+    /// a cold render takes 13 to 20 s, too long to hold back a rain alert.
+    private static let previewDeadline: TimeInterval = 5
+
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else {
             contentHandler(request.content)
@@ -25,10 +30,9 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return
         }
         var request = URLRequest(url: url)
-        // The preview is rendered on request, and a cold render takes 13 to 20 s.
-        // The system gives the extension about 30 s; if that runs out first,
-        // `serviceExtensionTimeWillExpire` delivers the alert without the image.
-        request.timeoutInterval = 28
+        // `timeoutInterval` only limits the time between packets, so the
+        // deadline below caps the whole download.
+        request.timeoutInterval = Self.previewDeadline
         let task = URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
             var attachment: UNNotificationAttachment?
             if error == nil, let file, let response = response as? HTTPURLResponse,
@@ -54,7 +58,14 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             download = task
             return true
         }
-        if shouldStart { task.resume() } else { task.cancel() }
+        if shouldStart {
+            task.resume()
+            DispatchQueue.global().asyncAfter(deadline: .now() + Self.previewDeadline) { [weak self] in
+                self?.finish()
+            }
+        } else {
+            task.cancel()
+        }
     }
 
     override func serviceExtensionTimeWillExpire() { finish() }
