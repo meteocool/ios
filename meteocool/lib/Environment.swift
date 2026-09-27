@@ -36,13 +36,13 @@ enum MeteocoolEnvironment: CaseIterable {
 
     /// Switches a demo session to staging without a restart.
     /// Used by "Disable Demo Mode" in the launch notice.
-    /// The caller reloads the map.
-    /// `refreshAuthorization` moves a push registration made on demo: it removes
-    /// it from demo's API, then registers with staging's.
+    /// The caller reloads the map and calls `refreshAuthorization`, which moves
+    /// a push registration made on demo: it removes it from demo's API, then
+    /// registers with staging's.
+    /// No app dependencies here: the check scripts compile this file alone.
     @MainActor static func leaveDemo() {
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(false, forKey: "demoMode")
         current = .staging
-        SharedNotificationManager.refreshAuthorization()
     }
 
     /// Base URL for the unversioned mobile API (`post_location`,
