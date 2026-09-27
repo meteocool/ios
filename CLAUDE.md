@@ -112,11 +112,12 @@ Two consequences worth knowing before touching any of it:
 
 - **The entitlement is Apple's to grant.** Drawing into a `CPWindow` at all
   requires `com.apple.developer.carplay-maps`, requested per app at
-  <https://developer.apple.com/contact/carplay/>. It is in
-  `meteocool/meteocool.entitlements`; until the account has it, anything that
-  signs (`scripts/device.sh`, `scripts/release.sh`, `fastlane beta`) fails with
-  a provisioning-profile error and the key has to come back out. Unsigned
-  simulator builds do not care.
+  <https://developer.apple.com/contact/carplay/>. Apple has not granted it yet,
+  so the key is not in `meteocool/meteocool.entitlements`: with it, anything
+  that signs (`scripts/device.sh`, `scripts/release.sh`, `fastlane beta`) fails
+  with a provisioning-profile error. Signed builds do not appear on the car
+  screen until it is granted and the key is added back. Unsigned simulator
+  builds do not care.
 - **CarPlay forces `UIApplicationSupportsMultipleScenes`.** On iPadOS that also
   offers the user a second copy of the phone UI, which the map cannot survive —
   `ViewController` publishes itself into a global `viewController` that settings
