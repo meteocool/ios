@@ -12,17 +12,20 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     @IBOutlet weak var baseLayerMappingSettingsBar:UINavigationBar!
     @IBOutlet weak var baseLayerMappingList:UITableView!
     
-    private let optionKeys = ["light", "dark", "osm", "cyclosm"]
+    /// Same keys and order as the web's settings (core's `SettingsDialog.svelte`).
+    /// "system" draws Light or Dark to match the appearance. The web map resolves it.
+    private let optionKeys = ["system", "light", "dark", "osm", "cyclosm"]
 
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
-    
+
     /// The basemaps the web map draws.
     ///
     /// All four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`).
     /// They differ in which map features they draw, not in tile provider.
     /// There is no Satellite option: the frontend removed it together with the OroraTech tiles it used.
     private var baseLayerMapping = [
+        NSLocalizedString("system", comment: "baseLayer"),
         NSLocalizedString("light", comment: "baseLayer"),
         NSLocalizedString("dark", comment: "baseLayer"),
         NSLocalizedString("osm", comment: "baseLayer"),
@@ -48,6 +51,10 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         }
         baseLayerMappingList.delegate = self
         baseLayerMappingList.dataSource = self
+        // The "system" row names the basemap it currently resolves to.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
+            self.baseLayerMappingList.reconfigureRows(at: [IndexPath(row: 0, section: 0)])
+        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -66,6 +73,12 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         var content = cell.defaultContentConfiguration()
         content.text = baseLayerMapping[indexPath.row]
         content.textProperties.numberOfLines = 0
+        if optionKeys[indexPath.row] == "system" {
+            let resolved = traitCollection.userInterfaceStyle == .dark ? "dark" : "light"
+            content.secondaryText = String(format: NSLocalizedString("system_detail", comment: "baseLayer"),
+                                           NSLocalizedString(resolved, comment: "baseLayer"))
+            content.secondaryTextProperties.color = .secondaryLabel
+        }
         cell.contentConfiguration = content
         let selected = optionKeys[indexPath.row] == baseLayer
         let checkmark = UIImage(systemName: "checkmark")!
