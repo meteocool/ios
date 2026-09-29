@@ -1,0 +1,97 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.06275,0.09412,0.13333,1.00000"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "name": "rain",
+          "image-name-specializations": [
+            {
+              "value": "rain.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "rain-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "rain-dark.svg"
+            }
+          ],
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    },
+    {
+      "layers": [
+        {
+          "name": "outline",
+          "image-name-specializations": [
+            {
+              "value": "outline.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "outline-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "outline-dark.svg"
+            }
+          ],
+          "glass": true
+        },
+        {
+          "name": "cloud",
+          "image-name-specializations": [
+            {
+              "value": "cloud.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "cloud.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "cloud.svg"
+            }
+          ],
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "iOS"
+    ]
+  }
+}
