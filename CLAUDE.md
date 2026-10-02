@@ -244,6 +244,30 @@ change `BUNDLE_PREFIX`, change it in both places too.
 TestFlight. `./scripts/release.sh` produces the same signed `.ipa` locally
 without fastlane.
 
+### Xcode Cloud
+
+Xcode Cloud never sees a committed project, so
+[`ci_scripts/ci_post_clone.sh`](ci_scripts/ci_post_clone.sh) installs XcodeGen,
+runs `xcodegen generate` and copies `./Package.resolved` into the generated
+workspace. Xcode Cloud runs it after cloning and before opening the project.
+It must stay executable (`chmod +x`), or Xcode Cloud skips it without saying so,
+and `ci_scripts/` must stay next to `meteocool.xcodeproj`.
+
+The workflow itself (start condition, Archive action, TestFlight post-action,
+Xcode version) is configured in Xcode or App Store Connect, not in the repo.
+The workflow stores only the project path and the scheme name, and XcodeGen
+generates shared schemes, so regenerating the project does not affect it.
+
+- **Build numbers.** Xcode Cloud assigns its own build number and ignores
+  `CURRENT_PROJECT_VERSION`. Set the next number in App Store Connect
+  (Xcode Cloud → Settings → Build Number) above the latest TestFlight build.
+  `fastlane beta` also bumps from the latest TestFlight build, so use only one
+  of the two for TestFlight uploads.
+- **Signing** is cloud-managed from `DEVELOPMENT_TEAM`. `Local.xcconfig` does
+  not exist there, which is fine because it is an optional include.
+- **CarPlay.** Adding `com.apple.developer.carplay-maps` before Apple grants it
+  breaks the cloud archive the same way it breaks `scripts/release.sh`.
+
 ## Audit changes (21 September 2026)
 
 Use Xcode 27. Scripts default `DEVELOPER_DIR` to `/Applications/Xcode.app/Contents/Developer`
