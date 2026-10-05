@@ -41,6 +41,8 @@ struct VolumeUniforms {
     float4 planePoint;
     float4 light;                   // xyz: towards the light, in box coordinates
     float4 shells;                  // xyz: the shell thresholds, in dBZ
+    float4 boxMin;                  // xyz: the part of the unit cube that is marched: a tile
+    float4 boxMax;                  //   without its apron, cut down to where it holds echo
     float2 viewport;                // pixels of the target being drawn into
     float2 slab;                    // box z range drawn in full; the rest is ghosted
     float dbzFloor;
@@ -51,6 +53,9 @@ struct VolumeUniforms {
     float behind;                   // 1 for a storm from an old scan
     float ghost;                    // how much of the ghosted part is drawn
     int mode;                       // 0 reflectivity, 1 shells, 2 radar coverage
+    float stepMetres;               // the march's step along a ray; `steps` caps the count
+    float system;                   // which storm the box is a tile of, as a number (0: none)
+    float2 padding;
 };
 
 struct CameraUniforms {
@@ -168,9 +173,12 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
     float3 o = (u.worldToBox * float4(origin, 1.0)).xyz;
     float3 d = (u.worldToBox * float4(direction, 0.0)).xyz;
 
+    // The marched part of the cube, not the whole of it: a tile's apron is
+    // its neighbours' ground, sampled so the field blends across the seam but
+    // theirs to draw, and the air above the storm's top holds nothing.
     float3 inverse = 1.0 / d;
-    float3 a = (float3(0.0) - o) * inverse;
-    float3 b = (float3(1.0) - o) * inverse;
+    float3 a = (u.boxMin.xyz - o) * inverse;
+    float3 b = (u.boxMax.xyz - o) * inverse;
     float3 lo = min(a, b), hi = max(a, b);
     // From the camera, not the near plane: the camera can be inside the box
     // when the storm is overhead.
@@ -206,7 +214,11 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
         if (far <= near) return float4(0.0);
     }
 
-    float dt = (far - near) / u.steps;
+    // Steps in proportion to the ray's length inside the box, every step about
+    // `stepMetres` long, at most `steps`: a ray that clips a tile's corner, or
+    // crosses one of many tiles of a storm, costs what its length does.
+    float count = clamp(ceil((far - near) / u.stepMetres), 4.0, u.steps);
+    float dt = (far - near) / count;
     float stepKm = dt / 1000.0;
     // The same step in the cube's units, for the gradient's finite difference;
     // never under half a voxel, or the difference is noise.
@@ -218,6 +230,7 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
     float dither = fract(sin(dot(in.position.xy, float2(12.9898, 78.233))) * 43758.5453);
 
     for (float i = 0.0; i < u.steps; i += 1.0) {
+        if (i >= count) break;
         float3 p = o + d * (near + dt * (i + dither));
         float2 field = sampleField(volume, s, p, u);
         bool ghosted = p.z < u.slab.x || p.z > u.slab.y;
@@ -296,9 +309,14 @@ constant float kLayerAlpha = 0.2;
 /// Near to far, each storm reading what the nearer ones left at its pixel
 /// (Apple GPUs read the target in place, so this costs no extra pass), and
 /// composited under them by hand rather than by the blender.
+///
+/// Layers are storms, not boxes: one storm is as many tiles as it covers, and
+/// a ray through three tiles of one storm crosses one cloud. So each pixel
+/// keeps the count and which storm it counted last; a tile of that same
+/// storm is never the layer too many.
 struct StormPixel {
     float4 colour [[color(0)]];
-    float layers [[color(1)]];
+    float2 layers [[color(1)]];     // x: storms counted, y: the last one's `system`
 };
 
 fragment StormPixel volume_fragment(FullscreenOut in [[stage_in]],
@@ -306,15 +324,16 @@ fragment StormPixel volume_fragment(FullscreenOut in [[stage_in]],
                                     texture3d<float> volume [[texture(0)]],
                                     texture2d<float> ramp [[texture(1)]],
                                     float4 front [[color(0)]],
-                                    float frontLayers [[color(1)]]) {
-    // Behind two clouds already, or behind cloud nothing gets through: done
-    // before a single sample is taken.
-    if (frontLayers > kMaxLayers - 0.5 || front.a >= kOpaque) discard_fragment();
+                                    float2 frontLayers [[color(1)]]) {
+    bool sameStorm = frontLayers.y == u.system;
+    // Behind two other storms already, or behind cloud nothing gets through:
+    // done before a single sample is taken.
+    if ((frontLayers.x > kMaxLayers - 0.5 && !sameStorm) || front.a >= kOpaque) discard_fragment();
     float4 storm = raymarch(in, u, volume, ramp, (kOpaque - front.a) / max(1.0 - front.a, 1e-3));
     if (storm.a <= 0.0) discard_fragment();
     StormPixel out;
     out.colour = front + (1.0 - front.a) * storm;
-    out.layers = frontLayers + (storm.a >= kLayerAlpha ? 1.0 : 0.0);
+    out.layers = storm.a >= kLayerAlpha && !sameStorm ? float2(frontLayers.x + 1.0, u.system) : frontLayers;
     return out;
 }
 #else
@@ -373,6 +392,8 @@ struct VolumeUniforms {
     var planePoint = SIMD4<Float>()
     var light = SIMD4<Float>()
     var shells = SIMD4<Float>()
+    var boxMin = SIMD4<Float>(0, 0, 0, 0)
+    var boxMax = SIMD4<Float>(1, 1, 1, 0)
     var viewport = SIMD2<Float>()
     var slab = SIMD2<Float>()
     var dbzFloor: Float = 0
@@ -383,6 +404,9 @@ struct VolumeUniforms {
     var behind: Float = 0
     var ghost: Float = 0
     var mode: Int32 = 0
+    var stepMetres: Float = 40_000 / 96
+    var system: Float = 0
+    var padding = SIMD2<Float>()
 }
 
 /// Mirrors `CameraUniforms` in `StormShaders.source`.

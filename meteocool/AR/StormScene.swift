@@ -127,11 +127,44 @@ struct PlacedStorm {
     /// Minutes the box was moved along the cell's track, when extrapolating.
     let extrapolatedMinutes: Double?
     let age: TimeInterval?
+
+    /// The storm this box is part of; see `StormEntry.stormKey`.
+    var stormKey: String { entry.stormKey }
+}
+
+/// One storm: every tile of it, or the one box from before tiles.
+///
+/// Since the data service boxes storms by map tile, a storm is as many boxes as it covers,
+/// sharing a `system`. The view treats them as the one cloud they are: one
+/// tag, one selection, one peel floor and one cut plane, as core's 3D map does.
+struct StormGroup {
+    let key: String
+    let tiles: [PlacedStorm]
+    /// The tile holding the storm's peak, which it is named, placed and opened by.
+    let reference: PlacedStorm
+    /// The tracked cell in any of its tiles, the strongest if several.
+    let cell: TrackedCell?
+    /// Where its peel stops: the strongest `coreDbz` among its loaded tiles,
+    /// so its tiles peel as one cloud instead of each to its own floor.
+    let peelFloor: Double
+    let peakDbz: Double?
+    let echoTopM: Double?
+    let areaKm2: Double?
+    /// Over its echo top, at its peak.
+    let anchor: SIMD3<Double>
+    /// The newest scan among its tiles.
+    let age: TimeInterval?
+    let openable: Bool
+
+    var distance: Double { reference.distance }
+    var bearing: Double { reference.bearing }
 }
 
 /// Everything about one storm a label needs.
 struct StormLabelModel: Equatable {
-    let path: String
+    /// The storm's key (`StormGroup.key`), which the tag is kept and tapped by.
+    let key: String
+    /// The code of the tile it is named by, for the accessibility identifier.
     let code: String
     let title: String
     let detail: String
@@ -152,7 +185,8 @@ final class StormScene {
     var sliderValue: Double = 0
     var extrapolate = false
     var showLightning = true
-    var selectedPath: String?
+    /// The selected storm, by `StormGroup.key`.
+    var selectedKey: String?
     var palette = "classic"
     var now = Date()
 
@@ -238,10 +272,16 @@ final class StormScene {
         let east = worldDirection(axes.east), north = worldDirection(axes.north), up = worldDirection(axes.up)
         let centre = world(latitude: lat, longitude: lon, altitude: 0)
 
-        // The box's grid, or core's standard 40 x 40 x 16 km around the core
-        // when the volume has not loaded yet.
-        let extent = volume?.extentM ?? SIMD3(40_000, 40_000, 16_000)
-        let origin = volume?.originM ?? SIMD3(-20_000, -20_000, 0)
+        // The box's grid; before it has loaded, the tile it fills or the 40 x
+        // 40 x 16 km box from before tiles.
+        let width: Double
+        if let zoom = entry.tile?.first {
+            width = 2 * .pi * 6_371_008.8 * cos(lat * .pi / 180) / pow(2, Double(zoom))
+        } else {
+            width = 40_000
+        }
+        let extent = volume?.extentM ?? SIMD3(width, width, 16_000)
+        let origin = volume?.originM ?? SIMD3(-width / 2, -width / 2, 0)
         let corner = centre + east * origin.x + north * origin.y + up * origin.z
         let boxToWorld = simd_double4x4(columns: (
             SIMD4(east * extent.x, 0),
@@ -257,15 +297,58 @@ final class StormScene {
                            anchor: anchor, extrapolatedMinutes: extrapolated, age: age)
     }
 
+    /// Every box, each storm's tiles moved together by its cell when
+    /// extrapolating: a storm's cell stands in one of its tiles, and moving
+    /// that tile alone would tear the storm apart.
+    func placeAll(_ entries: [StormEntry], volumes: [String: StormVolume], cell: (StormEntry) -> TrackedCell?) -> [PlacedStorm] {
+        var cells: [String: TrackedCell] = [:]
+        for entry in entries {
+            guard let found = cell(entry) else { continue }
+            if let held = cells[entry.stormKey], (held.maxDbz ?? 0) >= (found.maxDbz ?? 0) { continue }
+            cells[entry.stormKey] = found
+        }
+        return entries.map { place($0, volume: volumes[$0.path], cell: cells[$0.stormKey]) }
+    }
+
+    /// The placed boxes as storms, nearest first.
+    func groups(_ placed: [PlacedStorm]) -> [StormGroup] {
+        var byKey: [String: [PlacedStorm]] = [:]
+        var order: [String] = []
+        for storm in placed {
+            if byKey[storm.stormKey] == nil { order.append(storm.stormKey) }
+            byKey[storm.stormKey, default: []].append(storm)
+        }
+        return order.map { key -> StormGroup in
+            let tiles = byKey[key]!
+            func peak(_ storm: PlacedStorm) -> Double { storm.entry.peakDbz ?? storm.volume?.maxDbz ?? 0 }
+            let reference = tiles.first { $0.entry.isStormPeak } ?? tiles.max { peak($0) < peak($1) }!
+            let cell = tiles.compactMap(\.cell).max { ($0.maxDbz ?? 0) < ($1.maxDbz ?? 0) }
+            let floors = tiles.compactMap { $0.volume?.coreDbz }
+            let peaks = tiles.compactMap { $0.entry.peakDbz ?? $0.volume?.maxDbz } + [cell?.maxDbz].compactMap { $0 }
+            let tops = tiles.compactMap { $0.volume?.echoTopM }
+            let echoTop = cell?.echoTopM ?? tops.max()
+            let areas = tiles.compactMap(\.entry.areaKm2)
+            return StormGroup(key: key, tiles: tiles, reference: reference, cell: cell,
+                              peelFloor: floors.max() ?? StormVolume.dbzLow, peakDbz: peaks.max(), echoTopM: echoTop,
+                              areaKm2: areas.isEmpty ? nil : areas.reduce(0, +),
+                              anchor: reference.centre + reference.up * ((echoTop ?? 9_000) + 900),
+                              age: tiles.compactMap(\.age).min(), openable: tiles.contains { $0.entry.openable })
+        }
+        .sorted { $0.distance < $1.distance }
+    }
+
     // MARK: Volume uniforms
 
     /// Whether the mode's settings apply to this storm: the selected one, or
     /// all of them while none is.
     func modeApplies(to storm: PlacedStorm) -> Bool {
-        selectedPath == nil || selectedPath == storm.entry.path
+        selectedKey == nil || selectedKey == storm.stormKey
     }
 
-    func uniforms(for storm: PlacedStorm, volume: StormVolume, pose: CameraPose, target: CGSize, light: SIMD3<Float>) -> VolumeUniforms {
+    /// One box's uniforms. `group` is the storm it belongs to: its peel
+    /// floor and its cut are the storm's, so its tiles peel and cut as one.
+    func uniforms(for storm: PlacedStorm, group: StormGroup, volume: StormVolume, pose: CameraPose,
+                  target: CGSize, light: SIMD3<Float>) -> VolumeUniforms {
         var u = VolumeUniforms()
         u.inverseViewProjection = pose.viewProjection.inverse
         u.worldToBox = simd_float4x4(converting: storm.worldToBox)
@@ -286,8 +369,16 @@ final class StormScene {
         u.behind = (storm.age ?? 0) > Self.staleAfter ? 1 : 0
         u.ghost = 0
         u.mode = 0
+        // Only the drawn part of the box (a tile's apron is its neighbours'),
+        // and of that only where there is echo.
+        if let bounds = volume.marchBounds {
+            u.boxMin = SIMD4(bounds.min, 0)
+            u.boxMax = SIMD4(bounds.max, 0)
+        }
 
-        let applies = modeApplies(to: storm)
+        // By the storm, not the box: a coarse tile far away draws for the
+        // storm it mostly covers.
+        let applies = selectedKey == nil || selectedKey == group.key
         // A storm not selected while another is: drawn as itself, a little dimmer,
         // so the selected one stands out.
         if !applies { u.dim *= 0.6; return u }
@@ -296,7 +387,7 @@ final class StormScene {
         case .live, .nowcast:
             break
         case .peel:
-            u.low = Float(StormVolume.dbzLow + sliderValue * (volume.coreDbz - StormVolume.dbzLow))
+            u.low = Float(StormVolume.dbzLow + sliderValue * (group.peelFloor - StormVolume.dbzLow))
         case .shells:
             u.mode = 1
             // Only the shells the storm reaches; a shower has no 55 dBZ shell.
@@ -313,7 +404,7 @@ final class StormScene {
             u.slab = SIMD2(Float(height), 2)
             u.ghost = 0.12
         case .slice, .turn, .track, .floor:
-            if let (point, normal) = cutPlane(for: storm, pose: pose) {
+            if let (point, normal) = cutPlane(for: group, pose: pose) {
                 let p = storm.worldToBox * SIMD4(point, 1)
                 // Normals transform by the inverse transpose of the point map.
                 let linear = simd_double3x3(columns: (
@@ -330,7 +421,11 @@ final class StormScene {
 
     /// The cut for the cutting modes, in the world: a point on the plane and
     /// its normal, which points at the half that is removed.
-    func cutPlane(for storm: PlacedStorm, pose: CameraPose) -> (SIMD3<Double>, SIMD3<Double>)? {
+    /// The storm's cut, in the world: one plane for all its tiles, through
+    /// its peak, so the face runs across the storm instead of stopping at
+    /// each tile's edge. The normal points at the half that is removed.
+    func cutPlane(for group: StormGroup, pose: CameraPose) -> (SIMD3<Double>, SIMD3<Double>)? {
+        let storm = group.reference
         let camera = SIMD3<Double>(pose.position)
         var toStorm = storm.centre - camera
         toStorm -= dot(toStorm, storm.up) * storm.up
@@ -346,7 +441,7 @@ final class StormScene {
             let normal = -(away * cos(θ)) + right * sin(θ)
             return (storm.centre, normal)
         case .track:
-            guard let heading = storm.cell?.headingDeg else { return nil }
+            guard let heading = group.cell?.headingDeg else { return nil }
             let h = heading * .pi / 180
             let along = storm.east * sin(h) + storm.north * cos(h)
             var normal = cross(storm.up, along)
@@ -363,26 +458,33 @@ final class StormScene {
 
     // MARK: Picking
 
-    /// The storm under a screen point: the nearest one a ray through it
-    /// enters where the shader draws cloud.
-    func pick(_ point: CGPoint, pose: CameraPose, storms: [PlacedStorm]) -> PlacedStorm? {
+    /// The storm under a screen point: the one whose box a ray through it
+    /// first enters where the shader draws cloud. `targets` are the boxes
+    /// drawn, each with the storm it draws for; a coarse tile far away draws
+    /// for the storm it mostly covers.
+    func pick(_ point: CGPoint, pose: CameraPose, targets: [(storm: PlacedStorm, group: StormGroup)]) -> StormGroup? {
         let (origin, direction) = pose.ray(through: point)
         let earth = frame.groundSphere()
         let earthCentre = SIMD3<Float>(worldDirection(earth.centre))
         let limit = Self.rayEarthDistance(origin: origin, direction: direction, centre: earthCentre, radius: Float(earth.radius))
-        var best: (PlacedStorm, Float)?
-        for storm in storms {
+        var best: (StormGroup, Float)?
+        for (storm, group) in targets {
             guard let volume = storm.volume else { continue }
+            let peeled = (selectedKey == nil || selectedKey == group.key) && mode == .peel
+            let low = Float(peeled ? StormVolume.dbzLow + sliderValue * (group.peelFloor - StormVolume.dbzLow) : StormVolume.dbzLow)
             let toBox = simd_float4x4(converting: storm.worldToBox)
             let o4 = toBox * SIMD4(origin, 1), d4 = toBox * SIMD4(direction, 0)
             let o = SIMD3(o4.x, o4.y, o4.z), d = SIMD3(d4.x, d4.y, d4.z)
-            let low = Float(modeApplies(to: storm) && mode == .peel
-                ? StormVolume.dbzLow + sliderValue * (volume.coreDbz - StormVolume.dbzLow) : StormVolume.dbzLow)
             if let t = volume.firstHit(origin: o, direction: d, low: low, within: limit), t < (best?.1 ?? .infinity) {
-                best = (storm, t)
+                best = (group, t)
             }
         }
         return best?.0
+    }
+
+    /// `pick` over every tile of these storms.
+    func pick(_ point: CGPoint, pose: CameraPose, groups: [StormGroup]) -> StormGroup? {
+        pick(point, pose: pose, targets: groups.flatMap { group in group.tiles.map { ($0, group) } })
     }
 
     static func rayEarthDistance(origin: SIMD3<Float>, direction: SIMD3<Float>, centre: SIMD3<Float>, radius: Float) -> Float {
@@ -398,29 +500,30 @@ final class StormScene {
 
     /// Lines drawn under the storms (on the ground) and over them (lightning,
     /// the height scale).
-    func lines(storms: [PlacedStorm], feed: StormFeed, pose: CameraPose) -> (under: [WorldLine], over: [WorldLine]) {
+    func lines(groups: [StormGroup], feed: StormFeed, pose: CameraPose) -> (under: [WorldLine], over: [WorldLine]) {
         var under: [WorldLine] = []
         var over: [WorldLine] = []
         // Paths, footprints and forecasts float a kilometre over the ground.
         // On the ground itself, seen from eye height, anything further than a
         // few kilometres lies flat on the horizon line and cannot be read.
         let ground = groundAltitude + Self.overlayHeight
-        let selected = storms.first { $0.entry.path == selectedPath }
+        let selected = groups.first { $0.key == selectedKey }
 
         if let selected {
             // The footprint, and a height scale beside it.
-            let radius = max(4_000, sqrt((selected.entry.areaKm2 ?? 50) / .pi) * 1000)
-            under += circle(lat: selected.entry.lat, lon: selected.entry.lon, radius: radius, altitude: ground,
+            let radius = Self.footprintRadius(selected)
+            let peak = selected.reference.entry
+            under += circle(lat: peak.lat, lon: peak.lon, radius: radius, altitude: ground,
                             colour: SIMD4(1, 1, 1, 0.7), width: 2)
-            over += heightScale(for: selected, radius: radius, pose: pose)
+            over += heightScale(for: selected.reference, radius: radius, pose: pose)
         }
 
-        for storm in storms {
-            guard let cell = storm.cell else { continue }
-            let isSelected = storm.entry.path == selectedPath
+        for group in groups {
+            guard let cell = group.cell else { continue }
+            let isSelected = group.key == selectedKey
             if isSelected || mode == .nowcast {
                 // Where it has been: the track's centroids on the ground.
-                if let track = feed.track(for: storm.entry), track.path.count > 1 {
+                if let track = feed.tracks[cell.code], track.path.count > 1 {
                     let points = track.path.map { world(latitude: $0[1], longitude: $0[0], altitude: ground) }
                     under += polyline(points, colour: SIMD4(1, 0.6, 0.2, 0.85), width: 3)
                 }
@@ -509,13 +612,20 @@ final class StormScene {
         return lines
     }
 
+    /// How far round its peak a storm's footprint ring is drawn: the radius
+    /// of a disc of its echo area, at least 4 km.
+    static func footprintRadius(_ group: StormGroup) -> Double {
+        max(4_000, sqrt((group.areaKm2 ?? 50) / .pi) * 1000)
+    }
+
     /// Heights of the scale's ticks, in world space, for their labels.
-    func heightTicks(for storm: PlacedStorm, pose: CameraPose) -> [(km: Int, point: SIMD3<Float>)] {
+    func heightTicks(for group: StormGroup, pose: CameraPose) -> [(km: Int, point: SIMD3<Float>)] {
+        let storm = group.reference
         let camera = SIMD3<Double>(pose.position)
         var toStorm = storm.centre - camera
         toStorm -= dot(toStorm, storm.up) * storm.up
         guard length(toStorm) > 1 else { return [] }
-        let radius = max(4_000, sqrt((storm.entry.areaKm2 ?? 50) / .pi) * 1000)
+        let radius = Self.footprintRadius(group)
         let right = normalize(cross(normalize(toStorm), storm.up))
         return stride(from: 2, through: 16, by: 2).map { km in
             (km, SIMD3<Float>(storm.centre + right * (radius + 1_500) + storm.up * Double(km) * 1000))
@@ -549,54 +659,55 @@ final class StormScene {
 
     // MARK: Labels
 
-    func label(for storm: PlacedStorm, feed: StormFeed) -> StormLabelModel {
+    /// The storm's tag: one per storm, however many tiles it covers.
+    func label(for group: StormGroup, feed: StormFeed) -> StormLabelModel {
         let german = Locale.preferredLanguages.first?.hasPrefix("de") == true
-        let km = storm.distance / 1000
+        let km = group.distance / 1000
         let distance = km < 10 ? String(format: "%.1f km", km) : String(format: "%.0f km", km)
-        let direction = Geo.compassPoint(storm.bearing, german: german)
+        let direction = Geo.compassPoint(group.bearing, german: german)
         var title = "\(distance) · \(direction)"
-        if let placement = feed.track(for: storm.entry)?.properties.placement {
+        if let code = group.cell?.code, let placement = feed.tracks[code]?.properties.placement {
             title = "\(placement.place) · " + title
         }
 
         var parts: [String] = []
-        if let dbz = storm.cell?.maxDbz ?? storm.entry.peakDbz ?? storm.volume?.maxDbz {
+        if let dbz = group.peakDbz {
             parts.append(String(format: "%.0f dBZ", dbz))
         }
-        if let top = storm.cell?.echoTopM ?? storm.volume?.echoTopM {
+        if let top = group.echoTopM {
             parts.append(String(format: NSLocalizedString("ar_label_top", comment: ""), top / 1000))
         }
-        if let speed = storm.cell?.speedKmh, let heading = storm.cell?.headingDeg, speed > 0 {
+        if let speed = group.cell?.speedKmh, let heading = group.cell?.headingDeg, speed > 0 {
             parts.append(String(format: "→ %@ %.0f km/h", Geo.compassPoint(heading, german: german), speed))
         }
 
         var flags: [String] = []
-        if let cell = storm.cell {
+        if let cell = group.cell {
             if (cell.hailFlag ?? 0) > 0 { flags.append("cloud.hail.fill") }
             if (cell.gustFlag ?? 0) > 0 { flags.append("wind") }
             if (cell.heavyRainFlag ?? 0) > 0 { flags.append("cloud.heavyrain.fill") }
             if (cell.mesoSeverity ?? 0) > 0 { flags.append("tornado") }
             if (cell.lightningRate ?? 0) > 0 { flags.append("bolt.fill") }
         }
-        if let rate = storm.cell?.lightningRate, rate > 0 {
+        if let rate = group.cell?.lightningRate, rate > 0 {
             parts.append(String(format: NSLocalizedString("ar_label_lightning", comment: ""), rate))
         }
 
         var age = ""
-        if let seconds = storm.age {
+        if let seconds = group.age {
             age = String(format: NSLocalizedString("ar_label_age", comment: ""), max(0, Int(seconds / 60)))
         }
-        if let minutes = storm.extrapolatedMinutes, minutes > 0 {
+        if let minutes = group.reference.extrapolatedMinutes, minutes > 0 {
             age += " · " + String(format: NSLocalizedString("ar_label_extrapolated", comment: ""), Int(minutes.rounded()))
         }
-        if !storm.entry.openable {
+        if !group.openable {
             age += " · " + NSLocalizedString("ar_label_poorly_seen", comment: "")
         }
 
-        return StormLabelModel(path: storm.entry.path, code: storm.entry.code, title: title,
+        return StormLabelModel(key: group.key, code: group.reference.entry.code, title: title,
                                detail: parts.joined(separator: " · "), flags: flags, age: age,
-                               openable: storm.entry.openable, selected: storm.entry.path == selectedPath,
-                               distance: storm.distance)
+                               openable: group.openable, selected: group.key == selectedKey,
+                               distance: group.distance)
     }
 
     // MARK: Light

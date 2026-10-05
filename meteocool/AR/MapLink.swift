@@ -20,10 +20,12 @@ enum MapLink {
         return "?layer=cells3d&cloud=\(link)"
     }
 
-    /// `meteoradar/volumes/20260924T194500/de-G1401218632.mcvx` to
-    /// `20260924T194500/de-G1401218632`, as core's `cloudLink`.
+    /// `meteoradar/volumes/20261005T015000/de-T100053300344.mcvx` to
+    /// `20261005T015000/de-T100053300344`, as core's `cloudLink`: a map tile
+    /// (`T` + zoom + x + y) since tiles, a storm's peak (`G`) or a cell (`R`)
+    /// before them.
     static func cloudLink(_ path: String) -> String? {
-        let pattern = #"^meteoradar/volumes/(\d{8}T\d{6})/((?:[a-z]{2}-)?(?:G\d{10}|R\d{1,12}))\.mcvx$"#
+        let pattern = #"^meteoradar/volumes/(\d{8}T\d{6})/((?:[a-z]{2}-)?(?:T\d{12}|G\d{10}|R\d{1,12}))\.mcvx$"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
               let scan = Range(match.range(at: 1), in: path), let name = Range(match.range(at: 2), in: path) else { return nil }

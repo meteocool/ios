@@ -41,6 +41,9 @@ final class StormRenderer {
         let boxToWorld: simd_float4x4
         /// From the camera, for the drawing order.
         let distance: Float
+        /// The storm it is a tile of (`StormEntry.stormKey`): layers are
+        /// counted per storm, so a storm's own tiles never hide each other.
+        let system: String
     }
 
     struct Frame {
@@ -55,7 +58,8 @@ final class StormRenderer {
     let device: MTLDevice
     /// The storm pass's resolution relative to the drawable's.
     var resolutionScale: CGFloat = 0.5
-    /// Samples along each ray.
+    /// Samples along a ray across a whole 40 km box, the size before tiles;
+    /// a shorter stretch of ray inside a box takes proportionally fewer.
     var steps: Float = 96
 
     private let queue: MTLCommandQueue
@@ -215,16 +219,23 @@ final class StormRenderer {
             }
             // Near to far with the layer limit, far to near through the blender.
             let ordered = frame.storms.sorted { limitsLayers ? $0.distance < $1.distance : $0.distance > $1.distance }
+            // Each storm a small number, exact in the half floats the layer
+            // count is kept in.
+            var systems: [String: Float] = [:]
+            for storm in ordered where systems[storm.system] == nil { systems[storm.system] = Float(systems.count + 1) }
             if let encoder = buffer.makeRenderCommandEncoder(descriptor: stormPass) {
                 encoder.setRenderPipelineState(volumePipeline)
                 encoder.setFragmentTexture(ramp, index: 1)
                 let targetSize = CGSize(width: target.width, height: target.height)
                 for storm in ordered {
                     guard let texture = texture(for: storm),
-                          let scissor = scissor(for: storm.boxToWorld, pose: frame.pose, target: targetSize) else { continue }
+                          let scissor = scissor(for: storm.boxToWorld, min: storm.uniforms.boxMin, max: storm.uniforms.boxMax,
+                                                pose: frame.pose, target: targetSize) else { continue }
                     var uniforms = storm.uniforms
                     uniforms.viewport = SIMD2(Float(targetSize.width), Float(targetSize.height))
                     uniforms.steps = steps
+                    uniforms.stepMetres = 40_000 / steps
+                    uniforms.system = systems[storm.system] ?? 0
                     encoder.setScissorRect(scissor)
                     encoder.setFragmentBytes(&uniforms, length: MemoryLayout<VolumeUniforms>.stride, index: 0)
                     encoder.setFragmentTexture(texture, index: 0)
@@ -291,7 +302,8 @@ final class StormRenderer {
         return offscreen
     }
 
-    static let layersFormat: MTLPixelFormat = .r16Float
+    /// Storms counted at a pixel, and the last one counted (see `StormPixel`).
+    static let layersFormat: MTLPixelFormat = .rg16Float
 
     private func layersTarget(width: Int, height: Int) -> MTLTexture? {
         if let layers, layers.width == width, layers.height == height { return layers }
@@ -307,13 +319,16 @@ final class StormRenderer {
         return layers
     }
 
-    /// The pixels a box can cover: the bounding rectangle of its corners on
-    /// screen, or the whole target when the camera is among them.
-    private func scissor(for boxToWorld: simd_float4x4, pose: CameraPose, target: CGSize) -> MTLScissorRect? {
+    /// The pixels the marched part of a box can cover: the bounding rectangle
+    /// of its corners on screen, or the whole target when the camera is among them.
+    private func scissor(for boxToWorld: simd_float4x4, min boxMin: SIMD4<Float>, max boxMax: SIMD4<Float>,
+                         pose: CameraPose, target: CGSize) -> MTLScissorRect? {
         let viewProjection = pose.viewProjection
         var minX = Float.infinity, minY = Float.infinity, maxX = -Float.infinity, maxY = -Float.infinity
         for corner in 0 ..< 8 {
-            let unit = SIMD4<Float>(Float(corner & 1), Float((corner >> 1) & 1), Float((corner >> 2) & 1), 1)
+            let unit = SIMD4<Float>(corner & 1 == 0 ? boxMin.x : boxMax.x,
+                                    (corner >> 1) & 1 == 0 ? boxMin.y : boxMax.y,
+                                    (corner >> 2) & 1 == 0 ? boxMin.z : boxMax.z, 1)
             let clip = viewProjection * (boxToWorld * unit)
             if clip.w <= 0.01 {
                 return MTLScissorRect(x: 0, y: 0, width: Int(target.width), height: Int(target.height))

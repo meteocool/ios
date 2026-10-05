@@ -14,6 +14,7 @@ enum ARCheck {
     @MainActor
     static func main() throws {
         try volumes()
+        try tiles()
         geodesy()
         sun()
         compass()
@@ -101,6 +102,119 @@ enum ARCheck {
         }
     }
 
+    /// A zoom-10 tile, 10 voxels across inside a one-voxel apron, with echo
+    /// in a column in its middle and some in the apron, which is not its own.
+    static func syntheticTile() -> Data {
+        let nx = 12, ny = 12, nz = 8
+        let header: [String: Any] = [
+            "code": "T100053300356", "reference_time": "2026-10-05T01:50:00+00:00",
+            "lon": 7.42, "lat": 47.9, "nx": nx, "ny": ny, "nz": nz,
+            "step_m": [2600.0, 2600.0, 500.0], "origin_m": [-15600.0, -15600.0, 0.0],
+            "tile": [10, 533, 356], "apron": [1, 1, 0],
+            "dbz_floor": -32.0, "dbz_scale": 2.0, "coverage": 1.0, "network": "de", "tier": 2,
+        ]
+        let json = try! JSONSerialization.data(withJSONObject: header)
+        var data = Data("MCVX".utf8)
+        for value in [UInt32(1), UInt32(json.count)] { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        data.append(json)
+        var voxels = [UInt8](repeating: 0, count: nx * ny * nz * 2)
+        for z in 0 ..< nz {
+            for y in 0 ..< ny {
+                for x in 0 ..< nx {
+                    let i = ((z * ny + y) * nx + x) * 2
+                    let column = (5 ... 6).contains(x) && (5 ... 6).contains(y) && z <= 3
+                    let apronEcho = x == 0 && y == 6 && z == 6
+                    voxels[i] = UInt8(((column || apronEcho ? 45.0 : -10.0) + 32) * 2)
+                    voxels[i + 1] = 255
+                }
+            }
+        }
+        data.append(contentsOf: voxels)
+        return data
+    }
+
+    @MainActor
+    static func tiles() throws {
+        let tile = try StormVolume.decode(syntheticTile())
+        precondition(tile.header.tile == [10, 533, 356] && tile.header.apron == [1, 1, 0])
+        // The apron is not this tile's to draw.
+        precondition(abs(tile.drawnMin.x - 1.0 / 12) < 1e-6 && abs(tile.drawnMax.y - 11.0 / 12) < 1e-6 && tile.drawnMin.z == 0)
+        // Marched only round its echo, a voxel's margin each side, and never
+        // into the apron. Echo in the apron still counts, as in core's
+        // `echoPart`: it blends into the tile's edge.
+        let bounds = tile.marchBounds!
+        precondition(abs(bounds.min.x - 1.0 / 12) < 1e-6 && abs(bounds.max.x - 8.0 / 12) < 1e-6, "march x \(bounds)")
+        precondition(abs(bounds.min.y - 4.0 / 12) < 1e-6 && abs(bounds.max.y - 8.0 / 12) < 1e-6, "march y \(bounds)")
+        precondition(bounds.min.z == 0 && bounds.max.z == 1, "march z \(bounds)")
+        // The echo top is the tile's own: the apron's higher echo does not count.
+        precondition(tile.echoTopM == 2_000, "tile top \(String(describing: tile.echoTopM))")
+        precondition(tile.textureBytes == 12 * 12 * 8 * 2)
+        // A ray through the apron alone finds nothing; one through the column does.
+        precondition(tile.firstHit(origin: SIMD3(0.04, 0.54, -1), direction: SIMD3(0, 0, 1), low: 20) == nil)
+        precondition(tile.firstHit(origin: SIMD3(0.5, 0.5, -1), direction: SIMD3(0, 0, 1), low: 20) != nil)
+
+        // Two tiles of one storm and a box from before tiles: two storms.
+        func entry(_ json: String) throws -> StormEntry { try JSONDecoder.snake.decode(StormEntry.self, from: Data(json.utf8)) }
+        let peak = try entry("""
+            {"code":"T100053300356","lon":7.42,"lat":47.9,"path":"meteoradar/volumes/20261005T015000/de-T100053300356.mcvx","tier":2,"tile":[10,533,356],"system":"T100053300356","peak_dbz":55,"area_km2":120}
+            """)
+        let flank = try entry("""
+            {"code":"T100053400356","lon":7.77,"lat":47.9,"path":"meteoradar/volumes/20261005T015000/de-T100053400356.mcvx","tier":2,"tile":[10,534,356],"system":"T100053300356","peak_dbz":40,"area_km2":80}
+            """)
+        let core = try entry("""
+            {"code":"T110106600712","lon":7.3,"lat":47.9,"path":"meteoradar/volumes/20261005T015000/de-T110106600712.mcvx","tier":2,"tile":[11,1066,712]}
+            """)
+        let old = try entry("""
+            {"code":"G4800011580","lon":11.58,"lat":48.0,"path":"meteoradar/volumes/20261004T020500/de-G4800011580.mcvx","tier":2}
+            """)
+        precondition(peak.stormKey == "T100053300356" && flank.stormKey == peak.stormKey && peak.isStormPeak && !flank.isStormPeak)
+        precondition(old.stormKey == old.path && old.isStormPeak)
+        precondition(peak.estimatedTextureBytes == 106 * 106 * 64 && core.estimatedTextureBytes == 54 * 54 * 64)
+        precondition(old.estimatedTextureBytes == 160 * 160 * 64)
+
+        let scene = StormScene(frame: GeoFrame(latitude: 47.5, longitude: 7.5, altitude: 300))
+        let placed = scene.placeAll([flank, peak, old], volumes: [flank.path: tile]) { _ in nil }
+        let groups = scene.groups(placed)
+        precondition(groups.count == 2, "storms \(groups.map(\.key))")
+        let storm = groups.first { $0.key == peak.stormKey }!
+        precondition(storm.tiles.count == 2 && storm.reference.entry.code == peak.code)
+        precondition(storm.peakDbz == 55 && storm.areaKm2 == 200 && storm.peelFloor == tile.coreDbz)
+        // A tile's box spans its tile before its volume has loaded: about 26 km at 47.9N.
+        let unloaded = placed.first { $0.entry.code == peak.code }!
+        let width = length(SIMD3(unloaded.boxToWorld.columns.0.x, unloaded.boxToWorld.columns.0.y, unloaded.boxToWorld.columns.0.z))
+        precondition(abs(width - 26_100) < 300, "tile width \(width)")
+        // Selecting a storm selects every tile of it.
+        scene.selectedKey = storm.key
+        precondition(storm.tiles.allSatisfy { scene.modeApplies(to: $0) })
+        precondition(!scene.modeApplies(to: groups.first { $0.key == old.stormKey }!.reference))
+        precondition(MapLink.search(for: peak, cell: nil) == "?layer=cells3d&cloud=20261005T015000/de-T100053300356")
+
+        // Coarse tiles: a zoom-10 tile's parent halves x and y, a zoom-11's quarters them.
+        precondition(peak.coarseParent == [9, 266, 178] && core.coarseParent == [9, 266, 178] && old.coarseParent == nil)
+        let parent = try entry("""
+            {"code":"T090026600178","lon":7.38,"lat":48.05,"path":"meteoradar/volumes/20261005T015000/de-T090026600178.mcvx","tier":2,"tile":[9,266,178],"coarse":true}
+            """)
+        let feed = StormFeed()
+        feed.ingest(VolumeIndex(referenceTime: nil, volumes: [peak, flank, core, parent, old]))
+        precondition(feed.entries.count == 4 && feed.coarse[[9, 266, 178]]?.code == parent.code, "coarse kept aside")
+        // Near, every tile draws itself; far, the coarse tile stands in for them.
+        feed.viewer = (47.9, 7.5)
+        precondition(feed.drawUnit(for: peak).path == peak.path)
+        feed.viewer = (47.0, 7.4)
+        precondition(feed.drawUnit(for: peak).path == parent.path && feed.drawUnit(for: core).path == parent.path)
+        precondition(feed.drawUnit(for: old).path == old.path)
+        // A cell naming a tile not listed (a newer scan's) is linked to the
+        // listed tile its centroid stands in.
+        let stray = try JSONDecoder.snake.decode(TrackedCell.self, from: Data("""
+            {"code":"2026100502250000000000","lon":\(peak.lon),"lat":\(peak.lat),"max_dbz":56,"volume":{"path":"meteoradar/volumes/20261005T020000/de-T100053300356.mcvx"}}
+            """.utf8))
+        precondition(peak.tileContains(lat: peak.lat, lon: peak.lon) && !flank.tileContains(lat: peak.lat, lon: peak.lon))
+        feed.ingest(cells: [stray])
+        precondition(feed.cell(for: peak)?.code == stray.code, "stray cell linked by position")
+        // Until the coarse tile has loaded, the plan falls back to the fine ones.
+        precondition(feed.drawPlan().allSatisfy { $0.coarse != true }, "plan before the coarse tile loads")
+    }
+
     // MARK: Geodesy
 
     static func geodesy() {
@@ -178,6 +292,8 @@ enum ARCheck {
         let path = "meteoradar/volumes/20261004T020500/de-G1374918628.mcvx"
         precondition(MapLink.cloudLink(path) == "20261004T020500/de-G1374918628")
         precondition(MapLink.cloudLink("meteoradar/volumes/20261004T020500/../../x.mcvx") == nil)
+        precondition(MapLink.cloudLink("meteoradar/volumes/20261005T015000/de-T100053300344.mcvx") == "20261005T015000/de-T100053300344")
+        precondition(MapLink.cloudLink("meteoradar/volumes/20261005T015000/de-T1000533003.mcvx") == nil)
         precondition(MapLink.isCellCode("2026100402050000012345") && !MapLink.isCellCode("20261004020500000123"))
         let entry = try! JSONDecoder.snake.decode(StormEntry.self, from: Data("""
             {"code":"G1374918628","network":"de","lon":6.28,"lat":47.49,"path":"\(path)","tier":2}
@@ -219,16 +335,18 @@ enum ARCheck {
         let pose = lookingNorth(pitch: 5)
         let centre = pose.project(SIMD3<Float>(storm.centre + storm.up * 4_500))!
         precondition(abs(centre.x - 200) < 1 && centre.y < 300 && centre.y > 200, "projected \(centre)")
-        precondition(scene.pick(centre, pose: pose, storms: [storm])?.entry.code == "G1")
-        precondition(scene.pick(CGPoint(x: 20, y: 300), pose: pose, storms: [storm]) == nil)
+        let group = scene.groups([storm])[0]
+        precondition(group.key == entry.path && group.reference.entry.code == "G1")
+        precondition(scene.pick(centre, pose: pose, groups: [group])?.key == entry.path)
+        precondition(scene.pick(CGPoint(x: 20, y: 300), pose: pose, groups: [group]) == nil)
 
         // The cut for Slice faces the viewer: its normal points back at them.
         scene.mode = .slice
         scene.sliderValue = 0
-        let (_, normal) = scene.cutPlane(for: storm, pose: pose)!
+        let (_, normal) = scene.cutPlane(for: group, pose: pose)!
         precondition(normal.z > 0.99, "slice normal \(normal)")
-        let uniforms = scene.uniforms(for: storm, volume: volume, pose: pose, target: CGSize(width: 200, height: 300),
-                                      light: SIMD3(0, 0, 1))
+        let uniforms = scene.uniforms(for: storm, group: group, volume: volume, pose: pose,
+                                      target: CGSize(width: 200, height: 300), light: SIMD3(0, 0, 1))
         precondition(uniforms.planeNormal.w == 1 && uniforms.planeNormal.y < -0.99, "box normal \(uniforms.planeNormal)")
 
         // Extrapolating a storm moving east at 60 km/h, measured six minutes ago.
@@ -280,7 +398,7 @@ enum ARCheck {
                 descriptor.vertexFunction = library.makeFunction(name: vertex)
                 descriptor.fragmentFunction = library.makeFunction(name: fragment)
                 descriptor.colorAttachments[0].pixelFormat = format
-                if layers { descriptor.colorAttachments[1].pixelFormat = .r16Float }
+                if layers { descriptor.colorAttachments[1].pixelFormat = .rg16Float }
                 var reflection: MTLRenderPipelineReflection?
                 _ = try device.makeRenderPipelineState(descriptor: descriptor, options: [.bindingInfo, .bufferTypeInfo], reflection: &reflection)
                 let binding = reflection?.fragmentBindings.first { $0.type == .buffer && $0.index == 0 } as? MTLBufferBinding
@@ -309,11 +427,17 @@ enum ARCheck {
         print(String(format: "three storms in a row: layer limit %.3f (two layers %.3f), blender %.3f (three layers %.3f)",
                      limited, two, blended, three))
         precondition(abs(Double(limited) - two) < 0.04, "layer limit: alpha \(limited), two layers would be \(two)")
+        // Layers are storms, not tiles: three tiles of one storm in a row are
+        // one cloud and all drawn, as are two tiles of one and one of another.
+        let oneStorm = try threeStorms(device: device, fetch: true, systems: [1, 1, 1])
+        precondition(abs(Double(oneStorm) - three) < 0.04, "one storm's tiles: alpha \(oneStorm), all three would be \(three)")
+        let twoStorms = try threeStorms(device: device, fetch: true, systems: [1, 1, 2])
+        precondition(abs(Double(twoStorms) - three) < 0.04, "two storms: alpha \(twoStorms), all three would be \(three)")
     }
 
     /// The alpha at the middle of a frame looking down -z through three
     /// identical 1 km deep boxes of 30 dBZ storm, 10, 12 and 14 km away.
-    static func threeStorms(device: MTLDevice, fetch: Bool) throws -> Float {
+    static func threeStorms(device: MTLDevice, fetch: Bool, systems: [Float] = [1, 2, 3]) throws -> Float {
         let options = MTLCompileOptions()
         options.preprocessorMacros = ["STORM_FETCH": NSNumber(value: fetch ? 1 : 0)]
         let library = try device.makeLibrary(source: StormShaders.source, options: options)
@@ -322,7 +446,7 @@ enum ARCheck {
         descriptor.fragmentFunction = library.makeFunction(name: "volume_fragment")
         descriptor.colorAttachments[0].pixelFormat = .rgba16Float
         if fetch {
-            descriptor.colorAttachments[1].pixelFormat = .r16Float
+            descriptor.colorAttachments[1].pixelFormat = .rg16Float
         } else {
             let attachment = descriptor.colorAttachments[0]!
             attachment.isBlendingEnabled = true
@@ -340,7 +464,7 @@ enum ARCheck {
             d.storageMode = .private
             return device.makeTexture(descriptor: d)!
         }
-        let colour = target(.rgba16Float), layers = target(.r16Float)
+        let colour = target(.rgba16Float), layers = target(.rg16Float)
 
         let volumeDescriptor = MTLTextureDescriptor()
         volumeDescriptor.textureType = .type3D
@@ -399,6 +523,7 @@ enum ARCheck {
             u.low = 20
             u.steps = 96
             u.dim = 1
+            u.system = systems[box]
             encoder.setFragmentBytes(&u, length: MemoryLayout<VolumeUniforms>.stride, index: 0)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }

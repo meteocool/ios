@@ -6,30 +6,63 @@ const requests = [];
 let registered = false;
 let mapAvailable = false;
 let mapLoads = 0;
-// The AR storm view's data: one synthetic storm south of Munich, a tracked
-// cell standing in it, its track, and a few strikes. All made up here.
+// The AR storm view's data: one synthetic storm south of Munich, boxed as the data service
+// boxes storms since 2026-10-05 -- by zoom-10 map tile, two tiles sharing a
+// system, each with a one-voxel apron -- a tracked cell standing in it, its
+// track, and a few strikes. All made up here.
 const STORM = { lat: 47.9, lon: 11.6 };
 const SCAN = '20261004T020500';
-const VOLUME_PATH = `meteoradar/volumes/${SCAN}/de-G4790011600.mcvx`;
 const CELL_CODE = '2026100402050000012345';
+const ZOOM = 10;
+const ACROSS = 104;
+const APRON = 1;
 
-/** A 40 x 40 x 16 km box holding a leaning column of echo, 50 dBZ at its core. */
-function syntheticVolume() {
-  const nx = 80, ny = 80, nz = 32;
+function tileOf(lat, lon) {
+  const n = 2 ** ZOOM;
+  const x = Math.floor((lon + 180) / 360 * n);
+  const r = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  return { x, y };
+}
+function tileCentre(x, y) {
+  const n = 2 ** ZOOM;
+  const lon = (x + 0.5) / n * 360 - 180;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / n))) * 180 / Math.PI;
+  return { lat, lon };
+}
+const PEAK = tileOf(STORM.lat, STORM.lon);
+const code = (x, y) => `T${String(ZOOM).padStart(2, '0')}${String(x).padStart(5, '0')}${String(y).padStart(5, '0')}`;
+const SYSTEM = code(PEAK.x, PEAK.y);
+// The peak's tile and its eastern neighbour, which holds the storm's flank.
+const TILES = [PEAK, { x: PEAK.x + 1, y: PEAK.y }].map(({ x, y }, index) => ({
+  x, y, code: code(x, y), centre: tileCentre(x, y), peak: index === 0 ? 52 : 38,
+  path: `meteoradar/volumes/${SCAN}/de-${code(x, y)}.mcvx`,
+}));
+const VOLUME_PATH = TILES[0].path;
+
+/** One tile of the storm: a leaning column of echo, 52 dBZ at its core in the peak's tile. */
+function syntheticVolume(tile) {
+  const nx = ACROSS + 2 * APRON, ny = nx, nz = 32;
+  const step = 2 * Math.PI * 6371008.8 * Math.cos(tile.centre.lat * Math.PI / 180) / 2 ** ZOOM / ACROSS;
+  const half = step * nx / 2;
   const header = Buffer.from(JSON.stringify({
-    code: 'G4790011600', reference_time: '2026-10-04T02:05:00+00:00', lon: STORM.lon, lat: STORM.lat,
-    nx, ny, nz, step_m: [500, 500, 500], origin_m: [-20000, -20000, 0], dbz_floor: -32, dbz_scale: 2,
-    sites: ['deisn'], coverage: 1, network: 'de', tier: 2,
+    code: tile.code, reference_time: '2026-10-04T02:05:00+00:00', lon: tile.centre.lon, lat: tile.centre.lat,
+    nx, ny, nz, step_m: [step, step, 500], origin_m: [-half, -half, 0], tile: [ZOOM, tile.x, tile.y], apron: [APRON, APRON, 0],
+    dbz_floor: -32, dbz_scale: 2, sites: ['deisn'], coverage: 1, network: 'de', tier: 2,
     scanned_at: new Date(Date.now() - 4 * 60000).toISOString(), oldest_scan_at: null,
   }));
+  // The storm's own centre, in metres east and north of this tile's centre.
+  const east = (STORM.lon - tile.centre.lon) * 111320 * Math.cos(STORM.lat * Math.PI / 180);
+  const north = (STORM.lat - tile.centre.lat) * 110570;
   const voxels = Buffer.alloc(nx * ny * nz * 2);
   for (let z = 0; z < nz; z++) {
-    const lean = z * 0.25; // the core leans east with height
+    const h = z * 0.5;
+    const lean = z * 0.25; // the core leans east with height, in km
     for (let y = 0; y < ny; y++) {
       for (let x = 0; x < nx; x++) {
-        const dx = (x + 0.5 - nx / 2 - lean) * 0.5, dy = (y + 0.5 - ny / 2) * 0.5, h = z * 0.5;
-        const r = Math.hypot(dx, dy);
-        const dbz = h < 11 ? 52 - 2.2 * r - (h > 7 ? (h - 7) * 4 : 0) : -20;
+        const ex = ((x + 0.5) * step - half - east) / 1000 - lean, ny_ = ((y + 0.5) * step - half - north) / 1000;
+        const r = Math.hypot(ex, ny_);
+        const dbz = h < 11 ? 52 - 1.4 * r - (h > 7 ? (h - 7) * 4 : 0) : -20;
         const i = ((z * ny + y) * nx + x) * 2;
         voxels[i] = Math.max(0, Math.min(255, Math.round((dbz + 32) * 2)));
         voxels[i + 1] = h < 14 ? 255 : 0;
@@ -50,11 +83,12 @@ function mercator(lat, lon) {
 
 function stormData(path) {
   if (path === '/cells/volumes') {
-    return { reference_time: '2026-10-04T02:05:00Z', volumes: [{
-      code: 'G4790011600', network: 'de', lon: STORM.lon, lat: STORM.lat, path: VOLUME_PATH, tier: 2,
-      peak_dbz: 52, area_km2: 180, coverage: 1, seed_dbz: 25, reference_time: '2026-10-04T02:05:00Z',
+    return { reference_time: '2026-10-04T02:05:00Z', volumes: TILES.map((tile) => ({
+      code: tile.code, network: 'de', lon: tile.centre.lon, lat: tile.centre.lat, path: tile.path, tier: 2,
+      tile: [ZOOM, tile.x, tile.y], system: SYSTEM, coarse: false,
+      peak_dbz: tile.peak, area_km2: 90, coverage: 1, seed_dbz: 25, reference_time: '2026-10-04T02:05:00Z',
       scanned_at: new Date(Date.now() - 4 * 60000).toISOString(),
-    }] };
+    })) };
   }
   if (path === '/cells/current') {
     return { reference_time: '2026-10-04T02:05:00Z', cells: [{
@@ -85,10 +119,11 @@ function stormData(path) {
 http.createServer(async (request, response) => {
   response.setHeader('Content-Type', 'application/json');
   const path = request.url.split('?')[0];
-  if (request.method === 'GET' && path === `/${VOLUME_PATH}`) {
+  const tile = request.method === 'GET' ? TILES.find((candidate) => path === `/${candidate.path}`) : undefined;
+  if (tile) {
     response.setHeader('Content-Type', 'application/octet-stream');
     response.setHeader('Content-Encoding', 'gzip');
-    response.end(syntheticVolume());
+    response.end(syntheticVolume(tile));
     return;
   }
   const storms = request.method === 'GET' ? stormData(path) : null;

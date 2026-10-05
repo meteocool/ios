@@ -156,8 +156,8 @@ final class StormLabelLayer: UIView {
         var seen: Set<String> = []
         var placed: [CGRect] = []
         for (model, point) in items.sorted(by: { $0.model.distance < $1.model.distance }) {
-            seen.insert(model.path)
-            let view = views[model.path] ?? makeView(for: model.path)
+            seen.insert(model.key)
+            let view = views[model.key] ?? makeView(for: model.key)
             view.update(model)
             guard let point, bounds.insetBy(dx: -40, dy: -40).contains(point) else {
                 view.isHidden = true
@@ -181,9 +181,9 @@ final class StormLabelLayer: UIView {
             placed.append(rect)
             if model.selected { bringSubviewToFront(view) }
         }
-        for (path, view) in views where !seen.contains(path) {
+        for (key, view) in views where !seen.contains(key) {
             view.removeFromSuperview()
-            views[path] = nil
+            views[key] = nil
         }
     }
 
@@ -212,12 +212,13 @@ final class StormLabelLayer: UIView {
         }
     }
 
-    private func makeView(for path: String) -> StormLabelView {
+    /// A tag for one storm, by its key (`StormGroup.key`).
+    private func makeView(for key: String) -> StormLabelView {
         let view = StormLabelView()
-        view.addAction(UIAction { [weak self] _ in self?.onSelect?(path) }, for: .touchUpInside)
-        view.openButton.addAction(UIAction { [weak self] _ in self?.onOpen?(path) }, for: .touchUpInside)
+        view.addAction(UIAction { [weak self] _ in self?.onSelect?(key) }, for: .touchUpInside)
+        view.openButton.addAction(UIAction { [weak self] _ in self?.onOpen?(key) }, for: .touchUpInside)
         addSubview(view)
-        views[path] = view
+        views[key] = view
         return view
     }
 }

@@ -562,9 +562,9 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertEqual(resumed["registered"] as? Bool, false, "Foregrounding must not re-register disabled notifications")
     }
 
-    /// The AR storm view's preview, against the recorder's synthetic storm:
-    /// the storm is found and tagged, every mode can be chosen, and Open on
-    /// Map hands the storm's link to the map. Run
+    /// The AR storm view's preview, against the recorder's synthetic storm,
+    /// boxed as two map tiles: the storm is found and tagged once, every mode
+    /// can be chosen, and Open on Map hands the storm's link to the map. Run
     /// `node tests/mobile-api-recorder.mjs` first.
     @MainActor
     func testARPreviewFindsStormAndOpensItOnTheMap() async throws {
@@ -582,8 +582,14 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertFalse(app.buttons["ar.close"].exists)
         tap("map.ar")
 
-        let storm = app.buttons["ar.storm.G4790011600"]
+        // The recorder boxes the storm as two map tiles, as the data service does: one tag,
+        // named by the tile holding the peak, none for the other tile.
+        let tags = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+        let storm = tags.firstMatch
         XCTAssertTrue(storm.waitForExistence(timeout: 20), "The storm's tag never appeared")
+        XCTAssertTrue(storm.identifier.hasPrefix("ar.storm.T10"), storm.identifier)
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertEqual(tags.count, 1, "One storm, one tag, however many tiles")
         XCTAssertTrue(storm.label.contains("Holzkirchen"), storm.label)
         XCTAssertTrue(storm.label.contains("52 dBZ"), storm.label)
         let status = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Storms nearby: 1'")).firstMatch

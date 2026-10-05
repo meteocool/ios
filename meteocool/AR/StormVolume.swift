@@ -18,9 +18,14 @@ import simd
 /// `Content-Encoding: gzip`, so URLSession has usually inflated it already;
 /// `decode` accepts either.
 ///
-/// The grid is a 40 x 40 x 16 km box in the box's own azimuthal-equidistant
-/// frame: x east, y north, z up from sea level, centred horizontally on the
-/// core's peak. Voxel `i` along an axis has its centre at
+/// Since 2026-10-05 a box is one Web Mercator map tile of sky (`tile`): about
+/// 26 x 26 x 16 km at zoom 10, 13 km at zoom 11 where a storm's core is, laid
+/// out so neighbouring tiles' columns meet. Each carries a one-voxel `apron`
+/// of its neighbours' ground, sampled so the field blends across a seam but
+/// never drawn as this box. One storm covers as many tiles as it needs, which
+/// share a `system`. Before tiles a box was 40 x 40 x 16 km in its own
+/// azimuthal-equidistant frame, centred on one storm's peak, with no apron.
+/// Either way: x east, y north, z up from sea level. Voxel `i` along an axis has its centre at
 /// `origin_m + (i + 0.5) * step_m`, so the normalised texture coordinate of a
 /// point is exactly `(p - origin_m) / extent`.
 struct StormVolume: Sendable {
@@ -47,9 +52,13 @@ struct StormVolume: Sendable {
         let tier: Int?
         let scannedAt: String?
         let oldestScanAt: String?
+        /// The Web Mercator tile the box fills, z, x, y; nil before tiles.
+        let tile: [Int]?
+        /// Voxels at each end of each axis that are the neighbours' ground; nil before tiles.
+        let apron: [Int]?
 
         enum CodingKeys: String, CodingKey {
-            case code, lon, lat, nx, ny, nz, sites, coverage, network, tier
+            case code, lon, lat, nx, ny, nz, sites, coverage, network, tier, tile, apron
             case referenceTime = "reference_time"
             case stepM = "step_m"
             case originM = "origin_m"
@@ -81,9 +90,21 @@ struct StormVolume: Sendable {
     let coreDbz: Double
     /// The strongest reflectivity anywhere the radars saw well.
     let maxDbz: Double
-    /// The highest voxel centre above 20 dBZ near the core, in metres above
-    /// sea level; where a label sits. Nil for a box with no echo there.
+    /// The highest voxel above 20 dBZ, in metres above sea level: in the
+    /// tile, or near the core of a box from before tiles, which also holds its
+    /// neighbours. Where a label sits. Nil for a box with no echo there.
     let echoTopM: Double?
+    /// The part of the unit cube that is this box's to draw: all of it, bar a
+    /// tile's apron.
+    let drawnMin: SIMD3<Float>
+    let drawnMax: SIMD3<Float>
+    /// The drawn part cut down to where it holds any echo, a voxel's margin
+    /// round it (core's `echoPart`): what a ray marches. Nil when there is
+    /// none, and then nothing is drawn.
+    let marchBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
+
+    /// Bytes of 3D texture it takes.
+    var textureBytes: Int { voxels.count }
 
     /// Reflectivity below this is drizzle or the fringe of the anvil (core's `DBZ_LOW`).
     static let dbzLow = 20.0
@@ -119,32 +140,48 @@ struct StormVolume: Sendable {
                         Double(header.nz) * header.stepM[2])
         originM = SIMD3(header.originM[0], header.originM[1], header.originM[2])
 
+        let nx = header.nx, ny = header.ny, nz = header.nz
+        let apron = header.apron.flatMap { $0.count == 3 ? $0 : nil } ?? [0, 0, 0]
+        drawnMin = SIMD3(Float(apron[0]) / Float(nx), Float(apron[1]) / Float(ny), Float(apron[2]) / Float(nz))
+        drawnMax = SIMD3<Float>(repeating: 1) - drawnMin
+        let isTile = header.tile != nil
+
         // One pass for the histogram (core's `coreDbz`), the strongest echo,
-        // and the echo top near the centre.
+        // the echo top, and where in the box there is any echo at all.
         var counts = [Int](repeating: 0, count: 256)
         var strongest: UInt8 = 0
         var topLevel = -1
+        var lo = SIMD3<Int>(nx, ny, nz), hi = SIMD3<Int>(-1, -1, -1)
         let lowByte = UInt8(clamping: Int(((Self.dbzLow - header.dbzFloor) * header.dbzScale).rounded(.up)))
-        // Within 4 km of the core: the box holds its neighbours too, and their
-        // tops are not this storm's.
+        // A box from before tiles holds its neighbours too, and their tops are
+        // not this storm's: within 4 km of the core only. A tile is a piece of
+        // its storm, and its top is wherever its echo reaches, apron aside.
         let radiusX = 4000.0 / header.stepM[0], radiusY = 4000.0 / header.stepM[1]
-        let cx = Double(header.nx) / 2, cy = Double(header.ny) / 2
+        let cx = Double(nx) / 2, cy = Double(ny) / 2
         voxels.withUnsafeBytes { raw in
             let bytes = raw.bindMemory(to: UInt8.self)
-            let nx = header.nx, ny = header.ny, nz = header.nz
             for z in 0 ..< nz {
                 for y in 0 ..< ny {
                     let dy = (Double(y) + 0.5 - cy) / radiusY
+                    let insideY = y >= apron[1] && y < ny - apron[1]
                     let row = (z * ny + y) * nx
                     for x in 0 ..< nx {
                         let i = (row + x) * 2
                         let dbz = bytes[i], confidence = bytes[i + 1]
+                        if dbz >= lowByte, confidence > 0 {
+                            lo = simd_min(lo, SIMD3(x, y, z))
+                            hi = simd_max(hi, SIMD3(x, y, z))
+                        }
                         guard confidence >= 128 else { continue }
                         counts[Int(dbz)] += 1
                         if dbz > strongest { strongest = dbz }
                         if dbz >= lowByte, z > topLevel {
-                            let dx = (Double(x) + 0.5 - cx) / radiusX
-                            if dx * dx + dy * dy <= 1 { topLevel = z }
+                            if isTile {
+                                if insideY, x >= apron[0], x < nx - apron[0] { topLevel = z }
+                            } else {
+                                let dx = (Double(x) + 0.5 - cx) / radiusX
+                                if dx * dx + dy * dy <= 1 { topLevel = z }
+                            }
                         }
                     }
                 }
@@ -160,6 +197,15 @@ struct StormVolume: Sendable {
         coreDbz = max(Self.dbzLow, Double(byte) / header.dbzScale + header.dbzFloor - Self.peelBand)
         maxDbz = Double(strongest) / header.dbzScale + header.dbzFloor
         echoTopM = topLevel >= 0 ? header.originM[2] + (Double(topLevel) + 1) * header.stepM[2] : nil
+        if hi.x >= 0 {
+            let size = SIMD3<Float>(Float(nx), Float(ny), Float(nz))
+            let echoMin = simd_clamp(SIMD3<Float>(lo &- 1) / size, SIMD3(repeating: 0), SIMD3(repeating: 1))
+            let echoMax = simd_clamp(SIMD3<Float>(hi &+ 2) / size, SIMD3(repeating: 0), SIMD3(repeating: 1))
+            let lower = simd_max(echoMin, drawnMin), upper = simd_min(echoMax, drawnMax)
+            marchBounds = all(upper .> lower) ? (lower, upper) : nil
+        } else {
+            marchBounds = nil
+        }
     }
 
     /// Reflectivity and confidence of the voxel containing a normalised point,
@@ -179,7 +225,8 @@ struct StormVolume: Sendable {
     /// threshold is the same smooth step the shader uses, at a density where
     /// the cloud is plainly visible, so a tap lands on what the reader sees.
     func firstHit(origin: SIMD3<Float>, direction: SIMD3<Float>, low: Float, within limit: Float = .infinity) -> Float? {
-        guard let (near, far) = Self.intersectUnitCube(origin: origin, direction: direction) else { return nil }
+        guard let bounds = marchBounds,
+              let (near, far) = Self.intersect(origin: origin, direction: direction, min: bounds.min, max: bounds.max) else { return nil }
         let end = min(far, limit)
         guard end > near else { return nil }
         // Half a voxel along the finest axis, in this ray's own parameter.
@@ -197,11 +244,12 @@ struct StormVolume: Sendable {
         return nil
     }
 
-    /// Where a ray enters and leaves the unit cube, entry clamped to zero.
-    static func intersectUnitCube(origin: SIMD3<Float>, direction: SIMD3<Float>) -> (Float, Float)? {
+    /// Where a ray enters and leaves a box in unit-cube coordinates, entry clamped to zero.
+    static func intersect(origin: SIMD3<Float>, direction: SIMD3<Float>,
+                          min boxMin: SIMD3<Float> = .zero, max boxMax: SIMD3<Float> = .one) -> (Float, Float)? {
         let inverse = SIMD3<Float>(1, 1, 1) / direction
-        let a = (SIMD3<Float>(0, 0, 0) - origin) * inverse
-        let b = (SIMD3<Float>(1, 1, 1) - origin) * inverse
+        let a = (boxMin - origin) * inverse
+        let b = (boxMax - origin) * inverse
         let low = simd_min(a, b), high = simd_max(a, b)
         let near = max(max(low.x, low.y), max(low.z, 0))
         let far = min(min(high.x, high.y), high.z)
