@@ -13,7 +13,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     /// How long the alert waits for the preview image. After that it is shown
     /// without the image. A rendered preview downloads in well under a second;
     /// a cold render takes 13 to 20 s, too long to hold back a rain alert.
-    private static let previewDeadline: TimeInterval = 5
+    /// iOS gives the extension about 30 s in all.
+    private static let previewDeadline: TimeInterval = 10
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else {
