@@ -30,8 +30,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var glassControls: UIVisualEffectView?
     private var glassLogo: UIVisualEffectView?
 
-    /// Opens the AR storm view. Shown only where AR works and a storm is in
-    /// range; see `refreshARButton`.
+    /// Opens the AR storm view. Shown only where AR works and while the
+    /// `HiddenFeatures` are on; see `refreshARButton`.
     let arButton = UIButton(type: .system)
     /// The AR button's own glass element (iOS 26) or blur disc (before), so
     /// hiding it leaves no empty backdrop.
@@ -39,9 +39,6 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// The storm selected on the map, from the page's `cloudSelected:` and
     /// `cellSelected:` messages: what the AR view looks for when opened.
     private var mapSelection: StormTarget?
-    private var arStormsNearby = false
-    private var arCheckedAt = Date.distantPast
-    private var arCheck: Task<Void, Never>?
     
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
@@ -108,16 +105,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // Registered before the page loads. The shim must exist before the
         // first script that reads navigator.geolocation.
         webView?.configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
-        webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
-        webView?.configuration.userContentController.addUserScript(MapRecovery.graphicsWatch)
-        // Declares the AR storm view to the page before it loads, so a storm's
-        // panel offers "View in AR" and the page reports its selection
-        // (core's lib/nativeAR.ts).
-        if ARStormViewController.isAvailable {
-            webView?.configuration.userContentController.addUserScript(WKUserScript(
-                source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, { ar: true });",
-                injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        }
+        installUserScripts()
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         // Pinch and rotation also end follow mode, not only pan. While
@@ -232,6 +220,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // load that deployment's map. No restart.
         NotificationCenter.default.addObserver(self, selector: #selector(loadMap),
                                                name: MeteocoolEnvironment.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(hiddenFeaturesChanged),
+                                               name: HiddenFeatures.didChange, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -411,7 +401,6 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     func notify(location: CLLocation) {
-        refreshARButton(near: location)
         guard webviewReady else { return }
         // Pass the same fix to the geolocation shim. This resolves pending
         // getCurrentPosition calls in the page and updates its watchers.
@@ -483,7 +472,6 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             }
 
             setMapControlsHidden(false)
-            refreshARButton(near: SharedLocationUpdater.getCurrentLocation())
         }
         
         if action == "layerSwitcherOpened" {
@@ -823,29 +811,37 @@ extension ViewController {
         arButtonBackdrop?.isHidden = !visible
     }
 
-    /// Offer the AR view where it can work and has something to show: ARKit
-    /// (or the simulator's preview, in debug builds) and a storm within
-    /// range. Asked at most every five minutes; the list is a few kilobytes.
-    func refreshARButton(near location: CLLocation?) {
-        guard ARStormViewController.isAvailable else { return setARButtonVisible(false) }
-        #if DEBUG
-        // Debug builds always offer it: the simulator's preview stands near a
-        // storm wherever it is, and a test phone should open AR on a quiet
-        // day too, where the view says no storm is in range.
-        setARButtonVisible(true)
-        return
-        #else
-        guard let location, location.horizontalAccuracy >= 0 else { return }
-        guard Date().timeIntervalSince(arCheckedAt) > 300, arCheck == nil else { return }
-        arCheckedAt = Date()
-        arCheck = Task { [weak self] in
-            let nearby = await StormFeed.anyStorm(nearLat: location.coordinate.latitude, lon: location.coordinate.longitude)
-            guard let self else { return }
-            self.arCheck = nil
-            if let nearby { self.arStormsNearby = nearby }
-            self.setARButtonVisible(self.arStormsNearby)
+    /// Offers the AR view only while the `HiddenFeatures` are on (five taps
+    /// on the logo), and only where it can work: ARKit, or the simulator's
+    /// preview in debug builds. Whoever turned it on asked for it, so it is
+    /// offered on a quiet day too, where the view says no storm is in range.
+    func refreshARButton() {
+        setARButtonVisible(HiddenFeatures.unlocked && ARStormViewController.isAvailable)
+    }
+
+    /// The page learns about the AR view only from a script that runs before
+    /// it loads, so turning the hidden features on or off reloads the map:
+    /// a storm's panel then offers "View in AR", or stops offering it.
+    @objc fileprivate func hiddenFeaturesChanged() {
+        refreshARButton()
+        installUserScripts()
+        loadMap()
+    }
+
+    /// The scripts that run before the page: the geolocation shim, the
+    /// graphics watch, and, while the AR view is offered, its declaration to
+    /// the page, so a storm's panel offers "View in AR" and the page reports
+    /// its selection (core's lib/nativeAR.ts).
+    fileprivate func installUserScripts() {
+        guard let controller = webView?.configuration.userContentController else { return }
+        controller.removeAllUserScripts()
+        controller.addUserScript(GeolocationBridge.userScript)
+        controller.addUserScript(MapRecovery.graphicsWatch)
+        if HiddenFeatures.unlocked && ARStormViewController.isAvailable {
+            controller.addUserScript(WKUserScript(
+                source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, { ar: true });",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
-        #endif
     }
 
     /// The page's storm messages: `openAR:<volume path or cell code>` from a
@@ -874,7 +870,7 @@ extension ViewController {
     }
 
     func presentAR(target: StormTarget?) {
-        guard presentedViewController == nil, ARStormViewController.isAvailable else { return }
+        guard presentedViewController == nil, HiddenFeatures.unlocked, ARStormViewController.isAvailable else { return }
         let ar = ARStormViewController(target: target)
         ar.onOpenOnMap = { [weak self] search in self?.openStormOnMap(search) }
         ar.onClose = { [weak self] in self?.arDidClose() }
