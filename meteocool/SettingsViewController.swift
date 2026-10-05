@@ -156,8 +156,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("imprint_privacy", comment: "dataAboutLabel"),
-        NSLocalizedString("Experimental Features", comment: "dataAboutLabel"),
-        NSLocalizedString("Demo Mode", comment: "dataAboutLabel")
+        NSLocalizedString("Mode", comment: "dataAboutLabel")
     ]
     private var intensity = [
         NSLocalizedString("Drizzle", comment: "intensity"),
@@ -183,6 +182,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             LiquidGlass.float(settingsBar, over: settingsTable, in: view)
         }
         NotificationCenter.default.addObserver(self, selector: #selector(reload), name: NSNotification.Name("SettingsChanged"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reload), name: MeteocoolEnvironment.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(SettingsViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
     
@@ -343,14 +343,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             }
         case 2: //About
             switch indexPath.row {
-            case 3, 4: // Experimental Features (staging), Demo Mode (demo)
-                switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
-                switcherCell.switcher.accessibilityLabel = dataAboutLabel[indexPath.row]
-                let key = indexPath.row == 3 ? "experimentalFeatures" : "demoMode"
-                switcherCell.switcher.setOn(userDefaults?.bool(forKey: key) ?? false, animated: false)
-                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-                return switcherCell
+            case 3: // Mode: the deployment (`MeteocoolEnvironment`)
+                linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
+                linkCell.linkValueLable.text = EnvironmentPickerViewController.title(of: MeteocoolEnvironment.current)
+                return linkCell
             default: //Feedack and Links to Websides
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
                 linkCell.linkValueLable.text = ""
@@ -424,6 +420,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 UIApplication.shared.open(url)
             }
         }
+        if (indexPath.section == 2 && indexPath.row == 3){ // Mode
+            present(UINavigationController(rootViewController: EnvironmentPickerViewController()), animated: true)
+        }
         if indexPath.section == 3, let url = URL(string: dataSources[indexPath.row].url) {
             UIApplication.shared.open(url)
         }
@@ -484,16 +483,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 1:
             userDefaults?.set(sender.isOn, forKey: "withDBZ")
             SharedLocationUpdater.refreshNotificationRegistration()
-        case 23, 24:
-            // Each switch selects a deployment (`MeteocoolEnvironment.current`).
-            // At most one can be on, so turning one on turns the other off.
-            let demo = sender.tag == 24
-            userDefaults?.set(sender.isOn, forKey: demo ? "demoMode" : "experimentalFeatures")
-            if sender.isOn { userDefaults?.set(false, forKey: demo ? "experimentalFeatures" : "demoMode") }
-            let alert = UIAlertController(title: NSLocalizedString(demo ? "demo_mode" : "experimental_features", comment: ""),
-                                          message: NSLocalizedString(demo ? "demo_mode_require_restart" : "experimental_features_require_restart", comment: ""), preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: NSLocalizedString("Dismiss", comment: ""), style: .default))
-            present(alert, animated: true)
         default:
             assertionFailure("Unknown settings switch")
         }

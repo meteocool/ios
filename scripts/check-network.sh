@@ -7,3 +7,6 @@ trap 'rm -rf "$scratch"' EXIT
 xcrun swiftc meteocool/lib/Environment.swift meteocool/lib/NetworkHelper.swift \
     tests/NetworkHelperCheck.swift -o "$scratch/check"
 "$scratch/check"
+xcrun swiftc meteocool/lib/Environment.swift meteocool/lib/NetworkHelper.swift \
+    tests/EnvironmentCheck.swift -o "$scratch/check-environment"
+"$scratch/check-environment"

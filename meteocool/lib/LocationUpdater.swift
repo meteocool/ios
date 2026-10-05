@@ -315,25 +315,29 @@ import CoreLocation
             "token": tokenValue,
             ] as [String: Any]
 
-        guard let request = NetworkHelper.createJSONPostRequest(dst: "post_location", dictionary: locationDict) else {
+        let origin = NetworkHelper.apiURL
+        guard let request = NetworkHelper.createJSONPostRequest(dst: origin.appendingPathComponent("post_location").absoluteString, dictionary: locationDict) else {
             return
         }
 
         let previous = postTask
         postTask = Task {
             await previous?.value
+            // Dropped when the deployment changed while it was queued: the
+            // switch registers with the new API on its own.
             guard SharedNotificationManager.canRegister,
                   SharedNotificationManager.getToken() == tokenValue,
+                  NetworkHelper.apiURL == origin,
                   abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
-            SharedNotificationManager.registrationWillBegin()
+            SharedNotificationManager.registrationWillBegin(origin: origin)
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 let success = NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil
                 if !success { self.lastPostedLocation = nil }
-                SharedNotificationManager.registrationFinished(success: success)
+                SharedNotificationManager.registrationFinished(success: success, origin: origin)
             } catch {
                 self.lastPostedLocation = nil
-                SharedNotificationManager.registrationFinished(success: false)
+                SharedNotificationManager.registrationFinished(success: false, origin: origin)
             }
         }
     }

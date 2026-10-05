@@ -11,8 +11,8 @@ import CoreLocation
     var canRegister = true
     func getToken() -> String? { String(repeating: "a", count: 64) }
     func unregister() {}
-    func registrationWillBegin() {}
-    func registrationFinished(success: Bool) { precondition(success) }
+    func registrationWillBegin(origin: URL) {}
+    func registrationFinished(success: Bool, origin: URL) { precondition(success) }
 }
 @MainActor let SharedNotificationManager = NotificationState()
 

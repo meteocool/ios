@@ -24,9 +24,12 @@ import UserNotifications
         return enabled && authorized && sameDeployment && (location == .authorizedAlways || location == .authorizedWhenInUse)
     }
 
-    func registrationWillBegin() {
+    /// Records the API a registration is posted to, before it is sent.
+    /// `origin` is the API the request was built for, which is not the
+    /// current one when the deployment changed while it was queued.
+    func registrationWillBegin(origin: URL) {
         if NetworkHelper.simulatorTestAPI == nil {
-            defaults?.set(NetworkHelper.apiURL.absoluteString, forKey: "registrationOrigin")
+            defaults?.set(origin.absoluteString, forKey: "registrationOrigin")
         }
     }
 
@@ -36,6 +39,10 @@ import UserNotifications
         center.delegate = self
         let open = UNNotificationAction(identifier: "OpenNotification", title: NSLocalizedString("Open", comment: ""), options: .foreground)
         center.setNotificationCategories([UNNotificationCategory(identifier: "WeatherAlert", actions: [open], intentIdentifiers: [])])
+        // Switching deployments moves the registration: `refreshAuthorization`
+        // removes it from the API it was made on, then registers with the new one.
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshAuthorization),
+                                               name: MeteocoolEnvironment.didChange, object: nil)
     }
 
     func registerForPushNotifications(_ completion: @escaping (Bool, Error?) -> Void) {
@@ -64,7 +71,7 @@ import UserNotifications
 
     /// Rereads notification permission and registers or unregisters to match.
     /// Called on launch and after returning from Settings. Never shows a prompt.
-    func refreshAuthorization() {
+    @objc func refreshAuthorization() {
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             authorized = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
@@ -127,7 +134,10 @@ import UserNotifications
                 let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 let absent = (response as? HTTPURLResponse)?.statusCode == 200 && body?["message"] as? String == "not registered"
                 syncFailed = NetworkHelper.checkResponse(data: data, response: response, error: nil) == nil && !absent
-                if !syncFailed { defaults?.removeObject(forKey: "registrationOrigin") }
+                // Leave the origin to a queued removal: a registration that
+                // finished meanwhile set it again, possibly to an API the app
+                // has since switched away from.
+                if !syncFailed && !removalPending { defaults?.removeObject(forKey: "registrationOrigin") }
             } catch {
                 syncFailed = true
             }
@@ -137,10 +147,13 @@ import UserNotifications
         }
     }
 
-    func registrationFinished(success: Bool) {
+    func registrationFinished(success: Bool, origin: URL) {
         syncFailed = !success
-        if success && canRegister { registrationWillBegin() }
-        // Remove the new registration if alerts were turned off while the POST was running.
+        // Recorded again because a removal that ran meanwhile cleared it, and
+        // the server now holds this registration.
+        if success { registrationWillBegin(origin: origin) }
+        // Remove the new registration if alerts were turned off, or the
+        // deployment changed, while the POST was running.
         if !canRegister { unregister() }
         changed()
     }

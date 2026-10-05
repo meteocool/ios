@@ -52,12 +52,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if (userDefaults?.string(forKey: "baseLayer") == "satellite"){
             userDefaults?.setValue("system", forKey: "baseLayer")
         }
-        if (userDefaults?.value(forKey: "experimentalFeatures") == nil){
-            userDefaults?.setValue(false, forKey: "experimentalFeatures")
-        }
-        if (userDefaults?.value(forKey: "demoMode") == nil){
-            userDefaults?.setValue(false, forKey: "demoMode")
-        }
 
         if let userDefaults {
             userDefaults.set(min(max(userDefaults.integer(forKey: "intensityValue"), 0), 4), forKey: "intensityValue")

@@ -20,7 +20,7 @@ import WebKit
 /// - the phone's map keeps its own camera position, which the driver does
 ///   not see.
 @MainActor
-final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, LocationObserver {
+final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, LocationObserver {
     private var webView: WKWebView!
 
     /// Set when the page has mounted and requested its settings. Before that,
@@ -50,24 +50,44 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
         webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.isOpaque = false
+        webView.navigationDelegate = self
         view = webView
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let environment = MeteocoolEnvironment.current
-        NSLog("CarPlay: loading \(environment) frontend: \(environment.carPlayURL)")
-        webView.load(URLRequest(url: environment.carPlayURL))
+        loadMap()
 
         SharedLocationUpdater.addObserver(observer: self)
         NotificationCenter.default.addObserver(self, selector: #selector(injectSettings), name: NSNotification.Name("SettingsChanged"), object: nil)
+        // Mode changed on the phone: the car shows the same deployment.
+        NotificationCenter.default.addObserver(self, selector: #selector(loadMap), name: MeteocoolEnvironment.didChange, object: nil)
         // Request high-accuracy updates even when the phone UI is not in
         // front (`force: true`). The car screen needs the driver's position.
         // With the phone locked the app is not active, and the call without
         // `force` would not start updates.
         SharedLocationUpdater.startAccurateLocationUpdates(force: true)
         SharedLocationUpdater.requestLocation(observer: self, explicit: false)
+    }
+
+    @objc private func loadMap() {
+        webviewReady = false
+        hasZoomed = false
+        let environment = MeteocoolEnvironment.current
+        NSLog("CarPlay: loading \(environment) frontend: \(environment.carPlayURL)")
+        webView.load(URLRequest(url: environment.carPlayURL))
+    }
+
+    /// Out of memory or a GPU fault: nobody can tap anything on the car
+    /// screen, so the map comes back on its own. The pause keeps a page that
+    /// crashes on load from reloading in a tight loop.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        webviewReady = false
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            self?.loadMap()
+        }
     }
 
     // MARK: - LocationObserver
