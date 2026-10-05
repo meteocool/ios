@@ -31,10 +31,6 @@ enum ARViewMode: String, CaseIterable, Identifiable, Sendable {
     case shaft
     /// Above 8 km: the anvil and any overshooting top.
     case tops
-    /// What the radars saw, and where they could not look.
-    case radar
-    /// Where the storm is heading: forecast ellipses, track and motion.
-    case nowcast
 
     var id: String { rawValue }
 
@@ -384,7 +380,7 @@ final class StormScene {
         if !applies { u.dim *= 0.6; return u }
 
         switch mode {
-        case .live, .nowcast:
+        case .live:
             break
         case .peel:
             u.low = Float(StormVolume.dbzLow + sliderValue * (group.peelFloor - StormVolume.dbzLow))
@@ -393,8 +389,6 @@ final class StormScene {
             // Only the shells the storm reaches; a shower has no 55 dBZ shell.
             let top = volume.maxDbz
             u.shells = SIMD4(35, top >= 45 ? 45 : 999, top >= 55 ? 55 : 999, 0)
-        case .radar:
-            u.mode = 2
         case .shaft:
             let height = (groundAltitude + 1_500 - volume.originM.z) / volume.extentM.z
             u.slab = SIMD2(-1, Float(height))
@@ -521,7 +515,7 @@ final class StormScene {
         for group in groups {
             guard let cell = group.cell else { continue }
             let isSelected = group.key == selectedKey
-            if isSelected || mode == .nowcast {
+            if isSelected {
                 // Where it has been: the track's centroids on the ground.
                 if let track = feed.tracks[cell.code], track.path.count > 1 {
                     let points = track.path.map { world(latitude: $0[1], longitude: $0[0], altitude: ground) }

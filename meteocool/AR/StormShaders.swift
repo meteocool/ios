@@ -52,7 +52,7 @@ struct VolumeUniforms {
     float dim;                      // how much opacity a storm keeps
     float behind;                   // 1 for a storm from an old scan
     float ghost;                    // how much of the ghosted part is drawn
-    int mode;                       // 0 reflectivity, 1 shells, 2 radar coverage
+    int mode;                       // 0 reflectivity, 1 shells
     float stepMetres;               // the march's step along a ray; `steps` caps the count
     float system;                   // which storm the box is a tile of, as a number (0: none)
     float2 padding;
@@ -238,44 +238,30 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
 
         float3 colour;
         float alpha;
-        if (u.mode == 2) {
-            // Radar coverage: what the radars did not see, as a violet haze,
-            // over the storm drawn faint and grey. The cone of silence above a
-            // radar and the air beyond its last range bin show as fog.
-            float unseen = (1.0 - field.g);
-            float density = smoothstep(u.low, u.low + kPeelBand, field.r) * field.g;
-            if (unseen < 0.02 && density < 0.002) continue;
-            float3 storm = float3(dot(ramp.sample(rampSampler, float2(saturate((field.r + 32.0) / 96.0), 0.5)).rgb, float3(0.3, 0.59, 0.11)));
-            float fogAlpha = saturate(unseen * stepKm * 0.08);
-            float stormAlpha = saturate(density * stepKm * kOpacityPerKm * 0.6);
-            alpha = saturate(fogAlpha + stormAlpha);
-            colour = alpha > 0.0 ? (float3(0.62, 0.42, 0.95) * fogAlpha + storm * stormAlpha) / alpha : float3(0.0);
+        float density;
+        if (u.mode == 1) {
+            // Shells: thin surfaces at three thresholds, the onion.
+            float3 off = (float3(field.r) - u.shells.xyz) / 1.6;
+            float3 bump = exp(-off * off);
+            density = max(max(bump.x, bump.y), bump.z) * field.g * 3.0;
         } else {
-            float density;
-            if (u.mode == 1) {
-                // Shells: thin surfaces at three thresholds, the onion.
-                float3 off = (float3(field.r) - u.shells.xyz) / 1.6;
-                float3 bump = exp(-off * off);
-                density = max(max(bump.x, bump.y), bump.z) * field.g * 3.0;
-            } else {
-                density = smoothstep(u.low, u.low + kPeelBand, field.r) * field.g;
-            }
-            if (density <= 0.002) continue;
-            colour = ramp.sample(rampSampler, float2(saturate((field.r + 32.0) / 96.0), 0.5)).rgb;
-            if (cutFace && i < 1.0) {
-                // The sliced surface itself, drawn flat and solid: the point of
-                // cutting a storm open is that this face shows what the
-                // outside hides. Averaged over a second tap just behind it,
-                // because one opaque sample facets along the voxel grid.
-                float2 behindField = sampleField(volume, s, p + d * dt * 0.5, u);
-                float smoothed = 0.5 * (density + smoothstep(u.low, u.low + kPeelBand, behindField.r) * behindField.g);
-                alpha = saturate(smoothed * 2.1);
-                colour *= 1.12;
-            } else {
-                float lambert = 0.42 + 0.58 * max(dot(fieldNormal(volume, s, p, stepUnit, u), u.light.xyz), 0.0);
-                alpha = saturate(density * stepKm * kOpacityPerKm * (u.mode == 1 ? 4.0 : 1.0));
-                colour *= lambert;
-            }
+            density = smoothstep(u.low, u.low + kPeelBand, field.r) * field.g;
+        }
+        if (density <= 0.002) continue;
+        colour = ramp.sample(rampSampler, float2(saturate((field.r + 32.0) / 96.0), 0.5)).rgb;
+        if (cutFace && i < 1.0) {
+            // The sliced surface itself, drawn flat and solid: the point of
+            // cutting a storm open is that this face shows what the
+            // outside hides. Averaged over a second tap just behind it,
+            // because one opaque sample facets along the voxel grid.
+            float2 behindField = sampleField(volume, s, p + d * dt * 0.5, u);
+            float smoothed = 0.5 * (density + smoothstep(u.low, u.low + kPeelBand, behindField.r) * behindField.g);
+            alpha = saturate(smoothed * 2.1);
+            colour *= 1.12;
+        } else {
+            float lambert = 0.42 + 0.58 * max(dot(fieldNormal(volume, s, p, stepUnit, u), u.light.xyz), 0.0);
+            alpha = saturate(density * stepKm * kOpacityPerKm * (u.mode == 1 ? 4.0 : 1.0));
+            colour *= lambert;
         }
         if (ghosted) {
             float grey = dot(colour, float3(0.299, 0.587, 0.114));

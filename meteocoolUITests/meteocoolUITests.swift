@@ -713,7 +713,7 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(status.waitForExistence(timeout: 5))
         screenshot("AR preview live")
 
-        for mode in ["peel", "slice", "turn", "track", "floor", "shells", "shaft", "tops", "radar", "nowcast", "live"] {
+        for mode in ["peel", "slice", "turn", "track", "floor", "shells", "shaft", "tops", "live"] {
             let button = app.buttons["ar.mode.\(mode)"]
             XCTAssertTrue(button.waitForExistence(timeout: 5), mode)
             scrollIntoView(button)
