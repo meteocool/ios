@@ -562,4 +562,84 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertEqual(resumed["registered"] as? Bool, false, "Foregrounding must not re-register disabled notifications")
     }
 
+    /// The AR storm view's preview, against the recorder's synthetic storm:
+    /// the storm is found and tagged, every mode can be chosen, and Open on
+    /// Map hands the storm's link to the map. Run
+    /// `node tests/mobile-api-recorder.mjs` first.
+    @MainActor
+    func testARPreviewFindsStormAndOpensItOnTheMap() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        tap("map.ar")
+        // Closing works, and leaves the map as it was.
+        tap("ar.close")
+        XCTAssertTrue(app.buttons["map.settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["ar.close"].exists)
+        tap("map.ar")
+
+        let storm = app.buttons["ar.storm.G4790011600"]
+        XCTAssertTrue(storm.waitForExistence(timeout: 20), "The storm's tag never appeared")
+        XCTAssertTrue(storm.label.contains("Holzkirchen"), storm.label)
+        XCTAssertTrue(storm.label.contains("52 dBZ"), storm.label)
+        let status = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Storms nearby: 1'")).firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        screenshot("AR preview live")
+
+        for mode in ["peel", "slice", "turn", "track", "floor", "shells", "shaft", "tops", "radar", "nowcast", "live"] {
+            let button = app.buttons["ar.mode.\(mode)"]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), mode)
+            scrollIntoView(button)
+            XCTAssertTrue(button.isEnabled, "\(mode) is disabled")
+            button.tap()
+            let needsSlider = ["peel", "slice", "turn", "track", "floor"].contains(mode)
+            XCTAssertEqual(app.sliders["ar.slider"].waitForExistence(timeout: needsSlider ? 3 : 0.5), needsSlider, mode)
+            screenshot("AR preview \(mode)")
+        }
+
+        // The AR view turns to landscape; the map it returns to does not.
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(waitUntil { self.app.windows.firstMatch.frame.width > self.app.windows.firstMatch.frame.height },
+                      "The AR view did not turn to landscape")
+        screenshot("AR preview landscape")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(waitUntil { self.app.windows.firstMatch.frame.width < self.app.windows.firstMatch.frame.height })
+
+        storm.tap()
+        let open = app.buttons["ar.openOnMap"]
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        screenshot("AR preview selected")
+        open.tap()
+        // The tracked cell wins over its box, as core's deep links settle it.
+        let link = app.webViews.staticTexts["link=?layer=cells3d&cell=2026100402050000012345"]
+        XCTAssertTrue(link.waitForExistence(timeout: 10), "The map never received the storm's link")
+        XCTAssertFalse(app.buttons["ar.close"].exists)
+    }
+
+    private func waitUntil(timeout: TimeInterval = 5, _ condition: @escaping () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        return condition()
+    }
+
+    /// Drags the mode picker until a button in it is wholly on screen.
+    /// By frame: `isHittable` throws for a button scrolled right out of view.
+    private func scrollIntoView(_ element: XCUIElement) {
+        let picker = app.scrollViews.containing(.button, identifier: "ar.mode.live").firstMatch
+        let screen = app.windows.firstMatch.frame
+        for _ in 0 ..< 10 {
+            let frame = element.frame
+            if frame.minX >= screen.minX + 4 && frame.maxX <= screen.maxX - 4 { return }
+            let start = picker.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let end = start.withOffset(CGVector(dx: frame.midX > screen.midX ? -150 : 150, dy: 0))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+    }
 }

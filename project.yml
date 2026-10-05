@@ -69,6 +69,14 @@ targets:
       # CarPlay is used only from Swift. It is linked explicitly anyway, the
       # same way as WebKit, instead of relying on autolinking.
       - sdk: CarPlay.framework
+      # The AR storm view (meteocool/AR), linked explicitly for the same
+      # reason. Every device iOS 18 runs on has the frameworks; whether AR
+      # works is decided at run time by ARWorldTrackingConfiguration.isSupported,
+      # and no device capability is required, so every phone still installs.
+      - sdk: ARKit.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: CoreMotion.framework
       - target: NotificationService
     scheme:
       testTargets:

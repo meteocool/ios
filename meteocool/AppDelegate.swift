@@ -69,6 +69,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    /// Portrait on a phone, except while the AR storm view is up: the map,
+    /// the settings and onboarding are laid out for portrait only, and a sky
+    /// full of storms is wider than it is tall. Info.plist lists only
+    /// portrait for the iPhone, and this replaces that list at run time.
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        if UIDevice.current.userInterfaceIdiom == .pad { return .all }
+        return ARStormViewController.isPresented ? .allButUpsideDown : .portrait
+    }
+
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         guard userInfo["clear_all"] as? Bool == true else {
             completionHandler(.noData)
