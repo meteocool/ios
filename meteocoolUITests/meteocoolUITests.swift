@@ -232,13 +232,104 @@ final class meteocoolUITests: XCTestCase {
         tap("Collapse playback controls")
     }
 
-    func testNotificationSliderLayout() {
+    private func openNotificationSliderSettings() {
         app.terminate()
         app.launchArguments += ["-pushNotification", "YES"]
         app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
+        app.launchEnvironment["MC_TEST_MAP"] = "1"
         app.launch()
         completeOnboardingWithoutPermissions()
         tap("map.settings")
+    }
+
+    func testNotificationSliderTrackTaps() {
+        openNotificationSliderSettings()
+        for (title, values) in [("Intensity Threshold", ["Drizzle", "Rain", "Hail"]),
+                                ("Notification Timeframe", ["5 min", "25 min", "45 min"])] {
+            let slider = app.sliders[title]
+            XCTAssertTrue(slider.waitForExistence(timeout: 5))
+            let cell = app.tables.cells.containing(.slider, identifier: title).firstMatch
+            // Alternate ends so every tap starts away from the thumb.
+            for (position, expected) in [(0.95, values[2]), (0.05, values[0]), (0.5, values[1])] {
+                slider.coordinate(withNormalizedOffset: CGVector(dx: position, dy: 0.5)).tap()
+                XCTAssertEqual(slider.value as? String, expected)
+                XCTAssertTrue(cell.staticTexts[expected].exists)
+            }
+        }
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        tap("map.settings")
+        XCTAssertEqual(app.sliders["Intensity Threshold"].value as? String, "Rain")
+        XCTAssertEqual(app.sliders["Notification Timeframe"].value as? String, "25 min")
+        screenshot("Notification slider track taps persisted")
+    }
+
+    @MainActor
+    func testNotificationSliderLabelsUpdateDuringDrag() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("requests")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs for screenshots during a held drag") }
+        func simulatorScreenshot() async throws -> UIImage {
+            let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("slider-screenshot"))
+            return try XCTUnwrap(UIImage(data: data))
+        }
+        openNotificationSliderSettings()
+        for (title, initial, final) in [("Intensity Threshold", "Light rain", "Hail"),
+                                        ("Notification Timeframe", "15 min", "45 min")] {
+            let slider = app.sliders[title]
+            XCTAssertTrue(slider.waitForExistence(timeout: 5))
+            let cell = app.tables.cells.containing(.slider, identifier: title).firstMatch
+            let frame = cell.staticTexts[initial].frame
+            let screenWidth = app.frame.width
+            func labelPixels(_ screenshot: UIImage) throws -> [UInt8] {
+                let image = try XCTUnwrap(screenshot.cgImage)
+                let scale = CGFloat(image.width) / screenWidth
+                let rect = CGRect(x: frame.minX * scale, y: frame.minY * scale,
+                                  width: frame.width * scale, height: frame.height * scale).integral
+                let crop = try XCTUnwrap(image.cropping(to: rect))
+                var pixels = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
+                try pixels.withUnsafeMutableBytes { buffer in
+                    let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height,
+                        bitsPerComponent: 8, bytesPerRow: crop.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                    context.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
+                }
+                // Compare text silhouettes, independent of PNG encoding and color profiles.
+                return stride(from: 0, to: pixels.count, by: 4).map { pixels[$0] < 180 ? 1 : 0 }
+            }
+            func difference(_ a: [UInt8], _ b: [UInt8]) -> Double {
+                Double(zip(a, b).filter { $0 != $1 }.count) / Double(a.count)
+            }
+            // Use the same capture path for all three images to avoid
+            // XCTest/simctl rendering and color-profile differences.
+            let before = try labelPixels(await simulatorScreenshot())
+            // Capture while the synthesized finger is held down at the destination.
+            let capture = Task.detached {
+                let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("slider-drag-screenshot"))
+                return (data, Date())
+            }
+            let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
+            let end = slider.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+            start.press(forDuration: 0.5, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 5)
+            let released = Date()
+            let (data, capturedAt) = try await capture.value
+            let during = try XCTUnwrap(UIImage(data: data))
+            let attachment = XCTAttachment(image: during)
+            attachment.name = "\(title) before finger release"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            XCTAssertLessThan(capturedAt, released.addingTimeInterval(-1), "Capture must finish before finger release")
+            let duringPixels = try labelPixels(during)
+            let after = try labelPixels(await simulatorScreenshot())
+            XCTAssertGreaterThan(difference(duringPixels, before), 0.02, "\(title) label did not update during the drag")
+            XCTAssertLessThan(difference(duringPixels, after), 0.01, "\(title) label waited for release")
+            XCTAssertEqual(slider.value as? String, final)
+        }
+    }
+
+    func testNotificationSliderLayout() {
+        openNotificationSliderSettings()
         for title in ["Intensity Threshold", "Notification Timeframe"] {
             let slider = app.sliders[title]
             XCTAssertTrue(slider.waitForExistence(timeout: 5))
@@ -519,7 +610,30 @@ final class meteocoolUITests: XCTestCase {
         tap("map.settings")
         let timeframe = app.sliders["Notification Timeframe"]
         XCTAssertTrue(timeframe.waitForExistence(timeout: 10))
-        timeframe.adjust(toNormalizedSliderPosition: 1)
+        _ = try await URLSession.shared.data(for: reset)
+        let duringDrag = Task.detached {
+            try await Task.sleep(for: .seconds(3))
+            return try await URLSession.shared.data(from: endpoint).0
+        }
+        timeframe.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: timeframe.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)),
+                   withVelocity: .slow, thenHoldForDuration: 5)
+        let heldData = try await duringDrag.value
+        let heldState = try XCTUnwrap(JSONSerialization.jsonObject(with: heldData) as? [String: Any])
+        let heldRequests = heldState["requests"] as? [[String: Any]] ?? []
+        XCTAssertFalse(heldRequests.contains { ($0["body"] as? [String: Any])?["ahead"] as? Int == 45 },
+                       "Dragging must not submit a setting before finger release")
+        var timeframePosts: [[String: Any]] = []
+        for _ in 0..<20 {
+            let (data, _) = try await URLSession.shared.data(from: endpoint)
+            let state = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            timeframePosts = (state["requests"] as? [[String: Any]] ?? []).filter {
+                $0["path"] as? String == "/post_location" && ($0["body"] as? [String: Any])?["ahead"] as? Int == 45
+            }
+            if !timeframePosts.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(250))
+        }
+        XCTAssertEqual(timeframePosts.count, 1, "Finger release must submit the selected timeframe once")
         app.sliders["Intensity Threshold"].adjust(toNormalizedSliderPosition: 1)
         app.switches["Show Meteorological Details"].tap()
         screenshot("Notification preferences")

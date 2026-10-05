@@ -67,7 +67,7 @@ class TextTableViewCell: UITableViewCell{
     }
 }
 
-class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
+class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UIGestureRecognizerDelegate{
     @IBOutlet weak var settingsBar:UINavigationBar!
     @IBOutlet weak var settingsTable:UITableView!
     
@@ -285,7 +285,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
                     
                     stepperSliderViewThreshold.accessibilityValue = stepperSliderCellThreshold.stepperSliderValueLabel.text
-                    stepperSliderViewThreshold.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
                     
                     thresholdSliderLoad = true
                 }
@@ -304,7 +303,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
                     
                     stepperSliderViewTime.accessibilityValue = stepperSliderCellTime.stepperSliderValueLabel.text
-                    stepperSliderViewTime.addTarget(self, action: #selector(sliderChanged(_:)), for: .valueChanged)
                 
                     timeSliderLoad = true
                 }
@@ -370,7 +368,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     /// - A frame derived from the table width overflows an inset-grouped cell.
     /// - Fixed light-mode colors are invisible in dark mode.
     private func pin(_ slider: UISlider, in cell: StepperTableViewCell) {
-        slider.isContinuous = false
+        slider.isContinuous = true
+        slider.addTarget(self, action: #selector(sliderChanged(_:event:)), for: .valueChanged)
+        slider.addTarget(self, action: #selector(sliderCommitted(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        let tap = UITapGestureRecognizer(target: self, action: #selector(sliderTrackTapped(_:)))
+        tap.delegate = self
+        tap.cancelsTouchesInView = false
+        slider.addGestureRecognizer(tap)
         slider.translatesAutoresizingMaskIntoConstraints = false
         cell.contentView.addSubview(slider)
         NSLayoutConstraint.activate([
@@ -489,34 +493,67 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         settingsTable.reloadData()
     }
 
-    @objc func sliderChanged(_ sender: UISlider!){
-        sender.value = sender.value.rounded()
+    private func updateSliderLabel(_ sender: UISlider) {
+        let index = Int(sender.value.rounded())
         switch sender.tag {
-        case 5: //Intensity
-            userDefaults?.setValue(Int(sender.value), forKey: "intensityValue")
-            // 0 -> drizzle
-            // 1 -> light
-            // 2 -> rain
-            // 3 -> intense
-            // 4 -> hail
-            stepperSliderCellThreshold.stepperSliderValueLabel.text = intensity[(userDefaults?.integer(forKey: "intensityValue"))!]
-            
-            sender.accessibilityValue = sender.tag == 5 ? stepperSliderCellThreshold.stepperSliderValueLabel.text : stepperSliderCellTime.stepperSliderValueLabel.text
-            if let location = SharedLocationUpdater.getCurrentLocation(){
-                SharedLocationUpdater.postLocation(location: location, pressure: -1)
-            }
-        case 9: //Time before
-            userDefaults?.setValue(Int(sender.value), forKey: "timeBeforeValue")
-            //Value +1 *5 for minutes
-            stepperSliderCellTime.stepperSliderValueLabel.text = String(((userDefaults?.integer(forKey: "timeBeforeValue"))!+1)*5) + " min"
-            
-            sender.accessibilityValue = sender.tag == 5 ? stepperSliderCellThreshold.stepperSliderValueLabel.text : stepperSliderCellTime.stepperSliderValueLabel.text
-            if let location = SharedLocationUpdater.getCurrentLocation(){
-                SharedLocationUpdater.postLocation(location: location, pressure: -1)
-            }
+        case 5:
+            let text = intensity[index]
+            stepperSliderCellThreshold.stepperSliderValueLabel.text = text
+            sender.accessibilityValue = text
+        case 9:
+            let text = "\((index + 1) * 5) min"
+            stepperSliderCellTime.stepperSliderValueLabel.text = text
+            sender.accessibilityValue = text
         default:
-            print ("This not happen: Slider")
+            assertionFailure("Unknown settings slider")
         }
+    }
+
+    @objc private func sliderChanged(_ sender: UISlider, event: UIEvent?) {
+        updateSliderLabel(sender)
+        // Touch gestures commit on release. Accessibility adjustments and
+        // track taps send valueChanged without touches and commit immediately.
+        if event?.allTouches?.isEmpty != false {
+            sliderCommitted(sender)
+        }
+    }
+
+    @objc private func sliderCommitted(_ sender: UISlider) {
+        sender.value = sender.value.rounded()
+        updateSliderLabel(sender)
+        let key: String
+        switch sender.tag {
+        case 5: key = "intensityValue"
+        case 9: key = "timeBeforeValue"
+        default:
+            assertionFailure("Unknown settings slider")
+            return
+        }
+        let index = Int(sender.value)
+        guard userDefaults?.integer(forKey: key) != index else { return }
+        userDefaults?.set(index, forKey: key)
+        if let location = SharedLocationUpdater.getCurrentLocation() {
+            SharedLocationUpdater.postLocation(location: location, pressure: -1)
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let slider = gestureRecognizer.view as? UISlider else { return true }
+        let track = slider.trackRect(forBounds: slider.bounds)
+        let thumb = slider.thumbRect(forBounds: slider.bounds, trackRect: track, value: slider.value)
+        // Leave thumb tracking entirely to UISlider.
+        return !thumb.contains(touch.location(in: slider))
+    }
+
+    @objc private func sliderTrackTapped(_ gesture: UITapGestureRecognizer) {
+        guard let slider = gesture.view as? UISlider else { return }
+        let track = slider.trackRect(forBounds: slider.bounds)
+        let start = slider.thumbRect(forBounds: slider.bounds, trackRect: track, value: slider.minimumValue).midX
+        let end = slider.thumbRect(forBounds: slider.bounds, trackRect: track, value: slider.maximumValue).midX
+        guard start != end else { return }
+        let fraction = min(max((gesture.location(in: slider).x - start) / (end - start), 0), 1)
+        slider.setValue((slider.minimumValue + Float(fraction) * (slider.maximumValue - slider.minimumValue)).rounded(), animated: true)
+        slider.sendActions(for: .valueChanged)
     }
     
     @objc func reload(){

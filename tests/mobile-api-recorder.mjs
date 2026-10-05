@@ -1,5 +1,11 @@
 import http from 'node:http';
 import { gzipSync } from 'node:zlib';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { setTimeout } from 'node:timers/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Only synthetic simulator data reaches this process. Never proxy to a server.
 const requests = [];
@@ -129,6 +135,25 @@ http.createServer(async (request, response) => {
   const storms = request.method === 'GET' ? stormData(path) : null;
   if (storms) {
     response.end(JSON.stringify(storms));
+    return;
+  }
+  // XCTest screen captures wait for a gesture to finish. Read the simulator
+  // framebuffer independently so a UI test can inspect a held-down drag.
+  if (request.url === '/slider-drag-screenshot' || request.url === '/slider-screenshot') {
+    const scratch = await mkdtemp(join(tmpdir(), 'meteocool-slider-'));
+    try {
+      if (request.url === '/slider-drag-screenshot') await setTimeout(3000);
+      const path = join(scratch, 'screen.png');
+      await promisify(execFile)('xcrun', ['simctl', 'io', process.env.MC_TEST_SIMULATOR ?? 'booted', 'screenshot', '--type=png', path], {
+        env: { ...process.env, DEVELOPER_DIR: process.env.DEVELOPER_DIR ?? '/Applications/Xcode.app/Contents/Developer' },
+      });
+      response.setHeader('Content-Type', 'image/png');
+      response.end(await readFile(path));
+    } catch {
+      response.writeHead(500).end('{"success":false}');
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
     return;
   }
   if (request.url === '/map/fail' || request.url === '/map/recover') {
