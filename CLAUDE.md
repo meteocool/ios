@@ -229,10 +229,17 @@ cycle, so `SceneDelegate` owns the foreground/active hooks that used to sit on
 `meteocool/AR/` draws the same storm volumes as core's 3D map over the camera
 image (`ARStormViewController`). What is easy to get wrong:
 
-- **The volumes are voxels, not meshes**: ng's `.mcvx` (40 x 40 x 16 km,
-  dBZ and confidence bytes), raymarched in `StormShaders.swift`, a port of
-  core's shader. Keep its constants in step with core's
-  `src/layers/cellVolumeLayer.ts`.
+- **The volumes are voxels, not meshes**: ng's `.mcvx` (dBZ and confidence
+  bytes), raymarched in `StormShaders.swift`, a port of core's shader. Keep
+  its constants in step with core's `src/layers/cellVolumeLayer.ts`.
+- **A storm is many boxes.** Since 2026-10-05 ng boxes storms by Web Mercator
+  tile (zoom 10, about 26 km; zoom 11 at cores; a coarse zoom-9 tile per
+  run, listed only with `?coarse=true`), each with a one-voxel `apron` of its
+  neighbours that is sampled but never drawn. Tiles of one storm share a
+  `system`: `StormGroup` is one storm, with one tag, selection, peel floor and
+  cut plane, and the two-layer limit counts storms, not tiles. Volumes are
+  held by bytes (`StormFeed.residentBytes`), and storms past 90 km draw their
+  coarse tiles. Boxes from before tiles (`G` codes, no `tile`) still work.
 - **Shaders compile at run time** from `StormShaders.source`; there is no
   `.metal` file, so the build needs no Metal toolchain. The Swift mirrors of
   the uniform structs sit beside the source, and `scripts/check-ar.sh`

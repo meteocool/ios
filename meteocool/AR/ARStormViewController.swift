@@ -62,6 +62,11 @@ final class ARStormViewController: UIViewController, LocationObserver {
     private var huds: [UIHostingController<ARHUDView>] = []
 
     private var placed: [PlacedStorm] = []
+    /// `placed` as storms: a storm is every tile of it.
+    private var groups: [StormGroup] = []
+    /// The boxes drawn this frame, each with the storm it draws for: fine
+    /// tiles near, coarse tiles standing in for them far away.
+    private var drawn: [(storm: PlacedStorm, group: StormGroup)] = []
     private var lastPose: CameraPose?
     private var labelModels: [String: StormLabelModel] = [:]
     private var labelsBuiltAt = Date.distantPast
@@ -114,8 +119,8 @@ final class ARStormViewController: UIViewController, LocationObserver {
 
         labelLayer.frame = view.bounds
         labelLayer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        labelLayer.onSelect = { [weak self] path in self?.select(path, toggle: true) }
-        labelLayer.onOpen = { [weak self] path in self?.openOnMap(path) }
+        labelLayer.onSelect = { [weak self] key in self?.select(key, toggle: true) }
+        labelLayer.onOpen = { [weak self] key in self?.openOnMap(key) }
         view.addSubview(labelLayer)
 
         installHUD()
@@ -328,13 +333,12 @@ final class ARStormViewController: UIViewController, LocationObserver {
         }
         guard let entry else { return }
         targetResolved = true
-        select(entry.path, toggle: false)
+        select(entry.stormKey, toggle: false)
     }
 
     private func refreshTrackAvailability() {
-        let selected = scene?.selectedPath.flatMap { path in feed.entries.first { $0.path == path } }
-        if let selected {
-            hud.trackAvailable = feed.cell(for: selected)?.headingDeg != nil
+        if let key = scene?.selectedKey {
+            hud.trackAvailable = feed.entries.contains { $0.stormKey == key && feed.cell(for: $0)?.headingDeg != nil }
         } else {
             hud.trackAvailable = feed.entries.contains { feed.cell(for: $0)?.headingDeg != nil }
         }
@@ -421,8 +425,8 @@ final class ARStormViewController: UIViewController, LocationObserver {
         let number: String
         switch hud.mode {
         case .peel:
-            if let path = scene?.selectedPath, let volume = feed.volumes[path] {
-                number = String(format: "%.0f", StormVolume.dbzLow + value * (volume.coreDbz - StormVolume.dbzLow))
+            if let key = scene?.selectedKey, let group = groups.first(where: { $0.key == key }) {
+                number = String(format: "%.0f", StormVolume.dbzLow + value * (group.peelFloor - StormVolume.dbzLow))
             } else {
                 hud.sliderText = String(format: "%.0f %%", value * 100)
                 return
@@ -470,7 +474,8 @@ final class ARStormViewController: UIViewController, LocationObserver {
             hud.status = NSLocalizedString("ar_status_failed", comment: "")
         case .ready:
             let nearby = feed.nearbyEntries
-            var status = String(format: NSLocalizedString("ar_status_storms", comment: ""), nearby.count)
+            // Storms, not the tiles they are boxed in.
+            var status = String(format: NSLocalizedString("ar_status_storms", comment: ""), Set(nearby.map(\.stormKey)).count)
             if let newest = nearby.compactMap(\.scanDate).max() {
                 status += " · " + String(format: NSLocalizedString("ar_label_age", comment: ""), max(0, Int(Date().timeIntervalSince(newest) / 60)))
             }
@@ -514,7 +519,7 @@ final class ARStormViewController: UIViewController, LocationObserver {
             sunFix(at: point, pose: pose, scene: scene)
             return
         }
-        select(scene.pick(point, pose: pose, storms: placed)?.entry.path, toggle: false)
+        select(scene.pick(point, pose: pose, targets: drawn)?.key, toggle: false)
     }
 
     private func sunFix(at point: CGPoint, pose: CameraPose, scene: StormScene) {
@@ -559,20 +564,25 @@ final class ARStormViewController: UIViewController, LocationObserver {
         recognizer.scale = 1
     }
 
-    private func select(_ path: String?, toggle: Bool) {
+    /// Select a storm by its key (`StormGroup.key`), or nothing.
+    private func select(_ key: String?, toggle: Bool) {
         guard let scene else { return }
-        let next = toggle && scene.selectedPath == path ? nil : path
-        guard next != scene.selectedPath else { return }
-        scene.selectedPath = next
+        let next = toggle && scene.selectedKey == key ? nil : key
+        guard next != scene.selectedKey else { return }
+        scene.selectedKey = next
         labelsBuiltAt = .distantPast
         refreshTrackAvailability()
         refreshSliderText()
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
-    private func openOnMap(_ path: String) {
-        guard let entry = feed.entries.first(where: { $0.path == path }),
-              let search = MapLink.search(for: entry, cell: feed.cell(for: entry)) else { return }
+    /// Open a storm on the map: by its cell where it has one, otherwise by the
+    /// tile holding its peak, which is the one the map names the storm by.
+    private func openOnMap(_ key: String) {
+        let tiles = feed.entries.filter { $0.stormKey == key }
+        guard let peak = tiles.first(where: \.isStormPeak) ?? tiles.max(by: { ($0.peakDbz ?? 0) < ($1.peakDbz ?? 0) }) else { return }
+        let cell = tiles.compactMap { feed.cell(for: $0) }.max { ($0.maxDbz ?? 0) < ($1.maxDbz ?? 0) }
+        guard let search = MapLink.search(for: peak, cell: cell) else { return }
         let onOpen = onOpenOnMap, onClose = onClose
         dismiss(animated: true) {
             onClose?()
@@ -609,26 +619,50 @@ final class ARStormViewController: UIViewController, LocationObserver {
             scene.now = Date()
             scene.alignmentError = isPreview ? 0 : alignment.error
             feed.lookAzimuth = scene.trueAzimuth(ofWorld: pose.forward)
-            placed = feed.nearbyEntries.map { scene.place($0, volume: feed.volumes[$0.path], cell: feed.cell(for: $0)) }
+            placed = scene.placeAll(feed.nearbyEntries, volumes: feed.volumes) { [feed] in feed.cell(for: $0) }
+            groups = scene.groups(placed)
+            let groupByKey = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, $0) })
             let light = scene.light()
             let target = CGSize(width: view.drawableSize.width * renderer.resolutionScale,
                                 height: view.drawableSize.height * renderer.resolutionScale)
             let camera = SIMD3<Double>(pose.position)
-            storms = placed
-                .compactMap { storm -> StormRenderer.Storm? in
-                    guard let volume = storm.volume else { return nil }
-                    let uniforms = scene.uniforms(for: storm, volume: volume, pose: pose, target: target, light: light)
+            drawn = drawTargets(scene: scene, groupByKey: groupByKey)
+            storms = drawn
+                .compactMap { storm, group -> StormRenderer.Storm? in
+                    // A box with no echo in it draws nothing; skip it outright.
+                    guard let volume = storm.volume, volume.marchBounds != nil else { return nil }
+                    let uniforms = scene.uniforms(for: storm, group: group, volume: volume, pose: pose, target: target, light: light)
                     let centre = storm.centre + storm.up * 6_000
                     return StormRenderer.Storm(path: storm.entry.path, volume: volume, uniforms: uniforms,
                                                boxToWorld: simd_float4x4(converting: storm.boxToWorld),
-                                               distance: Float(length(centre - camera)))
+                                               distance: Float(length(centre - camera)),
+                                               system: storm.entry.coarse == true ? storm.entry.path : storm.stormKey)
                 }
-            lines = scene.lines(storms: placed, feed: feed, pose: pose)
+            lines = scene.lines(groups: groups, feed: feed, pose: pose)
         }
         renderer.retain(only: Set(feed.volumes.keys))
         renderer.draw(StormRenderer.Frame(background: background, pose: pose, storms: storms,
                                           under: lines.under, over: lines.over), in: view)
         updateOverlays(pose: pose)
+    }
+
+    /// What to draw, from the feed's plan: a fine tile with its own storm, a
+    /// coarse tile with the storm most of the fine tiles inside it belong to.
+    private func drawTargets(scene: StormScene, groupByKey: [String: StormGroup]) -> [(storm: PlacedStorm, group: StormGroup)] {
+        let placedByPath = Dictionary(placed.map { ($0.entry.path, $0) }, uniquingKeysWith: { first, _ in first })
+        return feed.drawPlan().compactMap { unit -> (storm: PlacedStorm, group: StormGroup)? in
+            if unit.coarse != true {
+                guard let storm = placedByPath[unit.path], let group = groupByKey[storm.stormKey] else { return nil }
+                return (storm, group)
+            }
+            let inside = placed.filter { $0.entry.coarseParent == unit.tile }
+            var count: [String: Int] = [:]
+            for storm in inside { count[storm.stormKey, default: 0] += 1 }
+            guard let key = count.max(by: { a, b in a.value != b.value ? a.value < b.value
+                      : (groupByKey[a.key]?.peakDbz ?? 0) < (groupByKey[b.key]?.peakDbz ?? 0) })?.key,
+                  let group = groupByKey[key] else { return nil }
+            return (scene.place(unit, volume: feed.volumes[unit.path], cell: group.cell), group)
+        }
     }
 
     private func checkGeoNorth(_ camera: ARKitCamera) {
@@ -648,15 +682,16 @@ final class ARStormViewController: UIViewController, LocationObserver {
         }
         let now = Date()
         if now.timeIntervalSince(labelsBuiltAt) > 0.5 {
-            labelModels = Dictionary(uniqueKeysWithValues: placed.map { ($0.entry.path, scene.label(for: $0, feed: feed)) })
+            labelModels = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, scene.label(for: $0, feed: feed)) })
             labelsBuiltAt = now
         }
-        labelLayer.layout(placed.compactMap { storm in
-            labelModels[storm.entry.path].map { ($0, pose.project(SIMD3<Float>(storm.anchor))) }
+        // One tag per storm, however many tiles it covers.
+        labelLayer.layout(groups.compactMap { group in
+            labelModels[group.key].map { ($0, pose.project(SIMD3<Float>(group.anchor))) }
         })
-        let selected = placed.first { $0.entry.path == scene.selectedPath }
-        labelLayer.layoutTicks(selected.map { storm in
-            scene.heightTicks(for: storm, pose: pose).map { ($0.km, pose.project($0.point)) }
+        let selected = groups.first { $0.key == scene.selectedKey }
+        labelLayer.layoutTicks(selected.map { group in
+            scene.heightTicks(for: group, pose: pose).map { ($0.km, pose.project($0.point)) }
         } ?? [])
 
         guard now.timeIntervalSince(hudUpdatedAt) > 0.1 else { return }
@@ -667,7 +702,7 @@ final class ARStormViewController: UIViewController, LocationObserver {
     }
 
     /// Which way to turn to bring the selected storm into view, while it is not.
-    private func guidance(pose: CameraPose, scene: StormScene, selected: PlacedStorm?) -> ARHUDModel.Guidance? {
+    private func guidance(pose: CameraPose, scene: StormScene, selected: StormGroup?) -> ARHUDModel.Guidance? {
         guard let selected else { return nil }
         if let point = pose.project(SIMD3<Float>(selected.anchor)), metalView.bounds.insetBy(dx: 20, dy: 20).contains(point) {
             return nil
