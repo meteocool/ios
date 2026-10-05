@@ -92,6 +92,40 @@ enum MeteocoolEnvironment: String, CaseIterable {
         return allCases.map(\.apiBaseURL).first { $0 == stored }
     }
 
+    /// Base URL of the data service: storms, their volumes' index, cell
+    /// tracks, lightning and mesocyclones. Read by the
+    /// AR storm view.
+    ///
+    /// App has no data host of its own, for the same reason it has no API
+    /// host: app.meteocool.com is a custom domain of one of core's Workers,
+    /// which forwards these paths to its own environment's data service
+    /// (core's `worker/api.ts`). Moving the domain moves the AR view with the
+    /// map and the registrations.
+    var dataBaseURL: URL {
+        switch self {
+        case .app:
+            return URL(string: "https://app.meteocool.com/")!
+        case .staging:
+            return URL(string: "https://data-staging.meteocool.com/")!
+        case .demo:
+            return URL(string: "https://data-demo.meteocool.com/")!
+        }
+    }
+
+    /// Base URL the storms' volume files are fetched from. A volume's `path`
+    /// from the data service starts with its bucket and is appended as is.
+    /// On app, core's Worker redirects volume paths to its asset host.
+    var assetBaseURL: URL {
+        switch self {
+        case .app:
+            return URL(string: "https://app.meteocool.com/")!
+        case .staging:
+            return URL(string: "https://assets-staging.meteocool.com/")!
+        case .demo:
+            return URL(string: "https://assets-demo.meteocool.com/")!
+        }
+    }
+
     /// Web hosts: custom domains of core's Workers, set in core/wrangler.jsonc.
     private var webHost: String {
         switch self {

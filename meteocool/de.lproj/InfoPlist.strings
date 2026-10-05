@@ -1,3 +1,4 @@
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Du hast uns darum gebeten, dass wir dich über bevorstehenden Regen an deinem Standort informieren sollen. Wenn du willst, dass die Benachrichtigungen funktionieren musst du \"Immer erlauben\" auswählen.";
 "NSLocationAlwaysUsageDescription" = "Du hast uns darum gebeten, dass wir dich über bevorstehenden Regen an deinem Standort informieren sollen. Wenn du willst, dass die Benachrichtigungen funktionieren musst du \"Immer erlauben\" auswählen.";
 "NSLocationWhenInUseUsageDescription" = "Zeigt deinen aktuellen Standort auf der Wetterkarte an.";
+"NSCameraUsageDescription" = "Die AR-Gewitteransicht zeigt die 3D-Gewitter des Radars über dem Kamerabild, damit du erkennst, welches Gewitter du gerade siehst.";

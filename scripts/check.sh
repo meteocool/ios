@@ -3,6 +3,7 @@ set -euo pipefail
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 cd "$(dirname "$0")/.."
 bash scripts/check-network.sh
+bash scripts/check-ar.sh
 node tests/geolocation-check.mjs
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT

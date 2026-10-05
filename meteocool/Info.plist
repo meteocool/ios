@@ -24,6 +24,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>The AR storm view shows the radar's 3D storms over the camera image, so you can tell which storm you are looking at.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>You asked to be notified ahead of rain at your current location. Choose "Always Allow" if you want notifications to work.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

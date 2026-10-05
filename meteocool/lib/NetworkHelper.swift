@@ -2,6 +2,10 @@ import Foundation
 
 class NetworkHelper {
     static var apiURL: URL { simulatorTestAPI ?? MeteocoolEnvironment.current.apiBaseURL }
+    /// The data service the AR storm view reads (`MeteocoolEnvironment.dataBaseURL`).
+    static var dataURL: URL { simulatorTestAPI ?? MeteocoolEnvironment.current.dataBaseURL }
+    /// Where storm volume files are fetched from (`MeteocoolEnvironment.assetBaseURL`).
+    static var assetURL: URL { simulatorTestAPI ?? MeteocoolEnvironment.current.assetBaseURL }
 
     /// API origin override for UI tests (`MC_TEST_API_URL`).
     /// UI tests send real HTTP requests to a loopback recorder.

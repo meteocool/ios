@@ -1,3 +1,4 @@
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "You asked to be notified ahead of rain at your current location. Choose \"Always Allow\" if you want notifications to work.";
 "NSLocationAlwaysUsageDescription" = "You asked to be notified ahead of rain at your current location. Choose \"Always Allow\" if you want notifications to work.";
 "NSLocationWhenInUseUsageDescription" = "Display your location on the weather map.";
+"NSCameraUsageDescription" = "The AR storm view shows the radar's 3D storms over the camera image, so you can tell which storm you are looking at.";

@@ -29,6 +29,19 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// on iOS 26. Nil before iOS 26, where the storyboard blur and artwork stay.
     private var glassControls: UIVisualEffectView?
     private var glassLogo: UIVisualEffectView?
+
+    /// Opens the AR storm view. Shown only where AR works and a storm is in
+    /// range; see `refreshARButton`.
+    let arButton = UIButton(type: .system)
+    /// The AR button's own glass element (iOS 26) or blur disc (before), so
+    /// hiding it leaves no empty backdrop.
+    private var arButtonBackdrop: UIView?
+    /// The storm selected on the map, from the page's `cloudSelected:` and
+    /// `cellSelected:` messages: what the AR view looks for when opened.
+    private var mapSelection: StormTarget?
+    private var arStormsNearby = false
+    private var arCheckedAt = Date.distantPast
+    private var arCheck: Task<Void, Never>?
     
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
@@ -97,6 +110,14 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         webView?.configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
         webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
         webView?.configuration.userContentController.addUserScript(MapRecovery.graphicsWatch)
+        // Declares the AR storm view to the page before it loads, so a storm's
+        // panel offers "View in AR" and the page reports its selection
+        // (core's lib/nativeAR.ts).
+        if ARStormViewController.isAvailable {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, { ar: true });",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         // Pinch and rotation also end follow mode, not only pan. While
@@ -121,8 +142,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         self.view.addSubview(logo!)
         self.view.addSubview(blur!)
 
+        configureARButton()
         if #available(iOS 26.0, *) {
             applyLiquidGlass()
+        } else {
+            installClassicARButton()
         }
         configureLogo()
 
@@ -134,6 +158,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         layerSwitcherButton.accessibilityLabel = NSLocalizedString("map_layers", comment: "")
         layerSwitcherButton.accessibilityIdentifier = "map.layers"
         layerSwitcherButton.isEnabled = false
+    }
+
+    /// The map is laid out for portrait on a phone; only the AR view turns.
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        UIDevice.current.userInterfaceIdiom == .pad ? .all : .portrait
     }
 
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
@@ -382,6 +411,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     func notify(location: CLLocation) {
+        refreshARButton(near: location)
         guard webviewReady else { return }
         // Pass the same fix to the geolocation shim. This resolves pending
         // getCurrentPosition calls in the page and updates its watchers.
@@ -417,6 +447,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
               message.frameInfo.securityOrigin.host == MeteocoolEnvironment.current.webURL.host else { return }
         let action = String(describing: message.body)
 
+        if message.name == "scriptHandler", handleStormMessage(action) { return }
+
         if message.name == GeolocationBridge.handlerName {
             if action == GeolocationBridge.requestAction {
                 serveGeolocationRequest()
@@ -451,6 +483,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             }
 
             setMapControlsHidden(false)
+            refreshARButton(near: SharedLocationUpdater.getCurrentLocation())
         }
         
         if action == "layerSwitcherOpened" {
@@ -540,7 +573,7 @@ extension ViewController {
     /// other glass, so ungrouped neighbours would each sample the map instead.
     @available(iOS 26.0, *)
     private func installGlassControls() {
-        let controls = [layerSwitcherButton!, settingsButton!, positionButton!]
+        let controls = [layerSwitcherButton!, settingsButton!, positionButton!, arButton]
 
         // The buttons are constrained to the artwork and to each other.
         // Reparenting them would leave those constraints pointing across the
@@ -570,6 +603,10 @@ extension ViewController {
                 control.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor),
             ])
             stack.addArrangedSubview(glass)
+            if control === arButton {
+                arButtonBackdrop = glass
+                glass.isHidden = arButton.isHidden
+            }
         }
 
         let container = LiquidGlass.container(spacing: 10)
@@ -633,6 +670,7 @@ extension ViewController {
             settingsButton.isHidden = hidden
             layerSwitcherButton.isHidden = hidden
             positionButton.isHidden = hidden
+            arButtonBackdrop?.alpha = hidden ? 0 : 1
         }
     }
 
@@ -741,5 +779,120 @@ extension ViewController {
               if (lm && lm.currentCap !== "radar" && lm.getCapability?.("radar")) lm.setTarget("radar", "map");
             })();
             """)
+    }
+}
+
+// MARK: - AR storm view
+
+extension ViewController {
+    fileprivate func configureARButton() {
+        arButton.setImage(UIImage(systemName: "arkit", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
+        arButton.accessibilityLabel = NSLocalizedString("map_ar", comment: "")
+        arButton.accessibilityIdentifier = "map.ar"
+        arButton.addAction(UIAction { [weak self] _ in self?.presentAR(target: self?.mapSelection) }, for: .touchUpInside)
+        arButton.isHidden = true
+    }
+
+    /// Before iOS 26 the three buttons are painted onto one slab of artwork;
+    /// the AR button gets a blurred disc of its own underneath it.
+    fileprivate func installClassicARButton() {
+        let disc = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+        disc.layer.cornerRadius = 22
+        disc.clipsToBounds = true
+        disc.translatesAutoresizingMaskIntoConstraints = false
+        arButton.translatesAutoresizingMaskIntoConstraints = false
+        arButton.tintColor = .label
+        disc.contentView.addSubview(arButton)
+        view.addSubview(disc)
+        NSLayoutConstraint.activate([
+            disc.widthAnchor.constraint(equalToConstant: 44),
+            disc.heightAnchor.constraint(equalToConstant: 44),
+            disc.centerXAnchor.constraint(equalTo: trippleButton.centerXAnchor),
+            disc.topAnchor.constraint(equalTo: trippleButton.bottomAnchor, constant: 10),
+            arButton.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
+            arButton.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
+            arButton.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
+            arButton.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
+        ])
+        disc.isHidden = true
+        arButtonBackdrop = disc
+    }
+
+    private func setARButtonVisible(_ visible: Bool) {
+        arButton.isHidden = !visible
+        arButtonBackdrop?.isHidden = !visible
+    }
+
+    /// Offer the AR view where it can work and has something to show: ARKit
+    /// (or the simulator's preview, in debug builds) and a storm within
+    /// range. Asked at most every five minutes; the list is a few kilobytes.
+    func refreshARButton(near location: CLLocation?) {
+        guard ARStormViewController.isAvailable else { return setARButtonVisible(false) }
+        #if DEBUG
+        // Debug builds always offer it: the simulator's preview stands near a
+        // storm wherever it is, and a test phone should open AR on a quiet
+        // day too, where the view says no storm is in range.
+        setARButtonVisible(true)
+        return
+        #else
+        guard let location, location.horizontalAccuracy >= 0 else { return }
+        guard Date().timeIntervalSince(arCheckedAt) > 300, arCheck == nil else { return }
+        arCheckedAt = Date()
+        arCheck = Task { [weak self] in
+            let nearby = await StormFeed.anyStorm(nearLat: location.coordinate.latitude, lon: location.coordinate.longitude)
+            guard let self else { return }
+            self.arCheck = nil
+            if let nearby { self.arStormsNearby = nearby }
+            self.setARButtonVisible(self.arStormsNearby)
+        }
+        #endif
+    }
+
+    /// The page's storm messages: `openAR:<volume path or cell code>` from a
+    /// storm's panel, and the selection as it changes. True when handled.
+    /// The page is the app's own, but its strings are still checked before use.
+    fileprivate func handleStormMessage(_ action: String) -> Bool {
+        func target(_ value: Substring) -> StormTarget? {
+            let value = String(value)
+            if MapLink.isCellCode(value) { return .cell(value) }
+            if MapLink.isVolumePath(value) { return .volume(value) }
+            return nil
+        }
+        if action.hasPrefix("openAR:") {
+            presentAR(target: target(action.dropFirst("openAR:".count)) ?? mapSelection)
+            return true
+        }
+        if action.hasPrefix("cloudSelected:") || action.hasPrefix("cellSelected:") {
+            mapSelection = action.split(separator: ":", maxSplits: 1).last.flatMap(target)
+            return true
+        }
+        if action == "selectionCleared" {
+            mapSelection = nil
+            return true
+        }
+        return false
+    }
+
+    func presentAR(target: StormTarget?) {
+        guard presentedViewController == nil, ARStormViewController.isAvailable else { return }
+        let ar = ARStormViewController(target: target)
+        ar.onOpenOnMap = { [weak self] search in self?.openStormOnMap(search) }
+        ar.onClose = { [weak self] in self?.arDidClose() }
+        present(ar, animated: true)
+    }
+
+    /// Show the storm chosen in the AR view on the 3D map, without a reload.
+    private func openStormOnMap(_ search: String) {
+        guard webviewReady, let script = MapLink.openScript(search: search) else { return }
+        webView.evaluateJavaScript(script)
+    }
+
+    private func arDidClose() {
+        // The AR view started accurate updates; the map keeps them only if
+        // its own location button wants them.
+        if locationStateMachine?.state == .off {
+            SharedLocationUpdater.stopAccurateLocationUpdates()
+        }
+        setNeedsUpdateOfSupportedInterfaceOrientations()
     }
 }
