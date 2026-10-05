@@ -271,8 +271,10 @@ image (`ARStormViewController`). What is easy to get wrong:
   `queue: .main`, never with a selector. The simulator has no ARKit and never
   changes thermal state, so only a device finds these.
 - Without ARKit (the simulator) the same view runs as a drag-to-look preview.
-  The AR button shows only where AR works and a storm is within 180 km, and
-  always in debug simulator builds.
+  The AR button shows only while the `HiddenFeatures` are on (five taps on
+  the logo) and where AR works, or as the preview in debug simulator builds.
+  The page's "View in AR" follows the same switch; flipping it reloads the map,
+  because the page reads `nativeCapabilities.ar` only at load.
 
 ## App icon
 
@@ -365,5 +367,4 @@ the second failure; it is not a button.
 The logo goes home: a tap closes the page's panels (a synthetic Escape) and
 switches the web map back to the radar (`window.lm.setTarget("radar", "map")`).
 Five taps in a row toggle [`HiddenFeatures`](meteocool/lib/HiddenFeatures.swift),
-off at every launch; the AR storm view's button is meant to show only while
-they are on.
+off at every launch; the AR storm view is offered only while they are on.

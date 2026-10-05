@@ -575,6 +575,9 @@ final class meteocoolUITests: XCTestCase {
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
         completeOnboardingWithoutPermissions()
+        XCTAssertTrue(app.webViews.staticTexts["Map connection restored"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["map.ar"].exists, "AR stays hidden until the logo is tapped five times")
+        app.buttons["map.logo"].tap(withNumberOfTaps: 5, numberOfTouches: 1)
         tap("map.ar")
         // Closing works, and leaves the map as it was.
         tap("ar.close")

@@ -337,22 +337,6 @@ final class StormFeed {
         return tracks[code]
     }
 
-    /// Whether the data service lists any storm within range of a point:
-    /// what the map asks before offering the AR view. Nil when it could not ask.
-    static func anyStorm(nearLat lat: Double, lon: Double, session: URLSession = .shared) async -> Bool? {
-        guard let url = URL(string: "cells/volumes", relativeTo: NetworkHelper.dataURL) else { return nil }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 20
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        guard let (data, response) = try? await session.data(for: request),
-              (response as? HTTPURLResponse).map({ (200 ..< 300).contains($0.statusCode) }) == true,
-              let index = try? decoder.decode(VolumeIndex.self, from: data) else { return nil }
-        return (index.volumes ?? []).contains {
-            Geo.distanceBearing(fromLat: lat, lon: lon, toLat: $0.lat, lon: $0.lon).metres <= rangeMetres
-        }
-    }
-
     private func poll(every interval: Duration, _ work: @escaping @MainActor (StormFeed) async -> Void) -> Task<Void, Never> {
         Task { [weak self] in
             while !Task.isCancelled {
