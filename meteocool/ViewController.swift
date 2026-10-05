@@ -19,8 +19,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     var autoFocusOnce = false
     var zoomOnce = false
     var webviewReady = false
-    private var loadTimeout: Task<Void, Never>?
-    private let retryButton = UIButton(type: .system)
+    private var recovery: MapRecovery!
+    /// "Trying again" over the map while it keeps failing to load.
+    /// Not a button: `MapRecovery` retries on its own.
+    private let loadStatus = UIStackView()
+    private var loadStatusBackdrop: UIView?
 
     /// Glass views that replace the flat blur and the `TribbleButton` artwork
     /// on iOS 26. Nil before iOS 26, where the storyboard blur and artwork stay.
@@ -93,6 +96,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // first script that reads navigator.geolocation.
         webView?.configuration.userContentController.add(self, name: GeolocationBridge.handlerName)
         webView?.configuration.userContentController.addUserScript(GeolocationBridge.userScript)
+        webView?.configuration.userContentController.addUserScript(MapRecovery.graphicsWatch)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         // Pinch and rotation also end follow mode, not only pan. While
@@ -120,6 +124,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         if #available(iOS 26.0, *) {
             applyLiquidGlass()
         }
+        configureLogo()
 
         setMapControlsHidden(false)
         settingsButton.accessibilityLabel = NSLocalizedString("Settings", comment: "")
@@ -181,23 +186,23 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // native calls it may make. Do not hardcode it: a hardcoded "2.2"
         // stayed in the URL after the app version changed.
         webView.navigationDelegate = self
-        retryButton.setTitle(NSLocalizedString("map_load_failed", comment: "") + "\n" + NSLocalizedString("retry", comment: ""), for: .normal)
-        retryButton.titleLabel?.numberOfLines = 0
-        retryButton.titleLabel?.textAlignment = .center
-        retryButton.configuration = .filled()
-        retryButton.accessibilityIdentifier = "map.retry"
-        retryButton.translatesAutoresizingMaskIntoConstraints = false
-        retryButton.addTarget(self, action: #selector(loadMap), for: .touchUpInside)
-        view.addSubview(retryButton)
-        NSLayoutConstraint.activate([
-            retryButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            retryButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            retryButton.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.8),
-        ])
+        installLoadStatus()
+        recovery = MapRecovery(webView: webView, reload: { [weak self] in
+            self?.loadMap()
+        }, wentDown: { [weak self] in
+            self?.mapWentDown()
+        }, showStatus: { [weak self] visible in
+            self?.loadStatusBackdrop?.isHidden = !visible
+            self?.loadStatus.isHidden = !visible
+        })
         loadMap()
 
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
+        // Mode in Settings, or "Disable Demo Mode", switched the deployment:
+        // load that deployment's map. No restart.
+        NotificationCenter.default.addObserver(self, selector: #selector(loadMap),
+                                               name: MeteocoolEnvironment.didChange, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -261,10 +266,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         let alert = UIAlertController(title: NSLocalizedString("demo_notice_title", comment: ""),
                                       message: NSLocalizedString("demo_notice_message", comment: ""),
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: NSLocalizedString("demo_notice_disable", comment: ""), style: .destructive) { [weak self] _ in
-            MeteocoolEnvironment.leaveDemo()
-            SharedNotificationManager.refreshAuthorization()
-            self?.loadMap()
+        alert.addAction(UIAlertAction(title: NSLocalizedString("demo_notice_disable", comment: ""), style: .destructive) { _ in
+            // Reloads the map and moves the push registration (`didChange`).
+            MeteocoolEnvironment.select(.app)
         })
         let proceed = UIAlertAction(title: NSLocalizedString("demo_notice_continue", comment: ""), style: .default)
         alert.addAction(proceed)
@@ -287,38 +291,45 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         locationStateMachine?.trigger(.buttonPress)
     }
 
+    /// Loads the map page from scratch. `MapRecovery` calls it again until
+    /// the page reports in with `requestSettings`.
     @objc private func loadMap() {
-        loadTimeout?.cancel()
-        retryButton.isHidden = true
         webviewReady = false
         layerSwitcherButton.isEnabled = false
         webView.load(URLRequest(url: MeteocoolEnvironment.current.webURL))
-        loadTimeout = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(30))
-            guard !Task.isCancelled else { return }
-            self?.mapFailed()
-        }
+        recovery.loadStarted()
     }
 
-    private func mapFailed() {
-        loadTimeout?.cancel()
+    /// The page stopped working. The native controls stay usable while
+    /// `MapRecovery` brings it back; the controls that drive the page wait.
+    private func mapWentDown() {
         webviewReady = false
         layerSwitcherButton.isEnabled = false
-        retryButton.isHidden = false
         setMapControlsHidden(false)
         setLogoHidden(false)
     }
 
+    /// Every new page has to report in, including one the page loads itself
+    /// (core's service worker reloads it after an update).
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        webviewReady = false
+        layerSwitcherButton.isEnabled = false
+        recovery.loadStarted()
+    }
+
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        if (error as NSError).code != NSURLErrorCancelled { mapFailed() }
+        // Cancelled means another load replaced this one.
+        if (error as NSError).code != NSURLErrorCancelled { recovery.failed(.navigation) }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        mapFailed()
+        // A page that reported in runs, whatever happened to the rest of its load.
+        if (error as NSError).code != NSURLErrorCancelled, !webviewReady { recovery.failed(.navigation) }
     }
 
+    /// The web content process died: out of memory, or a GPU fault.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        mapFailed()
+        recovery.failed(.crash)
     }
 
     @objc func willResignActive() {
@@ -341,6 +352,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         if webviewReady {
             self.webView.evaluateJavaScript("window.enterForeground?.();")
         }
+        recovery.becameActive()
     }
 
     @IBAction func locationButton(sender: AnyObject){
@@ -424,9 +436,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             feedbackHeavy?.impactOccurred()
         }
 
+        if action == "mapGraphicsLost" {
+            recovery.failed(.graphics)
+        }
+
         if action == "requestSettings" {
-            loadTimeout?.cancel()
-            retryButton.isHidden = true
+            recovery.loadSucceeded()
             webviewReady = true
             layerSwitcherButton.isEnabled = true
             injectSettings()
@@ -589,7 +604,8 @@ extension ViewController {
         logo.contentMode = .scaleAspectFit
         logo.translatesAutoresizingMaskIntoConstraints = false
 
-        let glass = LiquidGlass.element(interactive: false)
+        // Interactive: the logo takes the user back to the radar (`logoTapped`).
+        let glass = LiquidGlass.element()
         glass.contentView.addSubview(logo)
         view.addSubview(glass)
         glassLogo = glass
@@ -627,4 +643,103 @@ extension ViewController {
         glassLogo?.isHidden = hidden
     }
 
+}
+
+// MARK: - Loading status
+
+extension ViewController {
+    /// A spinner and "trying again" in the middle of the map, on a backdrop
+    /// that keeps it legible over a blank or half-drawn page. It takes no
+    /// touches: the map behind stays usable, and nothing looks like a button
+    /// that does nothing.
+    fileprivate func installLoadStatus() {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.startAnimating()
+        let label = UILabel()
+        label.text = NSLocalizedString("map_load_failed", comment: "")
+        label.font = .preferredFont(forTextStyle: .subheadline)
+        label.adjustsFontForContentSizeCategory = true
+        label.numberOfLines = 0
+        label.accessibilityIdentifier = "map.status"
+        loadStatus.addArrangedSubview(spinner)
+        loadStatus.addArrangedSubview(label)
+        loadStatus.spacing = 10
+        loadStatus.alignment = .center
+        loadStatus.translatesAutoresizingMaskIntoConstraints = false
+
+        let backdrop: UIVisualEffectView
+        if #available(iOS 26.0, *) {
+            backdrop = LiquidGlass.element(interactive: false)
+            backdrop.cornerConfiguration = .uniformCorners(radius: .fixed(20))
+        } else {
+            backdrop = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+            backdrop.layer.cornerRadius = 20
+            backdrop.clipsToBounds = true
+            backdrop.translatesAutoresizingMaskIntoConstraints = false
+        }
+        backdrop.isUserInteractionEnabled = false
+        backdrop.contentView.addSubview(loadStatus)
+        view.addSubview(backdrop)
+        NSLayoutConstraint.activate([
+            loadStatus.topAnchor.constraint(equalTo: backdrop.contentView.topAnchor, constant: 14),
+            loadStatus.bottomAnchor.constraint(equalTo: backdrop.contentView.bottomAnchor, constant: -14),
+            loadStatus.leadingAnchor.constraint(equalTo: backdrop.contentView.leadingAnchor, constant: 18),
+            loadStatus.trailingAnchor.constraint(equalTo: backdrop.contentView.trailingAnchor, constant: -18),
+            backdrop.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            backdrop.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            backdrop.widthAnchor.constraint(lessThanOrEqualTo: view.readableContentGuide.widthAnchor),
+        ])
+        backdrop.isHidden = true
+        loadStatus.isHidden = true
+        loadStatusBackdrop = backdrop
+    }
+}
+
+// MARK: - Logo
+
+extension ViewController {
+    /// The logo is the way home: a tap brings back the radar map. Five taps
+    /// in a row show or hide the `HiddenFeatures`.
+    fileprivate func configureLogo() {
+        // On iOS 26 the glass disc around the logo is the larger target.
+        let target: UIView = glassLogo ?? logo
+        target.isUserInteractionEnabled = true
+        target.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(logoTapped)))
+        target.isAccessibilityElement = true
+        target.accessibilityLabel = "meteocool"
+        target.accessibilityHint = NSLocalizedString("show_radar_hint", comment: "")
+        target.accessibilityTraits = .button
+        target.accessibilityIdentifier = "map.logo"
+    }
+
+    @objc private func logoTapped() {
+        if HiddenFeatures.logoTapped() {
+            feedbackHeavy?.impactOccurred()
+        }
+        showRadarMap()
+    }
+
+    /// Leaves whatever the page shows for the radar map: closes the panels on
+    /// top (About, a storm's panel, the point menu) through their own Escape
+    /// handling, and switches from any other map (3D, satellite, lightning)
+    /// to the radar, as picking it in the layer switcher does.
+    /// A page that is down is retried at once instead, and one that has
+    /// navigated away is replaced by the map.
+    private func showRadarMap() {
+        if let host = webView.url?.host, host != MeteocoolEnvironment.current.webURL.host {
+            loadMap()
+            return
+        }
+        guard webviewReady else {
+            recovery.hurry()
+            return
+        }
+        webView.evaluateJavaScript("""
+            (() => {
+              window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+              const lm = window.lm;
+              if (lm && lm.currentCap !== "radar" && lm.getCapability?.("radar")) lm.setTarget("radar", "map");
+            })();
+            """)
+    }
 }

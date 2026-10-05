@@ -9,49 +9,61 @@ import Foundation
 ///
 /// Both URLs are defined here. Call sites read `MeteocoolEnvironment.current`
 /// and never hardcode a host.
-enum MeteocoolEnvironment: CaseIterable {
-    /// The default: app.meteocool.com, for the map and the API alike.
+enum MeteocoolEnvironment: String, CaseIterable {
+    /// The default, "Production" in Settings: app.meteocool.com, for the map
+    /// and the API alike.
     /// It is a custom domain of whichever core Worker the app should use, and
     /// that Worker forwards the API calls to its own backend (core's
     /// `worker/api.ts`). Moving the domain to another Worker moves the app,
     /// map and registrations together, without an app release.
     case app
-    /// The staging cluster, with "Experimental Features" on: ng's `v4` in the
-    /// staging namespace, and core's `--mode staging` build.
+    /// The staging cluster, "Experimental Features" in Settings: ng's `v4` in
+    /// the staging namespace, and core's `--mode staging` build.
     case staging
-    /// The demo namespace on the same cluster, with "Demo Mode" on: the staging
+    /// The demo namespace on the same cluster, "Demo" in Settings: the staging
     /// code replaying a recorded storm as if it were happening now, and core's
     /// `--mode demo` build.
     case demo
 
-    /// Demo when Settings' "Demo Mode" is on, staging when "Experimental
-    /// Features" is on, otherwise app. Settings keeps the two switches exclusive.
-    ///
-    /// Read once per process. Changing a switch therefore cannot put the web
-    /// map and the native API on different deployments before the restart that
-    /// the settings screen asks for.
-    /// Exception: `leaveDemo()` changes it at runtime, and its caller switches
-    /// both at once.
-    // Written only on the main thread, by `leaveDemo()`.
-    nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment = selected()
+    /// Posted on the main thread after `select(_:)` changes `current`.
+    /// The map pages reload and the push registration moves to the new API.
+    static let didChange = Notification.Name("MeteocoolEnvironmentChanged")
 
-    private static func selected() -> MeteocoolEnvironment {
-        let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
-        if defaults?.bool(forKey: "demoMode") == true { return .demo }
-        if defaults?.bool(forKey: "experimentalFeatures") == true { return .staging }
-        return .app
+    /// The deployment chosen under Mode in Settings, stored under `environment`.
+    ///
+    /// Only `select(_:)` changes it, and it posts `didChange` so the web map
+    /// and the native API move together. Nothing reads the stored value
+    /// directly: a reader that cached it could end up on another deployment
+    /// than the map.
+    // Written only on the main thread, by `select(_:)`.
+    nonisolated(unsafe) private(set) static var current: MeteocoolEnvironment = stored(in: UserDefaults(suiteName: "group.org.frcy.app.meteocool"))
+
+    /// The stored deployment, migrating the two switches that preceded Mode.
+    ///
+    /// Up to 2.x the deployment was two switches, "Experimental Features" and
+    /// "Demo Mode". Demo carries over, so the launch notice keeps reminding
+    /// the user. Experimental Features does not: everyone who had it on goes
+    /// back to production once, and picks it again under Mode if they want it.
+    /// No app dependencies here: the check scripts compile this file alone.
+    static func stored(in defaults: UserDefaults?) -> MeteocoolEnvironment {
+        if let value = defaults?.string(forKey: "environment"), let environment = MeteocoolEnvironment(rawValue: value) {
+            return environment
+        }
+        let environment: MeteocoolEnvironment = defaults?.bool(forKey: "demoMode") == true ? .demo : .app
+        defaults?.set(environment.rawValue, forKey: "environment")
+        defaults?.removeObject(forKey: "demoMode")
+        defaults?.removeObject(forKey: "experimentalFeatures")
+        return environment
     }
 
-    /// Switches a demo session to app, or to staging with "Experimental
-    /// Features" on, without a restart.
-    /// Used by "Disable Demo Mode" in the launch notice.
-    /// The caller reloads the map and calls `refreshAuthorization`, which moves
-    /// a push registration made on demo: it removes it from demo's API, then
-    /// registers with the new one.
-    /// No app dependencies here: the check scripts compile this file alone.
-    @MainActor static func leaveDemo() {
-        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(false, forKey: "demoMode")
-        current = selected()
+    /// Switches the whole app to `environment`, without a restart.
+    /// The observers of `didChange` reload the map pages and move a push
+    /// registration: it is removed from the old API, then made on the new one.
+    @MainActor static func select(_ environment: MeteocoolEnvironment) {
+        guard environment != current else { return }
+        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.set(environment.rawValue, forKey: "environment")
+        current = environment
+        NotificationCenter.default.post(name: didChange, object: nil)
     }
 
     /// Base URL for the unversioned mobile API (`post_location`,

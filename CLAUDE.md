@@ -132,12 +132,15 @@ downgrade and observers are notified regardless of application state.
 
 ## Environments
 
-By default the app talks to **app** (`app.meteocool.com`). With
-**Experimental Features** on it talks to staging, and with **Demo Mode** on
-(under About in Settings) to demo. Turning either switch on turns the other off.
-A change needs a restart, which the settings screen says. The URLs live in
-[`meteocool/lib/Environment.swift`](meteocool/lib/Environment.swift) — never
-hardcode a host at a call site:
+**Mode** (under About in Settings) picks one of three: **Production** (`app`,
+`app.meteocool.com`, the default), **Experimental Features** (staging) or
+**Demo**. It is stored as `environment` and takes effect without a restart:
+`MeteocoolEnvironment.select(_:)` posts `didChange`, the phone and CarPlay maps
+reload, and `NotificationManager` moves a push registration (removed from the
+old API, then made on the new one). The two switches Mode replaced are migrated
+once: Demo Mode carries over, Experimental Features goes back to Production. The
+URLs live in [`meteocool/lib/Environment.swift`](meteocool/lib/Environment.swift)
+— never hardcode a host at a call site:
 
 | | App (default) | Staging | Demo |
 | --- | --- | --- | --- |
@@ -281,8 +284,9 @@ points no longer exist. Native settings use UISlider; StepSlider was removed.
 `NotificationManager` owns opt-in, foreground authorization refresh, token
 registration, removal and visible sync-failure state. Stored APNs tokens are
 used only for removal; new registrations need the current launch's APNs token.
-The selected deployment is fixed for the process so changing Experimental
-Features or Demo Mode cannot split web and native requests before restart.
+A registration records the API it was posted to (`registrationOrigin`) when it
+is sent, not when it finishes, so one in flight during a Mode switch is still
+removed from the API it reached.
 
 Onboarding is one sequence and denial/skip are valid completion paths. Location
 starts with When In Use; background access is requested separately for alerts.
@@ -296,3 +300,20 @@ to reset app preferences between cases. They do not reset OS permissions.
 Onboarding is SwiftUI (`meteocool/onboarding/OnboardingView.swift`) hosted in a UIHostingController sheet: a welcome feature list, then Location, then Rain Alerts. Location comes first so the background upgrade requested after alerts builds on When In Use. Pages scroll so large text does not truncate, and at accessibility sizes the buttons scroll with the page rather than being pinned. Buttons are glass on iOS 26 and later. Both former Swift packages (OnboardKit and StepSlider) are removed; the retained package lock has no pins. Settings rows wrap and self-size.
 
 The production web host follows core/wrangler.jsonc. Its currently deployed UI differs from staging and fails the rewritten playback accessibility test. Run that test against production before releasing. Switching environments removes the last recorded registration from its original API before registering on the new API.
+
+## Map loading
+
+Nothing about the map page waits for the user. [`MapRecovery`](meteocool/lib/MapRecovery.swift)
+reloads it when the navigation fails, when it does not post `requestSettings`
+in time, when the web content process dies (memory, GPU), when a canvas in
+`#map` loses its WebGL context for good (a document-start script reports
+`mapGraphicsLost`), and when it no longer answers on returning to the
+foreground. Retries back off from 1 to 15 seconds and happen at once when the
+network returns or the app comes back. A status ("Trying again…") appears from
+the second failure; it is not a button.
+
+The logo goes home: a tap closes the page's panels (a synthetic Escape) and
+switches the web map back to the radar (`window.lm.setTarget("radar", "map")`).
+Five taps in a row toggle [`HiddenFeatures`](meteocool/lib/HiddenFeatures.swift),
+off at every launch; the AR storm view's button is meant to show only while
+they are on.

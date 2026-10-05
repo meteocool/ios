@@ -4,6 +4,7 @@ import http from 'node:http';
 const requests = [];
 let registered = false;
 let mapAvailable = false;
+let mapLoads = 0;
 http.createServer(async (request, response) => {
   response.setHeader('Content-Type', 'application/json');
   if (request.url === '/map/fail' || request.url === '/map/recover') {
@@ -11,22 +12,29 @@ http.createServer(async (request, response) => {
     response.end('{"success":true}');
     return;
   }
-  if (request.url === '/ios.html') {
+  if (request.url.split('?')[0] === '/ios.html') {
     if (!mapAvailable) { response.destroy(); return; }
+    mapLoads += 1;
     response.setHeader('Content-Type', 'text/html');
     response.end(`<!doctype html><title>Map recovery fixture</title>
-      <p>Map connection restored</p><p id="settings"></p>
+      <p>Map connection restored</p><p id="settings"></p><p id="map">map=satellite</p>
       <script>
         window.settings = { injectSettings(settings) {
           document.getElementById("settings").textContent =
             "mapBaseLayer=" + settings.mapBaseLayer + ";radarColorMapping=" + settings.radarColorMapping;
         }};
+        // The part of core's layer manager the logo uses to return to the radar.
+        window.lm = {
+          currentCap: "satellite",
+          getCapability: (cap) => ({ name: cap }),
+          setTarget(cap) { this.currentCap = cap; document.getElementById("map").textContent = "map=" + cap; },
+        };
         webkit.messageHandlers.scriptHandler.postMessage("requestSettings");
       </script>`);
     return;
   }
   if (request.method === 'GET' && request.url === '/requests') {
-    response.end(JSON.stringify({ requests, registered }));
+    response.end(JSON.stringify({ requests, registered, mapLoads }));
     return;
   }
   if (request.method === 'DELETE' && request.url === '/requests') {

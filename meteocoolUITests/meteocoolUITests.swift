@@ -6,7 +6,7 @@ final class meteocoolUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-experimentalFeatures", "YES"]
+        app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-environment", "staging"]
         app.launch()
     }
 
@@ -304,12 +304,14 @@ final class meteocoolUITests: XCTestCase {
         let rotation = app.switches["Two-Finger Map Rotation"]
         rotation.tap()
         XCTAssertEqual(rotation.value as? String, "1")
-        let experimental = app.switches["Experimental Features"]
+        let mode = app.staticTexts["Mode"]
         for _ in 0..<4 {
-            if experimental.isHittable { break }
+            if mode.isHittable { break }
             app.tables.firstMatch.swipeUp()
         }
-        XCTAssertTrue(experimental.isHittable, "Experimental Features must expose its own accessibility label")
+        XCTAssertTrue(mode.isHittable, "Mode must be reachable in Settings")
+        let selected = app.launchArguments.contains("staging") ? "Experimental Features" : "Production"
+        XCTAssertTrue(app.staticTexts[selected].exists, "Mode must name the selected deployment")
         screenshot("Settings lower rows")
         tap("Done")
         screenshot("Dark basemap")
@@ -339,13 +341,13 @@ final class meteocoolUITests: XCTestCase {
 
     func testProductionMapControls() {
         app.terminate()
-        app.launchArguments.removeAll { $0 == "-experimentalFeatures" || $0 == "YES" }
+        app.launchArguments.removeAll { $0 == "-environment" || $0 == "staging" }
         app.launch()
         testOnboardingWithoutPermissionsAndSettings()
     }
 
     @MainActor
-    func testMapFailureAndRetry() async throws {
+    func testMapRecoversWithoutUserAction() async throws {
         let server = URL(string: "http://127.0.0.1:18765/")!
         do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/fail")) }
         catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
@@ -353,17 +355,77 @@ final class meteocoolUITests: XCTestCase {
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
         completeOnboardingWithoutPermissions()
-        XCTAssertTrue(app.buttons["map.retry"].waitForExistence(timeout: 35))
+        let status = app.staticTexts["map.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 15), "A map that keeps failing says it is trying again")
+        XCTAssertFalse(app.buttons["map.retry"].exists, "Nothing asks the user to retry")
         XCTAssertFalse(app.buttons["map.layers"].isEnabled)
         tap("map.settings")
         XCTAssertTrue(app.switches["Enable Notifications"].exists)
         tap("Done")
         screenshot("Map failed with native controls")
         _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover"))
-        tap("map.retry")
-        XCTAssertTrue(app.webViews.staticTexts["Map connection restored"].waitForExistence(timeout: 10))
+        // The backoff tops out at 15 seconds between attempts.
+        XCTAssertTrue(app.webViews.staticTexts["Map connection restored"].waitForExistence(timeout: 30))
         XCTAssertTrue(app.buttons["map.layers"].isEnabled)
-        XCTAssertFalse(app.buttons["map.retry"].exists)
+        XCTAssertFalse(status.exists)
+    }
+
+    @MainActor
+    func testLogoAndModeSwitchWithoutRestart() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        func mapLoads() async throws -> Int {
+            let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("requests"))
+            let state = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            return try XCTUnwrap(state["mapLoads"] as? Int)
+        }
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-environment" || $0 == "staging" }
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        XCTAssertTrue(app.webViews.staticTexts["map=satellite"].waitForExistence(timeout: 15))
+        tap("map.logo")
+        XCTAssertTrue(app.webViews.staticTexts["map=radar"].waitForExistence(timeout: 5), "The logo returns to the radar")
+
+        let loads = try await mapLoads()
+        tap("map.settings")
+        let mode = app.staticTexts["Mode"]
+        for _ in 0..<4 {
+            if mode.isHittable { break }
+            app.tables.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["Production"].exists)
+        mode.tap()
+        let options = app.tables["settings.options"]
+        XCTAssertTrue(options.staticTexts["Experimental Features"].waitForExistence(timeout: 5))
+        screenshot("Mode picker")
+        options.staticTexts["Demo"].tap()
+        tap("Cancel")
+        XCTAssertTrue(app.staticTexts["Production"].waitForExistence(timeout: 5), "Cancel keeps the mode")
+        mode.tap()
+        options.staticTexts["Demo"].tap()
+        tap("Save")
+        XCTAssertTrue(app.staticTexts["Demo"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.alerts.firstMatch.exists, "Switching needs no restart notice")
+        tap("Done")
+        XCTAssertTrue(app.webViews.staticTexts["Map connection restored"].waitForExistence(timeout: 15))
+        let reloaded = try await mapLoads()
+        XCTAssertGreaterThan(reloaded, loads, "Switching the mode reloads the map")
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        let disable = app.alerts.buttons["Disable Demo Mode"]
+        XCTAssertTrue(disable.waitForExistence(timeout: 10), "Demo mode still warns at launch")
+        disable.tap()
+        tap("map.settings")
+        for _ in 0..<4 {
+            if mode.isHittable { break }
+            app.tables.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["Production"].exists, "Disabling demo mode returns to production")
     }
 
     func testDeniedPermissionsRemainUsable() {
