@@ -743,6 +743,33 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertFalse(app.buttons["ar.close"].exists)
     }
 
+    /// The page's share buttons reach the system share sheet, with a link
+    /// back to the map's own host and nothing else.
+    @MainActor
+    func testPageShareOpensShareSheet() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        XCTAssertTrue(app.webViews.staticTexts["share=true"].waitForExistence(timeout: 15),
+                      "The page learns before it loads that the app can share")
+
+        // The system's share sheet, as XCTest sees it on iOS 27.
+        let sheet = app.otherElements["ActivityListView"]
+        app.webViews.buttons["Share elsewhere"].tap()
+        XCTAssertFalse(sheet.waitForExistence(timeout: 3), "A link to another host is not shared")
+
+        app.webViews.buttons["Share view"].tap()
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The share sheet never appeared")
+        XCTAssertTrue(sheet.cells["Copy"].waitForExistence(timeout: 5), "The link can be copied")
+        let header = sheet.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Fixture view · meteocool"))
+        XCTAssertTrue(header.firstMatch.waitForExistence(timeout: 5), "The sheet's header names what is shared")
+        screenshot("Share sheet")
+    }
+
     private func waitUntil(timeout: TimeInterval = 5, _ condition: @escaping () -> Bool) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {

@@ -2,6 +2,7 @@ import UIKit
 import UIKit.UIGestureRecognizer
 import WebKit
 import CoreLocation
+import LinkPresentation
 
 @MainActor var viewController: ViewController? = nil
 
@@ -229,6 +230,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                                                name: MeteocoolEnvironment.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(hiddenFeaturesChanged),
                                                name: HiddenFeatures.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(screenshotTaken),
+                                               name: UIApplication.userDidTakeScreenshotNotification, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -445,6 +448,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         let action = String(describing: message.body)
 
         if message.name == "scriptHandler", handleStormMessage(action) { return }
+        if message.name == "scriptHandler", action.hasPrefix("share:") {
+            if let share = MapShare(json: String(action.dropFirst("share:".count)), mapHost: MeteocoolEnvironment.current.webURL.host) {
+                presentShare(share)
+            }
+            return
+        }
 
         if message.name == GeolocationBridge.handlerName {
             if action == GeolocationBridge.requestAction {
@@ -840,19 +849,20 @@ extension ViewController {
     }
 
     /// The scripts that run before the page: the geolocation shim, the
-    /// graphics watch, and, while the AR view is offered, its declaration to
-    /// the page, so a storm's panel offers "View in AR" and the page reports
+    /// graphics watch, and what the app can do for the page
+    /// (`window.nativeCapabilities`): the share sheet, which makes the page
+    /// show its share buttons (core's lib/share.ts), and, while the AR view is
+    /// offered, AR, so a storm's panel offers "View in AR" and the page reports
     /// its selection (core's lib/nativeAR.ts).
     fileprivate func installUserScripts() {
         guard let controller = webView?.configuration.userContentController else { return }
         controller.removeAllUserScripts()
         controller.addUserScript(GeolocationBridge.userScript)
         controller.addUserScript(MapRecovery.graphicsWatch)
-        if HiddenFeatures.unlocked && ARStormViewController.isAvailable {
-            controller.addUserScript(WKUserScript(
-                source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, { ar: true });",
-                injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        }
+        let capabilities = HiddenFeatures.unlocked && ARStormViewController.isAvailable ? "{ share: true, ar: true }" : "{ share: true }"
+        controller.addUserScript(WKUserScript(
+            source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, \(capabilities));",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
     }
 
     /// The page's storm messages: `openAR:<volume path or cell code>` from a
@@ -919,5 +929,88 @@ extension ViewController {
             SharedLocationUpdater.stopAccurateLocationUpdates()
         }
         setNeedsUpdateOfSupportedInterfaceOrientations()
+    }
+}
+
+// MARK: - Sharing
+
+extension ViewController {
+    /// The system share sheet for a link to the map, from one of the page's
+    /// share buttons or from a screenshot (`screenshotTaken`). `image` is the
+    /// map as it was, offered beside the link for a screenshot.
+    func presentShare(_ share: MapShare, image: UIImage? = nil) {
+        guard presentedViewController == nil else { return }
+        var items: [Any] = [MapLinkItem(share: share, image: image)]
+        if let image { items.append(image) }
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = webView
+            if let rect = share.sourceRect?.intersection(webView.bounds), !rect.isNull {
+                popover.sourceRect = rect
+            } else {
+                // Nothing on the page to point at: the middle of the map, no arrow.
+                popover.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+        }
+        sheet.view.accessibilityIdentifier = "map.share"
+        present(sheet, animated: true)
+    }
+
+    /// The reader just took a screenshot of the map: most likely to send it
+    /// to someone. Offer the share sheet with a link to the same view beside
+    /// the picture, so whoever gets it can open the map where it was.
+    ///
+    /// Only over the map itself, with nothing on top (settings, onboarding,
+    /// the AR view, a share sheet already up), and only once the page can say
+    /// what it shows: a page from before sharing has no `window.shareLink`.
+    @objc fileprivate func screenshotTaken() {
+        guard webviewReady, presentedViewController == nil, view.window != nil,
+              UIApplication.shared.applicationState == .active else { return }
+        webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") { [weak self] result, _ in
+            guard let self, let json = result as? String,
+                  let share = MapShare(json: json, mapHost: MeteocoolEnvironment.current.webURL.host) else { return }
+            self.webView.takeSnapshot(with: nil) { [weak self] image, _ in
+                self?.presentShare(share, image: image)
+            }
+        }
+    }
+}
+
+/// The link in a share sheet: the URL itself for every destination, with a
+/// title for the sheet's header and a mail's subject, and the map's picture
+/// (or the logo) as the header's preview.
+private final class MapLinkItem: NSObject, UIActivityItemSource {
+    private let share: MapShare
+    private let image: UIImage?
+
+    init(share: MapShare, image: UIImage?) {
+        self.share = share
+        self.image = image
+    }
+
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        share.url
+    }
+
+    func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        share.url
+    }
+
+    func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
+        share.title
+    }
+
+    func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
+        let metadata = LPLinkMetadata()
+        metadata.originalURL = share.url
+        metadata.url = share.url
+        metadata.title = share.title
+        if let image {
+            metadata.imageProvider = NSItemProvider(object: image)
+        } else if let logo = UIImage(named: "Logo") {
+            metadata.iconProvider = NSItemProvider(object: logo)
+        }
+        return metadata
     }
 }

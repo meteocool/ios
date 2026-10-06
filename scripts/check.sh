@@ -9,3 +9,5 @@ scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 xcrun swiftc NotificationService/NotificationService.swift tests/NotificationServiceCheck.swift -o "$scratch/check-notification"
 "$scratch/check-notification"
+xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch/check-share"
+"$scratch/check-share"

@@ -165,9 +165,27 @@ http.createServer(async (request, response) => {
     if (!mapAvailable) { response.destroy(); return; }
     mapLoads += 1;
     response.setHeader('Content-Type', 'text/html');
-    response.end(`<!doctype html><title>Map recovery fixture</title>
+    response.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Map recovery fixture</title>
       <p>Map connection restored</p><p id="settings"></p><p id="map">map=satellite</p><p id="link"></p>
+      <p id="caps"></p>
+      <!-- Clear of the native buttons over the page's top corners. -->
+      <div style="margin-top:200px">
+        <button id="share" style="width:200px;height:60px">Share view</button>
+        <button id="elsewhere" style="width:200px;height:60px">Share elsewhere</button>
+      </div>
       <script>
+        // What core's lib/share.ts asks of the app: shown when the app says it can share,
+        // sent as share:{...} with the button's place, and a link back to this host only.
+        document.getElementById("caps").textContent = "share=" + (window.nativeCapabilities?.share === true);
+        const link = { url: location.origin + "/?layer=radar&latLonZ=47.80000,11.70000,8.00&shared=20261006T1234Z", title: "Fixture view · meteocool" };
+        window.shareLink = () => link;
+        const send = (share, button) => {
+          const rect = button.getBoundingClientRect();
+          webkit.messageHandlers.scriptHandler.postMessage("share:" + JSON.stringify({ ...share, x: rect.x, y: rect.y, width: rect.width, height: rect.height }));
+        };
+        document.getElementById("share").addEventListener("click", (event) => send(link, event.currentTarget));
+        document.getElementById("elsewhere").addEventListener("click", (event) =>
+          send({ url: "https://example.invalid/?layer=radar", title: "Elsewhere" }, event.currentTarget));
         window.addEventListener("popstate", () => {
           document.getElementById("link").textContent = "link=" + window.location.search;
         });

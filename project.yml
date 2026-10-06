@@ -76,6 +76,9 @@ targets:
       - sdk: Metal.framework
       - sdk: MetalKit.framework
       - sdk: CoreMotion.framework
+      # The share sheet's link preview (ViewController's MapLinkItem), linked
+      # explicitly like the rest.
+      - sdk: LinkPresentation.framework
       - target: NotificationService
     scheme:
       testTargets:
