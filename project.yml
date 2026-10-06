@@ -51,6 +51,9 @@ targets:
           - "**/.DS_Store"
           - "*.xcloc"
           - "**/*.xcloc/**"
+      # The Live Activity's content state and radar image, shared with
+      # the RainActivity extension that draws it.
+      - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool
@@ -79,7 +82,11 @@ targets:
       # The share sheet's link preview (ViewController's MapLinkItem), linked
       # explicitly like the rest.
       - sdk: LinkPresentation.framework
+      # The rain Live Activity: started, updated and ended by the app
+      # (LiveActivityManager) or over APNs, drawn by RainActivity.
+      - sdk: ActivityKit.framework
       - target: NotificationService
+      - target: RainActivity
     scheme:
       testTargets:
         - meteocoolUITests
@@ -102,6 +109,34 @@ targets:
           - $(inherited)
           - "@executable_path/Frameworks"
           - "@executable_path/../../Frameworks"
+
+  # Draws the rain Live Activity (lock screen and Dynamic Island). WidgetKit
+  # extensions cannot use the network, so the radar image reaches it as a
+  # file in the app group (Shared/RadarImageStore.swift).
+  RainActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: RainActivity
+        excludes:
+          - "**/.DS_Store"
+      - path: Shared
+      # The radar palettes, generated from core for the AR view.
+      - path: meteocool/AR/Colormaps.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.RainActivity
+        INFOPLIST_FILE: RainActivity/Info.plist
+        CODE_SIGN_ENTITLEMENTS: RainActivity/RainActivity.entitlements
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - $(inherited)
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
 
   meteocoolUITests:
     type: bundle.ui-testing

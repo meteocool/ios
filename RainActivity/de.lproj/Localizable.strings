@@ -1,0 +1,20 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Niesel";
+"Light rain" = "Leichter Regen";
+"Rain" = "Regen";
+"Intense Rain" = "Starker Regen";
+"Hail" = "Hagel";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ bis %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ hält an";
+"rain_over" = "Der Regen ist vorbei";
+"rain_stale" = "Warte auf neue Radardaten";
+"rain_lasting %lld" = "Dauert etwa %lld Min.";
+"rain_open_ended" = "Noch kein Ende in Sicht";
+"rain_peak_dbz %lld" = "Spitze %lld dBZ";
+/* Chart axis */
+"rain_now" = "Jetzt";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Regen an deinem Standort";

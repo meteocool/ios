@@ -56,6 +56,7 @@ import UserNotifications
                 } else {
                     unregister()
                 }
+                SharedLiveActivities.settingChanged()
                 changed()
                 completion(granted, nil)
             } catch {
@@ -92,6 +93,7 @@ import UserNotifications
     func disable() {
         defaults?.set(false, forKey: "pushNotification")
         clearNotifications()
+        SharedLiveActivities.settingChanged()
         SharedLocationUpdater.updateBackgroundMonitoring()
         unregister()
         changed()
@@ -151,7 +153,10 @@ import UserNotifications
         syncFailed = !success
         // Recorded again because a removal that ran meanwhile cleared it, and
         // the server now holds this registration.
-        if success { registrationWillBegin(origin: origin) }
+        if success {
+            registrationWillBegin(origin: origin)
+            SharedLiveActivities.sync()
+        }
         // Remove the new registration if alerts were turned off, or the
         // deployment changed, while the POST was running.
         if !canRegister { unregister() }

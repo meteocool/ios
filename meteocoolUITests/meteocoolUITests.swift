@@ -676,6 +676,44 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertEqual(resumed["registered"] as? Bool, false, "Foregrounding must not re-register disabled notifications")
     }
 
+    /// The Live Activity switch reaches the backend: turning it off withdraws
+    /// the push-to-start token (`enabled: false`), turning it back on offers it
+    /// again. Run `node tests/mobile-api-recorder.mjs` first.
+    @MainActor
+    func testLiveActivitySettingReachesAPI() async throws {
+        let endpoint = URL(string: "http://127.0.0.1:18765/requests")!
+        var reset = URLRequest(url: endpoint)
+        reset.httpMethod = "DELETE"
+        do { _ = try await URLSession.shared.data(for: reset) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        func lastLiveActivity() async throws -> [String: Any]? {
+            let (data, _) = try await URLSession.shared.data(from: endpoint)
+            let state = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            return (state["requests"] as? [[String: Any]] ?? [])
+                .last { $0["path"] as? String == "/v3/mobile/live_activity" }?["body"] as? [String: Any]
+        }
+        func waitForLiveActivity(enabled: Bool) async throws -> [String: Any]? {
+            for _ in 0..<40 {
+                if let body = try await lastLiveActivity(), body["enabled"] as? Bool == enabled { return body }
+                try await Task.sleep(for: .milliseconds(250))
+            }
+            return nil
+        }
+        openNotificationSliderSettings()
+        let toggle = app.switches["Live Activity During Rain"]
+        scrollIntoView(toggle)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertEqual(toggle.value as? String, "1", "Live Activities are on by default")
+        toggle.tap()
+        let off = try await waitForLiveActivity(enabled: false)
+        XCTAssertNotNil(off, "Turning the Live Activity off must reach the server")
+        XCTAssertEqual(off?["token"] as? String, String(repeating: "a", count: 64))
+        XCTAssertTrue(off?["startToken"] is NSNull, "A disabled device must not offer a push-to-start token")
+        toggle.tap()
+        let on = try await waitForLiveActivity(enabled: true)
+        XCTAssertNotNil(on, "Turning the Live Activity back on must reach the server")
+    }
+
     /// The AR storm view's preview, against the recorder's synthetic storm,
     /// boxed as two map tiles: the storm is found and tagged once, every mode
     /// can be chosen, and Open on Map hands the storm's link to the map. Run

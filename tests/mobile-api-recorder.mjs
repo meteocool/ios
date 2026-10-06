@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { gzipSync } from 'node:zlib';
+import { deflateSync, gzipSync } from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { setTimeout } from 'node:timers/promises';
@@ -122,6 +122,60 @@ function stormData(path) {
   return null;
 }
 
+// The rain Live Activity's inputs: the bar chart at the user's location --
+// rain arriving in 15 minutes, peaking at 38 dBZ, over within the hour --
+// and a radar image, both made up here.
+function rainTimeseries() {
+  const now = Math.floor(Date.now() / 300000) * 300;
+  const frames = {};
+  for (let step = -24; step <= 24; step++) {
+    const lead = step * 5;
+    const dbz = lead < 15 ? -32.5 : lead > 70 ? -32.5 : Math.round(2 * (38 - Math.abs(lead - 40) * 0.9)) / 2;
+    frames[now + step * 300] = step > 22 ? null : {
+      dbz, source: step <= 0 ? 'observation' : 'nowcast_phys', tile_id: 'fixture', processed_time: now, filename: 'fixture',
+    };
+  }
+  return { server_time: now, frames };
+}
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+function crc32(buffer) {
+  let c = 0xffffffff;
+  for (const byte of buffer) c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+/** A 256 px square "radar image": a map-grey ground with a storm west of the centre. */
+function radarPreview() {
+  const side = 256;
+  const rows = [];
+  for (let y = 0; y < side; y++) {
+    const row = Buffer.alloc(1 + side * 3);
+    for (let x = 0; x < side; x++) {
+      const r = Math.hypot(x - 90, (y - 120) * 1.4);
+      const [red, green, blue] = r < 18 ? [255, 167, 0] : r < 40 ? [15, 195, 22] : r < 62 ? [96, 179, 212] : [214, 219, 222];
+      row.set([red, green, blue], 1 + x * 3);
+    }
+    rows.push(row);
+  }
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type, 'ascii'), data])));
+    return Buffer.concat([length, Buffer.from(type, 'ascii'), data, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(side, 0);
+  header.writeUInt32BE(side, 4);
+  header.set([8, 2, 0, 0, 0], 8);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header), chunk('IDAT', deflateSync(Buffer.concat(rows))), chunk('IEND', Buffer.alloc(0))]);
+}
+
 http.createServer(async (request, response) => {
   response.setHeader('Content-Type', 'application/json');
   const path = request.url.split('?')[0];
@@ -130,6 +184,15 @@ http.createServer(async (request, response) => {
     response.setHeader('Content-Type', 'application/octet-stream');
     response.setHeader('Content-Encoding', 'gzip');
     response.end(syntheticVolume(tile));
+    return;
+  }
+  if (request.method === 'GET' && path === '/v3/radar/timeseries') {
+    response.end(JSON.stringify(rainTimeseries()));
+    return;
+  }
+  if (request.method === 'GET' && path === '/v3/preview/og.png') {
+    response.setHeader('Content-Type', 'image/png');
+    response.end(radarPreview());
     return;
   }
   const storms = request.method === 'GET' ? stormData(path) : null;
@@ -213,7 +276,7 @@ http.createServer(async (request, response) => {
     response.end('{"success":true}');
     return;
   }
-  if (request.method !== 'POST' || !['/post_location', '/unregister', '/clear_notification'].includes(request.url)) {
+  if (request.method !== 'POST' || !['/post_location', '/unregister', '/clear_notification', '/v3/mobile/live_activity'].includes(request.url)) {
     response.writeHead(404).end('{"success":false}');
     return;
   }

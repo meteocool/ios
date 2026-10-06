@@ -144,7 +144,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Enable Notifications", comment: "dataPushNotification"),
         NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification"),
         NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
-        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
+        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification"),
+        NSLocalizedString("live_activity", comment: "dataPushNotification")
     ]
     private var dataMapView = [
         NSLocalizedString("Two-Finger Map Rotation", comment: "dataMapView"),
@@ -307,6 +308,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     timeSliderLoad = true
                 }
                 return stepperSliderCellTime
+            case 4: // Live Activity
+                switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataPushNotification[indexPath.row]
+                switcherCell.switcher.setOn(SharedLiveActivities.preferred, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+                return switcherCell
             default:
                 print("This should not happen...")
                 return textCell
@@ -487,6 +495,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 1:
             userDefaults?.set(sender.isOn, forKey: "withDBZ")
             SharedLocationUpdater.refreshNotificationRegistration()
+        case 4:
+            userDefaults?.set(sender.isOn, forKey: "liveActivity")
+            SharedLiveActivities.settingChanged()
         default:
             assertionFailure("Unknown settings switch")
         }
@@ -535,6 +546,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         if let location = SharedLocationUpdater.getCurrentLocation() {
             SharedLocationUpdater.postLocation(location: location, pressure: -1)
         }
+        SharedLiveActivities.refresh(force: true)
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {

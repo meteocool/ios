@@ -251,6 +251,7 @@ import CoreLocation
             for observer in observers.allObjects {
                 (observer as? LocationObserver)?.notify(location: location)
             }
+            SharedLiveActivities.refresh(location: location)
 
             if (!background) {
                 if location.horizontalAccuracy <= 20 {

@@ -1,0 +1,20 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Drizzle";
+"Light rain" = "Light rain";
+"Rain" = "Rain";
+"Intense Rain" = "Intense rain";
+"Hail" = "Hail";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ until %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ continues";
+"rain_over" = "The rain is over";
+"rain_stale" = "Waiting for new radar data";
+"rain_lasting %lld" = "Lasting about %lld min";
+"rain_open_ended" = "No end in sight yet";
+"rain_peak_dbz %lld" = "Peak %lld dBZ";
+/* Chart axis */
+"rain_now" = "Now";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Rain at your location";

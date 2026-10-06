@@ -66,6 +66,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults.set(min(max(userDefaults.integer(forKey: "timeBeforeValue"), 0), 8), forKey: "timeBeforeValue")
         }
         SharedNotificationManager.refreshAuthorization()
+        SharedLiveActivities.start()
         return true
     }
 
@@ -79,8 +80,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        // `live_activity` asks for a new radar image for the Live Activity,
+        // which only the app can download. A clear means the rain is over,
+        // which also ends an activity the app started itself.
+        let refresh = userInfo["live_activity"] != nil || userInfo["clear_all"] as? Bool == true
+        let liveActivity = refresh ? SharedLiveActivities.refresh(force: true) : nil
         guard userInfo["clear_all"] as? Bool == true else {
-            completionHandler(.noData)
+            guard let liveActivity else {
+                completionHandler(.noData)
+                return
+            }
+            Task {
+                await liveActivity.value
+                completionHandler(.newData)
+            }
             return
         }
         SharedNotificationManager.clearNotifications()
