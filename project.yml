@@ -103,7 +103,7 @@ targets:
           - "**/.DS_Store"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.NotificationService2
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.NotificationService
         INFOPLIST_FILE: NotificationService/Info.plist
         CODE_SIGN_ENTITLEMENTS: NotificationService/NotificationService.entitlements
         SKIP_INSTALL: YES

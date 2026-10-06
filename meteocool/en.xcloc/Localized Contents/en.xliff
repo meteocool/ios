@@ -56,23 +56,6 @@
       </trans-unit>
     </body>
   </file>
-  <file original="NotificationContent/en.lproj/InfoPlist.strings" source-language="en" target-language="en" datatype="plaintext">
-    <header>
-      <tool tool-id="com.apple.dt.xcode" tool-name="Xcode" tool-version="11.0" build-num="11M336w"/>
-    </header>
-    <body>
-      <trans-unit id="CFBundleDisplayName" xml:space="preserve">
-        <source>NotificationContent</source>
-        <target>NotificationContent</target>
-        <note>Bundle display name</note>
-      </trans-unit>
-      <trans-unit id="CFBundleName" xml:space="preserve">
-        <source>NotificationContent</source>
-        <target>NotificationContent</target>
-        <note>Bundle name</note>
-      </trans-unit>
-    </body>
-  </file>
   <file original="NotificationService/en.lproj/InfoPlist.strings" source-language="en" target-language="en" datatype="plaintext">
     <header>
       <tool tool-id="com.apple.dt.xcode" tool-name="Xcode" tool-version="11.0" build-num="11M336w"/>
