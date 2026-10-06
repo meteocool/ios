@@ -25,13 +25,33 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// A second window would overwrite that global without any error, and
     /// the first window would stop receiving settings and gestures.
     /// Keep this check until the global is removed.
+    ///
+    /// A link that launched the app arrives here too, before the map exists;
+    /// the controller holds it until the page is up.
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
         let otherWindowScenes = UIApplication.shared.connectedScenes.contains {
             $0 !== scene && $0.session.role == .windowApplication
         }
         if otherWindowScenes {
+            // A link opened in a new window goes to the map already on screen.
+            options.userActivities.forEach { open($0, in: viewController) }
             UIApplication.shared.requestSceneSessionDestruction(session, options: nil)
+            return
         }
+        options.userActivities.forEach { open($0, in: window?.rootViewController as? ViewController) }
+    }
+
+    /// A link opened while the app was running or suspended.
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        open(userActivity, in: window?.rootViewController as? ViewController)
+    }
+
+    /// Opens a shared map link (a universal link on app.meteocool.com) in
+    /// the map. Anything else, on another host or page, is ignored.
+    private func open(_ activity: NSUserActivity, in map: ViewController?) {
+        guard activity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = activity.webpageURL, let search = MapLink.search(opening: url) else { return }
+        map?.openLink(search: search)
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {

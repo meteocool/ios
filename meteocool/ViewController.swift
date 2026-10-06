@@ -39,7 +39,14 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// The storm selected on the map, from the page's `cloudSelected:` and
     /// `cellSelected:` messages: what the AR view looks for when opened.
     private var mapSelection: StormTarget?
-    
+    /// A shared link's search, held until the page reports in with
+    /// `requestSettings`.
+    private var pendingLink: String?
+    /// A link opened during this visit to the foreground says where the map
+    /// looks, so coming back to the foreground does not centre on the user.
+    /// UIKit may hand over the link before or after `willEnterForeground`.
+    private var linkPlacedView = false
+
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     enum LocationState {
@@ -352,12 +359,13 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     @objc func willResignActive() {
+        linkPlacedView = false
         if webviewReady { webView.evaluateJavaScript("window.leaveForeground?.();") }
     }
 
     @objc func willEnterForeground() {
         guard webviewReady else { return }
-        if userDefaults?.bool(forKey: "autoZoom") == true {
+        if userDefaults?.bool(forKey: "autoZoom") == true, !linkPlacedView {
             zoomOnce = true
             autoFocusOnce = true
         }
@@ -472,6 +480,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             }
 
             setMapControlsHidden(false)
+
+            // After the location button, so the link wins over its centring.
+            if let link = pendingLink { openLink(search: link) }
         }
         
         if action == "layerSwitcherOpened" {
@@ -872,15 +883,33 @@ extension ViewController {
     func presentAR(target: StormTarget?) {
         guard presentedViewController == nil, HiddenFeatures.unlocked, ARStormViewController.isAvailable else { return }
         let ar = ARStormViewController(target: target)
-        ar.onOpenOnMap = { [weak self] search in self?.openStormOnMap(search) }
+        ar.onOpenOnMap = { [weak self] search in self?.openLink(search: search) }
         ar.onClose = { [weak self] in self?.arDidClose() }
         present(ar, animated: true)
     }
 
-    /// Show the storm chosen in the AR view on the 3D map, without a reload.
-    private func openStormOnMap(_ search: String) {
-        guard webviewReady, let script = MapLink.openScript(search: search) else { return }
+    /// Opens a link's search in the map without reloading it: a shared link
+    /// (`SceneDelegate`), or the storm chosen in the AR view. Held until the
+    /// page reports in if it is still loading.
+    ///
+    /// The link says where to look, so it wins over the user's position, as
+    /// it does on the web (core's `linkPlacesView`): the next fix moves the
+    /// dot without centring on it, and following stops as if the map had
+    /// been dragged.
+    func openLink(search: String) {
+        linkPlacedView = true
+        guard webviewReady else {
+            pendingLink = search
+            return
+        }
+        pendingLink = nil
+        guard let script = MapLink.openScript(search: search) else { return }
         webView.evaluateJavaScript(script)
+        autoFocusOnce = false
+        zoomOnce = false
+        if locationStateMachine?.state == .tracking {
+            locationStateMachine?.trigger(.mapMove)
+        }
     }
 
     private func arDidClose() {

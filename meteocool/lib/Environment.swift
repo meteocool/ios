@@ -162,6 +162,12 @@ enum MeteocoolEnvironment: String, CaseIterable {
         page(query: ["toolbar": "no"])
     }
 
+    /// Whether `host` serves one of the environments' web maps, so a link on
+    /// it is a link to the map.
+    static func isWebHost(_ host: String) -> Bool {
+        allCases.contains { URL(string: $0.webHost)?.host == host.lowercased() }
+    }
+
     private func page(query: [String: String] = [:]) -> URL {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         var components = URLComponents(string: "\(webHost)/ios.html")!

@@ -299,6 +299,20 @@ enum ARCheck {
             {"code":"G1374918628","network":"de","lon":6.28,"lat":47.49,"path":"\(path)","tier":2}
             """.utf8))
         precondition(MapLink.search(for: entry, cell: nil) == "?layer=cells3d&cloud=20261004T020500/de-G1374918628")
+        // Shared links: the map's root on one of the app's hosts, with a query.
+        func opening(_ link: String) -> String? { MapLink.search(opening: URL(string: link)!) }
+        precondition(opening("https://app.meteocool.com/?layer=cells3d&cell=2026100612340000012345&shared=20261006T1234Z")
+            == "?layer=cells3d&cell=2026100612340000012345&shared=20261006T1234Z")
+        precondition(opening("https://APP.meteocool.com/?latLonZ=48.1,11.5,9") == "?latLonZ=48.1,11.5,9")
+        precondition(opening("https://next.meteocool.com/?layer=radar") == "?layer=radar")
+        precondition(opening("https://demo.meteocool.com?layer=radar") == "?layer=radar")
+        precondition(opening("https://app.meteocool.com/?q=%3Cscript%3E") == "?q=%3Cscript%3E", "Stays percent-encoded")
+        for link in ["https://app.meteocool.com/", "https://app.meteocool.com/?", "https://app.meteocool.com/ios.html?layer=radar",
+                     "https://app.meteocool.com/post_location?x=1", "http://app.meteocool.com/?layer=radar",
+                     "https://app.meteocool.com:8443/?layer=radar", "https://meteocool.com/?layer=radar",
+                     "https://app.meteocool.com.evil.example/?layer=radar", "https://evil.example/?layer=radar"] {
+            precondition(opening(link) == nil, link)
+        }
         let script = MapLink.openScript(search: "?a=\"</script>")!
         precondition(script.contains(#"["?a=\"<\/script>"][0]"#) || script.contains(#"["?a=\"</script>"][0]"#), script)
     }

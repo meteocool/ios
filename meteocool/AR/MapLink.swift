@@ -40,6 +40,18 @@ enum MapLink {
         value.count == 22 && value.allSatisfy { $0.isASCII && $0.isNumber }
     }
 
+    /// The search of a shared map link (core's `lib/shareLink.ts`), or nil
+    /// for a URL that is not one: another host, another page (`ios.html`),
+    /// or the bare root, which is the website rather than a place on the map.
+    static func search(opening url: URL) -> String? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.port == nil,
+              let host = components.host, MeteocoolEnvironment.isWebHost(host),
+              components.path == "/" || components.path.isEmpty,
+              let query = components.percentEncodedQuery, !query.isEmpty else { return nil }
+        return "?" + query
+    }
+
     /// JavaScript that opens a link's search in the map without reloading
     /// it: through `window.openLink` where core has it, and otherwise the way
     /// the browser's back button does, which core's urlState already follows.
