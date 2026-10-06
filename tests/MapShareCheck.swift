@@ -29,6 +29,13 @@ enum MapShareCheck {
         precondition(odd != nil && odd?.sourceRect == nil, "A malformed rect is dropped, not the share")
         let long = MapShare(json: #"{"url":"\#(link)","title":"\#(String(repeating: "a", count: 500))"}"#, mapHost: host)
         precondition(long?.title.count == MapShare.maxTitleLength)
+
+        precondition(share?.viewSearch == "?layer=cells3d&cell=2026100402050000012345",
+                     "The view to come back to is the link without its shared stamp")
+        let view = MapShare(json: #"{"url":"https://app.meteocool.com/?shared=20261006T1234Z&share_lang=de&layer=cells3d&view=11.5,48.1,9.2,40,-15&cloud=20261005T015000/de-T100053300344","title":"t"}"#, mapHost: host)
+        precondition(view?.viewSearch == "?layer=cells3d&view=11.5,48.1,9.2,40,-15&cloud=20261005T015000/de-T100053300344")
+        precondition(MapShare(json: #"{"url":"https://app.meteocool.com/?shared=20261006T1234Z","title":"t"}"#, mapHost: host)?.viewSearch == nil,
+                     "A link that says nothing but when it was shared is no view")
         print("Map share parsing checks passed")
     }
 }

@@ -22,6 +22,13 @@ import WebKit
 ///
 /// Retries back off from one second to `maxDelay`, and happen at once when
 /// the network comes back or the app returns to the foreground.
+///
+/// While the page runs, the view on screen (`window.shareLink()`, the link
+/// the share sheet offers) is noted every `viewInterval`. The first reload
+/// after a page that ran opens that view again, so a crash in the 3D map
+/// comes back to the same storm rather than the radar. Should the page die
+/// again before `stableAfter`, the view may be what kills it, and the next
+/// reload is the plain map.
 @MainActor
 final class MapRecovery {
     enum Failure: String {
@@ -37,6 +44,8 @@ final class MapRecovery {
     /// A page up this long resets the backoff when it fails, so a single
     /// crash reloads at once while a page that keeps crashing backs off.
     static let stableAfter: TimeInterval = 60
+    /// How often the view on screen is noted.
+    static let viewInterval: TimeInterval = 3
 
     /// Seconds to wait before retry number `failures`: 1, 2, 4, 8, then `maxDelay`.
     static func delay(afterFailures failures: Int) -> TimeInterval {
@@ -44,7 +53,7 @@ final class MapRecovery {
     }
 
     private weak var webView: WKWebView?
-    private let reload: () -> Void
+    private let reload: (_ view: String?) -> Void
     private let wentDown: () -> Void
     private let showStatus: (Bool) -> Void
 
@@ -56,14 +65,19 @@ final class MapRecovery {
     /// Armed while waiting to retry.
     private var retry: Task<Void, Never>?
     private var retryInForeground = false
+    /// Notes the view while the page runs.
+    private var viewWatch: Task<Void, Never>?
+    /// The search of the link to the view on screen, last time it was asked.
+    private var lastView: String?
     private let pathMonitor = NWPathMonitor()
     private var online = true
 
     /// - Parameters:
-    ///   - reload: loads the map page again; it calls `loadStarted`.
+    ///   - reload: loads the map page again, opening `view` (a link's search)
+    ///     if there is one; it calls `loadStarted`.
     ///   - wentDown: the page stopped working, whatever the cause.
     ///   - showStatus: shows or hides the "trying again" status.
-    init(webView: WKWebView, reload: @escaping () -> Void, wentDown: @escaping () -> Void, showStatus: @escaping (Bool) -> Void) {
+    init(webView: WKWebView, reload: @escaping (_ view: String?) -> Void, wentDown: @escaping () -> Void, showStatus: @escaping (Bool) -> Void) {
         self.webView = webView
         self.reload = reload
         self.wentDown = wentDown
@@ -82,6 +96,7 @@ final class MapRecovery {
         retryInForeground = false
         forgetOldFailures()
         readySince = nil
+        stopWatchingView()
         watchdog?.cancel()
         // Counts ticks rather than reading the clock, so time spent suspended
         // in the background does not count against the page.
@@ -106,6 +121,7 @@ final class MapRecovery {
         watchdog = nil
         readySince = Date()
         showStatus(false)
+        watchView()
     }
 
     /// The page failed to load, or died after loading. Ignored while already
@@ -116,6 +132,8 @@ final class MapRecovery {
         watchdog = nil
         forgetOldFailures()
         readySince = nil
+        viewWatch?.cancel()
+        viewWatch = nil
         failures += 1
         NSLog("Map failed (%@), attempt %d", failure.rawValue, failures)
         wentDown()
@@ -137,8 +155,10 @@ final class MapRecovery {
     }
 
     /// Retries a failed page now instead of after the backoff. A load in
-    /// progress goes on.
-    func hurry() {
+    /// progress goes on. Without `restoringView`, the page comes back
+    /// with its own view instead of the one it died with.
+    func hurry(restoringView: Bool = true) {
+        if !restoringView { lastView = nil }
         if retryInForeground || retry != nil { retryNow() }
     }
 
@@ -146,7 +166,32 @@ final class MapRecovery {
         retry?.cancel()
         retry = nil
         retryInForeground = false
-        reload()
+        reload(failures == 1 ? lastView : nil)
+    }
+
+    /// Asks the page for its view every `viewInterval` while it runs. A page
+    /// from before sharing has no `window.shareLink` and leaves nothing to
+    /// open again.
+    private func watchView() {
+        viewWatch?.cancel()
+        viewWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let webView = self?.webView else { return }
+                let json = try? await webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") as? String
+                guard !Task.isCancelled, let self else { return }
+                if let json, let share = MapShare(json: json, mapHost: webView.url?.host) {
+                    self.lastView = share.viewSearch
+                }
+                try? await Task.sleep(for: .seconds(Self.viewInterval))
+            }
+        }
+    }
+
+    /// A new page, other than a retry, starts from its own view.
+    private func stopWatchingView() {
+        viewWatch?.cancel()
+        viewWatch = nil
+        lastView = nil
     }
 
     /// The app returned to the foreground. Retries a failed page at once, and

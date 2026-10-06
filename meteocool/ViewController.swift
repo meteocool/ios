@@ -212,8 +212,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // stayed in the URL after the app version changed.
         webView.navigationDelegate = self
         installLoadStatus()
-        recovery = MapRecovery(webView: webView, reload: { [weak self] in
+        recovery = MapRecovery(webView: webView, reload: { [weak self] view in
             self?.loadMap()
+            // The view the page died with, unless a shared link waits to be opened.
+            if let view, self?.pendingLink == nil { self?.openLink(search: view) }
         }, wentDown: { [weak self] in
             self?.mapWentDown()
         }, showStatus: { [weak self] visible in
@@ -777,7 +779,7 @@ extension ViewController {
             return
         }
         guard webviewReady else {
-            recovery.hurry()
+            recovery.hurry(restoringView: false)
             return
         }
         webView.evaluateJavaScript("""

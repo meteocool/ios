@@ -59,6 +59,17 @@ struct MapShare: Equatable {
         }
     }
 
+    /// The link's search without what makes it a shared link (the `shared`
+    /// stamp and the sharer's `share_lang`): the view on screen, to open
+    /// again after the page died. Without the stamp the page does not
+    /// announce it as a link shared some time ago (core's `lib/shareLink.ts`).
+    var viewSearch: String? {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        components.queryItems = components.queryItems?.filter { $0.name != "shared" && $0.name != "share_lang" }
+        guard let query = components.percentEncodedQuery, !query.isEmpty else { return nil }
+        return "?" + query
+    }
+
     /// A finite number from JSON, which arrives as `NSNumber`.
     private static func number(_ value: Any?) -> CGFloat? {
         guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
