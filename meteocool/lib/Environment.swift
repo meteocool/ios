@@ -126,6 +126,10 @@ enum MeteocoolEnvironment: String, CaseIterable {
         }
     }
 
+    /// The web map's root, which a shared link (`MapLink`) or a widget opens
+    /// with the view in its query.
+    var mapURL: URL { URL(string: webHost)! }
+
     /// Web hosts: custom domains of core's Workers, set in core/wrangler.jsonc.
     private var webHost: String {
         switch self {

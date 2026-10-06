@@ -35,10 +35,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         if otherWindowScenes {
             // A link opened in a new window goes to the map already on screen.
             options.userActivities.forEach { open($0, in: viewController) }
+            options.urlContexts.forEach { open($0.url, in: viewController) }
             UIApplication.shared.requestSceneSessionDestruction(session, options: nil)
             return
         }
         options.userActivities.forEach { open($0, in: window?.rootViewController as? ViewController) }
+        options.urlContexts.forEach { open($0.url, in: window?.rootViewController as? ViewController) }
+    }
+
+    /// A tapped widget: its URL is a link to the map at the widget's place,
+    /// handed over as a URL rather than a universal link.
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        URLContexts.forEach { open($0.url, in: window?.rootViewController as? ViewController) }
     }
 
     /// A link opened while the app was running or suspended.
@@ -49,8 +57,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// Opens a shared map link (a universal link on app.meteocool.com) in
     /// the map. Anything else, on another host or page, is ignored.
     private func open(_ activity: NSUserActivity, in map: ViewController?) {
-        guard activity.activityType == NSUserActivityTypeBrowsingWeb,
-              let url = activity.webpageURL, let search = MapLink.search(opening: url) else { return }
+        guard activity.activityType == NSUserActivityTypeBrowsingWeb, let url = activity.webpageURL else { return }
+        open(url, in: map)
+    }
+
+    private func open(_ url: URL, in map: ViewController?) {
+        guard let search = MapLink.search(opening: url) else { return }
         map?.openLink(search: search)
     }
 
@@ -60,6 +72,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
+        SharedWidgets.leavingForeground()
         viewController?.willResignActive()
         SharedLocationUpdater.willResignActive()
     }

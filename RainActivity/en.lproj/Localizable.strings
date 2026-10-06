@@ -18,3 +18,18 @@
 "rain_now" = "Now";
 "rain_hours %lld" = "+%lld h";
 "rain_chart" = "Rain at your location";
+
+/* Widgets */
+"widget_dry_until %@" = "Dry until %@";
+"widget_ends %@" = "until %@";
+"widget_until_rain" = "min to rain";
+"widget_min" = "min";
+"widget_dry" = "Dry";
+"widget_no_location" = "Open meteocool once to share your location with its widgets.";
+"widget_no_location_short" = "Location unknown";
+"widget_no_data" = "No radar data right now";
+"widget_places_title" = "Rain at your places";
+"widget_peak" = "Heaviest";
+"widget_none" = "None";
+"widget_rain_minutes" = "Rain ahead";
+"widget_minutes %lld" = "%lld min";

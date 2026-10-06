@@ -1,11 +1,15 @@
 import SwiftUI
 import WidgetKit
 
-/// The widget extension that draws the rain Live Activity. It has no
-/// home-screen widgets of its own.
+/// The widget extension: the rain Live Activity, and the home and lock
+/// screen widgets (`Widgets/`).
 @main
 struct RainActivityBundle: WidgetBundle {
     var body: some Widget {
         RainActivityWidget()
+        RainForecastWidget()
+        RadarMapWidget()
+        RainClockWidget()
+        RainPlacesWidget()
     }
 }

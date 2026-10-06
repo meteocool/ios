@@ -55,8 +55,9 @@ private struct LockScreenView: View {
 }
 
 /// What the rain does next, in one or two lines. The times count themselves:
-/// "in 12 minutes" ticks down between updates without the app.
-private struct Headline: View {
+/// "in 12 minutes" ticks down between updates without the app. The forecast
+/// widgets show it too.
+struct Headline: View {
     let forecast: RainForecast
     let stale: Bool
 

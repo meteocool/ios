@@ -243,6 +243,9 @@ import CoreLocation
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.latitude, forKey: "lat")
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.coordinate.longitude, forKey: "lon")
             UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.horizontalAccuracy, forKey: "accuracy")
+            // The widgets take the newer of this and their own location.
+            UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")?.setValue(location.timestamp.timeIntervalSince1970, forKey: "locationTime")
+            SharedWidgets.moved(to: location)
 
             // Notify observers in every app state.
             // The CarPlay map is an observer, and it is on screen while the phone is not.

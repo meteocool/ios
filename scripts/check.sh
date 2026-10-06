@@ -13,3 +13,5 @@ xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch
 "$scratch/check-share"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainForecastCheck.swift -o "$scratch/check-rain"
 "$scratch/check-rain"
+xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
+"$scratch/check-widgets"
