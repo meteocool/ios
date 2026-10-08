@@ -11,7 +11,7 @@ struct RadarMapWidget: Widget {
             RadarMapView(entry: entry.entry, overlay: entry.overlay)
         }
         .configurationDisplayName("Radar Map")
-        .description("The rain radar around you or any place, with what the rain does next.")
+        .description("The rain radar around you or any place, and when rain comes next.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }

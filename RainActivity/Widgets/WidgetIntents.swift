@@ -3,7 +3,7 @@ import WidgetKit
 
 struct RadarMapConfiguration: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Radar Map"
-    static let description = IntentDescription("The rain radar around a place, with what the rain does next.")
+    static let description = IntentDescription("The rain radar around a place, and when rain comes next.")
 
     @Parameter(title: "Location")
     var place: WidgetPlace?
@@ -54,7 +54,7 @@ struct RainForecastConfiguration: WidgetConfigurationIntent {
 
 struct RainClockConfiguration: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Rain Clock"
-    static let description = IntentDescription("The next hour or two around a dial, coloured where it rains.")
+    static let description = IntentDescription("The next one or two hours on a dial, coloured where it will rain.")
 
     @Parameter(title: "Location")
     var place: WidgetPlace?

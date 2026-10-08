@@ -11,7 +11,7 @@ struct RainForecastWidget: Widget {
             RainForecastView(entry: entry)
         }
         .configurationDisplayName("Rain Forecast")
-        .description("When the rain comes and how heavy, as on the map's chart.")
+        .description("When rain arrives and how heavy it gets, as in the map's chart.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
