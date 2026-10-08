@@ -23,6 +23,7 @@ import UIKit
     private var synced: Data?
     private var syncing = false
     private var syncPending = false
+    private var forcePending = false
     private var refreshing: Task<Void, Never>?
     private var lastRefresh: Date?
 
@@ -114,10 +115,16 @@ import UIKit
     /// successful send. Needs the device's APNs token, which names the
     /// registration; sent again when a registration finishes, because the
     /// backend answers 404 for a device it does not know yet.
-    func sync() {
+    ///
+    /// `force` sends them anyway: after a registration, which may be a new
+    /// record on the backend (after an unregister, say) that has none of them.
+    /// Skipping that send left the backend without a start token, so it fell
+    /// back to plain notifications until the app was relaunched.
+    func sync(force: Bool = false) {
         guard SharedNotificationManager.enabled, let device = SharedNotificationManager.getToken() else { return }
         if syncing {
             syncPending = true
+            forcePending = forcePending || force
             return
         }
         let on = enabled
@@ -127,7 +134,7 @@ import UIKit
             "startToken": on ? startToken ?? NSNull() : NSNull(),
             "activityToken": activities.compactMap { activityTokens[$0.id] }.first ?? NSNull(),
         ]
-        guard let json = try? JSONSerialization.data(withJSONObject: body, options: .sortedKeys), json != synced,
+        guard let json = try? JSONSerialization.data(withJSONObject: body, options: .sortedKeys), force || json != synced,
               let request = NetworkHelper.createJSONPostRequest(
                 dst: NetworkHelper.apiURL.appendingPathComponent("v3/mobile/live_activity").absoluteString, dictionary: body) else { return }
         syncing = true
@@ -135,8 +142,10 @@ import UIKit
             defer {
                 syncing = false
                 if syncPending {
+                    let force = forcePending
                     syncPending = false
-                    sync()
+                    forcePending = false
+                    sync(force: force)
                 }
             }
             guard let (_, response) = try? await URLSession.shared.data(for: request),
