@@ -299,7 +299,7 @@ final class meteocoolUITests: XCTestCase {
 
     func testNotificationSliderTrackTaps() {
         openNotificationSliderSettings()
-        for (title, values) in [("Intensity Threshold", ["Drizzle", "Rain", "Hail"]),
+        for (title, values) in [("Intensity Threshold", ["Drizzle", "Rain", "Heavy rain"]),
                                 ("Notification Timeframe", ["5 min", "25 min", "45 min"])] {
             let slider = app.sliders[title]
             XCTAssertTrue(slider.waitForExistence(timeout: 5))
@@ -330,7 +330,7 @@ final class meteocoolUITests: XCTestCase {
             return try XCTUnwrap(UIImage(data: data))
         }
         openNotificationSliderSettings()
-        for (title, initial, final) in [("Intensity Threshold", "Light rain", "Hail"),
+        for (title, initial, final) in [("Intensity Threshold", "Light rain", "Heavy rain"),
                                         ("Notification Timeframe", "15 min", "45 min")] {
             let slider = app.sliders[title]
             XCTAssertTrue(slider.waitForExistence(timeout: 5))

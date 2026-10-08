@@ -36,7 +36,7 @@ struct RainForecast: Codable, Hashable, Sendable {
     static let rainDBZ = 14.0
     /// Steps in a row below `rainDBZ` that end a spell.
     static let dryStepsToEnd = 2
-    /// The Intensity Threshold setting's values, in dBZ (drizzle to hail).
+    /// The Intensity Threshold setting's values, in dBZ (drizzle to heavy rain).
     static let thresholds: [Double] = [14, 20, 26, 36, 41]
 
     var nowIndex: Int { max(min(observed, dbz.count) - 1, 0) }
@@ -117,9 +117,8 @@ struct RainForecast: Codable, Hashable, Sendable {
     }
 
     /// Where the rain alerts' words start, in dBZ: drizzle, light rain, rain,
-    /// intense rain, heavy rain, extreme rain, hail. Not the Intensity
-    /// Threshold's steps: those are for alerts, and its top step, 41 dBZ,
-    /// which it calls hail, is heavy rain.
+    /// intense rain, heavy rain, extreme rain, hail. Finer than the
+    /// Intensity Threshold's steps, which stop at heavy rain.
     static let bands: [Double] = [14, 20, 25, 35, 40, 47, hailDBZ]
     /// Where the words and the backend's hail alert start calling it hail.
     static let hailDBZ = 55.0

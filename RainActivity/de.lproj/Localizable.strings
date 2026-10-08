@@ -2,8 +2,8 @@
 "Drizzle" = "Niesel";
 "Light rain" = "Leichter Regen";
 "Rain" = "Regen";
-"Intense Rain" = "Starker Regen";
-"Hail" = "Hagel";
+"Intense Rain" = "Stärkerer Regen";
+"Heavy Rain" = "Starker Regen";
 
 /* Headline while it rains: intensity, then the time it stops. */
 "rain_until %@ %@" = "%1$@ bis %2$@";
