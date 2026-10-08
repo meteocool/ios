@@ -62,22 +62,41 @@ struct RainForecast: Codable, Hashable, Sendable {
     }
 
     var phase: Phase {
+        guard let spell else { return .dry }
+        let end = spell.end.map(date(at:))
+        return spell.raining ? .raining(end: end) : .approaching(arrival: date(at: spell.arrival), end: end)
+    }
+
+    /// The rain `phase` is about: the one falling now, or else the next at or
+    /// above the threshold. It runs from `arrival` (now while it rains) up to
+    /// `end`, its first dry step, or to the end of the forecast when `end` is nil.
+    private var spell: (raining: Bool, arrival: Int, end: Int?)? {
         let endBelow = min(threshold, Self.rainDBZ)
         let from = nowIndex
-        guard from < dbz.count else { return .dry }
+        guard from < dbz.count else { return nil }
         let raining = value(at: from) >= endBelow && (value(at: from) >= threshold || spellBegan(before: from))
         let arrival = raining ? from : (from..<dbz.count).first { value(at: $0) >= threshold }
-        guard let arrival else { return .dry }
+        guard let arrival else { return nil }
         var dry = 0
-        var end: Date?
         for index in arrival..<dbz.count {
             dry = value(at: index) < endBelow ? dry + 1 : 0
-            if dry == Self.dryStepsToEnd {
-                end = date(at: index - 1)
-                break
-            }
+            if dry == Self.dryStepsToEnd { return (raining, arrival, index - 1) }
         }
-        return raining ? .raining(end: end) : .approaching(arrival: date(at: arrival), end: end)
+        return (raining, arrival, nil)
+    }
+
+    /// The rain the headline names: now while it rains, else as it arrives.
+    var headlineDBZ: Double {
+        spell.map { value(at: $0.arrival) } ?? 0
+    }
+
+    /// The heaviest step of that rain and when it falls: the first, if
+    /// several are as heavy.
+    var spellPeak: (dbz: Double, at: Date)? {
+        guard let spell else { return nil }
+        let steps = spell.arrival..<(spell.end ?? dbz.count)
+        guard let top = steps.max(by: { value(at: $0) < value(at: $1) }) else { return nil }
+        return (value(at: top), date(at: top))
     }
 
     /// Whether an observed spell that reached the threshold is still going
@@ -97,10 +116,18 @@ struct RainForecast: Codable, Hashable, Sendable {
         (nowIndex..<max(dbz.count, nowIndex)).map(value(at:)).max() ?? 0
     }
 
-    /// Index into the Intensity Threshold setting's names: drizzle, light
-    /// rain, rain, intense rain, hail.
-    static func intensity(dbz: Double) -> Int {
-        thresholds.lastIndex { dbz >= $0 } ?? 0
+    /// Where the rain alerts' words start, in dBZ: drizzle, light rain, rain,
+    /// intense rain, heavy rain, extreme rain, hail. Not the Intensity
+    /// Threshold's steps: those are for alerts, and its top step, 41 dBZ,
+    /// which it calls hail, is heavy rain.
+    static let bands: [Double] = [14, 20, 25, 35, 40, 47, hailDBZ]
+    /// Where the words and the backend's hail alert start calling it hail.
+    static let hailDBZ = 55.0
+
+    /// Index into `bands` for a reflectivity: the highest it is above,
+    /// drizzle for anything less.
+    static func band(dbz: Double) -> Int {
+        bands.lastIndex { dbz > $0 } ?? 0
     }
 
     /// The forecast from `/v3/radar/timeseries`: `frames` keyed by unix

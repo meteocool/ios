@@ -24,12 +24,16 @@ struct RainForecastCheck {
         // step in the middle does not end it.
         let tail = forecast([40, 16, 15, 3, 15, 2, 1, 0], observed: 3)
         precondition(tail.phase == .raining(end: tail.date(at: 5)), "\(tail.phase)")
+        // The headline names the rain now; the downpour in an hour is its peak.
+        let downpour = forecast([0, 28, 28, 30, 33, 45, 38, 20, 0, 0], observed: 2)
+        precondition(downpour.headlineDBZ == 28 && downpour.spellPeak?.dbz == 45 && downpour.spellPeak?.at == downpour.date(at: 5))
+        precondition(approaching.headlineDBZ == 25 && approaching.spellPeak?.dbz == 30)
         // Light rain that never reached the threshold is not rain to the user.
         precondition(forecast([16, 16, 16, 16], observed: 2).phase == .dry)
         // Trimming keeps the latest observation and moves the start.
         let trimmed = forecast(Array(repeating: 0, count: 49), observed: 25).trimmed(past: 6)
         precondition(trimmed.observed == 7 && trimmed.dbz.count == 31 && trimmed.start == 1_000_000_200 + 18 * 300)
-        precondition(RainForecast.intensity(dbz: 3) == 0 && RainForecast.intensity(dbz: 27) == 2 && RainForecast.intensity(dbz: 60) == 4)
+        precondition(RainForecast.band(dbz: 3) == 0 && RainForecast.band(dbz: 27) == 2 && RainForecast.band(dbz: 41) == 4 && RainForecast.band(dbz: 60) == 6)
         precondition(RadarPalette.colour(dbz: 0, palette: "classic") != nil && RadarPalette.colour(dbz: -20, palette: "classic") == nil)
 
         // The API's shape: unix-second keys, nulls for unpublished steps,

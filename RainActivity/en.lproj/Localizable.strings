@@ -14,6 +14,16 @@
 "rain_lasting %lld" = "Lasting about %lld min";
 "rain_open_ended" = "No end in sight yet";
 "rain_peak_dbz %lld" = "Peak %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Drizzle";
+"band_light" = "Light rain";
+"band_rain" = "Rain";
+"band_intense" = "Intense rain";
+"band_heavy" = "Heavy rain";
+"band_extreme" = "Extreme rain";
+"band_hail" = "Hail";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ at %2$@";
 /* Chart axis */
 "rain_now" = "Now";
 "rain_hours %lld" = "+%lld h";

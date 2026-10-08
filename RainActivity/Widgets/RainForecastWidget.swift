@@ -157,7 +157,7 @@ private struct Facts: View {
     var body: some View {
         let peak = forecast.window(past: 0, ahead: ahead).peak
         HStack(alignment: .firstTextBaseline) {
-            fact("widget_peak", value: peak > 0 ? RainStatus(forecast: forecast.window(past: 0, ahead: ahead)).intensity
+            fact("widget_peak", value: peak > 0 ? RainStatus.name(dbz: peak)
                  : String(localized: "widget_none"), colour: RadarColour.of(dbz: peak))
             Spacer()
             fact("widget_rain_minutes", value: String(localized: "widget_minutes \(forecast.rainMinutes(ahead: ahead))"))
