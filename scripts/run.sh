@@ -10,10 +10,13 @@ UDID="$(booted_simulator)"
 info "using $UDID"
 
 step "Building for simulator"
+# Ad hoc signed, not unsigned: SpringBoard refuses to draw the launch screen
+# of an unsigned app (black until the app's first frame), and only a signed
+# build gets the app group the Live Activity and widgets share.
 xcodebuild -project "$PROJECT" -scheme "$SCHEME" \
     -destination "id=$UDID" \
     -derivedDataPath "$BUILD_DIR/derived" \
-    CODE_SIGNING_ALLOWED=NO \
+    CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
     build
 
 APP="$(find "$BUILD_DIR/derived/Build/Products" -name "$APP_NAME.app" -maxdepth 2 | head -1)"
