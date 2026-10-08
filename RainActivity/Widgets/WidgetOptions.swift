@@ -84,7 +84,7 @@ enum DialSpan: String, AppEnum {
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Dial"
     static let caseDisplayRepresentations: [DialSpan: DisplayRepresentation] = [
-        .hour: DisplayRepresentation(title: "One hour", subtitle: "A minute hand's turn"),
+        .hour: DisplayRepresentation(title: "One hour", subtitle: "One turn of the minute hand"),
         .twoHours: DisplayRepresentation(title: "Two hours", subtitle: "The whole forecast"),
     ]
 
@@ -99,6 +99,6 @@ enum MapOverlay: String, AppEnum {
     static let caseDisplayRepresentations: [MapOverlay: DisplayRepresentation] = [
         .none: DisplayRepresentation(title: "Map only"),
         .headline: DisplayRepresentation(title: "Next rain", subtitle: "One line, such as \"Rain in 12 min\""),
-        .chart: DisplayRepresentation(title: "Next rain and chart", subtitle: "The line and the next hour's bars"),
+        .chart: DisplayRepresentation(title: "Next rain and chart", subtitle: "The line plus bars for the next hour"),
     ]
 }

@@ -14,7 +14,7 @@ struct RainClockWidget: Widget {
             RainClockView(entry: entry)
         }
         .configurationDisplayName("Rain Clock")
-        .description("The next hour around a dial, coloured where it rains.")
+        .description("The next hour on a dial, coloured where it will rain.")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
