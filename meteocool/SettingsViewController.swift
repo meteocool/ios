@@ -89,7 +89,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("notifications", comment: "header"),
         NSLocalizedString("Map View", comment: "header"),
         NSLocalizedString("About", comment: "header"),
-        NSLocalizedString("data_sources_header", comment: "header")
+        NSLocalizedString("data_sources_header", comment: "header"),
+        NSLocalizedString("open_source_header", comment: "header")
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
@@ -97,7 +98,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         // Read from the bundle, not from the translations.
         // A version number typed into the translations went out of date.
         SettingsViewController.version,
-        NSLocalizedString("data_sources_footer", comment: "footer")
+        NSLocalizedString("data_sources_footer", comment: "footer"),
+        NSLocalizedString("open_source_footer", comment: "footer")
     ]
 
     /// Each source of data or artwork the app shows, with its licence and the licence URL.
@@ -119,9 +121,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                    url: "https://www.chmi.cz/o-chmu/caste-dotazy-faq/open-data"),
         DataSource(name: "© IMGW-PIB", detailKey: "source_imgw",
                    url: "https://danepubliczne.imgw.pl/regulations"),
+        DataSource(name: "EUMETNET Open Radar Data", detailKey: "source_eumetnet",
+                   url: "https://eumetnet.github.io/openradardata-documentation/"),
         DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
                    url: "https://www.weather.gov/disclaimer"),
-        DataSource(name: "© Blitzortung.org", detailKey: "source_blitzortung",
+        DataSource(name: "© Blitzortung.org and its contributors", detailKey: "source_blitzortung",
                    url: "https://www.blitzortung.org/"),
         DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
                    url: "https://open-meteo.com/en/licence"),
@@ -131,8 +135,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                    url: "https://www.openstreetmap.org/copyright"),
         DataSource(name: "© Protomaps", detailKey: "source_protomaps",
                    url: "https://protomaps.com"),
+        DataSource(name: "© Mapterhorn", detailKey: "source_mapterhorn",
+                   url: "https://mapterhorn.com/attribution"),
         DataSource(name: "Freepik · Flaticon", detailKey: "source_freepik",
                    url: "https://www.flaticon.com"),
+        DataSource(name: "Vitaly Gorbachev · Flaticon", detailKey: "source_gorbachev",
+                   url: "https://www.flaticon.com/authors/vitaly-gorbachev"),
     ]
 
     /// Footer text such as `Version: 2.2`, built from the bundle's marketing version.
@@ -221,6 +229,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return dataAboutLabel.count
         case 3: //Data sources
             return dataSources.count
+        case 4: //Open-source licences
+            return Licence.all.count
         default:
             return 0
         }
@@ -363,6 +373,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             linkCell.linkInfoLable.text = source.name
             linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
             return linkCell
+        case 4: //Open-source licences
+            let licence = Licence.all[indexPath.row]
+            linkCell.linkInfoLable.text = NSLocalizedString(licence.name, comment: "licence")
+            linkCell.linkValueLable.text = licence.licence
+            return linkCell
         default:
             print("This should not happen...")
             return textCell
@@ -437,6 +452,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         if indexPath.section == 3, let url = URL(string: dataSources[indexPath.row].url) {
             UIApplication.shared.open(url)
+        }
+        if indexPath.section == 4 {
+            present(UINavigationController(rootViewController: LicenceViewController(licence: Licence.all[indexPath.row])), animated: true)
         }
     }
     
