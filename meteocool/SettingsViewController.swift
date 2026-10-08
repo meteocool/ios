@@ -170,7 +170,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Light rain", comment: "intensity"),
         NSLocalizedString("Rain", comment: "intensity"),
         NSLocalizedString("Intense Rain", comment: "intensity"),
-        NSLocalizedString("Hail", comment: "intensity")
+        NSLocalizedString("Heavy Rain", comment: "intensity")
     ]
     
     //General View Things

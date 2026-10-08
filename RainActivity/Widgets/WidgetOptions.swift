@@ -51,6 +51,8 @@ enum ForecastRange: String, AppEnum {
 /// The rain a widget counts as rain: the app's Intensity Threshold, or one
 /// of its values for this widget alone.
 enum IntensityChoice: String, AppEnum {
+    // `hail` is 41 dBZ, heavy rain. It keeps the name the step once had,
+    // because widgets store their choice by it.
     case app, drizzle, light, rain, intense, hail
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Intensity"
@@ -60,7 +62,7 @@ enum IntensityChoice: String, AppEnum {
         .light: "Light rain",
         .rain: "Rain",
         .intense: "Intense Rain",
-        .hail: "Hail",
+        .hail: "Heavy Rain",
     ]
 
     /// In dBZ, as `RainForecast.thresholds`.
