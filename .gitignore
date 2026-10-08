@@ -71,3 +71,7 @@ meteocool.xcodeproj/
 Local.xcconfig
 build/
 
+
+# Local agent notes and tool settings
+CLAUDE.md
+.claude/settings.json
