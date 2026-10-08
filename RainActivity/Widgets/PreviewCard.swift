@@ -2,8 +2,8 @@ import CoreGraphics
 import CoreLocation
 import Foundation
 
-/// A square or wide preview card, as the API's preview service snaps it
-/// (`/v3/preview/og.png`): the zoom to half steps, the centre
+/// A square or wide preview card, as the API's preview images
+/// (`/v3/preview/og.png`) snap it: the zoom to half steps, the centre
 /// to a 32-pixel grid at that zoom. Asking for the snapped card means the
 /// widgets share the service's cache with every rain alert near by, and
 /// tells the widget where on the image the place itself is.

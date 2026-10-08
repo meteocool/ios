@@ -9,8 +9,8 @@ import Foundation
 
 // MARK: - Wire models
 
-/// One storm with a radar volume built for it, from `GET /cells/volumes`
-///. Found in the column-maximum composite, not in
+/// One storm with a radar volume built for it, from `GET /cells/volumes`.
+/// Found in the column-maximum composite, not in
 /// KONRAD3D, so most of them have no tracked cell.
 struct StormEntry: Decodable, Sendable, Equatable {
     let code: String
@@ -18,7 +18,7 @@ struct StormEntry: Decodable, Sendable, Equatable {
     /// The core's peak, and the centre of its box.
     let lon: Double
     let lat: Double
-    /// The volume file, bucket first, relative to the asset host.
+    /// The volume file's path, relative to the asset host.
     let path: String
     let tier: Int?
     let peakDbz: Double?
@@ -201,8 +201,7 @@ enum ISODate {
 /// Polls the data service for the storms around a point, and keeps the
 /// volumes of the ones worth drawing in memory.
 ///
-/// The volume list is one small request for the whole continent;
-/// each volume is 1.6 MB once inflated, so only the nearest few, the
+/// The volume list is one small request for the whole continent; each volume is 1.6 MB once inflated, so only the nearest few, the
 /// ones in front of the camera first, are held. The rest are listed with
 /// their position, which is enough for a label.
 @MainActor

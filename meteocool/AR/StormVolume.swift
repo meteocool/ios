@@ -10,8 +10,7 @@ import simd
 
 /// A storm's reflectivity and confidence on a regular grid around its core.
 ///
-/// The file is an `.mcvx` volume,
-/// the same bytes core raymarches on the 3D map
+/// The file is an `.mcvx` volume, the same bytes core raymarches on the 3D map
 /// (`src/lib/cellCutaway.ts`): `MCVX`, a little-endian `u32` version (1), a
 /// `u32` header length, a JSON header, then `nx * ny * nz` pairs of bytes,
 /// `[dBZ, confidence]`, x fastest, then y, then z. Served gzipped with
