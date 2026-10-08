@@ -129,8 +129,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                    url: "https://www.blitzortung.org/"),
         DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
                    url: "https://open-meteo.com/en/licence"),
-        DataSource(name: "Copernicus Sentinel · © OroraTech", detailKey: "source_copernicus",
-                   url: "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"),
         DataSource(name: "© OpenStreetMap contributors", detailKey: "source_osm",
                    url: "https://www.openstreetmap.org/copyright"),
         DataSource(name: "© Protomaps", detailKey: "source_protomaps",
