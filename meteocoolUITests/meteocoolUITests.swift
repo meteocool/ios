@@ -274,12 +274,13 @@ final class meteocoolUITests: XCTestCase {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
         let table = app.tables.firstMatch
-        let link = table.staticTexts["Open-Source Software"]
+        let link = table.staticTexts["Open Source Licenses"]
         for _ in 0..<15 where !link.isHittable { table.swipeUp() }
-        XCTAssertTrue(link.isHittable, "Open-Source Software is linked at the bottom of Settings")
+        XCTAssertTrue(link.isHittable, "Open Source Licenses is linked at the bottom of Settings")
         link.tap()
         let licences = app.tables["licences"]
         XCTAssertTrue(licences.staticTexts["Web Map Libraries"].waitForExistence(timeout: 5))
+        XCTAssertTrue(licences.staticTexts["meteocool"].exists, "The app's own licence is listed")
         licences.staticTexts["SwiftFSM"].tap()
         let text = app.textViews["licence.text"]
         XCTAssertTrue(text.waitForExistence(timeout: 5))

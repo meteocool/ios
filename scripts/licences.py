@@ -2,8 +2,9 @@
 """Generate meteocool/Licences.json, the open-source licences in Settings.
 
 Two sources:
-- `licences/*.txt`: third-party code compiled into the app itself, in
-  `NATIVE` below. Add an entry when the app takes in someone else's code.
+- `LICENSE`, the app's own licence, and `licences/*.txt`, third-party code
+  compiled into the app, in `NATIVE` below. Add an entry when the app takes
+  in someone else's code.
 - core's `public/third-party-licences.json`, written by core's
   `scripts/licences.mjs` from what its production build ships: the web map
   the app shows. It becomes one entry, "Web Map Libraries".
@@ -26,10 +27,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "meteocool" / "Licences.json"
 
-# (name as Settings shows it, SPDX licence, file in licences/, what it is)
+# (name as Settings shows it, SPDX licence, file relative to the repository, what it is)
 NATIVE = [
-    ("SwiftFSM", "MIT", "SwiftFSM.txt", "meteocool/SwiftFSM.swift, the location button's states"),
-    ("Py-ART Colour Maps", "BSD-3-Clause", "Py-ART.txt",
+    ("meteocool", "AGPL-3.0", "LICENSE", "this app, https://github.com/meteocool/ios"),
+    ("SwiftFSM", "MIT", "licences/SwiftFSM.txt", "meteocool/SwiftFSM.swift, the location button's states"),
+    ("Py-ART Colour Maps", "BSD-3-Clause", "licences/Py-ART.txt",
      "the StepSeq, Homeyer and Lang radar palettes (StepSeq25, HomeyerRainbow, LangRainbow12), "
      "resampled for meteocool; meteocool/AR/Colormaps.swift"),
 ]
@@ -55,7 +57,7 @@ def notice(group: dict) -> str:
 def main() -> None:
     entries = []
     for name, licence, file, what in NATIVE:
-        text = (ROOT / "licences" / file).read_text().strip()
+        text = (ROOT / file).read_text().strip()
         entries.append({"name": name, "licence": licence, "text": f"{name}: {what}.\n\n{text}\n"})
 
     source = core_path() / "public" / "third-party-licences.json"
