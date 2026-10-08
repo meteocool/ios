@@ -546,7 +546,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         if let location = SharedLocationUpdater.getCurrentLocation() {
             SharedLocationUpdater.postLocation(location: location, pressure: -1)
         }
-        SharedLiveActivities.refresh(force: true)
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
