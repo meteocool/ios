@@ -53,6 +53,7 @@ final class meteocoolUITests: XCTestCase {
         tap("map.settings")
         for (title, choice) in [("Base Map Layer", "OpenStreetMap"), ("Radar Color Map", "Homeyer (Color Vision Deficiency)")] {
             app.staticTexts[title].tap()
+            if title == "Base Map Layer" { setMatchSystem(false) }
             app.tables["settings.options"].staticTexts[choice].tap()
             tap("picker.save")
         }
@@ -102,15 +103,50 @@ final class meteocoolUITests: XCTestCase {
         return bluePixels > 5
     }
 
+    /// Match System is a switch above the basemaps; they can be picked only
+    /// while it is off.
+    private func setMatchSystem(_ on: Bool) {
+        let toggle = app.switches["Match System"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        if (toggle.value as? String == "1") != on { toggle.tap() }
+        XCTAssertEqual(toggle.value as? String, on ? "1" : "0")
+    }
+
+    /// While Match System is on, the basemaps are greyed out and a tap on one
+    /// changes nothing; turning it off brings back the last one picked.
+    func testMatchSystemDisablesBasemaps() {
+        completeOnboardingWithoutPermissions()
+        tap("map.settings")
+        app.staticTexts["Base Map Layer"].tap()
+        setMatchSystem(true)
+        let table = app.tables["settings.options"]
+        let dark = table.cells.containing(.staticText, identifier: "Dark").firstMatch
+        XCTAssertFalse(dark.isEnabled, "Basemaps are disabled while Match System is on")
+        dark.tap()
+        XCTAssertFalse(dark.isSelected)
+        XCTAssertEqual(app.switches["Match System"].value as? String, "1")
+        setMatchSystem(false)
+        XCTAssertTrue(dark.isEnabled)
+        dark.tap()
+        XCTAssertTrue(dark.isSelected)
+        tap("picker.save")
+        XCTAssertTrue(app.staticTexts["Dark"].waitForExistence(timeout: 5))
+        app.staticTexts["Base Map Layer"].tap()
+        setMatchSystem(true)
+        tap("picker.save")
+        XCTAssertTrue(app.staticTexts["Match System"].waitForExistence(timeout: 5))
+    }
+
     private func verifyPickerSelectionGeometry() {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
         for (title, options) in [
-            ("Base Map Layer", ["Match System", "Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
+            ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
             ("Radar Color Map", ["Classic", "NWS Reflectivity", "PyArt StepSeq", "Homeyer (Color Vision Deficiency)", "Lang"])
         ] {
             app.staticTexts[title].tap()
             XCTAssertTrue(app.staticTexts[options[0]].waitForExistence(timeout: 5))
+            if title == "Base Map Layer" { setMatchSystem(false) }
             let table = app.tables["settings.options"]
             var previousIndex = 0
             for index in Array(0..<options.count) + Array((0..<options.count).reversed()) {
@@ -390,6 +426,7 @@ final class meteocoolUITests: XCTestCase {
         base.tap()
         XCTAssertTrue(app.staticTexts["Dark"].waitForExistence(timeout: 5))
         screenshot("Basemap settings")
+        setMatchSystem(false)
         app.staticTexts["Dark"].tap()
         tap("picker.save")
         XCTAssertTrue(base.waitForExistence(timeout: 5))
