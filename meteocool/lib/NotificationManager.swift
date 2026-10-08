@@ -155,7 +155,7 @@ import UserNotifications
         // the server now holds this registration.
         if success {
             registrationWillBegin(origin: origin)
-            SharedLiveActivities.sync()
+            SharedLiveActivities.sync(force: true)
         }
         // Remove the new registration if alerts were turned off, or the
         // deployment changed, while the POST was running.
