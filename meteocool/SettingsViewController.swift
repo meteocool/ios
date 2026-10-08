@@ -90,7 +90,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Map View", comment: "header"),
         NSLocalizedString("About", comment: "header"),
         NSLocalizedString("data_sources_header", comment: "header"),
-        NSLocalizedString("open_source_header", comment: "header")
+        ""
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
@@ -99,7 +99,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         // A version number typed into the translations went out of date.
         SettingsViewController.version,
         NSLocalizedString("data_sources_footer", comment: "footer"),
-        NSLocalizedString("open_source_footer", comment: "footer")
+        ""
     ]
 
     /// Each source of data or artwork the app shows, with its licence and the licence URL.
@@ -228,7 +228,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 3: //Data sources
             return dataSources.count
         case 4: //Open-source licences
-            return Licence.all.count
+            return 1
         default:
             return 0
         }
@@ -261,6 +261,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as? SwitcherTableViewCell
         textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as? TextTableViewCell
         linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as? LinkTableViewCell
+        // Only the licences row has a disclosure arrow; a reused cell must not keep it.
+        linkCell?.accessoryType = .none
         
         //returnCell = (textCell)!
         switch indexPath.section{
@@ -371,10 +373,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             linkCell.linkInfoLable.text = source.name
             linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
             return linkCell
-        case 4: //Open-source licences
-            let licence = Licence.all[indexPath.row]
-            linkCell.linkInfoLable.text = NSLocalizedString(licence.name, comment: "licence")
-            linkCell.linkValueLable.text = licence.licence
+        case 4: //Open-source licences, on their own page
+            linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
+            linkCell.linkValueLable.text = ""
+            linkCell.accessoryType = .disclosureIndicator
             return linkCell
         default:
             print("This should not happen...")
@@ -452,7 +454,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             UIApplication.shared.open(url)
         }
         if indexPath.section == 4 {
-            present(UINavigationController(rootViewController: LicenceViewController(licence: Licence.all[indexPath.row])), animated: true)
+            present(UINavigationController(rootViewController: LicencesViewController()), animated: true)
         }
     }
     
