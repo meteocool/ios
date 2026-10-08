@@ -28,6 +28,25 @@ struct WidgetCheck {
         precondition(forecast.rainMinutes(ahead: 6) == 15)
         precondition(forecast.end == forecast.date(at: 11))
 
+        // The backend's headlines follow now as it moves; past them, none.
+        let json = """
+        {"frames": {"1000000200": {"dbz": 0, "source": "observation"}, "1000000500": {"dbz": 30, "source": "observation"},
+                    "1000000800": {"dbz": 45, "source": "nowcast_phys"}, "1000001100": null},
+         "headlines": {"1000000800": {"title": "Rain until {at:end}", "detail": null, "intensity": "Rain",
+                                      "times": {"end": 1000001100}},
+                       "1000001100": {"title": "Dry until {at:end}", "detail": null, "intensity": null,
+                                      "times": {"end": 1000001400}}},
+         "words": [{"above": 40, "text": "Heavy rain"}, {"above": 25, "text": "Rain"}]}
+        """
+        let worded = RainForecast.fromTimeseries(Data(json.utf8), threshold: 20)!
+        precondition(worded.currentHeadline?.title == "Rain until {at:end}", "\(String(describing: worded.currentHeadline))")
+        let moved = worded.advanced(to: worded.date(at: 3))
+        precondition(moved.currentHeadline?.title == "Dry until {at:end}")
+        precondition(worded.advanced(to: worded.date(at: 9)).currentHeadline == nil)
+        precondition(worded.word(dbz: 45) == "Heavy rain" && worded.word(dbz: 30) == "Rain" && worded.word(dbz: 10) == nil)
+        let cached = try! JSONDecoder().decode(RainForecast.self, from: JSONEncoder().encode(worded))
+        precondition(cached == worded)
+
         // The gallery's shower arrives ahead and ends.
         if case .approaching = RainForecast.sample().phase {} else { preconditionFailure("sample") }
 

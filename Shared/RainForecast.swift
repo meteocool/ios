@@ -31,6 +31,32 @@ struct RainForecast: Codable, Hashable, Sendable {
     /// When the app last saved a radar image. Set only by the app; changing it
     /// is what makes iOS draw the activity again with the new image.
     var radarSaved: Int?
+    /// What to say about this rain, worded by the backend: the Live Activity's
+    /// pushes carry it. Shown as it comes, so new wording needs no app release;
+    /// without it (an older backend) the app words the chart itself.
+    var headline: Headline?
+    /// The same for the widgets, keyed by when each applies (unix seconds, as
+    /// a string): now and each later step as it becomes now.
+    var headlines: [String: Headline]?
+    /// The backend's words for each dBZ band, heaviest first.
+    var words: [Word]?
+
+    /// Text from the backend. `{at:name}` in it is a clock time and
+    /// `{in:name}` a countdown, each `times[name]` in unix seconds: the device
+    /// knows its time zone and clock, the backend does not.
+    struct Headline: Codable, Hashable, Sendable {
+        var title: String
+        var detail: String?
+        /// The words for the rain the title is about; nil when dry.
+        var intensity: String?
+        var times: [String: Int]?
+    }
+
+    /// What the rain alerts call anything heavier than `above` dBZ.
+    struct Word: Codable, Hashable, Sendable {
+        var above: Double
+        var text: String
+    }
 
     /// Below this, rain that has started counts as over (as in the rain alerts).
     static let rainDBZ = 14.0
@@ -83,6 +109,16 @@ struct RainForecast: Codable, Hashable, Sendable {
             if dry == Self.dryStepsToEnd { return (raining, arrival, index - 1) }
         }
         return (raining, arrival, nil)
+    }
+
+    /// The backend's headline for now: the one for this step, else the pushed one.
+    var currentHeadline: Headline? {
+        headlines?[String(start + observed * interval)] ?? headline
+    }
+
+    /// The backend's words for `dbz`, if it sent any.
+    func word(dbz: Double) -> String? {
+        words?.first { dbz > $0.above }?.text
     }
 
     /// The rain the headline names: now while it rains, else as it arrives.
@@ -138,6 +174,8 @@ struct RainForecast: Codable, Hashable, Sendable {
                 let source: String?
             }
             let frames: [String: Frame?]
+            let headlines: [String: Headline]?
+            let words: [Word]?
         }
         guard let response = try? JSONDecoder().decode(Response.self, from: data) else { return nil }
         let steps = response.frames.compactMap { key, frame in Int(key).map { ($0, frame) } }.sorted { $0.0 < $1.0 }
@@ -147,7 +185,8 @@ struct RainForecast: Codable, Hashable, Sendable {
         let observed = (steps.lastIndex { $0.1?.source == "observation" } ?? -1) + 1
         return RainForecast(start: steps[0].0, interval: interval,
                             dbz: steps.map { $0.1?.dbz.map { ($0 * 2).rounded() / 2 } },
-                            observed: observed, threshold: threshold)
+                            observed: observed, threshold: threshold,
+                            headlines: response.headlines, words: response.words)
     }
 
     /// The same forecast without past steps older than `past` steps before now,

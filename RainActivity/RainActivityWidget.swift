@@ -68,7 +68,7 @@ struct Headline: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             if let detail {
-                Text(detail)
+                detail
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -79,6 +79,7 @@ struct Headline: View {
     private var intensity: String { RainStatus(forecast: forecast).intensity }
 
     private var title: Text {
+        if let headline = forecast.currentHeadline, let text = headline.text(headline.title) { return text }
         switch forecast.phase {
         case .approaching(let arrival, _):
             return Text(intensity) + Text(" ")
@@ -91,8 +92,13 @@ struct Headline: View {
         }
     }
 
-    private var detail: String? {
-        if stale { return String(localized: "rain_stale") }
+    /// The backend's detail when it sent a headline (even none), else the app's own.
+    private var detail: Text? {
+        if stale { return Text(String(localized: "rain_stale")) }
+        // Only where the title is the backend's too, so the two never disagree.
+        if let headline = forecast.currentHeadline, headline.text(headline.title) != nil {
+            return headline.detail.flatMap(headline.text)
+        }
         var parts: [String] = []
         if case .approaching(let arrival, let end) = forecast.phase {
             if let end {
@@ -105,7 +111,7 @@ struct Headline: View {
         if UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "withDBZ") == true, forecast.peak > 0 {
             parts.append(String(localized: "rain_peak_dbz \(Int(forecast.peak.rounded()))"))
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : Text(parts.joined(separator: " · "))
     }
 }
 

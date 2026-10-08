@@ -7,7 +7,9 @@ struct RainStatus {
     let forecast: RainForecast
 
     /// The rain now while it rains, else as it arrives.
-    var intensity: String { Self.name(dbz: forecast.headlineDBZ) }
+    var intensity: String {
+        forecast.currentHeadline?.intensity ?? Self.name(dbz: forecast.headlineDBZ, in: forecast)
+    }
 
     /// "Heavy rain at 16:10", when the rain gets a word heavier than
     /// `intensity` before it ends.
@@ -17,15 +19,19 @@ struct RainStatus {
         return String(localized: "rain_peak_at \(Self.name(dbz: peak.dbz)) \(peak.at.formatted(date: .omitted, time: .shortened))")
     }
 
-    /// The words for a reflectivity, as the rain alerts say it (`RainForecast.bands`).
-    static func name(dbz: Double) -> String {
+    /// The words for a reflectivity, as the rain alerts say it: the backend's
+    /// when `forecast` came with them, else the app's (`RainForecast.bands`).
+    static func name(dbz: Double, in forecast: RainForecast? = nil) -> String {
+        if let word = forecast?.word(dbz: dbz) { return word }
         let names = ["band_drizzle", "band_light", "band_rain", "band_intense", "band_heavy", "band_extreme", "band_hail"]
         return String(localized: String.LocalizationValue(names[RainForecast.band(dbz: dbz)]))
     }
 
     /// "Rain in 12 min", "Rain until 14:20", "Dry until 14:55". The
-    /// countdown counts itself between entries.
+    /// countdown counts itself between entries. The backend's words where it
+    /// sent them.
     var line: Text {
+        if let headline = forecast.currentHeadline, let text = headline.text(headline.title) { return text }
         switch forecast.phase {
         case .approaching(let arrival, _):
             return Text(intensity) + Text(" ")
@@ -51,6 +57,32 @@ struct RainStatus {
     var colour: Color {
         guard forecast.phase != .dry else { return .green }
         return RadarColour.of(dbz: max(forecast.peak, forecast.threshold)) ?? .blue
+    }
+}
+
+extension RainForecast.Headline {
+    /// `template` with its times filled in: `{at:name}` as a clock time,
+    /// `{in:name}` as a countdown that runs by itself. Nil when it names a time
+    /// it does not carry, or a kind this app does not know, so the caller can
+    /// fall back to its own words.
+    func text(_ template: String) -> Text? {
+        var text = Text(verbatim: "")
+        var rest = Substring(template)
+        while let open = rest.firstIndex(of: "{") {
+            guard let close = rest[open...].firstIndex(of: "}") else { return nil }
+            let token = rest[rest.index(after: open)..<close].split(separator: ":", maxSplits: 1).map(String.init)
+            guard token.count == 2, let seconds = times?[token[1]] else { return nil }
+            let date = Date(timeIntervalSince1970: TimeInterval(seconds))
+            let time: Text
+            switch token[0] {
+            case "at": time = Text(date, format: .dateTime.hour().minute())
+            case "in": time = Text(.currentDate, format: .reference(to: date, allowedFields: [.hour, .minute]))
+            default: return nil
+            }
+            text = text + Text(verbatim: String(rest[..<open])) + time
+            rest = rest[rest.index(after: close)...]
+        }
+        return text + Text(verbatim: String(rest))
     }
 }
 

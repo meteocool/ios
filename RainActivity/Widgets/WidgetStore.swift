@@ -61,15 +61,18 @@ enum WidgetStore {
 
     // MARK: - Forecast
 
-    /// The forecast at `location`, with `threshold` as the rain that counts.
+    /// The forecast at `location`, with `threshold` as the rain that counts,
+    /// and the backend's headlines for it. Kept per threshold, language and
+    /// details switch, since the headlines depend on them.
     static func forecast(at location: CLLocation, threshold: Double) async -> (forecast: RainForecast, fetched: Date)? {
-        let file = directory?.appendingPathComponent(String(format: "forecast-%.3f,%.3f.json",
-                                                            location.coordinate.latitude, location.coordinate.longitude))
+        let wording = Wording.current(threshold: threshold)
+        let file = directory?.appendingPathComponent(String(format: "forecast-%.3f,%.3f", location.coordinate.latitude,
+                                                            location.coordinate.longitude) + "\(wording.key).json")
         var result = cached(file, expiry: forecastExpiry).flatMap { data, saved in
             (try? JSONDecoder().decode(RainForecast.self, from: data)).map { ($0, saved) }
         }
         if !(result.map { reusable($0.1) } ?? false),
-           let fetched = await fetchForecast(at: location) {
+           let fetched = await fetchForecast(at: location, wording: wording) {
             result = (fetched, Date())
             if let file, let data = try? JSONEncoder().encode(fetched) { save(data, to: file) }
         }
@@ -78,18 +81,40 @@ enum WidgetStore {
         return (forecast, fetched)
     }
 
-    private static func fetchForecast(at location: CLLocation) async -> RainForecast? {
+    private static func fetchForecast(at location: CLLocation, wording: Wording) async -> RainForecast? {
         var components = URLComponents(url: apiURL.appendingPathComponent("v3/radar/timeseries"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "lat", value: String(format: "%.4f", location.coordinate.latitude)),
             URLQueryItem(name: "lon", value: String(format: "%.4f", location.coordinate.longitude)),
-        ]
+        ] + wording.queryItems
         guard let url = components?.url else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
-        return RainForecast.fromTimeseries(data, threshold: RainForecast.thresholds[1])
+        return RainForecast.fromTimeseries(data, threshold: wording.threshold)
+    }
+
+    /// What the backend words a forecast for: the rain that counts, the
+    /// language (de or en, as the rain alerts) and the dBZ details switch.
+    struct Wording {
+        let threshold: Double
+        let language: String
+        let details: Bool
+
+        static func current(threshold: Double) -> Wording {
+            let language = Locale.preferredLanguages.first?.split(separator: "-").first == "de" ? "de" : "en"
+            return Wording(threshold: threshold, language: language, details: defaults?.bool(forKey: "withDBZ") ?? false)
+        }
+
+        var queryItems: [URLQueryItem] {
+            [URLQueryItem(name: "threshold", value: String(format: "%g", threshold)),
+             URLQueryItem(name: "lang", value: language),
+             URLQueryItem(name: "details", value: details ? "true" : "false")]
+        }
+
+        /// Part of the cache file's name.
+        var key: String { String(format: "-%g-%@%@", threshold, language, details ? "-dbz" : "") }
     }
 
     // MARK: - Map
