@@ -474,7 +474,7 @@ final class ARStormViewController: UIViewController, LocationObserver {
             hud.status = NSLocalizedString("ar_status_failed", comment: "")
         case .ready:
             let nearby = feed.nearbyEntries
-            // Storms, not the tiles they are boxed in.
+            // Counts storms rather than the tiles they are boxed in.
             var status = String(format: NSLocalizedString("ar_status_storms", comment: ""), Set(nearby.map(\.stormKey)).count)
             if let newest = nearby.compactMap(\.scanDate).max() {
                 status += " · " + String(format: NSLocalizedString("ar_label_age", comment: ""), max(0, Int(Date().timeIntervalSince(newest) / 60)))

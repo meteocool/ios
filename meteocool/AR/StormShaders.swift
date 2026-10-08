@@ -250,8 +250,8 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
         if (density <= 0.002) continue;
         colour = ramp.sample(rampSampler, float2(saturate((field.r + 32.0) / 96.0), 0.5)).rgb;
         if (cutFace && i < 1.0) {
-            // The sliced surface itself, drawn flat and solid: the point of
-            // cutting a storm open is that this face shows what the
+            // The sliced surface itself, drawn flat and solid, because this
+            // face is what cutting a storm open is for: it shows what the
             // outside hides. Averaged over a second tap just behind it,
             // because one opaque sample facets along the voxel grid.
             float2 behindField = sampleField(volume, s, p + d * dt * 0.5, u);

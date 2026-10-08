@@ -11,9 +11,9 @@ import simd
 /// A local east-north-up frame on the WGS84 ellipsoid.
 ///
 /// The AR view places every storm in the viewer's own ENU frame, by way of
-/// ECEF, rather than on a flat map: at storm distances the earth's curvature
-/// is not a rounding error. A cloud base 60 km away sits about 280 m lower
-/// than a flat frame puts it, and 100 km away nearly 800 m. The same
+/// ECEF, rather than on a flat map, because at storm distances the earth's
+/// curvature shows. A cloud base 60 km away sits about 280 m lower than a
+/// flat frame puts it, and 100 km away nearly 800 m. The same
 /// transform also tilts each storm's box by the angle between the two
 /// verticals, which is half a degree at 60 km.
 struct GeoFrame: Sendable {
@@ -81,9 +81,9 @@ struct GeoFrame: Sendable {
     /// horizon.
     ///
     /// The sphere passes through the ground under the viewer rather than
-    /// through sea level, which is the terrain under the viewer extended
-    /// everywhere. Right on flat land; wrong in the Alps, where real terrain
-    /// hides more than this does.
+    /// through sea level, as if the terrain under the viewer extended
+    /// everywhere. That is right on flat land and wrong in the Alps, where
+    /// real terrain hides more than this does.
     func groundSphere(eyeHeight: Double = 1.6) -> (centre: SIMD3<Double>, radius: Double) {
         let radius = gaussianRadius
         let ground = max(0, altitude - eyeHeight)

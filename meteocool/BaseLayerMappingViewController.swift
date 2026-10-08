@@ -21,8 +21,8 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
 
     /// The basemaps the web map draws.
     ///
-    /// All four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`).
-    /// They differ in which map features they draw, not in tile provider.
+    /// All four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`)
+    /// and differ only in which map features they draw.
     /// There is no Satellite option: the frontend removed it together with the OroraTech tiles it used.
     private var baseLayerMapping = [
         NSLocalizedString("system", comment: "baseLayer"),

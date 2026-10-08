@@ -94,8 +94,8 @@ final class StormRenderer {
                 return try device.makeLibrary(source: StormShaders.source, options: options)
             } catch where fetch {
                 // The iOS simulator's GPU claims Apple's family but its
-                // compiler refuses to read a render target: not an error, the
-                // blender takes over.
+                // compiler refuses to read a render target. That is expected:
+                // the blender takes over.
                 NSLog("AR storms: this GPU cannot read its render target (%@)", error.localizedDescription)
                 return nil
             } catch {

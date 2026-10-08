@@ -8,8 +8,8 @@ import UIKit
 ///
 /// The backend drives it, over APNs: the app sends it a push-to-start token
 /// and each activity's update token (`POST /v3/mobile/live_activity`), and
-/// the backend decides when to start, update, alert and end, the same rules
-/// as its rain alerts on every platform. The app never decides any of that.
+/// the backend alone decides when to start, update, alert and end, by the
+/// same rules as its rain alerts on every platform.
 ///
 /// The image is the app's only part: an activity cannot download anything,
 /// so it shows the last image the app saved (`RadarImageStore`), fetched

@@ -3,9 +3,9 @@
 
 The AR storm view paints reflectivity in the palette the reader picked for the
 radar map ("Radar Color Map" in Settings), so a 45 dBZ core is the same yellow
-over the sky as on the map. The tables live in core (`src/colormaps.ts`) and
-are copied here by this script rather than by hand: six tables of a few
-hundred RGBA entries each are not something to retype.
+over the sky as on the map. The tables live in core (`src/colormaps.ts`), and
+this script copies them here: six tables of a few hundred RGBA entries each
+are too long to retype by hand.
 
 Usage:
     python3 scripts/colormaps.py [path/to/core]

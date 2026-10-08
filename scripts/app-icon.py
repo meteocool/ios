@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Generate meteocool/AppIcon.icon, the Icon Composer document for the app icon.
 
-The icon is the meteocool logo -- two light-blue clouds with a dark outline and
-rain -- rebuilt as layers so Liquid Glass can add refraction, highlights and
-shadows itself. The background is the document's own fill -- white, or
-near-black when dark -- so the clear and tinted renditions can replace it; on
-top of it, back to front:
+The icon is the meteocool logo (two light-blue clouds with a dark outline and
+rain), rebuilt as layers so Liquid Glass can add refraction, highlights and
+shadows itself. The background is the document's own fill, white or near-black
+when dark, so the clear and tinted renditions can replace it. On top of it,
+back to front:
 
   cloud  the logo's cloud fills and face details, with its outline on top
   rain   the logo's twelve raindrops, thickened to read at icon sizes
