@@ -391,7 +391,7 @@
                                                 <action selector="cancelSettings:" destination="GjJ-gj-D4n" id="AU2-PN-cwl"/>
                                             </connections>
                                         </barButtonItem>
-                                        <barButtonItem key="rightBarButtonItem" systemItem="save" id="GVV-Ca-r6F">
+                                        <barButtonItem key="rightBarButtonItem" systemItem="done" id="GVV-Ca-r6F">
                                             <connections>
                                                 <action selector="saveSettings:" destination="GjJ-gj-D4n" id="0gO-pK-MDt"/>
                                             </connections>
@@ -446,7 +446,7 @@
                                                 <action selector="cancelSettings:" destination="leh-37-dyE" id="obz-49-SOo"/>
                                             </connections>
                                         </barButtonItem>
-                                        <barButtonItem key="rightBarButtonItem" systemItem="save" id="9Tv-oF-yQ9">
+                                        <barButtonItem key="rightBarButtonItem" systemItem="done" id="9Tv-oF-yQ9">
                                             <connections>
                                                 <action selector="saveSettings:" destination="leh-37-dyE" id="yrd-WB-hiK"/>
                                             </connections>
