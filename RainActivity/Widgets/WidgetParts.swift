@@ -84,12 +84,13 @@ struct MapChip<Content: View>: View {
 struct RadarMapImage: View {
     let snapshot: MapSnapshot?
     let isCurrent: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topLeading) {
                 if let snapshot {
-                    Image(uiImage: snapshot.image)
+                    Image(uiImage: colorScheme == .dark ? snapshot.darkImage ?? snapshot.image : snapshot.image)
                         .resizable()
                         .widgetAccentedRenderingMode(.fullColor)
                         .scaledToFill()
