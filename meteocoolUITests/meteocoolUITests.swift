@@ -268,17 +268,19 @@ final class meteocoolUITests: XCTestCase {
         tap("Collapse playback controls")
     }
 
-    /// The open-source licences sit below the data sources, and each opens
-    /// its full text: the notices MIT and BSD ask to reproduce.
+    /// The open-source licences are a page linked from the bottom of Settings,
+    /// and each opens its full text: the notices MIT and BSD ask to reproduce.
     func testLicencesShowTheirText() {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
         let table = app.tables.firstMatch
-        let row = table.staticTexts["SwiftFSM"]
-        for _ in 0..<15 where !row.isHittable { table.swipeUp() }
-        XCTAssertTrue(row.isHittable, "SwiftFSM is listed under Open-Source Software")
-        XCTAssertTrue(table.staticTexts["Web Map Libraries"].exists)
-        row.tap()
+        let link = table.staticTexts["Open-Source Software"]
+        for _ in 0..<15 where !link.isHittable { table.swipeUp() }
+        XCTAssertTrue(link.isHittable, "Open-Source Software is linked at the bottom of Settings")
+        link.tap()
+        let licences = app.tables["licences"]
+        XCTAssertTrue(licences.staticTexts["Web Map Libraries"].waitForExistence(timeout: 5))
+        licences.staticTexts["SwiftFSM"].tap()
         let text = app.textViews["licence.text"]
         XCTAssertTrue(text.waitForExistence(timeout: 5))
         XCTAssertTrue((text.value as? String ?? "").contains("Copyright (c) 2016 Vishal V. Shekkar"))

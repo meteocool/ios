@@ -29,6 +29,53 @@ struct Licence: Decodable {
     }()
 }
 
+/// The open-source licences, linked from the bottom of Settings. A tap
+/// shows one in full.
+final class LicencesViewController: UITableViewController {
+    init() {
+        super.init(style: .insetGrouped)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = NSLocalizedString("open_source_header", comment: "licence")
+        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
+            self?.dismiss(animated: true)
+        })
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "licence")
+        tableView.accessibilityIdentifier = "licences"
+    }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        Licence.all.count
+    }
+
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        NSLocalizedString("open_source_footer", comment: "licence")
+    }
+
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "licence", for: indexPath)
+        let licence = Licence.all[indexPath.row]
+        var content = UIListContentConfiguration.subtitleCell()
+        content.text = NSLocalizedString(licence.name, comment: "licence")
+        content.secondaryText = licence.licence
+        content.secondaryTextProperties.color = .secondaryLabel
+        cell.contentConfiguration = content
+        cell.accessoryType = .disclosureIndicator
+        return cell
+    }
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        navigationController?.pushViewController(LicenceViewController(licence: Licence.all[indexPath.row]), animated: true)
+    }
+}
+
 /// Shows one `Licence` in full, selectable so it can be copied.
 final class LicenceViewController: UIViewController {
     private let licence: Licence
@@ -46,9 +93,6 @@ final class LicenceViewController: UIViewController {
         super.viewDidLoad()
         title = NSLocalizedString(licence.name, comment: "licence")
         view.backgroundColor = .systemBackground
-        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
-            self?.dismiss(animated: true)
-        })
         let text = UITextView()
         text.isEditable = false
         text.text = licence.text
