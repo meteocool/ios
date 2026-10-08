@@ -11,12 +11,12 @@ import Foundation
 
 /// The correction between ARKit's idea of north and true north.
 ///
-/// Everything else in the AR view is easy to get right: GPS puts the viewer
-/// within metres, gravity gives pitch and roll to a fraction of a degree. The
-/// heading is the hard part. ARKit's `gravityAndHeading` takes north from
-/// the magnetometer once, at the start, and that is good to perhaps 5-15
-/// degrees -- at 30 km, 10 degrees is 5 km sideways, which is exactly the
-/// "this storm or the one next to it" error the view exists to remove.
+/// GPS puts the viewer within metres and gravity gives pitch and roll to a
+/// fraction of a degree, but the heading is harder. ARKit's
+/// `gravityAndHeading` takes north from the magnetometer once, at the start,
+/// and that is good to perhaps 5-15 degrees. At 30 km, 10 degrees is 5 km
+/// sideways: the "this storm or the one next to it" error the view exists
+/// to remove.
 ///
 /// `error` is how far ARKit's north is off, clockwise: a camera ARKit thinks
 /// faces azimuth `a` really faces `a + error`. The overlay is drawn rotated

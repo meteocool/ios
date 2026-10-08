@@ -283,7 +283,7 @@ final class StormFeed {
             poll(every: .seconds(120)) { await $0.loadTracks() },
             poll(every: .seconds(20)) { await $0.loadLightning() },
             poll(every: .seconds(60)) { await $0.loadMesocyclones() },
-            // Residency follows the camera; a cheap check, not a request.
+            // Residency follows the camera. The check is cheap and sends no request.
             poll(every: .seconds(2)) { feed in feed.reconcile() },
         ]
     }

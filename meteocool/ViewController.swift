@@ -116,7 +116,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         installUserScripts()
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
-        // Pinch and rotation also end follow mode, not only pan. While
+        // Pinch and rotation end follow mode as well as pan. While
         // following, every fix re-centres the map, and that animation would
         // conflict with a zoom or a rotation.
         let recognizers: [UIGestureRecognizer] = [
@@ -227,7 +227,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
         // Mode in Settings, or "Disable Demo Mode", switched the deployment:
-        // load that deployment's map. No restart.
+        // load that deployment's map without a restart.
         NotificationCenter.default.addObserver(self, selector: #selector(loadMap),
                                                name: MeteocoolEnvironment.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(hiddenFeaturesChanged),

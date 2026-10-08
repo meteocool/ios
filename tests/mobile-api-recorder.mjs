@@ -12,10 +12,10 @@ const requests = [];
 let registered = false;
 let mapAvailable = false;
 let mapLoads = 0;
-// The AR storm view's data: one synthetic storm south of Munich, boxed as the data service
-// boxes storms since 2026-10-05 -- by zoom-10 map tile, two tiles sharing a
-// system, each with a one-voxel apron -- a tracked cell standing in it, its
-// track, and a few strikes. All made up here.
+// The AR storm view's data: one synthetic storm south of Munich, boxed the way
+// the data service has boxed storms since 2026-10-05 (by zoom-10 map tile, two tiles sharing
+// a system, each with a one-voxel apron), plus a tracked cell standing in it,
+// its track, and a few strikes. All made up here.
 const STORM = { lat: 47.9, lon: 11.6 };
 const SCAN = '20261004T020500';
 const CELL_CODE = '2026100402050000012345';
@@ -122,9 +122,9 @@ function stormData(path) {
   return null;
 }
 
-// The rain Live Activity's inputs: the bar chart at the user's location --
-// rain arriving in 15 minutes, peaking at 38 dBZ, over within the hour --
-// and a radar image, both made up here.
+// The rain Live Activity's inputs, both made up here: the bar chart at the
+// user's location (rain arriving in 15 minutes, peaking at 38 dBZ, over within
+// the hour) and a radar image.
 function rainTimeseries() {
   const now = Math.floor(Date.now() / 300000) * 300;
   const frames = {};

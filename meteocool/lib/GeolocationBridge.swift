@@ -10,7 +10,7 @@ import WebKit
 
 /// Replaces `navigator.geolocation` in the web map with a shim fed by the app's CoreLocation fixes.
 ///
-/// Why: a `navigator.geolocation` call inside a `WKWebView` shows WebKit's own
+/// A `navigator.geolocation` call inside a `WKWebView` shows WebKit's own
 /// per-origin permission alert ("Allow … to use your location?"). The app
 /// already holds location permission, so that is a second prompt.
 /// The app sends the map its position natively (`window.lm.updateLocation`)

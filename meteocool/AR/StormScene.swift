@@ -413,11 +413,10 @@ final class StormScene {
         return u
     }
 
-    /// The cut for the cutting modes, in the world: a point on the plane and
-    /// its normal, which points at the half that is removed.
-    /// The storm's cut, in the world: one plane for all its tiles, through
-    /// its peak, so the face runs across the storm instead of stopping at
-    /// each tile's edge. The normal points at the half that is removed.
+    /// The storm's cut for the cutting modes, in the world: a point on the
+    /// plane and its normal, which points at the half that is removed. One
+    /// plane for all its tiles, through its peak, so the face runs across the
+    /// storm instead of stopping at each tile's edge.
     func cutPlane(for group: StormGroup, pose: CameraPose) -> (SIMD3<Double>, SIMD3<Double>)? {
         let storm = group.reference
         let camera = SIMD3<Double>(pose.position)
