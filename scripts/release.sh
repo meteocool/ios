@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Regenerates the project, archives it and exports a signed App Store .ipa.
 #
-# Does not upload. fastlane bumps the build number and uploads to TestFlight:
-#
-#     bundle exec fastlane beta
+# Does not upload: Xcode Cloud uploads to TestFlight, or upload the .ipa
+# with Transporter.
 #
 source "$(dirname "$0")/_common.sh"
 
@@ -60,4 +59,4 @@ codesign -dv --verbose=4 "$BUILD_DIR/ipa-check/Payload/$APP_NAME.app" 2>&1 | gre
 rm -rf "$BUILD_DIR/ipa-check"
 
 ok "$IPA"
-info "upload with: bundle exec fastlane beta"
+info "upload with Transporter, or let Xcode Cloud build and upload"
