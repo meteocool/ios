@@ -9,9 +9,9 @@ import UIKit
 
 /// Picks the deployment the app talks to (`MeteocoolEnvironment`).
 ///
-/// Works like the base map and color map pickers: a tap moves the checkmark,
-/// Save applies, Cancel leaves everything as it was. Save switches at once,
-/// without a restart: the map reloads and a push registration moves to the
+/// Works like the base map and color map pickers: a tap moves the row's
+/// checkmark, the checkmark button applies, Cancel leaves everything as it
+/// was. Applying switches at once, without a restart: the map reloads and a push registration moves to the
 /// new deployment (`MeteocoolEnvironment.select`).
 final class EnvironmentPickerViewController: UITableViewController {
     private let options: [MeteocoolEnvironment] = [.app, .staging, .demo]
@@ -49,12 +49,13 @@ final class EnvironmentPickerViewController: UITableViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(systemItem: .cancel, primaryAction: UIAction { [weak self] _ in
             self?.dismiss(animated: true)
         })
-        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .save, primaryAction: UIAction { [weak self] _ in
+        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
             guard let self else { return }
             let selection = self.selection
             self.dismiss(animated: true)
             MeteocoolEnvironment.select(selection)
         })
+        navigationItem.rightBarButtonItem?.accessibilityIdentifier = "picker.save"
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "mode")
         tableView.accessibilityIdentifier = "settings.options"
     }

@@ -54,7 +54,7 @@ final class meteocoolUITests: XCTestCase {
         for (title, choice) in [("Base Map Layer", "OpenStreetMap"), ("Radar Color Map", "Homeyer (Color Vision Deficiency)")] {
             app.staticTexts[title].tap()
             app.tables["settings.options"].staticTexts[choice].tap()
-            tap("Save")
+            tap("picker.save")
         }
         tap("Done")
         let expected = "mapBaseLayer=osm;radarColorMapping=homeyer"
@@ -137,7 +137,7 @@ final class meteocoolUITests: XCTestCase {
                     let size = table.staticTexts[option].frame.size
                     XCTAssertEqual(size.width, textSize.width, accuracy: 0.5, "\(option) text width changed")
                     XCTAssertEqual(size.height, textSize.height, accuracy: 0.5, "\(option) text reflowed")
-                    if cell.frame.minY >= app.buttons["Save"].frame.maxY &&
+                    if cell.frame.minY >= app.buttons["picker.save"].frame.maxY &&
                         cell.frame.maxY <= min(table.frame.maxY, app.frame.maxY) {
                         XCTAssertEqual(try? hasVisibleCheckmark(cell), option == options[index],
                                        "\(title): \(option) rendered the wrong checkmark state")
@@ -147,7 +147,7 @@ final class meteocoolUITests: XCTestCase {
                 previousIndex = index
             }
             screenshot("\(title) after selecting every option")
-            tap("Save")
+            tap("picker.save")
             let settings = app.tables.element(boundBy: app.tables.count - 1)
             XCTAssertTrue(settings.staticTexts[options[0]].waitForExistence(timeout: 5))
             settings.staticTexts[title].tap()
@@ -391,7 +391,7 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Dark"].waitForExistence(timeout: 5))
         screenshot("Basemap settings")
         app.staticTexts["Dark"].tap()
-        tap("Save")
+        tap("picker.save")
         XCTAssertTrue(base.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Dark"].exists)
         base.tap()
@@ -402,7 +402,7 @@ final class meteocoolUITests: XCTestCase {
         app.staticTexts["Radar Color Map"].tap()
         screenshot("Radar color settings")
         app.staticTexts["NWS Reflectivity"].tap()
-        tap("Save")
+        tap("picker.save")
         XCTAssertTrue(app.staticTexts["NWS Reflectivity"].waitForExistence(timeout: 5))
         app.staticTexts["Radar Color Map"].tap()
         app.staticTexts["Lang"].tap()
@@ -513,7 +513,7 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Production"].waitForExistence(timeout: 5), "Cancel keeps the mode")
         mode.tap()
         options.staticTexts["Demo"].tap()
-        tap("Save")
+        tap("picker.save")
         XCTAssertTrue(app.staticTexts["Demo"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.alerts.firstMatch.exists, "Switching needs no restart notice")
         tap("Done")

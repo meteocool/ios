@@ -46,6 +46,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         super.viewDidLoad()
         baseLayerMappingList.register(UITableViewCell.self, forCellReuseIdentifier: "baseLayer")
         baseLayerMappingList.accessibilityIdentifier = "settings.options"
+        baseLayerMappingSettingsBar.topItem?.rightBarButtonItem?.accessibilityIdentifier = "picker.save"
         if #available(iOS 26.0, *) {
             LiquidGlass.float(baseLayerMappingSettingsBar, over: baseLayerMappingList, in: view)
         }
@@ -97,14 +98,14 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
-    //Return Back with Save
+    //Return Back with the checkmark (saves)
     @IBAction func saveSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
         userDefaults?.setValue(baseLayer, forKey: "baseLayer")
         NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
     }
     
-    //Return Back without Save
+    //Return Back without saving
     @IBAction func cancelSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
     }
