@@ -32,7 +32,7 @@ struct RainForecast: Codable, Hashable, Sendable {
     /// is what makes iOS draw the activity again with the new image.
     var radarSaved: Int?
 
-    /// Below this, rain that has started counts as over.
+    /// Below this, rain that has started counts as over (as in the rain alerts).
     static let rainDBZ = 14.0
     /// Steps in a row below `rainDBZ` that end a spell.
     static let dryStepsToEnd = 2

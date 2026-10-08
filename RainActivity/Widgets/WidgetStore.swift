@@ -94,7 +94,7 @@ enum WidgetStore {
 
     // MARK: - Map
 
-    /// The radar map around `location` from the API's preview service (the image
+    /// The radar map around `location` from the API's preview images (the image
     /// the rain alerts attach), scaled to `pixels`, the widget's own size,
     /// drawn with the app's basemap and colour map. With Match System on, a
     /// light and a dark map, and the widget shows the one for its appearance.

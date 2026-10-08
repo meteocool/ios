@@ -17,11 +17,10 @@ enum MeteocoolEnvironment: String, CaseIterable {
     /// `worker/api.ts`). Moving the domain to another Worker moves the app,
     /// map and registrations together, without an app release.
     case app
-    /// Staging, "Experimental Features" in Settings: the staging API
-    ///, and core's `--mode staging` build.
+    /// "Experimental Features" in Settings: the staging API and core's
+    /// `--mode staging` build.
     case staging
-    /// Demo, "Demo" in Settings: the staging
-    /// code replaying a recorded storm as if it were happening now, and core's
+    /// "Demo" in Settings: the staging API and data replaying a recorded storm as if it were happening now, and core's
     /// `--mode demo` build.
     case demo
 
@@ -113,7 +112,7 @@ enum MeteocoolEnvironment: String, CaseIterable {
     }
 
     /// Base URL the storms' volume files are fetched from. A volume's `path`
-    /// from the data service starts with its bucket and is appended as is.
+    /// from the data service is appended to it as is.
     /// On app, core's Worker redirects volume paths to its asset host.
     var assetBaseURL: URL {
         switch self {

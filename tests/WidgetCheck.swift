@@ -2,8 +2,8 @@ import CoreLocation
 import Foundation
 
 /// Checks the widgets' maths: moving now along a forecast between timeline
-/// entries, the chart's window, and snapping a preview card the way the backend's
-/// preview service does (`/v3/preview/og.png`), whose cache the
+/// entries, the chart's window, and snapping a preview card the way the API's
+/// preview images (`/v3/preview/og.png`) are snapped, whose cache the
 /// widgets share and whose snapped centre places the marker on the map.
 @main
 struct WidgetCheck {
