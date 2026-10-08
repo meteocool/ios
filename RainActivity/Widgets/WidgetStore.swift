@@ -95,28 +95,38 @@ enum WidgetStore {
     // MARK: - Map
 
     /// The radar map around `location` from the API's preview service (the image
-    /// the rain alerts attach), scaled to `pixels`, the widget's own size.
+    /// the rain alerts attach), scaled to `pixels`, the widget's own size,
+    /// drawn with the app's basemap and colour map. With Match System on, a
+    /// light and a dark map, and the widget shows the one for its appearance.
     static func map(at location: CLLocation, zoom: Double, wide: Bool, pixels: CGSize) async -> MapSnapshot? {
         let card = PreviewCard(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
                                zoom: zoom, wide: wide)
-        let file = directory?.appendingPathComponent("map-\(card.key).jpg")
+        let followsSystem = (defaults?.string(forKey: "baseLayer") ?? "system") == "system"
+        guard let light = await map(card, style: MapStyle.stored(dark: false), pixels: pixels) else { return nil }
+        let dark = followsSystem ? await map(card, style: MapStyle.stored(dark: true), pixels: pixels) : nil
+        return MapSnapshot(image: light.image, darkImage: dark?.image, rendered: light.saved, card: card,
+                           location: location.coordinate)
+    }
+
+    private static func map(_ card: PreviewCard, style: MapStyle, pixels: CGSize) async -> (image: UIImage, saved: Date)? {
+        let file = directory?.appendingPathComponent("map-\(card.key)\(style.key).jpg")
         var image = cached(file, expiry: mapExpiry)
         if !(image.map { reusable($0.saved) } ?? false),
-           let data = await fetchMap(card), let jpeg = downsampled(data, longestSide: wide ? 1200 : 1024) {
+           let data = await fetchMap(card, style: style), let jpeg = downsampled(data, longestSide: card.wide ? 1200 : 1024) {
             if let file { save(jpeg, to: file) }
             image = (jpeg, Date())
         }
         guard let image, let picture = cropped(image.data, to: pixels) else { return nil }
-        return MapSnapshot(image: picture, rendered: image.saved, card: card, location: location.coordinate)
+        return (picture, image.saved)
     }
 
-    private static func fetchMap(_ card: PreviewCard) async -> Data? {
+    private static func fetchMap(_ card: PreviewCard, style: MapStyle) async -> Data? {
         var components = URLComponents(url: apiURL.appendingPathComponent("v3/preview/og.png"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "latLonZ", value: String(format: "%.5f,%.5f,%.1f", card.latitude, card.longitude, card.zoom)),
             URLQueryItem(name: "aspectRatio", value: card.wide ? "wide" : "square"),
             URLQueryItem(name: "logo", value: "false"),
-        ]
+        ] + style.queryItems
         guard let url = components?.url else { return nil }
         var request = URLRequest(url: url)
         // A cold render takes up to 20 s; past that the last map will do.
@@ -185,8 +195,36 @@ enum WidgetStore {
 }
 
 /// A radar map ready to draw, cropped to the widget.
+/// The app's map settings as the preview service takes them. Left out when
+/// they are the service's defaults (Light, Classic), so the request is the
+/// same as the rain alerts' and shares their cached render.
+struct MapStyle: Equatable {
+    /// light, dark, osm or cyclosm; never "system", which the widget resolves.
+    let baseLayer: String
+    let colormap: String
+
+    static func stored(dark: Bool) -> MapStyle {
+        let defaults = WidgetStore.defaults
+        var baseLayer = defaults?.string(forKey: "baseLayer") ?? "system"
+        if baseLayer == "system" { baseLayer = dark ? "dark" : "light" }
+        return MapStyle(baseLayer: baseLayer, colormap: defaults?.string(forKey: "radarColorMapping") ?? "classic")
+    }
+
+    var queryItems: [URLQueryItem] {
+        (baseLayer == "light" ? [] : [URLQueryItem(name: "baseLayer", value: baseLayer)])
+            + (colormap == "classic" ? [] : [URLQueryItem(name: "colormap", value: colormap)])
+    }
+
+    /// Part of the cached file's name; empty for the defaults.
+    var key: String {
+        queryItems.isEmpty ? "" : "-\(baseLayer)-\(colormap)"
+    }
+}
+
 struct MapSnapshot {
     let image: UIImage
+    /// The dark basemap's map, when the widget follows the system's appearance.
+    var darkImage: UIImage? = nil
     /// When it was rendered, or as near as the widget knows: when it arrived.
     let rendered: Date
     let card: PreviewCard
