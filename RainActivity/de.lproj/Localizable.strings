@@ -40,12 +40,12 @@
 "Rain Clock" = "Regenuhr";
 "Places" = "Orte";
 "Refresh Rain" = "Regen aktualisieren";
-"The rain radar around you or any place, with what the rain does next." = "Das Regenradar um dich oder einen beliebigen Ort, und was der Regen als Nächstes tut.";
-"The rain radar around a place, with what the rain does next." = "Das Regenradar um einen Ort, und was der Regen als Nächstes tut.";
-"When the rain comes and how heavy, as on the map's chart." = "Wann der Regen kommt und wie stark, wie im Diagramm der Karte.";
+"The rain radar around you or any place, and when rain comes next." = "Das Regenradar um dich oder einen beliebigen Ort, und wann als Nächstes Regen kommt.";
+"The rain radar around a place, and when rain comes next." = "Das Regenradar um einen Ort, und wann als Nächstes Regen kommt.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Wann Regen kommt und wie stark er wird, wie im Diagramm der Karte.";
 "The rain chart from the map, for one place." = "Das Regendiagramm der Karte, für einen Ort.";
-"The next hour around a dial, coloured where it rains." = "Die nächste Stunde als Zifferblatt, farbig, wo es regnet.";
-"The next hour or two around a dial, coloured where it rains." = "Die nächsten ein, zwei Stunden als Zifferblatt, farbig, wo es regnet.";
+"The next hour on a dial, coloured where it will rain." = "Die nächste Stunde auf einem Zifferblatt, farbig, wo es regnen wird.";
+"The next one or two hours on a dial, coloured where it will rain." = "Die nächsten ein oder zwei Stunden auf einem Zifferblatt, farbig, wo es regnen wird.";
 "The rain at up to six places, side by side." = "Der Regen an bis zu sechs Orten nebeneinander.";
 "The rain at several places at once." = "Der Regen an mehreren Orten auf einmal.";
 "Location" = "Ort";
@@ -65,7 +65,7 @@
 "Next rain" = "Nächster Regen";
 "One line, such as \"Rain in 12 min\"" = "Eine Zeile, etwa „Regen in 12 Min.“";
 "Next rain and chart" = "Nächster Regen und Diagramm";
-"The line and the next hour's bars" = "Die Zeile und die Balken der nächsten Stunde";
+"The line plus bars for the next hour" = "Die Zeile und Balken für die nächste Stunde";
 "Intensity" = "Intensität";
 "As in the app" = "Wie in der App";
 "The Intensity Threshold setting" = "Die Einstellung Schwellenwert";
@@ -78,6 +78,6 @@
 "On the medium and large widget." = "Im mittleren und großen Widget.";
 "Dial" = "Zifferblatt";
 "One hour" = "Eine Stunde";
-"A minute hand's turn" = "Eine Runde des Minutenzeigers";
+"One turn of the minute hand" = "Eine Runde des Minutenzeigers";
 "Two hours" = "Zwei Stunden";
 "The whole forecast" = "Die ganze Vorhersage";
