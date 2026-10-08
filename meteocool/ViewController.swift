@@ -769,7 +769,7 @@ extension ViewController {
 
     /// Leaves whatever the page shows for the radar map: closes the panels on
     /// top (About, a storm's panel, the point menu) through their own Escape
-    /// handling, and switches from any other map (3D, satellite, lightning)
+    /// handling, and switches from any other map (3D, lightning)
     /// to the radar, as picking it in the layer switcher does.
     /// A page that is down is retried at once instead, and one that has
     /// navigated away is replaced by the map.
