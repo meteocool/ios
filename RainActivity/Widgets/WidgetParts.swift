@@ -6,9 +6,21 @@ import WidgetKit
 struct RainStatus {
     let forecast: RainForecast
 
-    var intensity: String {
-        let names = ["Drizzle", "Light rain", "Rain", "Intense Rain", "Hail"]
-        return String(localized: String.LocalizationValue(names[RainForecast.intensity(dbz: forecast.peak)]))
+    /// The rain now while it rains, else as it arrives.
+    var intensity: String { Self.name(dbz: forecast.headlineDBZ) }
+
+    /// "Heavy rain at 16:10", when the rain gets a word heavier than
+    /// `intensity` before it ends.
+    var peak: String? {
+        guard let peak = forecast.spellPeak,
+              RainForecast.band(dbz: peak.dbz) > RainForecast.band(dbz: forecast.headlineDBZ) else { return nil }
+        return String(localized: "rain_peak_at \(Self.name(dbz: peak.dbz)) \(peak.at.formatted(date: .omitted, time: .shortened))")
+    }
+
+    /// The words for a reflectivity, as the rain alerts say it (`RainForecast.bands`).
+    static func name(dbz: Double) -> String {
+        let names = ["band_drizzle", "band_light", "band_rain", "band_intense", "band_heavy", "band_extreme", "band_hail"]
+        return String(localized: String.LocalizationValue(names[RainForecast.band(dbz: dbz)]))
     }
 
     /// "Rain in 12 min", "Rain until 14:20", "Dry until 14:55". The
@@ -30,8 +42,8 @@ struct RainStatus {
         switch forecast.phase {
         case .dry: return "checkmark.circle.fill"
         case .approaching, .raining:
-            return forecast.peak >= RainForecast.thresholds[4] ? "cloud.hail.fill"
-                : forecast.peak >= RainForecast.thresholds[3] ? "cloud.heavyrain.fill" : "cloud.rain.fill"
+            let band = RainForecast.band(dbz: forecast.peak)
+            return band >= 6 ? "cloud.hail.fill" : band >= 4 ? "cloud.heavyrain.fill" : "cloud.rain.fill"
         }
     }
 

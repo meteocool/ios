@@ -76,10 +76,7 @@ struct Headline: View {
         }
     }
 
-    private var intensity: String {
-        let names = ["Drizzle", "Light rain", "Rain", "Intense Rain", "Hail"]
-        return String(localized: String.LocalizationValue(names[RainForecast.intensity(dbz: forecast.peak)]))
-    }
+    private var intensity: String { RainStatus(forecast: forecast).intensity }
 
     private var title: Text {
         switch forecast.phase {
@@ -104,6 +101,7 @@ struct Headline: View {
                 parts.append(String(localized: "rain_open_ended"))
             }
         }
+        if let peak = RainStatus(forecast: forecast).peak { parts.append(peak) }
         if UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.bool(forKey: "withDBZ") == true, forecast.peak > 0 {
             parts.append(String(localized: "rain_peak_dbz \(Int(forecast.peak.rounded()))"))
         }
@@ -159,7 +157,7 @@ private struct RainSymbol: View {
     var body: some View {
         let palette = RainChart.palette
         let colour = RadarPalette.colour(dbz: max(forecast.peak, forecast.threshold), palette: palette)
-        Image(systemName: forecast.peak >= RainForecast.thresholds[4] ? "cloud.hail.fill" : "cloud.rain.fill")
+        Image(systemName: forecast.peak > RainForecast.hailDBZ ? "cloud.hail.fill" : "cloud.rain.fill")
             .symbolRenderingMode(.palette)
             .foregroundStyle(.white, colour.map { Color(red: $0.red, green: $0.green, blue: $0.blue) } ?? .blue)
     }
