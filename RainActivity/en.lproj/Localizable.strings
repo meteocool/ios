@@ -11,6 +11,7 @@
 "rain_continues %@" = "%@ continues";
 "rain_over" = "The rain is over";
 "rain_stale" = "Waiting for new radar data";
+"rain_stale_short" = "Waiting for radar data";
 "rain_lasting %lld" = "Lasting about %lld min";
 "rain_open_ended" = "No end in sight yet";
 "rain_peak_dbz %lld" = "Peak %lld dBZ";

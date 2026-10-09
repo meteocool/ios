@@ -3,11 +3,11 @@ import SwiftUI
 import WidgetKit
 
 /// The rain Live Activity: the radar image beside the bar chart on the lock
-/// screen, and a small chart in the Dynamic Island.
+/// screen, a headline and chart on Apple Watch, and a small chart in the Dynamic Island.
 struct RainActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RainActivityAttributes.self) { context in
-            LockScreenView(forecast: context.state, stale: context.isStale)
+            ActivityContentView(forecast: context.state, stale: context.isStale)
                 .activityBackgroundTint(nil)
         } dynamicIsland: { context in
             let forecast = context.state
@@ -34,14 +34,42 @@ struct RainActivityWidget: Widget {
                 RainSymbol(forecast: forecast)
             }
         }
+        .supplementalActivityFamilies([.small, .medium])
     }
 }
 
-private struct LockScreenView: View {
+private struct ActivityContentView: View {
+    @Environment(\.activityFamily) private var family
     let forecast: RainForecast
     let stale: Bool
 
     var body: some View {
+        if family == .small {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .top, spacing: 6) {
+                    if !stale {
+                        Image(systemName: RainStatus(forecast: forecast).symbol)
+                            .font(.caption)
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(Color.primary, RainStatus(forecast: forecast).colour)
+                    }
+                    Headline(forecast: forecast, stale: stale, compact: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .layoutPriority(1)
+                if !stale {
+                    RainChart(forecast: forecast.trimmed(past: 0))
+                        .frame(minHeight: 28, maxHeight: .infinity)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+        } else {
+            lockScreen
+        }
+    }
+
+    private var lockScreen: some View {
         HStack(alignment: .top, spacing: 12) {
             RadarThumbnail(side: 84)
             VStack(alignment: .leading, spacing: 6) {
@@ -60,18 +88,20 @@ private struct LockScreenView: View {
 struct Headline: View {
     let forecast: RainForecast
     let stale: Bool
+    var compact = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             title
-                .font(.headline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            if let detail {
+                .font(compact ? .caption.weight(.semibold) : .headline)
+                .lineLimit(compact ? 2 : 1)
+                .minimumScaleFactor(compact ? 0.75 : 0.8)
+            if let detail, !compact || stale {
                 detail
-                    .font(.subheadline)
+                    .font(compact ? .caption2 : .subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(compact ? 2 : 1)
+                    .minimumScaleFactor(compact ? 0.75 : 1)
             }
         }
     }
@@ -94,7 +124,7 @@ struct Headline: View {
 
     /// The backend's detail when it sent a headline (even none), else the app's own.
     private var detail: Text? {
-        if stale { return Text(String(localized: "rain_stale")) }
+        if stale { return Text(String(localized: compact ? "rain_stale_short" : "rain_stale")) }
         // Only where the title is the backend's too, so the two never disagree.
         if let headline = forecast.currentHeadline, headline.text(headline.title) != nil {
             return headline.detail.flatMap(headline.text)
