@@ -97,6 +97,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Only `.began` triggers a transition. The recognizers also fire on every
     /// `.changed`, and the state machine needs one transition per gesture.
     @objc func mapGesture(_ recognizer: UIGestureRecognizer) {
+        if let pinch = recognizer as? UIPinchGestureRecognizer, let webView {
+            TrackpadBridge.pinch(pinch, in: webView)
+        }
+        if let rotation = recognizer as? UIRotationGestureRecognizer, let webView {
+            TrackpadBridge.rotate(rotation, in: webView)
+        }
         guard recognizer.state == .began, locationStateMachine?.state == .tracking else { return }
         locationStateMachine?.trigger(.mapMove)
     }
@@ -201,8 +207,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             }
         }
 
-        // disable scrolling & bouncing effects
-        webView.scrollView.isScrollEnabled = false
+        // disable scrolling & bouncing effects. On a Mac, WebKit hands the
+        // page a trackpad's two-finger scroll as `wheel` events only while
+        // scrolling is enabled; the page fills the view, so nothing scrolls.
+        webView.scrollView.isScrollEnabled = TrackpadBridge.isNeeded
         webView.scrollView.bounces = false
         webView.scrollView.delegate = self
 
