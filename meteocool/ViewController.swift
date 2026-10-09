@@ -37,6 +37,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// The AR button's own glass element (iOS 26) or blur disc (before), so
     /// hiding it leaves no empty backdrop.
     private var arButtonBackdrop: UIView?
+    /// Sends a link to what the map shows; see `shareMap`.
+    let shareButton = UIButton(type: .system)
+    /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
+    /// glass column's elements, hidden with the rest of it.
+    private var shareButtonBackdrop: UIView?
     /// The storm selected on the map, from the page's `cloudSelected:` and
     /// `cellSelected:` messages: what the AR view looks for when opened.
     private var mapSelection: StormTarget?
@@ -144,10 +149,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         self.view.addSubview(logo!)
         self.view.addSubview(blur!)
 
+        configureShareButton()
         configureARButton()
         if #available(iOS 26.0, *) {
             applyLiquidGlass()
         } else {
+            installClassicShareButton()
             installClassicARButton()
         }
         configureLogo()
@@ -585,13 +592,14 @@ extension ViewController {
 
     }
 
-    /// Replaces the `TribbleButton` slab and the three buttons on top of it
-    /// with a glass container holding three interactive glass elements.
+    /// Replaces the `TribbleButton` slab and the three buttons on top of it,
+    /// with the share and AR buttons below them, by a glass container holding
+    /// one interactive glass element each.
     /// The container makes them render as one pill shape. Glass cannot sample
     /// other glass, so ungrouped neighbours would each sample the map instead.
     @available(iOS 26.0, *)
     private func installGlassControls() {
-        let controls = [layerSwitcherButton!, settingsButton!, positionButton!, arButton]
+        let controls = [layerSwitcherButton!, settingsButton!, positionButton!, shareButton, arButton]
 
         // The buttons are constrained to the artwork and to each other.
         // Reparenting them would leave those constraints pointing across the
@@ -688,6 +696,7 @@ extension ViewController {
             settingsButton.isHidden = hidden
             layerSwitcherButton.isHidden = hidden
             positionButton.isHidden = hidden
+            shareButtonBackdrop?.isHidden = hidden
             arButtonBackdrop?.alpha = hidden ? 0 : 1
         }
     }
@@ -812,28 +821,35 @@ extension ViewController {
     }
 
     /// Before iOS 26 the three buttons are painted onto one slab of artwork;
-    /// the AR button gets a blurred disc of its own underneath it.
+    /// the AR button gets a blurred disc of its own underneath the share one.
     fileprivate func installClassicARButton() {
+        let disc = classicDisc(for: arButton, below: shareButtonBackdrop ?? trippleButton)
+        disc.isHidden = true
+        arButtonBackdrop = disc
+    }
+
+    /// A blurred disc for a button below the `TribbleButton` slab, the way
+    /// the controls looked before iOS 26.
+    fileprivate func classicDisc(for button: UIButton, below anchor: UIView) -> UIView {
         let disc = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
         disc.layer.cornerRadius = 22
         disc.clipsToBounds = true
         disc.translatesAutoresizingMaskIntoConstraints = false
-        arButton.translatesAutoresizingMaskIntoConstraints = false
-        arButton.tintColor = .label
-        disc.contentView.addSubview(arButton)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.tintColor = .label
+        disc.contentView.addSubview(button)
         view.addSubview(disc)
         NSLayoutConstraint.activate([
             disc.widthAnchor.constraint(equalToConstant: 44),
             disc.heightAnchor.constraint(equalToConstant: 44),
             disc.centerXAnchor.constraint(equalTo: trippleButton.centerXAnchor),
-            disc.topAnchor.constraint(equalTo: trippleButton.bottomAnchor, constant: 10),
-            arButton.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
-            arButton.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
-            arButton.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
-            arButton.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
+            disc.topAnchor.constraint(equalTo: anchor.bottomAnchor, constant: 10),
+            button.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
+            button.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
+            button.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
         ])
-        disc.isHidden = true
-        arButtonBackdrop = disc
+        return disc
     }
 
     private func setARButtonVisible(_ visible: Bool) {
@@ -946,16 +962,21 @@ extension ViewController {
 
 extension ViewController {
     /// The system share sheet for a link to the map, from one of the page's
-    /// share buttons or from a screenshot (`screenshotTaken`). `image` is the
-    /// map as it was, offered beside the link for a screenshot.
-    func presentShare(_ share: MapShare, image: UIImage? = nil) {
+    /// share buttons, the map's own (`shareMap`) or a screenshot
+    /// (`screenshotTaken`). `image` is the map as it was, offered beside the
+    /// link for a screenshot. `source` is a native control an iPad's popover
+    /// points at, in place of the page's rect.
+    func presentShare(_ share: MapShare, image: UIImage? = nil, from source: UIView? = nil) {
         guard presentedViewController == nil else { return }
         var items: [Any] = [MapLinkItem(share: share, image: image)]
         if let image { items.append(image) }
         let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = webView
-            if let rect = share.sourceRect?.intersection(webView.bounds), !rect.isNull {
+            if let source {
+                popover.sourceView = source
+                popover.sourceRect = source.bounds
+            } else if let rect = share.sourceRect?.intersection(webView.bounds), !rect.isNull {
                 popover.sourceRect = rect
             } else {
                 // Nothing on the page to point at: the middle of the map, no arrow.
@@ -977,12 +998,43 @@ extension ViewController {
     @objc fileprivate func screenshotTaken() {
         guard webviewReady, presentedViewController == nil, view.window != nil,
               UIApplication.shared.applicationState == .active else { return }
-        webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") { [weak self] result, _ in
-            guard let self, let json = result as? String,
-                  let share = MapShare(json: json, mapHost: MeteocoolEnvironment.current.webURL.host) else { return }
-            self.webView.takeSnapshot(with: nil) { [weak self] image, _ in
+        currentShareLink { [weak self] share in
+            self?.webView.takeSnapshot(with: nil) { [weak self] image, _ in
                 self?.presentShare(share, image: image)
             }
+        }
+    }
+
+    /// The map's own share button, under the location button: a link to
+    /// what is on screen, whichever map it is and whatever frame it is on.
+    /// The page's player no longer carries one (core's lib/ShareControl.ts).
+    fileprivate func configureShareButton() {
+        shareButton.setImage(UIImage(systemName: "square.and.arrow.up", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
+        shareButton.accessibilityLabel = NSLocalizedString("map_share", comment: "")
+        shareButton.accessibilityIdentifier = "map.share.button"
+        shareButton.addAction(UIAction { [weak self] _ in self?.shareMap() }, for: .touchUpInside)
+    }
+
+    fileprivate func shareMap() {
+        guard webviewReady, presentedViewController == nil else { return }
+        currentShareLink { [weak self] share in
+            guard let self else { return }
+            self.presentShare(share, from: self.shareButtonBackdrop ?? self.shareButton)
+        }
+    }
+
+    /// Before iOS 26: a blurred disc of its own under the `TribbleButton`.
+    fileprivate func installClassicShareButton() {
+        shareButtonBackdrop = classicDisc(for: shareButton, below: trippleButton)
+    }
+
+    /// What the page says a link to the map should be. Nothing from a page
+    /// that predates sharing, which has no `window.shareLink`.
+    private func currentShareLink(_ handler: @escaping (MapShare) -> Void) {
+        webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") { result, _ in
+            guard let json = result as? String,
+                  let share = MapShare(json: json, mapHost: MeteocoolEnvironment.current.webURL.host) else { return }
+            handler(share)
         }
     }
 }
