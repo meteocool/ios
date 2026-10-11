@@ -103,6 +103,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func acknowledgeNotification(retry: Bool, from: String, completion: @escaping (Bool) -> Void = { _ in }) {
+        // With notifications off there is no registration to acknowledge for,
+        // and every return to the foreground would post for nothing.
+        guard SharedNotificationManager.enabled else {
+            completion(true)
+            return
+        }
         // A clear push can launch the app in the background, before APNs hands
         // this launch its token. The stored token names the same registration,
         // so the acknowledgement does not have to wait for it.
