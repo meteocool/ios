@@ -25,13 +25,13 @@ import Foundation
     )
 
     /// Shown before the alerts page, because the alerts page upgrades When In Use to background access.
+    /// Only Continue, which always leads to the system prompt.
+    /// App Review rejects a location pre-prompt that lets the user skip or delay it (guideline 5.1.1(iv)).
     static func location(action: @escaping OnboardingAction) -> OnboardingPage {
         OnboardingPage(
             artwork: .symbol("location.fill"),
             title: NSLocalizedString("Location Access", comment: "Location Page Onboarding"),
             message: NSLocalizedString("onboarding_location_permission", comment: "Location Page Onboarding"),
-            primaryTitle: NSLocalizedString("allow_location_access", comment: "Location Page Onboarding"),
-            secondaryTitle: NSLocalizedString("Not Now", comment: "Skip a permission"),
             action: action)
     }
 
