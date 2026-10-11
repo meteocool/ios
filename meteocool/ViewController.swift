@@ -1021,6 +1021,8 @@ extension ViewController {
     /// The page's player no longer carries one (core's lib/ShareControl.ts).
     fileprivate func configureShareButton() {
         shareButton.setImage(UIImage(systemName: "square.and.arrow.up", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
+        // The symbol sits low in its frame; centred as drawn it looks dropped in its disc.
+        shareButton.imageView?.transform = CGAffineTransform(translationX: 0, y: -6)
         shareButton.accessibilityLabel = NSLocalizedString("map_share", comment: "")
         shareButton.accessibilityIdentifier = "map.share.button"
         shareButton.addAction(UIAction { [weak self] _ in self?.shareMap() }, for: .touchUpInside)
