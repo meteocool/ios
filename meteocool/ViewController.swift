@@ -42,6 +42,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
     /// glass column's elements, hidden with the rest of it.
     private var shareButtonBackdrop: UIView?
+    /// What hides the controls and the logo; see `setCovered`.
+    private var covers = Set<Cover>()
     /// The storm selected on the map, from the page's `cloudSelected:` and
     /// `cellSelected:` messages: what the AR view looks for when opened.
     private var mapSelection: StormTarget?
@@ -351,8 +353,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private func mapWentDown() {
         webviewReady = false
         layerSwitcherButton.isEnabled = false
-        setMapControlsHidden(false)
-        setLogoHidden(false)
+        clearCovers()
     }
 
     /// Every new page has to report in, including one the page loads itself
@@ -418,12 +419,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
-        setMapControlsHidden(true)
-        setLogoHidden(true)
+        setCovered(.layerSwitcher, true)
         webView.evaluateJavaScript("window.openLayerswitcher();") { [weak self] _, error in
             if error != nil {
-                self?.setMapControlsHidden(false)
-                self?.setLogoHidden(false)
+                self?.setCovered(.layerSwitcher, false)
             }
         }
     }
@@ -505,30 +504,20 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 activateLocationIfAuthorized()
             }
 
-            setMapControlsHidden(false)
+            clearCovers()
 
             // After the location button, so the link wins over its centring.
             if let link = pendingLink { openLink(search: link) }
         }
         
-        if action == "layerSwitcherOpened" {
-            setMapControlsHidden(true)
-            setLogoHidden(true)
-        }
-
-        if action == "layerSwitcherClosed" {
-            setMapControlsHidden(false)
-            setLogoHidden(false)
-        }
-
-        if action == "detailSheetExpanded" {
-            setMapControlsHidden(true)
-            setLogoHidden(true)
-        }
-
-        if action == "detailSheetCollapsed" {
-            setMapControlsHidden(false)
-            setLogoHidden(false)
+        switch action {
+        case "layerSwitcherOpened": setCovered(.layerSwitcher, true)
+        case "layerSwitcherClosed": setCovered(.layerSwitcher, false)
+        case "detailSheetExpanded": setCovered(.expandedSheet, true)
+        case "detailSheetCollapsed": setCovered(.expandedSheet, false)
+        case "hideControls": setCovered(.popup, true)
+        case "showControls": setCovered(.popup, false)
+        default: break
         }
     }
 }
@@ -683,6 +672,28 @@ extension ViewController {
             logo.widthAnchor.constraint(equalToConstant: 30),
             logo.heightAnchor.constraint(equalToConstant: 30),
         ])
+    }
+
+    /// What the page has drawn over the controls' corners. The controls and
+    /// the logo stay hidden while any of these is open, so closing one over
+    /// another does not bring them back on top of it. `popup` is the page's
+    /// own `hideControls`, for a menu it places where they float.
+    enum Cover { case layerSwitcher, expandedSheet, popup }
+
+    func setCovered(_ cover: Cover, _ covered: Bool) {
+        if covered { covers.insert(cover) } else { covers.remove(cover) }
+        refreshCovers()
+    }
+
+    /// A new page, or none: nothing it drew is open any more.
+    func clearCovers() {
+        covers.removeAll()
+        refreshCovers()
+    }
+
+    private func refreshCovers() {
+        setMapControlsHidden(!covers.isEmpty)
+        setLogoHidden(!covers.isEmpty)
     }
 
     /// Shows or hides the floating map controls as one unit.
