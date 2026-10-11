@@ -83,10 +83,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     var thresholdSliderLoad = false
     var timeSliderLoad = false
+
+    // Step haptics before iOS 26, which has no native slider stops.
+    private let stepFeedback = UISelectionFeedbackGenerator()
+    private var dragStep = 0
     
     //Content
     private var header = [
         NSLocalizedString("notifications", comment: "header"),
+        NSLocalizedString("notification_style_header", comment: "header"),
         NSLocalizedString("Map View", comment: "header"),
         NSLocalizedString("About", comment: "header"),
         NSLocalizedString("data_sources_header", comment: "header"),
@@ -94,6 +99,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
+        NSLocalizedString("notification_style_footer", comment: "footer"),
         NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
         // Read from the bundle, not from the translations.
         // A version number typed into the translations went out of date.
@@ -148,11 +154,37 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     }
     private var dataPushNotification = [
         NSLocalizedString("Enable Notifications", comment: "dataPushNotification"),
-        NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification"),
         NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
-        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification"),
-        NSLocalizedString("live_activity", comment: "dataPushNotification")
+        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
     ]
+    /// Rows after the Live Activity preview image.
+    private var dataNotificationStyle = [
+        NSLocalizedString("live_activity", comment: "dataPushNotification"),
+        NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification")
+    ]
+
+    /// The Live Activity as the App Store shows it, above its switch.
+    private lazy var liveActivityPreviewCell: UITableViewCell = {
+        let cell = UITableViewCell()
+        cell.selectionStyle = .none
+        let image = UIImageView(image: UIImage(named: "LiveActivityPreview"))
+        image.contentMode = .scaleAspectFit
+        image.translatesAutoresizingMaskIntoConstraints = false
+        cell.contentView.addSubview(image)
+        let margins = cell.contentView.layoutMarginsGuide
+        let fill = image.widthAnchor.constraint(equalTo: margins.widthAnchor)
+        fill.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            fill,
+            image.widthAnchor.constraint(lessThanOrEqualTo: margins.widthAnchor),
+            image.widthAnchor.constraint(lessThanOrEqualToConstant: 380),
+            image.heightAnchor.constraint(equalTo: image.widthAnchor, multiplier: 355.0 / 1089.0),
+            image.centerXAnchor.constraint(equalTo: margins.centerXAnchor),
+            image.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 16),
+            image.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -16),
+        ])
+        return cell
+    }()
     private var dataMapView = [
         NSLocalizedString("Two-Finger Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto-Zoom After Start", comment: "dataMapView"),
@@ -221,13 +253,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             else {
                 return 1
             }
-        case 1: //Map View
+        case 1: //Notification style, only with notifications on
+            return notificationStyleShown ? 1 + dataNotificationStyle.count : 0
+        case 2: //Map View
             return dataMapView.count
-        case 2: //About
+        case 3: //About
             return dataAboutLabel.count
-        case 3: //Data sources
+        case 4: //Data sources
             return dataSources.count
-        case 4: //Open-source licences
+        case 5: //Open-source licences
             return 1
         default:
             return 0
@@ -236,7 +270,21 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     //Sections Header
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        if section == 1 && !notificationStyleShown { return nil }
         return header[section]
+    }
+
+    private var notificationStyleShown: Bool {
+        userDefaults?.bool(forKey: "pushNotification") ?? false
+    }
+
+    // A hidden section must not leave its spacing behind.
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        section == 1 && !notificationStyleShown ? .leastNonzeroMagnitude : UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        section == 1 && !notificationStyleShown ? .leastNonzeroMagnitude : UITableView.automaticDimension
     }
     
     //Selection Footer
@@ -252,6 +300,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 return NSLocalizedString("meteorological_details_help", comment: "")
             }
         }
+        if section == 1 && !notificationStyleShown { return nil }
         return footer[section]
     }
     
@@ -275,19 +324,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
                 switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
                 return switcherCell
-            case 1: //meteorological details
-                switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
-                switcherCell.switcher.accessibilityLabel = dataPushNotification[indexPath.row]
-                switcherCell.switcher.setOn((userDefaults?.bool(forKey: "withDBZ"))!, animated: false)
-                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-                return switcherCell
-            case 2: //Intensity, Threshold
+            case 1: //Intensity, Threshold
                 if !thresholdSliderLoad{
                     stepperSliderCellThreshold = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
                     let stepperSliderViewThreshold = UISlider()
-                    pin(stepperSliderViewThreshold, in: stepperSliderCellThreshold)
-                    stepperSliderViewThreshold.maximumValue = Float(intensity.count - 1)
+                    pin(stepperSliderViewThreshold, steps: intensity.count, in: stepperSliderCellThreshold)
                     stepperSliderViewThreshold.tag = 5
                     stepperSliderViewThreshold.accessibilityLabel = dataPushNotification[indexPath.row]
                     stepperSliderViewThreshold.value = Float(userDefaults?.integer(forKey: "intensityValue") ?? 1)
@@ -300,12 +341,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     thresholdSliderLoad = true
                 }
                 return stepperSliderCellThreshold
-            case 3: //Time before
+            case 2: //Time before
                 if !timeSliderLoad{
                     stepperSliderCellTime = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
                     let stepperSliderViewTime = UISlider()
-                    pin(stepperSliderViewTime, in: stepperSliderCellTime)
-                    stepperSliderViewTime.maximumValue = 8
+                    pin(stepperSliderViewTime, steps: 9, in: stepperSliderCellTime)
                     stepperSliderViewTime.tag = 9
                     stepperSliderViewTime.accessibilityLabel = dataPushNotification[indexPath.row]
                     stepperSliderViewTime.value = Float(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2)
@@ -318,18 +358,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     timeSliderLoad = true
                 }
                 return stepperSliderCellTime
-            case 4: // Live Activity
-                switcherCell.switcherInfoLabel.text = dataPushNotification[indexPath.row]
-                switcherCell.switcher.accessibilityLabel = dataPushNotification[indexPath.row]
-                switcherCell.switcher.setOn(SharedLiveActivities.preferred, animated: false)
-                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-                return switcherCell
             default:
                 print("This should not happen...")
                 return textCell
             }
-        case 1: //Map View
+        case 2: //Map View
             switch indexPath.row {
             case 0: //Map Rotation
                 switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
@@ -357,7 +390,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 print("This should not happen...")
                 return textCell
             }
-        case 2: //About
+        case 1: //Notification style
+            guard indexPath.row > 0 else { return liveActivityPreviewCell }
+            let title = dataNotificationStyle[indexPath.row - 1]
+            switcherCell.switcherInfoLabel.text = title
+            switcherCell.switcher.accessibilityLabel = title
+            switcherCell.switcher.setOn(indexPath.row == 1 ? SharedLiveActivities.preferred : userDefaults?.bool(forKey: "withDBZ") ?? false, animated: false)
+            switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+            switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+            return switcherCell
+        case 3: //About
             switch indexPath.row {
             case 3: // Mode: the deployment (`MeteocoolEnvironment`)
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
@@ -368,12 +410,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkValueLable.text = ""
                 return linkCell
             }
-        case 3: //Data sources
+        case 4: //Data sources
             let source = dataSources[indexPath.row]
             linkCell.linkInfoLable.text = source.name
             linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
             return linkCell
-        case 4: //Open-source licences, on their own page
+        case 5: //Open-source licences, on their own page
             linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
             linkCell.linkValueLable.text = ""
             linkCell.accessoryType = .disclosureIndicator
@@ -390,8 +432,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     ///
     /// - A frame derived from the table width overflows an inset-grouped cell.
     /// - Fixed light-mode colors are invisible in dark mode.
-    private func pin(_ slider: UISlider, in cell: StepperTableViewCell) {
+    /// - A plain continuous slider only buzzes at its two ends; each step
+    ///   should tick, as the old StepSlider did.
+    private func pin(_ slider: UISlider, steps: Int, in cell: StepperTableViewCell) {
+        slider.maximumValue = Float(steps - 1)
+        if #available(iOS 26.0, *) {
+            // Native stops snap and tick on every step.
+            slider.trackConfiguration = .init(numberOfTicks: steps)
+        }
         slider.isContinuous = true
+        slider.addTarget(self, action: #selector(sliderTouchedDown(_:)), for: .touchDown)
         slider.addTarget(self, action: #selector(sliderChanged(_:event:)), for: .valueChanged)
         slider.addTarget(self, action: #selector(sliderCommitted(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
         let tap = UITapGestureRecognizer(target: self, action: #selector(sliderTrackTapped(_:)))
@@ -421,18 +471,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
-        if (indexPath.section == 1 && indexPath.row == 2){ // Base Layer
+        if (indexPath.section == 2 && indexPath.row == 2){ // Base Layer
             performSegue(withIdentifier: "baseLayerMappingView", sender: self)
         }
-        if (indexPath.section == 1 && indexPath.row == 3){ // Color Mapping
+        if (indexPath.section == 2 && indexPath.row == 3){ // Color Mapping
             performSegue(withIdentifier: "radarColorMappingView", sender: self)
         }
-        if (indexPath.section == 2 && indexPath.row == 0){
+        if (indexPath.section == 3 && indexPath.row == 0){
             if let url = URL(string: "https://github.com/meteocool/ios") {
                 UIApplication.shared.open(url)
             }
         }
-        if (indexPath.section == 2 && indexPath.row == 1){ //Feedback
+        if (indexPath.section == 3 && indexPath.row == 1){ //Feedback
             let mailAdress = "support@meteocool.com"
             let mailBody = NSLocalizedString("feedback_body", comment: "mail")
             // XXX store version number somewhere central
@@ -442,18 +492,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 UIApplication.shared.open(url)
             }
         }
-        if (indexPath.section == 2 && indexPath.row == 2){
+        if (indexPath.section == 3 && indexPath.row == 2){
             if let url = URL(string: "https://meteocool.com/privacy.html") {
                 UIApplication.shared.open(url)
             }
         }
-        if (indexPath.section == 2 && indexPath.row == 3){ // Mode
+        if (indexPath.section == 3 && indexPath.row == 3){ // Mode
             present(UINavigationController(rootViewController: EnvironmentPickerViewController()), animated: true)
         }
-        if indexPath.section == 3, let url = URL(string: dataSources[indexPath.row].url) {
+        if indexPath.section == 4, let url = URL(string: dataSources[indexPath.row].url) {
             UIApplication.shared.open(url)
         }
-        if indexPath.section == 4 {
+        if indexPath.section == 5 {
             present(UINavigationController(rootViewController: LicencesViewController()), animated: true)
         }
     }
@@ -475,10 +525,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     @objc func switchChanged(_ sender: UISwitch) {
         switch sender.tag {
-        case 10:
+        case 20:
             userDefaults?.set(sender.isOn, forKey: "mapRotation")
             NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
-        case 11:
+        case 21:
             userDefaults?.set(sender.isOn, forKey: "autoZoom")
             if sender.isOn {
                 SharedLocationUpdater.requestAuthorization({ [weak self] granted, _ in
@@ -510,10 +560,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     })
                 }
             }
-        case 1:
+        case 12:
             userDefaults?.set(sender.isOn, forKey: "withDBZ")
             SharedLocationUpdater.refreshNotificationRegistration()
-        case 4:
+        case 11:
             userDefaults?.set(sender.isOn, forKey: "liveActivity")
             SharedLiveActivities.settingChanged()
         default:
@@ -538,7 +588,19 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
     }
 
+    @objc private func sliderTouchedDown(_ sender: UISlider) {
+        dragStep = Int(sender.value.rounded())
+        stepFeedback.prepare()
+    }
+
     @objc private func sliderChanged(_ sender: UISlider, event: UIEvent?) {
+        if #unavailable(iOS 26.0), event?.allTouches?.isEmpty == false {
+            let step = Int(sender.value.rounded())
+            if step != dragStep {
+                dragStep = step
+                stepFeedback.selectionChanged()
+            }
+        }
         updateSliderLabel(sender)
         // Touch gestures commit on release. Accessibility adjustments and
         // track taps send valueChanged without touches and commit immediately.
