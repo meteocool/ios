@@ -86,6 +86,10 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
 
     func numberOfSections(in tableView: UITableView) -> Int { 2 }
 
+    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        NSLocalizedString(section == 0 ? "basemap_system_explanation" : "basemap_explanation", comment: "baseLayer")
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         section == 0 ? 1 : optionKeys.count
     }
