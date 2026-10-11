@@ -527,7 +527,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private func permissionHelp() {
         let alert = UIAlertController(title: NSLocalizedString("notification_permissions_title", comment: ""),
                                       message: NSLocalizedString("notification_permissions_help", comment: ""), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings", comment: ""), style: .default) { _ in
+        alert.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings", comment: ""), style: .default) { _ in
             UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
         })
         alert.addAction(UIAlertAction(title: NSLocalizedString("Dismiss", comment: ""), style: .cancel))

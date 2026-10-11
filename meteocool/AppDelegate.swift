@@ -80,6 +80,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        // The backend has not heard from this phone in a day: background
+        // location may have been taken back. Say so, or, still allowed, send
+        // where the phone is now.
+        if userInfo["location_check"] as? Bool == true {
+            Task {
+                if LocationPermissionWarning.applies {
+                    await LocationPermissionWarning.notifyIfNeeded()
+                } else {
+                    SharedLocationUpdater.refreshNotificationRegistration()
+                    // Time for the location to come in and be posted.
+                    try? await Task.sleep(for: .seconds(10))
+                }
+                completionHandler(.newData)
+            }
+            return
+        }
         // `live_activity` asks for a new radar image for the Live Activity,
         // which only the app can download. A clear means the rain is over,
         // which also ends an activity the app started itself.
