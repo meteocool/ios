@@ -128,7 +128,7 @@ import CoreLocation
             }
             if (authorizationStatus == .denied || authorizationStatus == .restricted) {
                 let alertController = UIAlertController(title: NSLocalizedString("location_permission_required",comment: "Alerts"), message: NSLocalizedString("location_permission_general",comment: "Alerts"), preferredStyle: .alert)
-                alertController.addAction(UIAlertAction(title: NSLocalizedString("Change In Settings",comment: "Alerts"), style: .default, handler: {_ in
+                alertController.addAction(UIAlertAction(title: NSLocalizedString("Change in Settings",comment: "Alerts"), style: .default, handler: {_ in
                     if let url = NSURL(string: UIApplication.openSettingsURLString) as URL? {
                         UIApplication.shared.open(url, options: [:], completionHandler: nil)
                     }
@@ -317,6 +317,8 @@ import CoreLocation
             "details": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "withDBZ": userDefaults?.bool(forKey: "withDBZ") ?? false,
             "token": tokenValue,
+            // Only Always follows the phone in the background (LocationPermissionWarning).
+            "locationPermission": LocationPermissionWarning.reported,
             ] as [String: Any]
 
         let origin = NetworkHelper.apiURL

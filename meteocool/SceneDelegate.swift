@@ -86,6 +86,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         viewController?.willEnterForeground()
         viewController?.didBecomeActive()
         SharedLiveActivities.refresh(force: true)
+        LocationPermissionWarning.showIfNeeded(from: viewController)
         // XXX call this only when there are >0 notifications on launch! saves 1 useless request.
         (UIApplication.shared.delegate as? AppDelegate)?.acknowledgeNotification(retry: true, from: "foreground")
     }
