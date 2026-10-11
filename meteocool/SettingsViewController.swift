@@ -163,7 +163,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Show Meteorological Details", comment: "dataPushNotification")
     ]
 
-    /// The Live Activity as the App Store shows it, above its switch.
+    /// The Live Activity as the App Store shows it, and how it behaves, above its switch.
     private lazy var liveActivityPreviewCell: UITableViewCell = {
         let cell = UITableViewCell()
         cell.selectionStyle = .none
@@ -171,6 +171,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         image.contentMode = .scaleAspectFit
         image.translatesAutoresizingMaskIntoConstraints = false
         cell.contentView.addSubview(image)
+        let caption = UILabel()
+        caption.text = NSLocalizedString("live_activity_preview_caption", comment: "settings")
+        caption.font = .preferredFont(forTextStyle: .footnote)
+        caption.adjustsFontForContentSizeCategory = true
+        caption.textColor = .secondaryLabel
+        caption.numberOfLines = 0
+        caption.translatesAutoresizingMaskIntoConstraints = false
+        cell.contentView.addSubview(caption)
         let margins = cell.contentView.layoutMarginsGuide
         let fill = image.widthAnchor.constraint(equalTo: margins.widthAnchor)
         fill.priority = .defaultHigh
@@ -181,7 +189,10 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             image.heightAnchor.constraint(equalTo: image.widthAnchor, multiplier: 355.0 / 1089.0),
             image.centerXAnchor.constraint(equalTo: margins.centerXAnchor),
             image.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 16),
-            image.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -16),
+            caption.topAnchor.constraint(equalTo: image.bottomAnchor, constant: 12),
+            caption.leadingAnchor.constraint(equalTo: image.leadingAnchor),
+            caption.trailingAnchor.constraint(equalTo: image.trailingAnchor),
+            caption.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -16),
         ])
         return cell
     }()
