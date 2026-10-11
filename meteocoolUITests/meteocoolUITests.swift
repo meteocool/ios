@@ -16,10 +16,19 @@ final class meteocoolUITests: XCTestCase {
         button.tap()
     }
 
+    /// Declines the location prompt. The location page has no skip button (App Review 5.1.1(iv)).
     private func completeOnboardingWithoutPermissions() {
         tap("Continue")
-        tap("Not Now") // location is optional
+        tap("Continue") // location
+        denySystemPrompt()
         tap("Not Now") // notifications are optional
+    }
+
+    /// A simulator that already answered the prompt shows none.
+    private func denySystemPrompt(timeout: TimeInterval = 3) {
+        let alert = SpringboardHelper.springboard.alerts.firstMatch
+        guard alert.waitForExistence(timeout: timeout) else { return }
+        alert.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch.tap()
     }
 
     private func screenshot(_ name: String) {
@@ -577,17 +586,12 @@ final class meteocoolUITests: XCTestCase {
 
     func testDeniedPermissionsRemainUsable() {
         XCTAssertTrue(app.staticTexts["Welcome to meteocool"].waitForExistence(timeout: 10), "Run this test on a fresh installation")
-        addUIInterruptionMonitor(withDescription: "Deny system permission") { alert in
-            let deny = alert.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch
-            guard deny.exists else { return false }
-            deny.tap()
-            return true
-        }
         tap("Continue")
-        tap("Allow Location Access")
-        app.tap()
+        tap("Continue") // location
+        denySystemPrompt()
         tap("Tell Me Before It Rains!")
-        app.tap()
+        // The notifications prompt can take several seconds to appear.
+        denySystemPrompt(timeout: 15)
         tap("map.location")
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         screenshot("Location denied recovery")
@@ -658,7 +662,7 @@ final class meteocoolUITests: XCTestCase {
             return false
         }
         tap("Continue")
-        tap("Allow Location Access")
+        tap("Continue") // location
         app.tap()
         tap("Tell Me Before It Rains!")
         app.tap()
