@@ -106,20 +106,8 @@ struct Headline: View {
         }
     }
 
-    private var intensity: String { RainStatus(forecast: forecast).intensity }
-
-    private var title: Text {
-        if let headline = forecast.currentHeadline, let text = headline.text(headline.title) { return text }
-        switch forecast.phase {
-        case .approaching(let arrival, _):
-            return Text(intensity) + Text(" ")
-                + Text(.currentDate, format: .reference(to: arrival, allowedFields: [.hour, .minute]))
-        case .raining(let end):
-            guard let end else { return Text(String(localized: "rain_continues \(intensity)")) }
-            return Text(String(localized: "rain_until \(intensity) \(end.formatted(date: .omitted, time: .shortened))"))
-        case .dry:
-            return Text(String(localized: "rain_over"))
-        }
+    private var title: some View {
+        RainStatus(forecast: forecast).line
     }
 
     /// The backend's detail when it sent a headline (even none), else the app's own.

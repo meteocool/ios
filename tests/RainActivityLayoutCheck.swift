@@ -53,6 +53,28 @@ struct RainActivityLayoutCheck: App {
         ]
         var failures: [String] = []
         var results: [[String: String]] = []
+        // A dry widget must not turn the forecast horizon into a rain arrival.
+        let dryTitle = german ? "Kein Niederschlag erwartet" : "No precipitation expected"
+        let shortDryTitle = german ? "Trocken" : "Dry"
+        var wordedDry = dry
+        wordedDry.headline = .init(title: dryTitle, times: [:])
+        for (name, state) in [("fallback", dry), ("backend", wordedDry)] {
+            let widths: [(String, CGFloat, Font, String)] = [
+                ("full", 177, .caption, dryTitle), ("compact", 130, .headline, shortDryTitle),
+            ]
+            for (size, width, font, expected) in widths {
+                let widget = render(RainStatus(forecast: state).line
+                    .font(font).lineLimit(1).minimumScaleFactor(0.8)
+                    .frame(width: width, height: 30, alignment: .leading)
+                    .environment(\.locale, locale)
+                    .environment(\.colorScheme, .light).background(.white))
+                try! widget.pngData()!.write(to: directory.appendingPathComponent("widget-dry-\(name)-\(size).png"))
+                let text = recognize(widget, language: language)
+                if normalized(text) != normalized(expected) {
+                    failures.append("widget-dry-\(name)-\(size): expected '\(expected)', got '\(text)'")
+                }
+            }
+        }
         for (name, state, stale) in cases {
             let reference = Headline(forecast: state, stale: stale).checkedTitle
                 .font(.headline).frame(width: 1000, height: 40, alignment: .leading)
@@ -76,8 +98,9 @@ struct RainActivityLayoutCheck: App {
                         try! image.pngData()!.write(to: directory.appendingPathComponent("\(id).png"))
                         let text = recognize(image, language: language,
                                              ignoringSymbolsBefore: stale ? 0 : large ? 32 : 26)
+                        let compactDry = name == "dry" && normalized(text).contains(normalized(shortDryTitle))
                         // A live countdown can tick while the size matrix runs.
-                        if !normalized(text).contains(normalized(expected)) {
+                        if !compactDry && !normalized(text).contains(normalized(expected)) {
                             expected = recognize(render(reference), language: language)
                             precondition(!expected.isEmpty, "Title reference must render")
                         }
@@ -86,7 +109,7 @@ struct RainActivityLayoutCheck: App {
                         let heightRange = peakHeight - (barHeights.min() ?? 0)
                         results.append(["id": id, "text": text, "expected": expected,
                                         "peakBarHeight": "\(peakHeight)", "barHeightRange": "\(heightRange)"])
-                        if !normalized(text).contains(normalized(expected)) {
+                        if !compactDry && !normalized(text).contains(normalized(expected)) {
                             failures.append("\(id): missing '\(expected)' in '\(text)'")
                         }
                         if text.contains("unused detail") {
@@ -203,5 +226,5 @@ struct RainActivityLayoutCheck: App {
 }
 
 private extension Headline {
-    var checkedTitle: Text { title }
+    var checkedTitle: some View { title }
 }

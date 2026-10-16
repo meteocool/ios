@@ -9,7 +9,6 @@
 "rain_until %@ %@" = "%1$@ until %2$@";
 /* Headline while it rains and the forecast shows no end. */
 "rain_continues %@" = "%@ continues";
-"rain_over" = "The rain is over";
 "rain_stale" = "Waiting for new radar data";
 "rain_stale_short" = "Waiting for radar data";
 "rain_lasting %lld" = "Lasting about %lld min";
@@ -31,7 +30,7 @@
 "rain_chart" = "Rain at your location";
 
 /* Widgets */
-"widget_dry_until %@" = "Dry until %@";
+"widget_no_precipitation" = "No precipitation expected";
 "widget_ends %@" = "until %@";
 "widget_until_rain" = "min to rain";
 "widget_min" = "min";

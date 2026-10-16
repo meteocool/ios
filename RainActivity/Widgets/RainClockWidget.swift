@@ -82,7 +82,7 @@ struct RainClockView: View {
         let status = RainStatus(forecast: forecast)
         switch family {
         case .accessoryInline:
-            Label { status.line } icon: { Image(systemName: status.symbol) }
+            Label { status.compactText } icon: { Image(systemName: status.symbol) }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
