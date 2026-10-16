@@ -27,10 +27,26 @@ struct RainStatus {
         return String(localized: String.LocalizationValue(names[RainForecast.band(dbz: dbz)]))
     }
 
-    /// "Rain in 12 min", "Rain until 14:20", "Dry until 14:55". The
+    /// "Rain in 12 min", "Rain until 14:20", "No precipitation expected". The
     /// countdown counts itself between entries. The backend's words where it
     /// sent them.
-    var line: Text {
+    @ViewBuilder var line: some View {
+        if forecast.phase == .dry {
+            ViewThatFits(in: .horizontal) {
+                text.fixedSize(horizontal: true, vertical: false)
+                compactText
+            }
+        } else {
+            text
+        }
+    }
+
+    /// Plain text for the inline Lock Screen widget, which lays out its own row.
+    var compactText: Text {
+        forecast.phase == .dry ? Text(String(localized: "widget_dry")) : text
+    }
+
+    private var text: Text {
         if let headline = forecast.currentHeadline, let text = headline.text(headline.title) { return text }
         switch forecast.phase {
         case .approaching(let arrival, _):
@@ -40,7 +56,7 @@ struct RainStatus {
             guard let end else { return Text(String(localized: "rain_continues \(intensity)")) }
             return Text(String(localized: "rain_until \(intensity) \(end.formatted(date: .omitted, time: .shortened))"))
         case .dry:
-            return Text(String(localized: "widget_dry_until \(forecast.end.formatted(date: .omitted, time: .shortened))"))
+            return Text(String(localized: "widget_no_precipitation"))
         }
     }
 
