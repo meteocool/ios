@@ -1,0 +1,227 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Sveiki atvykę į meteocool";
+"Continue" = "Tęsti";
+"Not Now" = "Ne dabar";
+"onboarding_feature_radar_title" = "Tiesioginis radaras";
+"onboarding_feature_radar_text" = "Lietus ir perkūnija realiu laiku, atnaujinama kas kelias minutes.";
+"Nowcasting" = "Trumpalaikė prognozė";
+"onboarding_feature_nowcast_text" = "Stebėk, kur juda lietus. Mūsų patirtimi, pirmosios 45 minutės būna gana tikslios.";
+"Rain Alerts" = "Įspėjimai apie lietų";
+"onboarding_feature_alerts_text" = "Įspėjimas prieš lietui pasiekiant tave. Jis dingsta, kai tik lietus liaujasi.";
+"onboarding_feature_free_title" = "Nemokama ir atvirojo kodo";
+"onboarding_feature_free_text" = "Kuriama ir palaikoma savanorių jų laisvalaikiu.";
+
+/* Location Page Onboarding */
+"Location Access" = "Vietovės prieiga";
+"onboarding_location_permission" = "Kad galėtume parodyti tavo dabartinę vietą žemėlapyje, mums reikia tavo leidimo.\n\nNiekada nebendrinsime ir nesaugosime tavo vietovės duomenų.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Gauk pranešimą prieš pat pradedant lyti ten, kur esi, net kai meteocool uždaryta.\n\nTam tavo įrenginys dar paprašys leidimo naudoti vietovę fone. Nesijaudink, baterijos tai neiškraus.";
+"tell_me_before_it_rains" = "Pranešk prieš lietų!";
+"onboarding_settings_footnote" = "Tai bet kada gali pakeisti nustatymuose.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Pranešimai";
+"Use Without Notifications" = "Naudoti be pranešimų";
+"Enable Push Notifications" = "Įjungti pranešimus";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "Daugiau netrukdysime.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Vėl sveiki!";
+
+/* Later */
+"Later" = "Vėliau";
+
+/* Next */
+"Next" = "Toliau";
+
+/* Done */
+"Done" = "Atlikta";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Nustatymai";
+
+/*header*/
+"Map View" = "Žemėlapis";
+"notifications" = "Pranešimai";
+"About" = "Apie";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Žemėlapio sukimas dviem pirštais:\nSuk žemėlapį dviem pirštais. Kai išjungta, šiaurė visada lieka viršuje.\n\nAutomatinis priartinimas paleidus:\nPriartina prie tavo vietos kaskart, kai programėlė atidaroma ar vėl grįžta į pirmą planą. Reikia vietovės prieigos.";
+"notifications_explanation" = "Jei nori, galime įspėti tave apie kritulius, artėjančius prie tavo dabartinės vietos. Tam programėlė fone siunčia tavo vietą į mūsų serverius.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Įjungti pranešimus";
+"Show Meteorological Details" = "Rodyti meteorologinę informaciją";
+"Intensity Threshold" = "Intensyvumo riba";
+"Notification Timeframe" = "Įspėjimo laikas";
+"notification_style_header" = "Užrakinimo ekranas ir pranešimai";
+"notification_style_footer" = "Live Activity lyjant:\nKol lietus artėja ar lyja, užrakinimo ekrane ir Dynamic Island rodomas radaro vaizdas ir tavo vietos lietaus diagrama.\n\nRodyti meteorologinę informaciją:\nPrie pranešimų apie lietų prideda radaro atspindingumą (dBZ).";
+"live_activity_preview_caption" = "Live Activity automatiškai atnaujinama su kiekviena nauja prognoze, kai tik ji paskelbiama. Nubraukus ją kaip pranešimą, ji nebegrįš, kol lietus nesiliaus ir vėl neprasidės. Kada ji pasirodo, lemia aukščiau esantys nustatymai „Intensyvumo riba“ ir „Įspėjimo laikas“.";
+"location_permission_downgraded_title" = "Įspėjimai apie lietų negali tavęs sekti";
+"location_permission_downgraded_body" = "meteocool gali naudoti tavo vietą tik tada, kai programėlė atidaryta, todėl įspėjimai apie lietų galioja vietai, kurioje ją paskutinį kartą atidarei. Kad gautum įspėjimus visur, kur esi, nustatymuose vietovės prieigą pakeisk į „Always“ (visada).";
+"live_activity" = "Live Activity lyjant";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Žemėlapio sukimas dviem pirštais";
+"Auto-Zoom After Start" = "Automatinis priartinimas paleidus";
+"Base Map Layer" = "Fono žemėlapis";
+"Radar Color Map" = "Radaro spalvų skalė";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (dviračiams)";
+"osm" = "OpenStreetMap";
+"dark" = "Tamsus";
+"system" = "Kaip sistemoje";
+"system_detail" = "Dabar: %@";
+"light" = "Šviesus";
+
+/*radarColorMapping*/
+"classic" = "Klasikinė";
+"nws" = "NWS Reflectivity";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (sutrikusiam spalvų matymui)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Naudoja šviesų arba tamsų žemėlapį pagal tavo iPhone išvaizdą. Išjunk, jei nori žemėlapį pasirinkti pats.";
+"basemap_explanation" = "Visi žemėlapiai yra prislopintų spalvų, kad radaras liktų įskaitomas.\n\nŠviesus ir tamsus:\nSausuma, vanduo, greitkeliai ir sienos, beveik nieko daugiau.\n\nOpenStreetMap:\nKaip klasikinis OpenStreetMap: su žemėnauda, visais keliais, pastatais ir regionų ribomis.\n\nCyclOSM (dviračiams):\nKeliaujantiems lauke: miškai ir parkai spalvoti, pažymėti keliukai ir takai, greitkeliai mažiau ryškūs.";
+"colormap_explanation" = "Pakeičia kritulių spalvų skalę žemėlapyje. Kiekviena juosta eina nuo dulksnos kairėje iki krušos dešinėje.\n\nKlasikinė:\nPaties meteocool skalė. Dulksna palaipsniui išryškėja, toliau mėlyna, žalia, geltona ir raudona, o krušai – nuo baltos iki violetinės.\n\nNWS Reflectivity:\nJAV nacionalinės orų tarnybos (NWS) spalvos. Panaši į klasikinę, bet dulksna piešiama vientisa, o ne palaipsniui išryškėjanti.\n\nPyArt StepSeq:\nIš radarų įrankių rinkinio Py-ART. Rudos, žalios, mėlynos ir violetinės juostos, kiekviena nuo šviesios iki tamsios, todėl išsiskiria net nedideli intensyvumo pokyčiai.\n\nHomeyer (sutrikusiam spalvų matymui):\nNuo žalios per geltoną ir oranžinę iki tamsiai raudonos; sukurta taip, kad liktų įskaitoma sutrikus spalvų matymui.\n\nLang:\nNuo šviesiai mėlynos per geltoną iki rudos; taip pat įskaitoma sutrikus spalvų matymui.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Prisidėk per GitHub";
+"Feedback and Support" = "Atsiliepimai ir pagalba";
+"imprint_privacy" = "Rekvizitai ir privatumo politika";
+"Enable Experimental Features" = "Įjungti eksperimentines funkcijas";
+
+/*intensity*/
+"Drizzle" = "Dulksna";
+"Light rain" = "Nedidelis lietus";
+"Rain" = "Lietus";
+"Intense Rain" = "Stiprus lietus";
+"Heavy Rain" = "Smarkus lietus";
+
+/*selection Footer*/
+"meteorological_details_help" = "Intensyvumo riba:\nPranešti tik apie kritulius, kurie turėtų būti bent tokio intensyvumo.\n\nĮspėjimo laikas:\nKiek laiko prieš kritulius nori gauti pranešimą.";
+
+/*mail*/
+"feedback_text_1" = "Pranešdamas apie problemą, prašom pridėti šią informaciją: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Reikia vietovės leidimo";
+"notifications_not_working" = "Pranešimai neveikia";
+"location_permission_general" = "Kad galėtum naudoti vietos mygtuką ar automatinį priartinimą, įrenginio nustatymuose turi leisti prieigą prie vietovės. Jokios vietos informacijos nesaugosime ir nebendrinsime.\n";
+"Change in Settings" = "Keisti nustatymuose";
+"Allow in Settings" = "Leisti nustatymuose";
+"Disable Auto-Zoom" = "Išjungti automatinį priartinimą";
+"disable_notifications" = "Išjungti pranešimus";
+"Dismiss" = "Gerai";
+"notifications_disabled" = "Pranešimai išjungti";
+"notifications_disabled_text" = "Jei persigalvosi, pranešimus apie lietų ir sniegą vėl galėsi įjungti programėlės ⚙️ nustatymuose viršuje dešinėje.";
+
+"version_label" = "Versija:";
+
+"notification_permissions_title" = "Patikrink leidimus";
+"notification_permissions_help" = "Įspėjimams apie lietų reikia pranešimų ir vietovės prieigos. Kad gautum įspėjimus judėdamas, kai programėlė uždaryta, nustatymuose vietovės prieigą pakeisk į „Always“ (visada). Žemėlapį gali naršyti ir be šių leidimų.";
+"notification_sync_failed" = "Pranešimų pakeitimų nepavyko perduoti serveriui. Įspėjimai gali vis dar naudoti ankstesnius nustatymus. Patikrink ryšį ir iš naujo atidaryk programėlę, kad bandytum dar kartą.";
+"feedback_body" = "Čia aprašyk savo problemą ar pasiūlymą:\n";
+
+"map_layers" = "Žemėlapio sluoksniai";
+"map_load_failed" = "Nepavyko įkelti žemėlapio. Bandoma dar kartą…";
+"show_radar_hint" = "Rodo radaro žemėlapį.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Duomenų šaltiniai ir licencijos";
+"data_sources_footer" = "Duomenų teikėjai neremia meteocool ir neteikia jokių garantijų. Bakstelėk šaltinį, kad pamatytum jo licenciją.";
+"source_dwd" = "Vokietijos radaras, audrų celės, orų žemėlapiai · CC BY 4.0, su pakeitimais";
+"source_meteoswiss" = "Šveicarijos radaras · CC BY 4.0, su pakeitimais";
+"source_meteofrance" = "Prancūzijos radaras · Licence Ouverte 2.0 (Etalab), su pakeitimais";
+"source_chmi" = "Čekijos radaras · CC BY 4.0, su pakeitimais";
+"source_imgw" = "Lenkijos radaras · CC BY 4.0. Duomenų šaltinis – Meteorologijos ir vandentvarkos institutas – Nacionalinis mokslinių tyrimų institutas (IMGW-PIB). IMGW-PIB duomenis apdorojo meteocool.";
+"source_noaa" = "JAV radaras · viešasis domenas";
+"source_blitzortung" = "Žaibai";
+"source_openmeteo" = "Modelių palyginimas · CC BY 4.0";
+"source_osm" = "Fono žemėlapio duomenys · ODbL";
+"source_protomaps" = "Fono žemėlapio plytelės";
+"source_eumetnet" = "Šveicarijos, Prancūzijos, Čekijos ir Lenkijos radarai, gaunami per jį";
+"source_mapterhorn" = "Reljefas 3D žemėlapyje · atvirieji aukščių duomenys, daugiausia CC BY 4.0. Bakstelėk, kad pamatytum visus šaltinius.";
+"source_freepik" = "Artwork designed by Freepik from Flaticon";
+"source_gorbachev" = "Legendos piktogramos";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Atvirojo kodo licencijos";
+"open_source_footer" = "meteocool ir programinės įrangos, kuria jis paremtas, licencijos. Bakstelėk, kad perskaitytum.";
+"Py-ART Colour Maps" = "Py-ART spalvų skalės";
+"Web Map Libraries" = "Internetinio žemėlapio bibliotekos";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Režimas";
+"mode_production" = "Įprastas";
+"mode_production_detail" = "Dabartiniai orai. Rekomenduojama.";
+"Experimental Features" = "Eksperimentinės funkcijos";
+"mode_experimental_detail" = "Dabartiniai orai su dar kuriamomis funkcijomis. Gali veikti netikėtai. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Įrašyta audra, atkuriama taip, lyg vyktų dabar. Tai ne dabartiniai orai.";
+"mode_footer" = "Įsigalioja iškart: žemėlapis persikrauna, o įspėjimai apie lietų ateina iš pasirinkto režimo.";
+"demo_notice_title" = "Tai ne tikra audra";
+"demo_notice_message" = "Įjungtas demo režimas: žemėlapis atkuria įrašytą audrą taip, lyg ji vyktų dabar. Niekas, ką jis rodo, nėra dabartiniai orai.";
+"demo_notice_disable" = "Išjungti demo režimą";
+"demo_notice_continue" = "Tęsti demo";
+
+/* AR storm view */
+"map_ar" = "AR audrų vaizdas";
+"map_share" = "Bendrinti";
+"ar_mode_live" = "Tiesiogiai";
+"ar_mode_peel" = "Lukštenti";
+"ar_mode_slice" = "Pjūvis";
+"ar_mode_turn" = "Pasukti pjūvį";
+"ar_mode_track" = "Išilgai trajektorijos";
+"ar_mode_floor" = "Grindys (CAPPI)";
+"ar_mode_shells" = "Kevalai";
+"ar_mode_shaft" = "Lietaus stulpas";
+"ar_mode_tops" = "Viršūnės";
+"ar_label_top" = "viršūnė %.1f km";
+"ar_label_lightning" = "žaibai: %ld/5 min";
+"ar_label_age" = "skenavimas prieš %ld min";
+"ar_label_extrapolated" = "perkelta %ld min į priekį";
+"ar_label_poorly_seen" = "radaras mato prastai";
+"ar_compass_points" = "Š ŠŠR ŠR RŠR R RPR PR PPR P PPV PV VPV V VŠV ŠV ŠŠV";
+"ar_open_on_map" = "Atverti žemėlapyje";
+"ar_close" = "Uždaryti";
+"ar_menu" = "Parinktys";
+"ar_menu_lightning" = "Žaibai";
+"ar_menu_extrapolate" = "Perkelti audras į dabartį";
+"ar_menu_sun_fix" = "Orientuoti pagal saulę";
+"ar_menu_reset_alignment" = "Grąžinti pagal kompasą";
+"ar_sun_fix_instructions" = "Bakstelėk saulę. Nežiūrėk tiesiai į ją.";
+"ar_sun_fix_done" = "Orientuota pagal saulę (%+.0f°).";
+"ar_sun_fix_night" = "Saulė yra žemiau horizonto.";
+"ar_sun_fix_missed" = "Tai nepanašu į saulę. Bandyk dar kartą.";
+"ar_finding_location" = "Nustatoma tavo vieta…";
+"ar_location_denied" = "AR vaizdui reikia tavo vietos, kad galėtų išdėstyti audras.";
+"ar_open_settings" = "Nustatymai";
+"ar_camera_denied" = "AR vaizdui reikia kameros.";
+"ar_tracking_starting" = "Nukreipk telefoną į dangų ir laikyk jį nejudindamas.";
+"ar_tracking_motion" = "Judink telefoną lėčiau.";
+"ar_tracking_features" = "Trumpam į kadrą įtrauk šiek tiek žemės ar pastatų.";
+"ar_feed_failed" = "Nepavyko įkelti audrų. Bandoma dar kartą.";
+"ar_no_storms" = "180 km spinduliu audrų nėra.";
+"ar_preview_placed" = "Peržiūra, 28 km nuo stipriausios audros";
+"ar_no_metal" = "Šis įrenginys negali nupiešti audrų.";
+"ar_status_loading" = "Įkeliamos audros…";
+"ar_status_failed" = "Audros nepasiekiamos";
+"ar_status_storms" = "Audros netoliese: %ld";
+"ar_alignment_preview" = "Peržiūra be kameros";
+"ar_alignment_compass" = "Šiaurė pagal kompasą (%@)";
+"ar_alignment_manual" = "Šiaurė pataisyta rankiniu būdu (%@)";
+"ar_alignment_sun" = "Šiaurė pagal saulę (%@)";
+"ar_alignment_geo" = "Šiaurė pagal geografinį sekimą";
+"ar_turn_left" = "Pasuk į kairę %.0f°";
+"ar_turn_right" = "Pasuk į dešinę %.0f°";

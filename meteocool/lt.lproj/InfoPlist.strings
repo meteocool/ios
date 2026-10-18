@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Paprašei įspėti apie lietų tavo dabartinėje vietoje. Kad įspėjimai veiktų, pasirink „Always Allow“ (visada leisti).";
+"NSLocationAlwaysUsageDescription" = "Paprašei įspėti apie lietų tavo dabartinėje vietoje. Kad įspėjimai veiktų, pasirink „Always Allow“ (visada leisti).";
+"NSLocationWhenInUseUsageDescription" = "Rodo tavo vietą orų žemėlapyje.";
+"NSCameraUsageDescription" = "AR audrų vaizdas rodo radaro 3D audras virš kameros vaizdo, kad atpažintum, į kurią audrą žiūri.";

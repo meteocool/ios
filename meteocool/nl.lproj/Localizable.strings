@@ -1,0 +1,227 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Welkom bij meteocool";
+"Continue" = "Doorgaan";
+"Not Now" = "Niet nu";
+"onboarding_feature_radar_title" = "Live radar";
+"onboarding_feature_radar_text" = "Regen en onweer terwijl het gebeurt, om de paar minuten bijgewerkt.";
+"Nowcasting" = "Nowcast";
+"onboarding_feature_nowcast_text" = "Zie waar de regen heen trekt. In onze ervaring kloppen de eerste 45 minuten opvallend goed.";
+"Rain Alerts" = "Regenmeldingen";
+"onboarding_feature_alerts_text" = "Een seintje voordat de regen bij je is. Het verdwijnt weer zodra het droog wordt.";
+"onboarding_feature_free_title" = "Gratis en open source";
+"onboarding_feature_free_text" = "Gemaakt en draaiende gehouden door vrijwilligers in hun vrije tijd.";
+
+/* Location Page Onboarding */
+"Location Access" = "Locatietoegang";
+"onboarding_location_permission" = "Om je huidige locatie op de kaart te tonen, hebben we je toestemming nodig.\n\nWe delen of bewaren je locatiegegevens nooit.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Krijg een melding kort voordat het gaat regenen waar je bent, ook als meteocool gesloten is.\n\nDaarvoor vraagt je apparaat ook om locatietoegang op de achtergrond. Geen zorgen, dat kost je batterij nauwelijks iets.";
+"tell_me_before_it_rains" = "Waarschuw me voor regen!";
+"onboarding_settings_footnote" = "Je kunt dit altijd wijzigen in Instellingen.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Pushmeldingen";
+"Use Without Notifications" = "Doorgaan zonder meldingen";
+"Enable Push Notifications" = "Pushmeldingen inschakelen";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "We houden nu onze mond.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Daar zijn we weer!";
+
+/* Later */
+"Later" = "Later";
+
+/* Next */
+"Next" = "Volgende";
+
+/* Done */
+"Done" = "Gereed";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Instellingen";
+
+/*header*/
+"Map View" = "Kaart";
+"notifications" = "Pushmeldingen";
+"About" = "Over";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Kaart draaien met twee vingers:\nDraai de kaart met twee vingers. Staat dit uit, dan blijft het noorden altijd boven.\n\nAutomatisch zoomen na start:\nZoomt in op je locatie zodra de app opent of weer op de voorgrond komt. Vereist locatietoegang.";
+"notifications_explanation" = "Als je wilt, waarschuwen we je voor neerslag die op je huidige locatie afkomt. Daarvoor stuurt de app je locatie op de achtergrond naar onze servers.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Meldingen inschakelen";
+"Show Meteorological Details" = "Meteorologische details tonen";
+"Intensity Threshold" = "Drempelwaarde";
+"Notification Timeframe" = "Tijd vooraf";
+"notification_style_header" = "Toegangsscherm & meldingen";
+"notification_style_footer" = "Live Activity bij regen:\nZolang er regen aankomt of valt, blijven het radarbeeld en de regengrafiek voor je locatie op het toegangsscherm en in het Dynamic Island staan.\n\nMeteorologische details tonen:\nVoegt de radarreflectiviteit (dBZ) toe aan regenmeldingen.";
+"live_activity_preview_caption" = "Live Activities worden automatisch bijgewerkt met elke nieuwe verwachting, zodra die verschijnt. Veeg je er een weg zoals een melding, dan komt hij pas terug als de regen stopt en opnieuw begint. De drempelwaarde en de tijd vooraf hierboven bepalen wanneer ze verschijnen.";
+"location_permission_downgraded_title" = "Regenmeldingen kunnen je niet volgen";
+"location_permission_downgraded_body" = "meteocool mag je locatie alleen gebruiken terwijl de app open is, dus regenmeldingen gelden voor de plek waar je de app het laatst opende. Wil je overal meldingen, zet Locatie dan in Instellingen op Altijd.";
+"live_activity" = "Live Activity bij regen";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Kaart draaien met twee vingers";
+"Auto-Zoom After Start" = "Automatisch zoomen na start";
+"Base Map Layer" = "Basiskaartlaag";
+"Radar Color Map" = "Radar-kleurenschema";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (fietsen)";
+"osm" = "OpenStreetMap";
+"dark" = "Donker";
+"system" = "Systeeminstelling volgen";
+"system_detail" = "Nu %@";
+"light" = "Licht";
+
+/*radarColorMapping*/
+"classic" = "Klassiek";
+"nws" = "NWS Reflectivity";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (kleurenblindheid)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Gebruikt Licht of Donker, net als de weergave van je iPhone. Zet dit uit om zelf een kaart te kiezen.";
+"basemap_explanation" = "Alle kaarten zijn ingetogen gehouden, zodat de radar leesbaar blijft.\n\nLicht en Donker:\nLand, water, snelwegen en grenzen, verder weinig.\n\nOpenStreetMap:\nZoals de klassieke OpenStreetMap, met grondgebruik, alle wegen, gebouwen en regionale grenzen.\n\nCyclOSM (fietsen):\nVoor buiten: bossen en parken in kleur, onverharde wegen en paden ingetekend, snelwegen naar de achtergrond.";
+"colormap_explanation" = "Wijzigt de kleuren waarin de neerslag op de kaart wordt getekend. Elke balk loopt van motregen links tot hagel rechts.\n\nKlassiek:\nHet eigen schema van meteocool. Motregen begint doorschijnend, dan blauw, groen, geel en rood, en wit tot paars voor hagel.\n\nNWS Reflectivity:\nDe kleuren van de Amerikaanse weerdienst (National Weather Service). Lijkt op Klassiek, maar motregen wordt meteen dekkend getekend.\n\nPyArt StepSeq:\nUit de radartoolkit Py-ART. Bruine, groene, blauwe en paarse banden, elk van licht naar donker, zodat kleine verschillen in intensiteit opvallen.\n\nHomeyer (kleurenblindheid):\nVan groen via geel en oranje naar donkerrood, gemaakt om ook bij kleurenblindheid leesbaar te blijven.\n\nLang:\nVan lichtblauw via geel naar bruin, ook leesbaar bij kleurenblindheid.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Meedoen op GitHub";
+"Feedback and Support" = "Feedback en ondersteuning";
+"imprint_privacy" = "Colofon & privacybeleid";
+"Enable Experimental Features" = "Experimentele functies inschakelen";
+
+/*intensity*/
+"Drizzle" = "Motregen";
+"Light rain" = "Lichte regen";
+"Rain" = "Regen";
+"Intense Rain" = "Flinke regen";
+"Heavy Rain" = "Zware regen";
+
+/*selection Footer*/
+"meteorological_details_help" = "Drempelwaarde:\nAlleen een melding bij neerslag die naar verwachting minstens zo hevig is.\n\nTijd vooraf:\nHoe lang voor de neerslag je een melding wilt krijgen.";
+
+/*mail*/
+"feedback_text_1" = "Laat bij het melden van een probleem de volgende informatie in de e-mail staan: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Locatietoegang vereist";
+"notifications_not_working" = "Meldingen werken niet";
+"location_permission_general" = "Om de locatieknop of automatisch zoomen te gebruiken, moet je toegang tot Locatie toestaan in de Instellingen van je apparaat. We bewaren of delen geen locatiegegevens.\n";
+"Change in Settings" = "Wijzigen in Instellingen";
+"Allow in Settings" = "Toestaan in Instellingen";
+"Disable Auto-Zoom" = "Automatisch zoomen uitschakelen";
+"disable_notifications" = "Meldingen uitschakelen";
+"Dismiss" = "Begrepen";
+"notifications_disabled" = "Meldingen uitgeschakeld";
+"notifications_disabled_text" = "Bedenk je je, dan kun je meldingen voor regen en sneeuw weer inschakelen via ⚙️ Instellingen rechtsboven in de app.";
+
+"version_label" = "Versie:";
+
+"notification_permissions_title" = "Toestemmingen controleren";
+"notification_permissions_help" = "Regenmeldingen hebben meldingen en locatietoegang nodig. Wil je onderweg meldingen terwijl de app gesloten is, zet Locatie dan in Instellingen op Altijd. De kaart kun je ook zonder deze toestemmingen gebruiken.";
+"notification_sync_failed" = "De wijzigingen in je meldingen konden de server niet bereiken. Meldingen gebruiken mogelijk nog je vorige instellingen. Controleer je verbinding en open de app opnieuw om het nog eens te proberen.";
+"feedback_body" = "Beschrijf hier je probleem of suggestie:\n";
+
+"map_layers" = "Kaartlagen";
+"map_load_failed" = "De kaart kon niet worden geladen. Opnieuw proberen…";
+"show_radar_hint" = "Toont de radarkaart.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Gegevensbronnen & licenties";
+"data_sources_footer" = "De aanbieders steunen meteocool niet uitdrukkelijk en geven geen garantie. Tik op een bron voor de licentie.";
+"source_dwd" = "Radar Duitsland, onweerscellen, weerkaarten · CC BY 4.0, bewerkt";
+"source_meteoswiss" = "Radar Zwitserland · CC BY 4.0, bewerkt";
+"source_meteofrance" = "Radar Frankrijk · Licence Ouverte 2.0 (Etalab), bewerkt";
+"source_chmi" = "Radar Tsjechië · CC BY 4.0, bewerkt";
+"source_imgw" = "Radar Polen · CC BY 4.0. De gegevens zijn afkomstig van het Instituut voor Meteorologie en Waterbeheer – Nationaal Onderzoeksinstituut (IMGW-PIB). De gegevens van IMGW-PIB zijn door meteocool verwerkt.";
+"source_noaa" = "Radar Verenigde Staten · publiek domein";
+"source_blitzortung" = "Bliksem";
+"source_openmeteo" = "Modelvergelijking · CC BY 4.0";
+"source_osm" = "Basiskaartgegevens · ODbL";
+"source_protomaps" = "Basiskaarttegels";
+"source_eumetnet" = "Radar Zwitserland, Frankrijk, Tsjechië en Polen, via deze bron geleverd";
+"source_mapterhorn" = "Terrein in de 3D-kaart · open hoogtegegevens, meest CC BY 4.0. Tik voor alle bronnen.";
+"source_freepik" = "Artwork designed by Freepik from Flaticon";
+"source_gorbachev" = "Legendapictogrammen";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Opensourcelicenties";
+"open_source_footer" = "De licenties van meteocool en van de software waarop het is gebouwd. Tik op een licentie om die te lezen.";
+"Py-ART Colour Maps" = "Py-ART-kleurenschalen";
+"Web Map Libraries" = "Bibliotheken van de webkaart";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Modus";
+"mode_production" = "Productie";
+"mode_production_detail" = "Actueel weer. Aanbevolen.";
+"Experimental Features" = "Experimentele functies";
+"mode_experimental_detail" = "Actueel weer, met functies die nog in ontwikkeling zijn. Kan zich onverwacht gedragen. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Een opgenomen onweer, afgespeeld alsof het nu gebeurt. Geen actueel weer.";
+"mode_footer" = "Werkt meteen: de kaart laadt opnieuw en regenmeldingen komen voortaan uit de gekozen modus.";
+"demo_notice_title" = "Dit is geen echt onweer";
+"demo_notice_message" = "De demomodus staat aan: de kaart speelt een opgenomen onweer af alsof het nu gebeurt. Niets van wat je ziet is actueel weer.";
+"demo_notice_disable" = "Demomodus uitschakelen";
+"demo_notice_continue" = "Door naar de demo";
+
+/* AR storm view */
+"map_ar" = "Buien in AR";
+"map_share" = "Delen";
+"ar_mode_live" = "Live";
+"ar_mode_peel" = "Pellen";
+"ar_mode_slice" = "Doorsnede";
+"ar_mode_turn" = "Doorsnede draaien";
+"ar_mode_track" = "Langs de baan";
+"ar_mode_floor" = "Vloer (CAPPI)";
+"ar_mode_shells" = "Schillen";
+"ar_mode_shaft" = "Regenschacht";
+"ar_mode_tops" = "Toppen";
+"ar_label_top" = "echotop %.1f km";
+"ar_label_lightning" = "bliksem: %ld per 5 min";
+"ar_label_age" = "scan %ld min geleden";
+"ar_label_extrapolated" = "%ld min vooruit verplaatst";
+"ar_label_poorly_seen" = "slecht gezien door de radar";
+"ar_compass_points" = "N NNO NO ONO O OZO ZO ZZO Z ZZW ZW WZW W WNW NW NNW";
+"ar_open_on_map" = "Openen op de kaart";
+"ar_close" = "Sluiten";
+"ar_menu" = "Opties";
+"ar_menu_lightning" = "Bliksem";
+"ar_menu_extrapolate" = "Buien naar nu verplaatsen";
+"ar_menu_sun_fix" = "Uitlijnen op de zon";
+"ar_menu_reset_alignment" = "Terug naar kompas";
+"ar_sun_fix_instructions" = "Tik op de zon. Kijk er niet recht in.";
+"ar_sun_fix_done" = "Uitgelijnd op de zon (%+.0f°).";
+"ar_sun_fix_night" = "De zon staat onder de horizon.";
+"ar_sun_fix_missed" = "Dat lijkt niet op de zon. Probeer het nog eens.";
+"ar_finding_location" = "Je locatie bepalen…";
+"ar_location_denied" = "Het AR-aanzicht heeft je locatie nodig om de buien te plaatsen.";
+"ar_open_settings" = "Instellingen";
+"ar_camera_denied" = "Het AR-aanzicht heeft de camera nodig.";
+"ar_tracking_starting" = "Richt de telefoon op de lucht en houd hem stil.";
+"ar_tracking_motion" = "Beweeg de telefoon langzamer.";
+"ar_tracking_features" = "Houd even wat grond of gebouwen in beeld.";
+"ar_feed_failed" = "De buien konden niet worden geladen. Opnieuw proberen.";
+"ar_no_storms" = "Geen buien binnen 180 km.";
+"ar_preview_placed" = "Voorbeeld, 28 km van de sterkste bui";
+"ar_no_metal" = "Dit apparaat kan de buien niet tekenen.";
+"ar_status_loading" = "Buien laden…";
+"ar_status_failed" = "Buien niet beschikbaar";
+"ar_status_storms" = "Buien in de buurt: %ld";
+"ar_alignment_preview" = "Voorbeeld zonder camera";
+"ar_alignment_compass" = "Noorden van het kompas (%@)";
+"ar_alignment_manual" = "Noorden met de hand bijgesteld (%@)";
+"ar_alignment_sun" = "Noorden van de zon (%@)";
+"ar_alignment_geo" = "Noorden van geotracking";
+"ar_turn_left" = "Draai %.0f° naar links";
+"ar_turn_right" = "Draai %.0f° naar rechts";

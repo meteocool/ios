@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Dulksna";
+"Light rain" = "Nedidelis lietus";
+"Rain" = "Lietus";
+"Intense Rain" = "Stiprus lietus";
+"Heavy Rain" = "Smarkus lietus";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ iki %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ tęsiasi";
+"rain_stale" = "Laukiama naujų radaro duomenų";
+"rain_stale_short" = "Laukiama radaro duomenų";
+"rain_lasting %lld" = "Truks apie %lld min";
+"rain_open_ended" = "Pabaigos kol kas nematyti";
+"rain_peak_dbz %lld" = "Maksimumas %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Dulksna";
+"band_light" = "Nedidelis lietus";
+"band_rain" = "Lietus";
+"band_intense" = "Stiprus lietus";
+"band_heavy" = "Smarkus lietus";
+"band_extreme" = "Labai smarkus lietus";
+"band_hail" = "Kruša";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ %2$@";
+/* Chart axis */
+"rain_now" = "Dabar";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Lietus tavo vietoje";
+
+/* Widgets */
+"widget_no_precipitation" = "Kritulių nenumatoma";
+"widget_ends %@" = "iki %@";
+"widget_until_rain" = "min iki lietaus";
+"widget_min" = "min";
+"widget_dry" = "Sausa";
+"widget_no_location" = "Kartą atidaryk meteocool, kad valdikliai žinotų tavo vietą.";
+"widget_no_location_short" = "Vieta nežinoma";
+"widget_no_data" = "Šiuo metu radaro duomenų nėra";
+"widget_places_title" = "Lietus tavo vietose";
+"widget_peak" = "Smarkiausias";
+"widget_none" = "Nėra";
+"widget_rain_minutes" = "Laukiama lietaus";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Lietaus radaras";
+"Rain Forecast" = "Lietaus prognozė";
+"Rain Clock" = "Lietaus laikrodis";
+"Places" = "Vietos";
+"Refresh Rain" = "Atnaujinti lietų";
+"The rain radar around you or any place, and when rain comes next." = "Lietaus radaras aplink tave ar bet kurią vietą ir kada vėl palis.";
+"The rain radar around a place, and when rain comes next." = "Lietaus radaras aplink pasirinktą vietą ir kada vėl palis.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Kada ateis lietus ir koks smarkus jis bus, kaip žemėlapio diagramoje.";
+"The rain chart from the map, for one place." = "Žemėlapio lietaus diagrama vienai vietai.";
+"The next hour on a dial, coloured where it will rain." = "Artimiausia valanda ciferblate, nuspalvinta ten, kur lis.";
+"The next one or two hours on a dial, coloured where it will rain." = "Artimiausios viena ar dvi valandos ciferblate, nuspalvintos ten, kur lis.";
+"The rain at up to six places, side by side." = "Lietus iki šešių vietų, išdėstytų greta.";
+"The rain at several places at once." = "Lietus keliose vietose vienu metu.";
+"Location" = "Vieta";
+"Current Location" = "Dabartinė vieta";
+"Place" = "Vieta";
+"Map Area" = "Žemėlapio sritis";
+"Local" = "Vietinis";
+"About 40 km across" = "Apie 40 km pločio";
+"Regional" = "Regioninis";
+"About 150 km across" = "Apie 150 km pločio";
+"Wide" = "Platus";
+"About 400 km across" = "Apie 400 km pločio";
+"Country" = "Šalis";
+"About 1,200 km across" = "Apie 1 200 km pločio";
+"Forecast" = "Prognozė";
+"Map only" = "Tik žemėlapis";
+"Next rain" = "Kitas lietus";
+"One line, such as \"Rain in 12 min\"" = "Viena eilutė, pvz., „Lietus po 12 min“";
+"Next rain and chart" = "Kitas lietus ir diagrama";
+"The line plus bars for the next hour" = "Eilutė ir artimiausios valandos stulpeliai";
+"Intensity" = "Intensyvumas";
+"As in the app" = "Kaip programėlėje";
+"The Intensity Threshold setting" = "Nustatymas „Intensyvumo riba“";
+"Time Range" = "Laikotarpis";
+"Next hour" = "Artimiausia valanda";
+"Next 2 hours" = "Artimiausios 2 valandos";
+"Last half hour and next 90 minutes" = "Paskutinis pusvalandis ir artimiausios 90 minučių";
+"Last 2 hours and next 2 hours" = "Paskutinės 2 ir artimiausios 2 valandos";
+"Show Radar Map" = "Rodyti radaro žemėlapį";
+"On the medium and large widget." = "Vidutiniame ir dideliame valdiklyje.";
+"Dial" = "Ciferblatas";
+"One hour" = "Viena valanda";
+"One turn of the minute hand" = "Vienas minutinės rodyklės ratas";
+"Two hours" = "Dvi valandos";
+"The whole forecast" = "Visa prognozė";

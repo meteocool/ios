@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Motregen";
+"Light rain" = "Lichte regen";
+"Rain" = "Regen";
+"Intense Rain" = "Flinke regen";
+"Heavy Rain" = "Zware regen";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ tot %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ houdt aan";
+"rain_stale" = "Wachten op nieuwe radargegevens";
+"rain_stale_short" = "Wachten op radargegevens";
+"rain_lasting %lld" = "Duurt ongeveer %lld min";
+"rain_open_ended" = "Nog geen einde in zicht";
+"rain_peak_dbz %lld" = "Piek %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Motregen";
+"band_light" = "Lichte regen";
+"band_rain" = "Regen";
+"band_intense" = "Flinke regen";
+"band_heavy" = "Zware regen";
+"band_extreme" = "Extreme regen";
+"band_hail" = "Hagel";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ om %2$@";
+/* Chart axis */
+"rain_now" = "Nu";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Regen op jouw locatie";
+
+/* Widgets */
+"widget_no_precipitation" = "Geen neerslag verwacht";
+"widget_ends %@" = "tot %@";
+"widget_until_rain" = "min tot regen";
+"widget_min" = "min";
+"widget_dry" = "Droog";
+"widget_no_location" = "Open meteocool één keer, zodat de widgets je locatie kennen.";
+"widget_no_location_short" = "Locatie onbekend";
+"widget_no_data" = "Nu geen radargegevens";
+"widget_places_title" = "Regen op jouw plekken";
+"widget_peak" = "Zwaarst";
+"widget_none" = "Geen";
+"widget_rain_minutes" = "Regen op komst";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Radarkaart";
+"Rain Forecast" = "Regenverwachting";
+"Rain Clock" = "Regenklok";
+"Places" = "Plekken";
+"Refresh Rain" = "Regen vernieuwen";
+"The rain radar around you or any place, and when rain comes next." = "De regenradar rond jou of een andere plek, en wanneer de volgende regen komt.";
+"The rain radar around a place, and when rain comes next." = "De regenradar rond een plek, en wanneer de volgende regen komt.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Wanneer de regen komt en hoe zwaar hij wordt, zoals in de grafiek op de kaart.";
+"The rain chart from the map, for one place." = "De regengrafiek van de kaart, voor één plek.";
+"The next hour on a dial, coloured where it will rain." = "Het komende uur op een wijzerplaat, gekleurd waar het gaat regenen.";
+"The next one or two hours on a dial, coloured where it will rain." = "De komende een à twee uur op een wijzerplaat, gekleurd waar het gaat regenen.";
+"The rain at up to six places, side by side." = "De regen op maximaal zes plekken, naast elkaar.";
+"The rain at several places at once." = "De regen op meerdere plekken tegelijk.";
+"Location" = "Locatie";
+"Current Location" = "Huidige locatie";
+"Place" = "Plek";
+"Map Area" = "Kaartuitsnede";
+"Local" = "Lokaal";
+"About 40 km across" = "Ongeveer 40 km breed";
+"Regional" = "Regionaal";
+"About 150 km across" = "Ongeveer 150 km breed";
+"Wide" = "Breed";
+"About 400 km across" = "Ongeveer 400 km breed";
+"Country" = "Land";
+"About 1,200 km across" = "Ongeveer 1.200 km breed";
+"Forecast" = "Verwachting";
+"Map only" = "Alleen kaart";
+"Next rain" = "Eerstvolgende regen";
+"One line, such as \"Rain in 12 min\"" = "Eén regel, zoals ‘Regen over 12 min’";
+"Next rain and chart" = "Eerstvolgende regen en grafiek";
+"The line plus bars for the next hour" = "De regel plus balken voor het komende uur";
+"Intensity" = "Intensiteit";
+"As in the app" = "Zoals in de app";
+"The Intensity Threshold setting" = "De instelling Drempelwaarde";
+"Time Range" = "Tijdsbereik";
+"Next hour" = "Komend uur";
+"Next 2 hours" = "Komende 2 uur";
+"Last half hour and next 90 minutes" = "Afgelopen halfuur en komende 90 minuten";
+"Last 2 hours and next 2 hours" = "Afgelopen 2 uur en komende 2 uur";
+"Show Radar Map" = "Radarkaart tonen";
+"On the medium and large widget." = "Op de middelgrote en grote widget.";
+"Dial" = "Wijzerplaat";
+"One hour" = "Eén uur";
+"One turn of the minute hand" = "Eén rondje van de minutenwijzer";
+"Two hours" = "Twee uur";
+"The whole forecast" = "De hele verwachting";

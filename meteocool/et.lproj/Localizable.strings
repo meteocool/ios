@@ -1,0 +1,227 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Tere tulemast meteocooli";
+"Continue" = "Jätka";
+"Not Now" = "Mitte praegu";
+"onboarding_feature_radar_title" = "Reaalajas radar";
+"onboarding_feature_radar_text" = "Vihm ja äike just praegu, uueneb iga paari minuti järel.";
+"Nowcasting" = "Lühiprognoos";
+"onboarding_feature_nowcast_text" = "Vaata, kuhu vihm liigub. Meie kogemuse põhjal on esimesed 45 minutit päris täpsed.";
+"Rain Alerts" = "Vihmahoiatused";
+"onboarding_feature_alerts_text" = "Hoiatus enne, kui vihm sinuni jõuab. See kaob, kui vihm lakkab.";
+"onboarding_feature_free_title" = "Tasuta ja avatud lähtekoodiga";
+"onboarding_feature_free_text" = "Vabatahtlikud teevad ja haldavad seda oma vabast ajast.";
+
+/* Location Page Onboarding */
+"Location Access" = "Juurdepääs asukohale";
+"onboarding_location_permission" = "Et näidata kaardil sinu praegust asukohta, vajame sinu luba.\n\nMe ei jaga ega salvesta kunagi sinu asukohaandmeid.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Saad teavituse veidi enne, kui sinu asukohas vihma hakkab sadama, isegi kui meteocool on suletud.\n\nSelleks küsib sinu seade ka luba asukohale taustal juurde pääseda. Ära muretse, see ei tühjenda akut.";
+"tell_me_before_it_rains" = "Anna teada enne vihma!";
+"onboarding_settings_footnote" = "Seda saad igal ajal seadetes muuta.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Teavitused";
+"Use Without Notifications" = "Kasuta ilma teavitusteta";
+"Enable Push Notifications" = "Lülita teavitused sisse";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "Hästi, jääme vait.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Tere jälle!";
+
+/* Later */
+"Later" = "Hiljem";
+
+/* Next */
+"Next" = "Edasi";
+
+/* Done */
+"Done" = "Valmis";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Seaded";
+
+/*header*/
+"Map View" = "Kaart";
+"notifications" = "Teavitused";
+"About" = "Teave";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Kaardi pööramine kahe sõrmega:\nPööra kaarti kahe sõrmega. Kui see on väljas, jääb põhi alati üles.\n\nAutomaatne suum käivitamisel:\nSuumib sinu asukohale alati, kui rakendus avaneb või uuesti esiplaanile tuleb. Vajab juurdepääsu asukohale.";
+"notifications_explanation" = "Soovi korral hoiatame sind sademete eest, mis sinu praeguse asukoha poole liiguvad. Selleks saadab rakendus taustal sinu asukoha meie serveritesse.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Luba teavitused";
+"Show Meteorological Details" = "Näita meteoroloogilisi üksikasju";
+"Intensity Threshold" = "Tugevuse lävi";
+"Notification Timeframe" = "Etteteatamisaeg";
+"notification_style_header" = "Lukustuskuva ja teavitused";
+"notification_style_footer" = "Live Activity vihma ajal:\nKui vihm on tulemas või sajab, jäävad radaripilt ja sinu asukoha vihmagraafik lukustuskuvale ja Dynamic Islandile.\n\nNäita meteoroloogilisi üksikasju:\nLisab vihmateavitustele radari peegelduvuse (dBZ).";
+"live_activity_preview_caption" = "Live Activity uueneb automaatselt iga uue prognoosiga kohe, kui see avaldatakse. Kui pühid selle teavituse kombel ära, ei tule see tagasi enne, kui vihm lakkab ja uuesti algab. Millal see ilmub, määravad ülal olevad tugevuse lävi ja etteteatamisaeg.";
+"location_permission_downgraded_title" = "Vihmahoiatused ei saa sind järgida";
+"location_permission_downgraded_body" = "meteocool tohib sinu asukohta kasutada ainult siis, kui rakendus on avatud, seega kehtivad vihmahoiatused kohas, kus sa selle viimati avasid. Et saada hoiatusi kõikjal, kus oled, määra seadetes asukoha loaks „Always” (alati).";
+"live_activity" = "Live Activity vihma ajal";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Kaardi pööramine kahe sõrmega";
+"Auto-Zoom After Start" = "Automaatne suum käivitamisel";
+"Base Map Layer" = "Aluskaart";
+"Radar Color Map" = "Radari värviskaala";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (rattasõit)";
+"osm" = "OpenStreetMap";
+"dark" = "Tume";
+"system" = "Nagu süsteemis";
+"system_detail" = "Praegu %@";
+"light" = "Hele";
+
+/*radarColorMapping*/
+"classic" = "Klassikaline";
+"nws" = "NWS Reflectivity";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (värvinägemise häire)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Kasutab valikut Hele või Tume vastavalt sinu iPhone'i välimusele. Lülita see välja, et kaart ise valida.";
+"basemap_explanation" = "Kõik kaardid on hoitud tagasihoidlikud, et radar jääks loetavaks.\n\nHele ja Tume:\nMaa, vesi, kiirteed ja piirid, peaaegu mitte midagi muud.\n\nOpenStreetMap:\nNagu klassikaline OpenStreetMap, maakasutuse, kõigi teede, hoonete ja piirkondlike piiridega.\n\nCyclOSM (rattasõit):\nVäljas liikumiseks: metsad ja pargid värviliselt, rajad ja teerajad joonistatud, kiirteed tagaplaanil.";
+"colormap_explanation" = "Muudab sademete värviskaalat kaardil. Iga riba ulatub vasakul olevast uduvihmast paremal oleva raheni.\n\nKlassikaline:\nmeteocooli oma. Uduvihm ilmub sujuvalt, siis tulevad sinine, roheline, kollane ja punane ning rahe puhul valgest lillani.\n\nNWS Reflectivity:\nUSA riikliku ilmateenistuse (NWS) värvid. Sarnane klassikalisele, kuid uduvihm on kohe täisvärvis, mitte sujuvalt ilmuv.\n\nPyArt StepSeq:\nRadaritööriistade komplektist Py-ART. Pruunid, rohelised, sinised ja lillad vöödid, igaüks heledast tumedani, nii et väikesed tugevuse muutused torkavad silma.\n\nHomeyer (värvinägemise häire):\nRohelisest üle kollase ja oranži tumepunaseni, loodud nii, et see jääks värvinägemise häire korral loetavaks.\n\nLang:\nHelesinisest üle kollase pruunini, samuti värvinägemise häire korral loetav.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Osale GitHubis";
+"Feedback and Support" = "Tagasiside ja tugi";
+"imprint_privacy" = "Õiguslik teave ja privaatsuspoliitika";
+"Enable Experimental Features" = "Luba katselised funktsioonid";
+
+/*intensity*/
+"Drizzle" = "Uduvihm";
+"Light rain" = "Nõrk vihm";
+"Rain" = "Vihm";
+"Intense Rain" = "Üsna tugev vihm";
+"Heavy Rain" = "Tugev vihm";
+
+/*selection Footer*/
+"meteorological_details_help" = "Tugevuse lävi:\nTeavita ainult sademetest, mis on eeldatavasti vähemalt nii tugevad.\n\nEtteteatamisaeg:\nKui palju aega enne sademeid soovid teavitust saada.";
+
+/*mail*/
+"feedback_text_1" = "Probleemist teatades lisa palun järgmine teave: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Vaja on asukohaluba";
+"notifications_not_working" = "Teavitused ei tööta";
+"location_permission_general" = "Asukohanupu või automaatse suumi kasutamiseks pead seadme seadetes lubama juurdepääsu asukohale. Me ei salvesta ega jaga asukohateavet.\n";
+"Change in Settings" = "Muuda seadetes";
+"Allow in Settings" = "Luba seadetes";
+"Disable Auto-Zoom" = "Lülita automaatne suum välja";
+"disable_notifications" = "Lülita teavitused välja";
+"Dismiss" = "Selge";
+"notifications_disabled" = "Teavitused on välja lülitatud";
+"notifications_disabled_text" = "Kui meelt muudad, saad vihma- ja lumeteavitused uuesti sisse lülitada rakenduse ⚙️ seadetes paremal üleval.";
+
+"version_label" = "Versioon:";
+
+"notification_permissions_title" = "Kontrolli lubasid";
+"notification_permissions_help" = "Vihmahoiatused vajavad teavituste ja asukoha luba. Et saada hoiatusi liikumise ajal ka siis, kui rakendus on suletud, määra seadetes asukoha loaks „Always” (alati). Kaarti saad sirvida ka ilma nende lubadeta.";
+"notification_sync_failed" = "Teavituste muudatused ei jõudnud serverisse. Hoiatused võivad veel kasutada sinu varasemaid seadeid. Kontrolli ühendust ja ava rakendus uuesti, et uuesti proovida.";
+"feedback_body" = "Kirjelda siin oma probleemi või ettepanekut:\n";
+
+"map_layers" = "Kaardikihid";
+"map_load_failed" = "Kaarti ei õnnestunud laadida. Proovin uuesti…";
+"show_radar_hint" = "Näitab radarikaarti.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Andmeallikad ja litsentsid";
+"data_sources_footer" = "Andmepakkujad ei toeta meteocooli ega anna mingit garantiid. Puuduta allikat, et näha selle litsentsi.";
+"source_dwd" = "Radar Saksamaa, äikeserakud, ilmakaardid · CC BY 4.0, muudetud";
+"source_meteoswiss" = "Radar Šveits · CC BY 4.0, muudetud";
+"source_meteofrance" = "Radar Prantsusmaa · Licence Ouverte 2.0 (Etalab), muudetud";
+"source_chmi" = "Radar Tšehhi · CC BY 4.0, muudetud";
+"source_imgw" = "Radar Poola · CC BY 4.0. Andmete allikas on Meteoroloogia ja Veemajanduse Instituut – Riiklik Teadusinstituut. IMGW-PIB andmeid on töödelnud meteocool.";
+"source_noaa" = "Radar Ameerika Ühendriigid · avalik omand";
+"source_blitzortung" = "Välk";
+"source_openmeteo" = "Mudelite võrdlus · CC BY 4.0";
+"source_osm" = "Aluskaardi andmed · ODbL";
+"source_protomaps" = "Aluskaardi paanid";
+"source_eumetnet" = "Radar Šveits, Prantsusmaa, Tšehhi ja Poola, edastatud selle kaudu";
+"source_mapterhorn" = "Maastik 3D-kaardil · avatud kõrgusandmed, enamasti CC BY 4.0. Puuduta, et näha kõiki allikaid.";
+"source_freepik" = "Graafika: Freepik, Flaticon";
+"source_gorbachev" = "Legendi ikoonid";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Avatud lähtekoodiga litsentsid";
+"open_source_footer" = "meteocooli ja selle aluseks oleva tarkvara litsentsid. Puuduta litsentsi, et seda lugeda.";
+"Py-ART Colour Maps" = "Py-ART värviskaalad";
+"Web Map Libraries" = "Veebikaardi teegid";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Režiim";
+"mode_production" = "Tavaline";
+"mode_production_detail" = "Praegune ilm. Soovitatav.";
+"Experimental Features" = "Katselised funktsioonid";
+"mode_experimental_detail" = "Praegune ilm koos veel arendatavate funktsioonidega. Võib käituda ootamatult. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Salvestatud äike, mida esitatakse nii, nagu toimuks see praegu. Mitte praegune ilm.";
+"mode_footer" = "Rakendub kohe: kaart laaditakse uuesti ja vihmahoiatused tulevad valitud režiimist.";
+"demo_notice_title" = "See ei ole päris äike";
+"demo_notice_message" = "Demorežiim on sees: kaart esitab salvestatud äikest nii, nagu toimuks see praegu. Miski, mida see näitab, ei ole praegune ilm.";
+"demo_notice_disable" = "Lülita demorežiim välja";
+"demo_notice_continue" = "Jätka demoga";
+
+/* AR storm view */
+"map_ar" = "AR-äikesevaade";
+"map_share" = "Jaga";
+"ar_mode_live" = "Reaalajas";
+"ar_mode_peel" = "Koori";
+"ar_mode_slice" = "Lõige";
+"ar_mode_turn" = "Pööra lõiget";
+"ar_mode_track" = "Piki liikumisteed";
+"ar_mode_floor" = "Kõrguslõige (CAPPI)";
+"ar_mode_shells" = "Kestad";
+"ar_mode_shaft" = "Vihmasammas";
+"ar_mode_tops" = "Tipud";
+"ar_label_top" = "ülapiir %.1f km";
+"ar_label_lightning" = "välke/5 min: %ld";
+"ar_label_age" = "skaneering %ld min tagasi";
+"ar_label_extrapolated" = "nihutatud %ld min ette";
+"ar_label_poorly_seen" = "radar näeb halvasti";
+"ar_compass_points" = "P P-KI KI I-KI I I-KA KA L-KA L L-ED ED LÄ-ED LÄ LÄ-LO LO P-LO";
+"ar_open_on_map" = "Ava kaardil";
+"ar_close" = "Sulge";
+"ar_menu" = "Valikud";
+"ar_menu_lightning" = "Välk";
+"ar_menu_extrapolate" = "Nihuta äikesed praegusesse hetke";
+"ar_menu_sun_fix" = "Joonda päikese järgi";
+"ar_menu_reset_alignment" = "Lähtesta kompassile";
+"ar_sun_fix_instructions" = "Puuduta päikest. Ära vaata otse sellesse.";
+"ar_sun_fix_done" = "Joondatud päikese järgi (%+.0f°).";
+"ar_sun_fix_night" = "Päike on horisondi all.";
+"ar_sun_fix_missed" = "See ei paista olevat päike. Proovi uuesti.";
+"ar_finding_location" = "Otsin sinu asukohta…";
+"ar_location_denied" = "AR-vaade vajab äikeste paigutamiseks sinu asukohta.";
+"ar_open_settings" = "Seaded";
+"ar_camera_denied" = "AR-vaade vajab kaamerat.";
+"ar_tracking_starting" = "Suuna telefon taevasse ja hoia seda paigal.";
+"ar_tracking_motion" = "Liiguta telefoni aeglasemalt.";
+"ar_tracking_features" = "Hoia hetkeks vaates ka veidi maad või hooneid.";
+"ar_feed_failed" = "Äikesi ei õnnestunud laadida. Proovin uuesti.";
+"ar_no_storms" = "180 km raadiuses äikesi pole.";
+"ar_preview_placed" = "Eelvaade, 28 km tugevaimast äikesest";
+"ar_no_metal" = "See seade ei suuda äikesi joonistada.";
+"ar_status_loading" = "Laadin äikesi…";
+"ar_status_failed" = "Äikesed pole saadaval";
+"ar_status_storms" = "Äikesi läheduses: %ld";
+"ar_alignment_preview" = "Eelvaade ilma kaamerata";
+"ar_alignment_compass" = "Põhi kompassi järgi (%@)";
+"ar_alignment_manual" = "Põhi käsitsi seatud (%@)";
+"ar_alignment_sun" = "Põhi päikese järgi (%@)";
+"ar_alignment_geo" = "Põhi geojälgimise järgi";
+"ar_turn_left" = "Pööra vasakule %.0f°";
+"ar_turn_right" = "Pööra paremale %.0f°";
