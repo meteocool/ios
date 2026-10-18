@@ -654,10 +654,10 @@ final class StormScene {
 
     /// The storm's tag: one per storm, however many tiles it covers.
     func label(for group: StormGroup, feed: StormFeed) -> StormLabelModel {
-        let german = Locale.preferredLanguages.first?.hasPrefix("de") == true
+        let points = Geo.compassPoints
         let km = group.distance / 1000
         let distance = km < 10 ? String(format: "%.1f km", km) : String(format: "%.0f km", km)
-        let direction = Geo.compassPoint(group.bearing, german: german)
+        let direction = Geo.compassPoint(group.bearing, points: points)
         var title = "\(distance) · \(direction)"
         if let code = group.cell?.code, let placement = feed.tracks[code]?.properties.placement {
             title = "\(placement.place) · " + title
@@ -671,7 +671,7 @@ final class StormScene {
             parts.append(String(format: NSLocalizedString("ar_label_top", comment: ""), top / 1000))
         }
         if let speed = group.cell?.speedKmh, let heading = group.cell?.headingDeg, speed > 0 {
-            parts.append(String(format: "→ %@ %.0f km/h", Geo.compassPoint(heading, german: german), speed))
+            parts.append(String(format: "→ %@ %.0f km/h", Geo.compassPoint(heading, points: points), speed))
         }
 
         var flags: [String] = []

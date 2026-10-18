@@ -234,7 +234,7 @@ enum ARCheck {
         let r = 6_378_137.0, lat = 48.1351, lon = 11.581
         let back = Geo.lonLat(mercatorX: lon * .pi / 180 * r, y: r * log(tan(.pi / 4 + lat * .pi / 360)))
         precondition(abs(back.lon - lon) < 1e-9 && abs(back.lat - lat) < 1e-9, "mercator \(back)")
-        precondition(Geo.compassPoint(247, german: false) == "WSW" && Geo.compassPoint(80, german: true) == "O")
+        precondition(Geo.compassPoint(247, points: Geo.englishCompassPoints) == "WSW" && Geo.compassPoint(80, points: Geo.englishCompassPoints) == "E")
         precondition(abs(Geo.angleDifference(10, 350) - 20) < 1e-9 && abs(Geo.angleDifference(350, 10) + 20) < 1e-9)
         precondition(abs(GeoFrame.horizonDip(eyeAboveGround: 100) - 0.321) < 0.005)
 
