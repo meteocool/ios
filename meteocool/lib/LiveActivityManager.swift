@@ -21,9 +21,12 @@ import UIKit
     private var startToken: String?
     private var activityTokens: [String: String] = [:]
     private var synced: Data?
+    private var attemptedSync: Data?
     private var syncing = false
     private var syncPending = false
     private var forcePending = false
+    private var syncRetry: Task<Void, Never>?
+    private var syncRetries = 0
     private var refreshing: Task<Void, Never>?
     private var lastRefresh: Date?
 
@@ -49,6 +52,8 @@ import UIKit
         started = true
         NotificationCenter.default.addObserver(self, selector: #selector(environmentChanged),
                                                name: MeteocoolEnvironment.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationBecameActive),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
         Task {
             for await token in Activity<RainActivityAttributes>.pushToStartTokenUpdates {
                 startToken = Self.hex(token)
@@ -109,6 +114,11 @@ import UIKit
         sync()
     }
 
+    @objc private func applicationBecameActive() {
+        syncRetries = 0
+        sync()
+    }
+
     // MARK: - Backend
 
     /// Sends the tokens to the backend when they changed since the last
@@ -121,7 +131,10 @@ import UIKit
     /// Skipping that send left the backend without a start token, so it fell
     /// back to plain notifications until the app was relaunched.
     func sync(force: Bool = false) {
+        syncRetry?.cancel()
+        syncRetry = nil
         guard SharedNotificationManager.enabled, let device = SharedNotificationManager.getToken() else { return }
+        if force { syncRetries = 0 }
         if syncing {
             syncPending = true
             forcePending = forcePending || force
@@ -137,6 +150,8 @@ import UIKit
         guard let json = try? JSONSerialization.data(withJSONObject: body, options: .sortedKeys), force || json != synced,
               let request = NetworkHelper.createJSONPostRequest(
                 dst: NetworkHelper.apiURL.appendingPathComponent("v3/mobile/live_activity").absoluteString, dictionary: body) else { return }
+        if json != attemptedSync { syncRetries = 0 }
+        attemptedSync = json
         syncing = true
         Task {
             defer {
@@ -148,13 +163,31 @@ import UIKit
                     sync(force: force)
                 }
             }
-            guard let (_, response) = try? await URLSession.shared.data(for: request),
-                  let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status) else {
+            let result = try? await URLSession.shared.data(for: request)
+            let status = (result?.1 as? HTTPURLResponse)?.statusCode
+            guard let status, (200..<300).contains(status) else {
+                // A previous success may belong to a registration that was recreated.
+                synced = nil
                 // Tokens are not secret, but they are not logged either.
                 NSLog("Live Activity tokens not accepted")
+                if status == nil || status == 408 || status == 429 || (status ?? 0) >= 500 {
+                    retrySync()
+                }
                 return
             }
             synced = json
+            syncRetries = 0
+        }
+    }
+
+    private func retrySync() {
+        guard SharedNotificationManager.enabled, syncRetries < 3 else { return }
+        let delay = 1 << syncRetries
+        syncRetries += 1
+        syncRetry = Task {
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+            syncRetry = nil
+            sync()
         }
     }
 
