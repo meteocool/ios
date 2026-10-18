@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Pyysit ilmoitusta ennen kuin nykyisessä sijainnissasi alkaa sataa. Valitse ”Salli aina”, jos haluat ilmoitusten toimivan.";
+"NSLocationAlwaysUsageDescription" = "Pyysit ilmoitusta ennen kuin nykyisessä sijainnissasi alkaa sataa. Valitse ”Salli aina”, jos haluat ilmoitusten toimivan.";
+"NSLocationWhenInUseUsageDescription" = "Näyttää sijaintisi sääkartalla.";
+"NSCameraUsageDescription" = "AR-ukkosnäkymä näyttää tutkan 3D-ukkospilvet kamerakuvan päällä, jotta näet, mitä ukkosta katsot.";

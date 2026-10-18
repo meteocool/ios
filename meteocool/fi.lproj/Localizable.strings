@@ -1,0 +1,227 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Tervetuloa meteocooliin";
+"Continue" = "Jatka";
+"Not Now" = "Ei nyt";
+"onboarding_feature_radar_title" = "Reaaliaikainen tutka";
+"onboarding_feature_radar_text" = "Sade ja ukkoset sitä mukaa kuin ne tapahtuvat, päivittyy muutaman minuutin välein.";
+"Nowcasting" = "Lähiennuste";
+"onboarding_feature_nowcast_text" = "Seuraa, minne sade on menossa. Kokemuksemme mukaan ensimmäiset 45 minuuttia osuvat aika hyvin kohdalleen.";
+"Rain Alerts" = "Sadehälytykset";
+"onboarding_feature_alerts_text" = "Ennakkovaroitus ennen kuin sade ehtii luoksesi. Se katoaa, kun sade lakkaa.";
+"onboarding_feature_free_title" = "Ilmainen ja avointa lähdekoodia";
+"onboarding_feature_free_text" = "Vapaaehtoisten vapaa-ajallaan tekemä ja ylläpitämä.";
+
+/* Location Page Onboarding */
+"Location Access" = "Sijainnin käyttö";
+"onboarding_location_permission" = "Tarvitsemme lupasi, jotta voimme näyttää nykyisen sijaintisi kartalla.\n\nEmme koskaan jaa tai tallenna sijaintitietojasi.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Saat ilmoituksen vähän ennen kuin sijainnissasi alkaa sataa, myös silloin kun meteocool on suljettu.\n\nTätä varten laitteesi pyytää lisäksi lupaa käyttää sijaintia taustalla. Älä huoli, se ei kuluta akkua.";
+"tell_me_before_it_rains" = "Kerro ennen kuin sataa!";
+"onboarding_settings_footnote" = "Voit muuttaa tätä milloin tahansa Asetuksissa.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Ilmoitukset";
+"Use Without Notifications" = "Käytä ilman ilmoituksia";
+"Enable Push Notifications" = "Ota ilmoitukset käyttöön";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "Olemme nyt hiljaa.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Hei taas!";
+
+/* Later */
+"Later" = "Myöhemmin";
+
+/* Next */
+"Next" = "Seuraava";
+
+/* Done */
+"Done" = "Valmis";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Asetukset";
+
+/*header*/
+"Map View" = "Kartta";
+"notifications" = "Ilmoitukset";
+"About" = "Tietoja";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Kartan kierto kahdella sormella:\nKäännä karttaa kahdella sormella. Kun asetus on pois päältä, pohjoinen pysyy aina ylhäällä.\n\nAutomaattinen zoomaus käynnistettäessä:\nZoomaa sijaintiisi aina, kun appi avataan tai palaa etualalle. Vaatii sijainnin käyttöoikeuden.";
+"notifications_explanation" = "Halutessasi voimme varoittaa sinua sateesta, joka on tulossa nykyiseen sijaintiisi. Tätä varten appi lähettää sijaintisi taustalla palvelimillemme.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Ota ilmoitukset käyttöön";
+"Show Meteorological Details" = "Näytä meteorologiset tiedot";
+"Intensity Threshold" = "Voimakkuuden kynnys";
+"Notification Timeframe" = "Ennakkoaika";
+"notification_style_header" = "Lukitusnäyttö ja ilmoitukset";
+"notification_style_footer" = "Live Activity sateen aikana:\nKun sade on tulossa tai sataa, lukitusnäytöllä ja Dynamic Islandissa näkyvät sijaintisi tutkakuva ja sadekäyrä.\n\nNäytä meteorologiset tiedot:\nLisää sadeilmoituksiin tutkan heijastavuuden (dBZ).";
+"live_activity_preview_caption" = "Live Activity -toiminnot päivittyvät automaattisesti jokaisen uuden ennusteen myötä heti, kun se julkaistaan. Voit pyyhkäistä sen pois kuten ilmoituksen, eikä se palaa ennen kuin sade lakkaa ja alkaa uudelleen. Yllä olevat Voimakkuuden kynnys ja Ennakkoaika määräävät, milloin ne näkyvät.";
+"location_permission_downgraded_title" = "Sadehälytykset eivät voi seurata sinua";
+"location_permission_downgraded_body" = "meteocool saa käyttää sijaintiasi vain silloin, kun se on auki, joten sadehälytykset koskevat paikkaa, jossa viimeksi avasit sen. Jos haluat hälytykset missä ikinä oletkin, aseta Sijainti-asetukseksi Aina Asetuksissa.";
+"live_activity" = "Live Activity sateen aikana";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Kartan kierto kahdella sormella";
+"Auto-Zoom After Start" = "Automaattinen zoomaus käynnistettäessä";
+"Base Map Layer" = "Taustakartta";
+"Radar Color Map" = "Tutkan väriasteikko";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (pyöräily)";
+"osm" = "OpenStreetMap";
+"dark" = "Tumma";
+"system" = "Järjestelmän mukaan";
+"system_detail" = "Nyt: %@";
+"light" = "Vaalea";
+
+/*radarColorMapping*/
+"classic" = "Klassinen";
+"nws" = "NWS Reflectivity";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (värinäön poikkeamat)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Käyttää vaaleaa tai tummaa karttaa iPhonesi ulkoasun mukaan. Laita pois päältä, jos haluat valita kartan itse.";
+"basemap_explanation" = "Kaikki kartat ovat hillittyjä, jotta tutkakuva pysyy luettavana.\n\nVaalea ja Tumma:\nMaa, vesi, moottoritiet ja rajat, vähän muuta.\n\nOpenStreetMap:\nKuten klassinen OpenStreetMap, jossa on maankäyttö, kaikki tiet, rakennukset ja alueelliset rajat.\n\nCyclOSM (pyöräily):\nUlkoiluun: metsät ja puistot värillisinä, polut ja ulkoilureitit piirrettyinä, moottoritiet taka-alalla.";
+"colormap_explanation" = "Vaihtaa sateen väriasteikon kartalla. Jokainen palkki kulkee vasemman reunan tihkusta oikean reunan rakeisiin.\n\nKlassinen:\nmeteocoolin oma. Tihku häivytetään esiin, sitten sininen, vihreä, keltainen ja punainen, ja rakeille valkoisesta violettiin.\n\nNWS Reflectivity:\nYhdysvaltain kansallisen sääpalvelun (NWS) värit. Lähellä klassista, mutta tihku piirretään peittävänä eikä häivytettynä.\n\nPyArt StepSeq:\nPy-ART-tutkatyökalupakista. Ruskeat, vihreät, siniset ja violetit vyöhykkeet, kukin vaaleasta tummaan, joten pienetkin voimakkuuden muutokset erottuvat.\n\nHomeyer (värinäön poikkeamat):\nVihreästä keltaisen ja oranssin kautta tummanpunaiseen, suunniteltu pysymään luettavana myös värinäön poikkeamien kanssa.\n\nLang:\nVaaleansinisestä keltaisen kautta ruskeaan, sekin luettava värinäön poikkeamien kanssa.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Osallistu GitHubissa";
+"Feedback and Support" = "Palaute ja tuki";
+"imprint_privacy" = "Julkaisutiedot ja tietosuojaseloste";
+"Enable Experimental Features" = "Ota kokeelliset ominaisuudet käyttöön";
+
+/*intensity*/
+"Drizzle" = "Tihku";
+"Light rain" = "Heikko sade";
+"Rain" = "Sade";
+"Intense Rain" = "Voimakas sade";
+"Heavy Rain" = "Rankkasade";
+
+/*selection Footer*/
+"meteorological_details_help" = "Voimakkuuden kynnys:\nIlmoita vain sateesta, jonka odotetaan olevan vähintään näin voimakasta.\n\nEnnakkoaika:\nKuinka paljon ennen sadetta haluat ilmoituksen.";
+
+/*mail*/
+"feedback_text_1" = "Liitä mukaan seuraavat tiedot, kun ilmoitat ongelmasta: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Sijaintilupa tarvitaan";
+"notifications_not_working" = "Ilmoitukset eivät toimi";
+"location_permission_general" = "Jos haluat käyttää sijaintipainiketta tai automaattista zoomausta, salli sijainnin käyttö laitteesi Asetuksissa. Emme tallenna tai jaa sijaintitietoja.\n";
+"Change in Settings" = "Muuta Asetuksissa";
+"Allow in Settings" = "Salli Asetuksissa";
+"Disable Auto-Zoom" = "Poista automaattinen zoomaus";
+"disable_notifications" = "Poista ilmoitukset käytöstä";
+"Dismiss" = "Selvä";
+"notifications_disabled" = "Ilmoitukset poistettu käytöstä";
+"notifications_disabled_text" = "Jos muutat mielesi, voit ottaa sade- ja lumi-ilmoitukset uudelleen käyttöön oikean yläkulman ⚙️ Asetuksista.";
+
+"version_label" = "Versio:";
+
+"notification_permissions_title" = "Tarkista luvat";
+"notification_permissions_help" = "Sadehälytykset tarvitsevat ilmoitukset ja sijainnin käyttöoikeuden. Jos haluat hälytykset liikkuessasi myös apin ollessa suljettuna, aseta Sijainti-asetukseksi Aina Asetuksissa. Karttaa voit selata ilman näitäkin lupia.";
+"notification_sync_failed" = "Ilmoitusasetusten muutokset eivät menneet perille palvelimelle. Hälytykset saattavat yhä käyttää aiempia asetuksiasi. Tarkista yhteys ja yritä uudelleen avaamalla appi uudestaan.";
+"feedback_body" = "Kuvaile ongelmasi tai ehdotuksesi tähän:\n";
+
+"map_layers" = "Karttatasot";
+"map_load_failed" = "Karttaa ei voitu ladata. Yritetään uudelleen…";
+"show_radar_hint" = "Näyttää tutkakartan.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Tietolähteet ja lisenssit";
+"data_sources_footer" = "Palveluntarjoajat eivät ole suosittaneet meteocoolia eivätkä anna mitään takuuta. Napauta lähdettä nähdäksesi sen lisenssin.";
+"source_dwd" = "Tutka Saksa, ukkossolut, sääkartat · CC BY 4.0, muokattu";
+"source_meteoswiss" = "Tutka Sveitsi · CC BY 4.0, muokattu";
+"source_meteofrance" = "Tutka Ranska · Licence Ouverte 2.0 (Etalab), muokattu";
+"source_chmi" = "Tutka Tšekki · CC BY 4.0, muokattu";
+"source_imgw" = "Tutka Puola · CC BY 4.0. Tietojen lähde on Puolan meteorologian ja vesitalouden instituutti – kansallinen tutkimuslaitos (IMGW-PIB). meteocool on käsitellyt IMGW-PIB:n tietoja.";
+"source_noaa" = "Tutka Yhdysvallat · public domain";
+"source_blitzortung" = "Salamat";
+"source_openmeteo" = "Mallivertailu · CC BY 4.0";
+"source_osm" = "Taustakartan tiedot · ODbL";
+"source_protomaps" = "Taustakartan tiilet";
+"source_eumetnet" = "Tutka Sveitsi, Ranska, Tšekki ja Puola, toimitettu sen kautta";
+"source_mapterhorn" = "Maasto 3D-kartalla · avoimet korkeustiedot, enimmäkseen CC BY 4.0. Napauta nähdäksesi kaikki lähteet.";
+"source_freepik" = "Artwork designed by Freepik from Flaticon";
+"source_gorbachev" = "Selitteen kuvakkeet";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Avoimen lähdekoodin lisenssit";
+"open_source_footer" = "meteocoolin ja sen pohjana olevien ohjelmistojen lisenssit. Lue lisenssi napauttamalla.";
+"Py-ART Colour Maps" = "Py-ART-väriasteikot";
+"Web Map Libraries" = "Verkkokartan kirjastot";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Tila";
+"mode_production" = "Tuotanto";
+"mode_production_detail" = "Nykyinen sää. Suositeltu.";
+"Experimental Features" = "Kokeelliset ominaisuudet";
+"mode_experimental_detail" = "Nykyinen sää sekä ominaisuuksia, jotka ovat vielä kehitteillä. Saattaa toimia odottamattomasti. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Tallennettu ukkonen, toistettuna ikään kuin se tapahtuisi juuri nyt. Ei nykyinen sää.";
+"mode_footer" = "Tulee voimaan heti: kartta latautuu uudelleen, ja sadehälytykset tulevat valitusta tilasta.";
+"demo_notice_title" = "Tämä ei ole oikea ukkonen";
+"demo_notice_message" = "Demotila on päällä: kartta toistaa tallennettua ukkosta ikään kuin se tapahtuisi juuri nyt. Mikään näkyvä ei ole nykyistä säätä.";
+"demo_notice_disable" = "Poista demotila käytöstä";
+"demo_notice_continue" = "Jatka demoon";
+
+/* AR storm view */
+"map_ar" = "AR-ukkosnäkymä";
+"map_share" = "Jaa";
+"ar_mode_live" = "Live";
+"ar_mode_peel" = "Kuori";
+"ar_mode_slice" = "Viipale";
+"ar_mode_turn" = "Käännä leikkausta";
+"ar_mode_track" = "Kulkusuunnassa";
+"ar_mode_floor" = "Taso (CAPPI)";
+"ar_mode_shells" = "Kuoret";
+"ar_mode_shaft" = "Sadepylväs";
+"ar_mode_tops" = "Huiput";
+"ar_label_top" = "huippu %.1f km";
+"ar_label_lightning" = "salamat %ld/5 min";
+"ar_label_age" = "keilaus %ld min sitten";
+"ar_label_extrapolated" = "siirretty %ld min eteenpäin";
+"ar_label_poorly_seen" = "tutka näkee huonosti";
+"ar_compass_points" = "P PKO KO IKO I IKA KA EKA E ELO LO LLO L LLU LU PLU";
+"ar_open_on_map" = "Avaa kartalla";
+"ar_close" = "Sulje";
+"ar_menu" = "Valinnat";
+"ar_menu_lightning" = "Salamat";
+"ar_menu_extrapolate" = "Siirrä ukkoset nykyhetkeen";
+"ar_menu_sun_fix" = "Kohdista aurinkoon";
+"ar_menu_reset_alignment" = "Palauta kompassiin";
+"ar_sun_fix_instructions" = "Napauta aurinkoa. Älä katso suoraan siihen.";
+"ar_sun_fix_done" = "Kohdistettu aurinkoon (%+.0f°).";
+"ar_sun_fix_night" = "Aurinko on horisontin alapuolella.";
+"ar_sun_fix_missed" = "Tuo ei näytä auringolta. Yritä uudelleen.";
+"ar_finding_location" = "Etsitään sijaintiasi…";
+"ar_location_denied" = "AR-näkymä tarvitsee sijaintisi, jotta se voi sijoittaa ukkoset oikein.";
+"ar_open_settings" = "Asetukset";
+"ar_camera_denied" = "AR-näkymä tarvitsee kameran.";
+"ar_tracking_starting" = "Suuntaa puhelin taivaalle ja pidä se paikallaan.";
+"ar_tracking_motion" = "Liikuta puhelinta hitaammin.";
+"ar_tracking_features" = "Ota hetkeksi kuvaan vähän maata tai rakennuksia.";
+"ar_feed_failed" = "Ukkosia ei voitu ladata. Yritetään uudelleen.";
+"ar_no_storms" = "Ei ukkosia 180 km:n säteellä.";
+"ar_preview_placed" = "Esikatselu, 28 km voimakkaimmasta ukkosesta";
+"ar_no_metal" = "Tämä laite ei pysty piirtämään ukkosia.";
+"ar_status_loading" = "Ladataan ukkosia…";
+"ar_status_failed" = "Ukkosia ei saatavilla";
+"ar_status_storms" = "Ukkosia lähellä: %ld";
+"ar_alignment_preview" = "Esikatselu ilman kameraa";
+"ar_alignment_compass" = "Pohjoinen kompassista (%@)";
+"ar_alignment_manual" = "Pohjoinen säädetty käsin (%@)";
+"ar_alignment_sun" = "Pohjoinen auringosta (%@)";
+"ar_alignment_geo" = "Pohjoinen geoseurannasta";
+"ar_turn_left" = "Käänny %.0f° vasemmalle";
+"ar_turn_right" = "Käänny %.0f° oikealle";

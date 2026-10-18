@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Du har bedt om varsel før det regner der du er. Velg «Tillat alltid» hvis du vil at varslingene skal fungere.";
+"NSLocationAlwaysUsageDescription" = "Du har bedt om varsel før det regner der du er. Velg «Tillat alltid» hvis du vil at varslingene skal fungere.";
+"NSLocationWhenInUseUsageDescription" = "Vis posisjonen din på værkartet.";
+"NSCameraUsageDescription" = "AR-visningen av tordenvær legger radarens 3D-tordenvær over kamerabildet, slik at du vet hvilket tordenvær du ser på.";

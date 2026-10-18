@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Obavijesti prije kiše na tvojoj trenutačnoj lokaciji rade samo ako odabereš „Uvijek dopusti”.";
+"NSLocationAlwaysUsageDescription" = "Obavijesti prije kiše na tvojoj trenutačnoj lokaciji rade samo ako odabereš „Uvijek dopusti”.";
+"NSLocationWhenInUseUsageDescription" = "Prikazuje tvoju lokaciju na vremenskoj karti.";
+"NSCameraUsageDescription" = "AR prikaz oluja prikazuje radarske 3D oluje preko slike s kamere, pa možeš prepoznati u koju oluju gledaš.";
