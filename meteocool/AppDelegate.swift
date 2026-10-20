@@ -16,6 +16,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             userDefaults?.set(true, forKey: "onboardingDone")
         }
         #endif
+        #if NATIVE_MAP_DEFAULT
+        // A local build made to try the native map (passed on the command
+        // line) opens on it until switched off in Settings.
+        if userDefaults?.object(forKey: NativeMapView.settingKey) == nil {
+            userDefaults?.set(true, forKey: NativeMapView.settingKey)
+        }
+        #endif
         // Override point for customization after application launch.
 
         //Settings

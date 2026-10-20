@@ -61,7 +61,7 @@ final class MapDrawer: NSObject, UISheetPresentationControllerDelegate {
             map.view.addSubview(host.view)
             NSLayoutConstraint.activate([
                 host.view.topAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.topAnchor, constant: 12),
-                host.view.trailingAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+                host.view.trailingAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.trailingAnchor, constant: -ChromeTheme.controlColumn),
                 host.view.heightAnchor.constraint(lessThanOrEqualTo: map.view.safeAreaLayoutGuide.heightAnchor, constant: -24),
             ])
             host.view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)

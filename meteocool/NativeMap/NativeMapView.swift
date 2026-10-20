@@ -186,7 +186,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             .store(in: &observers)
 
         // Above whichever bars are up, as core counts the open strips and hints.
-        let back = addChrome(BackToNowPill(player: player, model: model))
+        let backHost = WeakView()
+        let back = addChrome(BackToNowPill(player: player, model: model) { backHost.view?.invalidateIntrinsicContentSize() })
+        backHost.view = back
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
             back.bottomAnchor.constraint(equalTo: dock.topAnchor, constant: -ChromeTheme.gutter),
@@ -466,9 +468,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // The switcher drops the storm open (core's App.svelte), its panel
         // put away before the switcher can come up.
         if let marks = features.lazy.compactMap({ $0 as? StormMarks }).first, marks.store.selection != nil {
-            marks.dropSelection { [weak self] in self?.openLayers() }
-            return
+            marks.dropSelection { [weak self] in self?.presentLayers() }
+        } else {
+            presentLayers()
         }
+    }
+
+    private func presentLayers() {
         let snapshots = LayerSnapshots()
         let region = mapView.region
         snapshots.take(region: region, size: CGSize(width: 360, height: 180), dark: model.isDark)
@@ -800,6 +806,11 @@ private struct ToastHost: View {
 }
 
 /// A stack that keeps none of the touches between its bars for itself.
+/// A view to reach later from a closure built before it.
+private final class WeakView {
+    weak var view: UIView?
+}
+
 private final class PassthroughStack: UIStackView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)

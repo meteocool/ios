@@ -166,7 +166,9 @@ final class StormDiscView: MKAnnotationView {
         displayPriority = .required
         collisionMode = .none
         canShowCallout = false
-        zPriority = .max
+        // Over the other marks, under the "3D" tags beside them, as core
+        // stacks its cells (202) under the tags (203).
+        zPriority = MKAnnotationViewZPriority(rawValue: 850)
         layer.addSublayer(ring)
         isAccessibilityElement = true
         accessibilityTraits = .button

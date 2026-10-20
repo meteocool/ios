@@ -299,11 +299,42 @@ struct ModelCompareView: View {
     let wide: Bool
     let close: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var scrolled = false
 
     var body: some View {
+        Group {
+            if wide {
+                // The title and the way out in a row of their own over the
+                // reading: a disc over an iPad's scroll view took no taps.
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top, spacing: 8) {
+                        header
+                        Spacer(minLength: 0)
+                        closeDisc
+                    }
+                    .padding(.leading, 18)
+                    .padding(.trailing, 14)
+                    .padding(.top, 14)
+                    reading
+                }
+            } else {
+                reading.overlay(alignment: .topTrailing) {
+                    closeDisc
+                        .padding(.top, 11)
+                        .padding(.trailing, 12)
+                }
+            }
+        }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("nativeMap.compare")
+    }
+
+    /// Everything under the title, scrolling; on a phone the title too.
+    private var reading: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                header
+                if !wide { header.padding(.trailing, 56) }
                 if model.loading {
                     Text(CoreStrings.t("compare.loading")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 24)
                 } else if let error = model.error {
@@ -320,26 +351,37 @@ struct ModelCompareView: View {
                 }
             }
             .padding(.horizontal, wide ? 18 : 16)
-            .padding(.top, wide ? 16 : 21)
+            .padding(.top, wide ? 4 : 21)
             .padding(.bottom, 28)
         }
-        .overlay(alignment: .topTrailing) {
-            Button(action: close) {
-                Image(systemName: "xmark")
-                    .font(.system(size: wide ? 14 : 18, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: wide ? 30 : 44, height: wide ? 30 : 44)
-                    .background(Color.secondary.opacity(0.12), in: Circle())
-            }
-            .buttonStyle(PressScale())
-            .accessibilityLabel(CoreStrings.t("close"))
-            .accessibilityIdentifier("nativeMap.compare.close")
-            .padding(.top, wide ? 14 : 11)
-            .padding(.trailing, wide ? 14 : 12)
+        // Clear of the close disc, which an iPad's indicator would take a
+        // tap for.
+        .contentMargins(.top, wide ? 0 : 56, for: .scrollIndicators)
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, now in
+            scrolled = now
         }
-        // A container: its own children keep their identifiers.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("nativeMap.compare")
+        // What scrolls up fades out at the top, as core's drawer body does.
+        .mask {
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                    .frame(height: scrolled ? (wide ? 16 : 40) : (wide ? 1 : 11))
+                Color.black
+            }
+            .animation(.easeOut(duration: 0.2), value: scrolled)
+        }
+    }
+
+    private var closeDisc: some View {
+        Button(action: close) {
+            Image(systemName: "xmark")
+                .font(.system(size: wide ? 14 : 18, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: wide ? 30 : 44, height: wide ? 30 : 44)
+                .background(Color.secondary.opacity(0.12), in: Circle())
+        }
+        .buttonStyle(PressScale())
+        .accessibilityLabel(CoreStrings.t("close"))
+        .accessibilityIdentifier("nativeMap.compare.close")
     }
 
     private var header: some View {
@@ -353,7 +395,6 @@ struct ModelCompareView: View {
                 .font(.system(size: wide ? 14 : 15, weight: .medium))
                 .foregroundStyle(.secondary)
         }
-        .padding(.trailing, wide ? 40 : 56)
         .padding(.bottom, 14)
     }
 

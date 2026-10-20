@@ -37,6 +37,10 @@ struct ChromeTheme {
     static let pillHeight: CGFloat = 28
     static let control: CGFloat = 40
     static let gutter: CGFloat = 8
+    /// How far in from the right the app's own button column reaches (its
+    /// 52 pt discs, 12 pt from the edge, and 12 pt clear of them): where a
+    /// wide screen's side panel stops.
+    static let controlColumn: CGFloat = 76
     static let stripHeight: CGFloat = 104
 }
 

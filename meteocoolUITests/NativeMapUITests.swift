@@ -43,6 +43,18 @@ final class NativeMapUITests: XCTestCase {
         XCTFail("The series did not load", file: file, line: line)
     }
 
+    /// Polls `element`'s value until `matches` holds: a predicate
+    /// expectation now and then never saw the value the element plainly had.
+    @discardableResult
+    private func waitForValue(_ element: XCUIElement, timeout: TimeInterval = 10, _ matches: (String) -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let value = element.value as? String, matches(value) { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        return false
+    }
+
     private func screenshot(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
@@ -74,8 +86,7 @@ final class NativeMapUITests: XCTestCase {
         let start = timeline.value as? String ?? ""
         playButton.tap()
         XCTAssertEqual(playButton.value as? String, "playing")
-        expectation(for: NSPredicate(format: "value != %@", start), evaluatedWith: timeline)
-        waitForExpectations(timeout: 20)
+        XCTAssertTrue(waitForValue(timeline, timeout: 20) { $0 != start }, "Playback moved on")
         XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5))
         playButton.tap()
         XCTAssertEqual(playButton.value as? String, "paused")
@@ -88,13 +99,11 @@ final class NativeMapUITests: XCTestCase {
         let middle = timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
         let start = timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.4))
         middle.press(forDuration: 0.05, thenDragTo: start)
-        expectation(for: NSPredicate(format: "value BEGINSWITH '-'"), evaluatedWith: timeline)
-        waitForExpectations(timeout: 5)
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("-") }, "Scrubbed back")
         let back = element("nativeMap.backToNow")
         XCTAssertTrue(back.waitForExistence(timeout: 5))
         back.tap()
-        expectation(for: NSPredicate(format: "value == %@", live), evaluatedWith: timeline)
-        waitForExpectations(timeout: 5)
+        XCTAssertTrue(waitForValue(timeline) { $0 == live }, "Back to \(live), at \(timeline.value ?? "")")
     }
 
     func testLegendSwitchesToDbz() {
@@ -179,18 +188,42 @@ final class NativeMapUITests: XCTestCase {
 
     // MARK: - Storms
 
-    func testStormTapShowsTheHintThenTheDetails() {
-        launch(link: "?latLonZ=44,3.5,7", demo: true)
+    /// Where the demo's newest storm is now: its replay moves on.
+    private func demoStorm() -> (lat: Double, lon: Double)? {
+        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
+        guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
+              let storms = answer["features"] as? [[String: Any]] else { return nil }
+        let newest = storms.max { a, b in
+            ((a["properties"] as? [String: Any])?["last_seen"] as? String ?? "") < ((b["properties"] as? [String: Any])?["last_seen"] as? String ?? "")
+        }
+        guard let point = (newest?["geometry"] as? [String: Any])?["coordinates"] as? [Double], point.count >= 2 else { return nil }
+        return (point[1], point[0])
+    }
+
+    func testStormTapShowsTheHintThenTheDetails() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),8", demo: true)
         waitForSeries()
         let storms = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
         XCTAssertTrue(storms.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
         // One on screen, clear of the controls: MapKit lists marks off the edge too.
+        let screen = app.windows.firstMatch.frame
         let onScreen = (0 ..< storms.count).map { storms.element(boundBy: $0) }.first { storm in
             let frame = storm.frame
-            return frame.midX > 30 && frame.midX < 320 && frame.midY > 150 && frame.midY < 600
+            return frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.8
+                && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
         }
         XCTAssertNotNil(onScreen, "A storm in view")
         onScreen?.tap()
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // A wide screen opens the panel at once, beside the map.
+            XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10))
+            XCTAssertTrue(element("nativeMap.storm.title").exists)
+            screenshot("storm panel")
+            element("nativeMap.storm.close").tap()
+            XCTAssertTrue(element("nativeMap.storm.details").waitForNonExistence(timeout: 5))
+            return
+        }
         let hint = element("nativeMap.storm.hint")
         XCTAssertTrue(hint.waitForExistence(timeout: 10))
         element("nativeMap.storm.hint.details").tap()
@@ -253,9 +286,13 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
         XCTAssertTrue(tags.firstMatch.waitForExistence(timeout: 30), "A tag beside the strongest core")
+        // One in the open middle of the screen, clear of the controls and a
+        // wide screen's panel.
+        let screen = app.windows.firstMatch.frame
         let onScreen = (0 ..< tags.count).map { tags.element(boundBy: $0) }.first { tag in
             let frame = tag.frame
-            return frame.midX > 30 && frame.midX < 320 && frame.midY > 150 && frame.midY < 600
+            return frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.75
+                && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
         }
         let tag = try XCTUnwrap(onScreen, "A tag in view")
         screenshot("3D tags")
@@ -315,7 +352,9 @@ final class NativeMapUITests: XCTestCase {
                   let lat = at["lat"] as? Double, let lon = at["lon"] as? Double else { return nil }
             return (code, lat, lon)
         }
-        guard let (code, lat, lon) = cells.first else { throw XCTSkip("No KONRAD3D cell with a structure in the last runs") }
+        // One whose own track is served: a run's tracks can lag its list.
+        let served = cells.first { (demoJSON("cells/tracks/\($0.0)") as? [String: Any])?["properties"] != nil }
+        guard let (code, lat, lon) = served else { throw XCTSkip("No KONRAD3D cell with a structure in the last runs") }
         launch(link: "?latLonZ=\(lat),\(lon),8&cell=\(code)", demo: true)
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
         let model = element("nativeMap.storm.structure")

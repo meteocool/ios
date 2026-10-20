@@ -63,6 +63,9 @@ struct StormDetailsView: View {
                 .padding(.bottom, 28)
             }
             .scrollIndicators(.automatic)
+            // Clear of the discs: on an iPad the indicator takes a drag, and
+            // a tap on a disc with it.
+            .contentMargins(.top, 64, for: .scrollIndicators)
             .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, now in
                 scrolled = now
             }
