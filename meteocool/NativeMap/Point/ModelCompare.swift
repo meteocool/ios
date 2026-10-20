@@ -344,6 +344,8 @@ struct ModelCompareView: View {
                         Button(CoreStrings.t("retry"), action: model.load).buttonStyle(.bordered)
                     }
                     .padding(.vertical, 16)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("nativeMap.compare.error")
                 } else {
                     spread
                     days
