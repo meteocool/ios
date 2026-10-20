@@ -142,6 +142,50 @@ struct NativeMapCheck {
         precondition(NativeMapLink(search: "?latLonZ=91,11,6") == nil && NativeMapLink(search: "?latLonZ=48,11") == nil)
         precondition(NativeMapLink(search: "?t=20260924T1945Z") == nil)
         precondition(NativeMapLink.frameTime("20260231T1200Z") == nil && NativeMapLink.frameTime("20260924T2560Z") == nil)
+        // core's messages: arguments, plurals with exact matches and CLDR categories, select, nesting.
+        let hours = "{hours, plural, =0 {Rain Likely Within the Hour} one {Rain Likely in # Hour} other {Rain Likely in # Hours}}"
+        precondition(ICUMessage.format(hours, ["hours": 0], language: "en") == "Rain Likely Within the Hour")
+        precondition(ICUMessage.format(hours, ["hours": 1], language: "en") == "Rain Likely in 1 Hour")
+        precondition(ICUMessage.format(hours, ["hours": 5], language: "en") == "Rain Likely in 5 Hours")
+        let lt = "{count, plural, one {# modelis} few {# modeliai} many {# modelio} other {# modelių}}"
+        precondition(ICUMessage.format(lt, ["count": 21], language: "lt") == "21 modelis")
+        precondition(ICUMessage.format(lt, ["count": 3], language: "lt") == "3 modeliai")
+        precondition(ICUMessage.format(lt, ["count": 12], language: "lt") == "12 modelių")
+        let hr = "{count, plural, one {# model} few {# modela} other {# modela}}"
+        precondition(ICUMessage.format(hr, ["count": 22], language: "hr") == "22 modela" && ICUMessage.format(hr, ["count": 11], language: "hr") == "11 modela")
+        precondition(ICUMessage.format("Temperature spread ±{spread}° across {count, plural, one {# model} other {# models}}",
+                                       ["spread": 2.5, "count": 7], language: "en") == "Temperature spread ±2.5° across 7 models")
+        precondition(ICUMessage.format("{day, select, 0 {Sunday} 1 {Monday} other {Later}}", ["day": 1], language: "en") == "Monday")
+        precondition(ICUMessage.format("Strikes of the last {minutes} minutes.", ["minutes": 30], language: "en") == "Strikes of the last 30 minutes.")
+        precondition(ICUMessage.format("Left {missing} alone", [:], language: "en") == "Left {missing} alone")
+        // Vector tiles: a polygon with a property, a point layer, ids and float/string values.
+        func varint(_ v: UInt64) -> [UInt8] {
+            var v = v, out: [UInt8] = []
+            repeat { out.append(UInt8(v & 0x7F) | (v > 0x7F ? 0x80 : 0)); v >>= 7 } while v > 0
+            return out
+        }
+        func field(_ n: Int, _ bytes: [UInt8]) -> [UInt8] { varint(UInt64(n << 3 | 2)) + varint(UInt64(bytes.count)) + bytes }
+        func number(_ n: Int, _ v: UInt64) -> [UInt8] { varint(UInt64(n << 3)) + varint(v) }
+        func packed(_ values: [UInt64]) -> [UInt8] { values.flatMap(varint) }
+        let square = field(2, number(1, 42) + field(2, packed([0, 0])) + number(3, 3)
+                           + field(4, packed([9, 20, 20, 26, 20, 0, 0, 20, 19, 0, 15])))
+        let snowLayer = field(1, Array("snow".utf8)) + square + field(3, Array("time_wall".utf8))
+            + field(4, number(4, 1_792_455_795)) + number(5, 4096) + number(15, 2)
+        let points = field(2, number(3, 1) + field(2, packed([0, 0, 1, 1])) + field(4, packed([17, 2, 4, 6, 8])))
+        let pointLayer = field(1, Array("strikes".utf8)) + points + field(3, Array("kind".utf8)) + field(3, Array("age".utf8))
+            + field(4, field(1, Array("cg".utf8))) + field(4, [0x15] + [0x00, 0x00, 0xC0, 0x3F]) + number(5, 512)
+        let tile = try! VectorTile(data: Data(field(3, snowLayer) + field(3, pointLayer)))
+        let snow = tile.layer("snow")!
+        precondition(snow.extent == 4096 && snow.features.count == 1)
+        let polygon = snow.features[0]
+        precondition(polygon.id == 42 && polygon.type == .polygon && polygon.properties["time_wall"] == .int(1_792_455_795))
+        precondition(polygon.parts == [[CGPoint(x: 10, y: 10), CGPoint(x: 20, y: 10), CGPoint(x: 20, y: 20), CGPoint(x: 10, y: 20)]],
+                     "\(polygon.parts)")
+        let strikes = tile.layer("strikes")!
+        precondition(strikes.extent == 512 && strikes.features[0].type == .point)
+        precondition(strikes.features[0].parts == [[CGPoint(x: 1, y: 2), CGPoint(x: 4, y: 6)]], "\(strikes.features[0].parts)")
+        precondition(strikes.features[0].properties["kind"] == .string("cg") && strikes.features[0].properties["age"] == .double(1.5))
+        precondition((try? VectorTile(data: Data([0x1A, 0x05, 0x0A]))) == nil)
         print("NativeMapCheck passed")
     }
 }
