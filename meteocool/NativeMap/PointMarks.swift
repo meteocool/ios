@@ -98,25 +98,45 @@ final class LightningRenderer: MKOverlayRenderer {
 /// The strikes of the last half hour: backfilled from `/lightning_cache`,
 /// then one by one from the socket (core's `StrikeManager`).
 @MainActor
-final class LightningMarks {
+final class LightningMarks: NativeMapFeature {
     static let maxAge: TimeInterval = 30 * 60
     static let maxCount = 1000
 
     let overlay = LightningOverlay()
-    private weak var mapView: MKMapView?
+    private weak var map: NativeMapContext?
+    private var mapView: MKMapView? { map?.mapView }
     /// By time in milliseconds, which tells strikes apart.
     private var strikes: [Int: LightningOverlay.Strike] = [:]
     private var batchTimer: Timer?
-    var visible = true {
+    private var visible = false {
         didSet {
             guard visible != oldValue, let mapView else { return }
             if visible { mapView.addOverlay(overlay, level: .aboveLabels) } else { mapView.removeOverlay(overlay) }
         }
     }
 
-    init(mapView: MKMapView) {
-        self.mapView = mapView
-        mapView.addOverlay(overlay, level: .aboveLabels)
+    func attach(to map: NativeMapContext) {
+        self.map = map
+        settingsDidChange()
+    }
+
+    func settingsDidChange() {
+        visible = (map?.isOn(.lightning) ?? false) && map?.model.capability == .radar
+    }
+
+    func renderer(for overlay: MKOverlay) -> MKOverlayRenderer? {
+        overlay === self.overlay ? LightningRenderer(overlay: overlay) : nil
+    }
+
+    func wake() {
+        guard let map else { return }
+        map.fetch(map.endpoints.lightning) { [weak self] data, _ in
+            if let data { self?.load(data) }
+        }
+    }
+
+    func socketEvent(_ name: String, _ data: Data) {
+        if name == "lightning" { add(data) }
     }
 
     struct Wire: Decodable {
@@ -169,6 +189,9 @@ final class LightningMarks {
     func tick() {
         publish()
     }
+
+    /// How many strikes are held, for tests and the AR view's count.
+    var count: Int { strikes.count }
 }
 
 // MARK: - Mesocyclones
@@ -216,16 +239,39 @@ final class MesocycloneView: MKAnnotationView {
 /// The mesocyclones of the last half hour: the socket always sends the
 /// whole list (core's `MesoCycloneManager`).
 @MainActor
-final class MesocycloneMarks {
-    private weak var mapView: MKMapView?
+final class MesocycloneMarks: NativeMapFeature {
+    private weak var map: NativeMapContext?
+    private var mapView: MKMapView? { map?.mapView }
     private var shown: [MesocycloneAnnotation] = []
     private var all: [MesocycloneAnnotation] = []
-    var visible = true {
+    private var visible = false {
         didSet { if visible != oldValue { show() } }
     }
 
-    init(mapView: MKMapView) {
-        self.mapView = mapView
+    func attach(to map: NativeMapContext) {
+        self.map = map
+        map.mapView.register(MesocycloneView.self, forAnnotationViewWithReuseIdentifier: MesocycloneView.reuse)
+        settingsDidChange()
+    }
+
+    func settingsDidChange() {
+        visible = (map?.isOn(.mesocyclones) ?? false) && map?.model.capability == .radar
+    }
+
+    func view(for annotation: MKAnnotation, in mapView: MKMapView) -> MKAnnotationView? {
+        annotation is MesocycloneAnnotation
+            ? mapView.dequeueReusableAnnotationView(withIdentifier: MesocycloneView.reuse, for: annotation) : nil
+    }
+
+    func wake() {
+        guard let map else { return }
+        map.fetch(map.endpoints.mesocyclones) { [weak self] data, _ in
+            if let data { self?.load(data) }
+        }
+    }
+
+    func socketEvent(_ name: String, _ data: Data) {
+        if name == "mesocyclones" { load(data) }
     }
 
     struct Wire: Decodable {
