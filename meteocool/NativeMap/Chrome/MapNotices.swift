@@ -192,7 +192,7 @@ struct NoticeStrips: View {
                 .accessibilityIdentifier("nativeMap.strip.noRadar")
             } else if notices.showNoForecast {
                 DismissableStrip(title: CoreStrings.t("forecast_no_coverage"), theme: theme, dismiss: { notices.noForecastDismissed = true }) {
-                    Text(CoreStrings.plain(notices.nowcast ? "forecast_no_coverage_body_nowcast" : "forecast_no_coverage_body")).notice(theme)
+                    Text(CoreStrings.plain("forecast_no_coverage_body_nowcast")).notice(theme)
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("nativeMap.strip.noForecast")
@@ -216,7 +216,6 @@ final class NoticeState: ObservableObject {
     @Published var noForecastHere = false { didSet { if !noForecastHere { noForecastDismissed = false } } }
     @Published var noRadarDismissed = false
     @Published var noForecastDismissed = false
-    @Published var nowcast = true
     @Published var radarShown = true
 
     var showNoRadar: Bool { radarShown && outOfRadar && !noRadarDismissed }

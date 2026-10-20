@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D je sustav njemačke meteorološke službe (DWD) za otkrivanje i praćenje grmljavinskih ćelija u njezinoj radarskoj mreži. Ono što crta nisu realistični volumeni oblaka: svaka ćelija je njezin obris na tlu, složen u slojeve čiju veličinu i visinu određuje nekoliko brojki koje KONRAD3D javlja za svaku razinu jačine. Ne slažu se s radarskim volumenima 3D karte i stižu nekoliko minuta nakon radara, pa preporučujemo da ovo ostane isključeno.";
 "settings.map" = "Karta";
 "settings.map_3d" = "3D karta";
-"settings.meteocool_nowcast" = "Kratkoročna prognoza meteocool (eksperimentalno)";
-"settings.meteocool_nowcast_hint" = "Prognozira sljedeća dva sata nad Švicarskom, Francuskom, Češkom, Poljskom, Belgijom, Slovačkom, Litvom, Estonijom, Hrvatskom, Danskom, Nizozemskom, Finskom, Švedskom i Norveškom iz njihovih vlastitih radara, kako ih ekstrapolira meteocool. Za Njemačku ostaje prognoza njemačke meteorološke službe. Eksperimentalno: može biti netočna, zakasniti ili izostati.";
 "settings.mode" = "Način rada";
 "settings.mode_hint" = "Ponovno učitava kartu u odabranom načinu rada, s istim prikazom. Svaki način rada ima vlastite postavke.";
 "settings.modes.demo" = "Demo";

@@ -263,7 +263,7 @@ struct RadarTimeline: Sendable {
     /// Composes the series. `clock` is the device's time, which seeds the
     /// grid as in core. `network` is the one the series was asked for, whose
     /// nowcast gives the forecast steps' readings (core's `chartSeries`).
-    init(series: RadarSeries, clock: Int, nowcast: Bool = true, network: String? = nil, product: RadarProduct = .hx) {
+    init(series: RadarSeries, clock: Int, network: String? = nil, product: RadarProduct = .hx) {
         let grid = clock / Self.stepSeconds * Self.stepSeconds
         var frames: [Int: RadarFrame] = [:]
         for (key, frame) in series.frames {
@@ -278,9 +278,7 @@ struct RadarTimeline: Sendable {
         var networkFrames: [String: [Int: RadarFrame]] = [:]
         for code in Self.networks { networkFrames[code] = byStep(series.networks?[code]) }
         var nowcastFrames: [String: [Int: RadarFrame]] = [:]
-        if nowcast {
-            for code in Self.nowcastNetworks { nowcastFrames[code] = byStep(series.products?["nowcast_\(code)"]) }
-        }
+        for code in Self.nowcastNetworks { nowcastFrames[code] = byStep(series.products?["nowcast_\(code)"]) }
         let productFrames: [RadarProduct: [Int: RadarFrame]] = [
             .merged: byStep(series.products?["merged"]), .colmax: byStep(series.products?["colmax"]),
             .dmax: byStep(series.products?["dmax"]),

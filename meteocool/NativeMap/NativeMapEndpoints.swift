@@ -37,7 +37,7 @@ struct NativeMapEndpoints: Equatable, Sendable {
 
     /// The radar's steps; with a point, its readings there, from `network`'s
     /// composite where the point is on that network's ground.
-    func timeseries(latitude: Double?, longitude: Double?, network: String?, nowcast: Bool, products: [String] = []) -> URL {
+    func timeseries(latitude: Double?, longitude: Double?, network: String?, products: [String] = []) -> URL {
         var components = URLComponents(url: api.appendingPathComponent("v3/radar/timeseries"), resolvingAgainstBaseURL: false)!
         var items: [URLQueryItem] = []
         if let latitude, let longitude {
@@ -45,7 +45,7 @@ struct NativeMapEndpoints: Equatable, Sendable {
             items.append(URLQueryItem(name: "lon", value: String(format: "%.4f", longitude)))
         }
         if let network { items.append(URLQueryItem(name: "network", value: network)) }
-        for product in products + (nowcast ? ["nowcast"] : []) { items.append(URLQueryItem(name: "products", value: product)) }
+        for product in products + ["nowcast"] { items.append(URLQueryItem(name: "products", value: product)) }
         components.queryItems = items.isEmpty ? nil : items
         return components.url!
     }

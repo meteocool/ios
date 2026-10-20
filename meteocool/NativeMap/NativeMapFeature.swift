@@ -142,7 +142,7 @@ protocol NativeMapHost: AnyObject {
 
 /// The layer switches the native map stores (`nativeMap.<rawValue>`).
 enum NativeMapLayer: String, CaseIterable {
-    case lightning, mesocyclones, storms, nowcast, snow, cells3d, terrain3d
+    case lightning, mesocyclones, storms, snow, cells3d, terrain3d
 
     /// Whether it is on before the user has chosen: as core's settings
     /// (`layer3dCells` off, the rest on).

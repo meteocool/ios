@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D is de detectie en tracking van onweerscellen in het radarnetwerk van de Duitse weerdienst (DWD). Wat getekend wordt, zijn geen realistische wolkenvolumes: elke cel is haar omtrek op de grond, gestapeld in lagen waarvan grootte en hoogte volgen uit enkele waarden die KONRAD3D per intensiteitsniveau levert. Ze gaan slecht samen met de radarvolumes van de 3D-kaart en komen minuten na de radar binnen; we raden aan dit uit te laten.";
 "settings.map" = "Kaart";
 "settings.map_3d" = "3D-kaart";
-"settings.meteocool_nowcast" = "meteocool-nowcast (experimenteel)";
-"settings.meteocool_nowcast_hint" = "Voorspelt de komende twee uur boven Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Kroatië, Denemarken, Nederland, Finland, Zweden en Noorwegen uit hun eigen radar, zoals meteocool die doortrekt. Duitsland houdt de verwachting van de Duitse weerdienst. Experimenteel: kan fout, te laat of afwezig zijn.";
 "settings.mode" = "Modus";
 "settings.mode_hint" = "Laadt de kaart opnieuw in de gekozen modus, met hetzelfde beeld. Elke modus heeft zijn eigen instellingen.";
 "settings.modes.demo" = "Demo";
