@@ -178,11 +178,13 @@ final class NativeMapUITests: XCTestCase {
         hold(0.5, 0.4)
         element("nativeMap.point.forecast").tap()
         XCTAssertTrue(element("nativeMap.compare").waitForExistence(timeout: 10))
-        // The models answer, or say they could not.
-        let answered = NSPredicate(format: "exists == true")
-        expectation(for: answered, evaluatedWith: app.staticTexts["Next 7 Days"].firstMatch)
-        waitForExpectations(timeout: 40)
-        element("nativeMap.compare.range").buttons["7 days"].tap()
+        // The models answer, or say they could not (Open-Meteo is a
+        // service of its own, and slow or limited now and then).
+        let days = app.staticTexts["Next 7 Days"].firstMatch, failed = element("nativeMap.compare.error")
+        let deadline = Date().addingTimeInterval(60)
+        while Date() < deadline, !days.exists, !failed.exists { RunLoop.current.run(until: Date().addingTimeInterval(0.5)) }
+        XCTAssertTrue(days.exists || failed.exists, "The models answered or said they could not")
+        if days.exists { element("nativeMap.compare.range").buttons["7 days"].tap() }
         screenshot("model comparison")
         element("nativeMap.compare.close").tap()
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
@@ -490,6 +492,90 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
     }
 
+    func testThreeDEveryModeItsSliderNorthAndDetails() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),7&layer=cells3d", demo: true)
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
+        // Every way to look into the storms, in the tray's order; the ones
+        // with a slider show it and move with it.
+        let slid: Set<String> = ["peel", "slice", "turn", "floor"]
+        for mode in ["live", "peel", "shells", "slice", "turn", "shaft", "tops", "floor"] {
+            let button = app.buttons["nativeMap.3d.mode.\(mode)"].firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 5), mode)
+            for _ in 0 ..< 3 where !button.isHittable { app.scrollViews.containing(.button, identifier: "nativeMap.3d.mode.live").firstMatch.swipeLeft() }
+            button.tap()
+            XCTAssertTrue(button.isSelected, mode)
+            let slider = app.sliders["nativeMap.3d.slider"].firstMatch
+            if slid.contains(mode) {
+                XCTAssertTrue(slider.waitForExistence(timeout: 5), mode)
+                let before = slider.value as? String
+                slider.adjust(toNormalizedSliderPosition: 0.9)
+                XCTAssertNotEqual(slider.value as? String, before, "\(mode) slider moves")
+            } else {
+                XCTAssertFalse(slider.exists, mode)
+            }
+        }
+        screenshot("3D floor")
+        app.scrollViews.containing(.button, identifier: "nativeMap.3d.mode.live").firstMatch.swipeRight()
+        // North up, then a storm picked by its label and its details opened.
+        element("nativeMap.3d.north").tap()
+        let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
+        let screen = app.windows.firstMatch.frame
+        let label = try XCTUnwrap((0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
+            label.isHittable && label.frame.midY > screen.height * 0.2 && label.frame.midY < screen.height * 0.7
+        }, "A label in view")
+        label.tap()
+        let details = element("nativeMap.3d.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
+        element("nativeMap.storm.close").tap()
+        // Closed: the storm is let go of on the map too.
+        XCTAssertTrue(details.waitForNonExistence(timeout: 5))
+    }
+
+    func testEveryLayerSwitchTurnsOffAndOn() {
+        launch(link: "?latLonZ=44,3.5,7", demo: true)
+        waitForSeries()
+        openLayers()
+        for layer in ["lightning", "mesocyclones", "storms", "nowcast", "fromStart", "cells3d", "terrain3d"] {
+            let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
+            for _ in 0 ..< 4 where !toggle.isHittable { element("nativeMap.layers").swipeUp() }
+            XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)
+            let before = toggle.value as? String
+            toggle.switches.firstMatch.tap()
+            XCTAssertNotEqual(toggle.value as? String, before, "\(layer) switches")
+            toggle.switches.firstMatch.tap()
+            XCTAssertEqual(toggle.value as? String, before, "\(layer) switches back")
+        }
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(element("nativeMap.layers").waitForNonExistence(timeout: 5))
+        XCTAssertTrue(map.exists)
+    }
+
+    func testRadarColorMapRepaintsBothMaps() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d", demo: true)
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
+        app.buttons["map.settings"].tap()
+        let row = app.staticTexts["Radar Color Map"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        let homeyer = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Homeyer'")).firstMatch
+        XCTAssertTrue(homeyer.waitForExistence(timeout: 5))
+        homeyer.tap()
+        // Confirmed, and settings closed: the 3D map and the flat one still up.
+        app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        sleep(3)
+        screenshot("3D in Homeyer")
+        openLayers()
+        element("nativeMap.layers.map.radar").tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+    }
+
     func testThreeDScanPickerAndGuide() {
         launch(link: "?latLonZ=44,3.5,7&layer=cells3d", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
@@ -524,6 +610,30 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7&layer=cells3d", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.3d.north").exists)
+    }
+
+    func testStormAndPointShareTheirLinks() {
+        // A storm's share disc in its panel.
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
+        element("nativeMap.storm.share").tap()
+        let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The storm's share sheet")
+        screenshot("storm share")
+        // Put away as a sheet is, by pulling it down.
+        let top = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        top.press(forDuration: 0.05, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)))
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
+        element("nativeMap.storm.close").tap()
+        // A place's, from the hold menu.
+        hold(0.5, 0.3)
+        let share = element("nativeMap.point.share")
+        XCTAssertTrue(share.waitForExistence(timeout: 5))
+        share.tap()
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The place's share sheet")
+        screenshot("point share")
     }
 
     // MARK: - The app around it
