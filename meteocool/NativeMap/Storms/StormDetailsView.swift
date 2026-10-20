@@ -20,6 +20,8 @@ struct StormDetailsView: View {
     let openAR: (() -> Void)?
     /// On the 3D map: its slice by height instead of the vertical cut.
     var on3d = false
+    /// The slice through the storm, which the cutaway and the dial turn.
+    @ObservedObject var cut: StormCut
     /// The storm on the 3D map; nil there, or where it cannot be shown.
     var openIn3D: (() -> Void)?
 
@@ -37,6 +39,7 @@ struct StormDetailsView: View {
                     header
                     stats(now: now)
                     signals
+                    dial
                     readings
                     structure
                     if let openAR {
@@ -367,6 +370,22 @@ struct StormDetailsView: View {
         UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic"
     }
 
+    /// The way a storm's slice is measured: from its track, or from north
+    /// for a core with none.
+    private var cutReference: CutAngle.Reference {
+        selection.flatMap(StormSelect.headingOf) == nil ? .north : .track
+    }
+
+    /// On the 3D map, where the storm is drawn cut where it stands: the dial
+    /// that turns the cut, for a volume seen well enough to open.
+    @ViewBuilder
+    private var dial: some View {
+        if on3d, let info = volumeInfo, info.tier != 1 {
+            SliceDial(cut: cut, reference: cutReference)
+                .padding(.top, 14)
+        }
+    }
+
     /// The cutaway (the flat map) or the CAPPI (the 3D map), and the radars.
     @ViewBuilder
     private var inside: some View {
@@ -381,7 +400,10 @@ struct StormDetailsView: View {
             } else {
                 heading("storm.section.inside", aside: CoreStrings.t("storm.section.inside_aside"))
                 volumeBody(info.path, height: 200) { volume in
-                    StormCutaway(volume: volume, palette: palette, headingDeg: selection.flatMap(StormSelect.headingOf))
+                    StormCutaway(volume: volume, palette: palette, headingDeg: selection.flatMap(StormSelect.headingOf), cut: cut)
+                }
+                if loader.volume != nil {
+                    CutawaySnaps(cut: cut, reference: cutReference)
                 }
                 if let openIn3D {
                     Button(action: openIn3D) {

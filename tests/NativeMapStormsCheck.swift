@@ -35,6 +35,7 @@ struct NativeMapStormsCheck {
         cloudHints()
         decoding()
         extras()
+        cutAngle()
         print("NativeMapStormsCheck: \(count) checks passed")
     }
 
@@ -1115,5 +1116,28 @@ struct NativeMapStormsCheck {
             precondition(CloudHintRules.thin(touching, zoom: 9.5).map(\.cloud.path) == ["strong"])
             precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong", "weak"])
         }
+    }
+
+    // MARK: - cutAngle.test.ts, deepLink's cut
+
+    static func cutAngle() {
+        precondition(CutAngle.normalise(0) == 0 && CutAngle.normalise(180) == -180 && CutAngle.normalise(-180) == -180)
+        precondition(CutAngle.normalise(190) == -170 && CutAngle.normalise(-190) == 170 && CutAngle.normalise(720) == 0)
+        precondition(CutAngle.normalise(360).sign == .plus, "no -0")
+        // Named by the angle to the track; 0 and 180 read the same.
+        precondition(CutAngle.label(0, reference: .track, t) == "storm.cut.along")
+        precondition(CutAngle.label(180, reference: .track, t) == "storm.cut.along")
+        precondition(CutAngle.label(-90, reference: .track, t) == "storm.cut.across")
+        precondition(CutAngle.label(150, reference: .track, t) == "storm.cut.off_track(deg=30)")
+        precondition(CutAngle.label(0.4, reference: .north, t) == "storm.cut.north_south")
+        precondition(CutAngle.label(270, reference: .north, t) == "storm.cut.east_west")
+        precondition(CutAngle.label(-20, reference: .north, t) == "storm.cut.off_north(deg=20)")
+        precondition(CutAngle.snapLabels(.north, t) == ("storm.cut.snap_ns", "storm.cut.snap_ew"))
+        let en = catalogue("en")
+        precondition(CutAngle.label(30, reference: .track, en) == "cut 30° off the storm's track", CutAngle.label(30, reference: .track, en))
+        // A link's cut: whole degrees, folded; nothing along the track.
+        precondition(CutAngle.fromLink("95.6") == 96 && CutAngle.fromLink("270") == -90 && CutAngle.fromLink("x") == nil)
+        precondition(CutAngle.fromLink("inf") == nil && CutAngle.fromLink(nil) == nil)
+        precondition(CutAngle.toLink(0.3) == nil && CutAngle.toLink(360) == nil && CutAngle.toLink(-90.4) == "-90" && CutAngle.toLink(185) == "-175")
     }
 }

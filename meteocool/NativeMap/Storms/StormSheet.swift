@@ -105,6 +105,7 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
                          share: { [weak self] in self?.share() },
                          openAR: arTarget == nil || map?.host?.arAvailable != true ? nil : { [weak self] in self?.openAR() },
                          on3d: map?.model.capability == .cells3d,
+                         cut: map?.model.cut ?? StormCut(),
                          openIn3D: map?.model.capability == .cells3d ? nil : { [weak self] in self?.openIn3D() })
     }
 

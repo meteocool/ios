@@ -92,6 +92,9 @@ protocol NativeMapFeature: AnyObject {
     func open(_ link: [String: String]) -> Bool
     /// What this part adds to a link to the map on screen.
     func linkParameters() -> [String: String]
+    /// Where a link to the map on screen looks, where this part draws the
+    /// map instead of the flat one (the 3D map's camera); nil otherwise.
+    func linkView() -> NativeMapLink?
 }
 
 extension NativeMapFeature {
@@ -112,6 +115,7 @@ extension NativeMapFeature {
     func capabilityDidChange(_ capability: NativeMapModel.Capability) {}
     func open(_ link: [String: String]) -> Bool { false }
     func linkParameters() -> [String: String] { [:] }
+    func linkView() -> NativeMapLink? { nil }
 }
 
 /// The step on screen, as parts need to know it.
