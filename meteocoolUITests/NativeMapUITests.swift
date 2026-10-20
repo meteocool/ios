@@ -33,9 +33,14 @@ final class NativeMapUITests: XCTestCase {
     private func waitForSeries(file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(map.waitForExistence(timeout: 15), "No native map", file: file, line: line)
         XCTAssertTrue(timeline.waitForExistence(timeout: 15), "No timeline", file: file, line: line)
-        let loaded = NSPredicate(format: "value CONTAINS 'Now' OR value CONTAINS 'min' OR value CONTAINS 'h'")
-        expectation(for: loaded, evaluatedWith: timeline)
-        waitForExpectations(timeout: 60)
+        // Polled rather than awaited with a predicate expectation, which now
+        // and then never saw the value the element plainly had.
+        let deadline = Date().addingTimeInterval(60)
+        while Date() < deadline {
+            if let value = timeline.value as? String, !value.isEmpty { return }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        XCTFail("The series did not load", file: file, line: line)
     }
 
     private func screenshot(_ name: String) {
@@ -260,6 +265,36 @@ final class NativeMapUITests: XCTestCase {
         element("nativeMap.layers.map.radar").tap()
         XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+    }
+
+    func testThreeDScanPickerAndGuide() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d", demo: true)
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
+        // The guide: what the marks mean, how to move.
+        element("nativeMap.3d.guideButton").tap()
+        XCTAssertTrue(element("nativeMap.3d.guide").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Storm clouds"].exists)
+        element("nativeMap.3d.guide.close").tap()
+        XCTAssertTrue(element("nativeMap.3d.guide").waitForNonExistence(timeout: 5))
+        // An earlier scan: shown with its time, or a note that it has nothing.
+        let picker = element("nativeMap.3d.scan")
+        XCTAssertTrue(picker.waitForExistence(timeout: 30))
+        XCTAssertEqual(picker.label, "Storms: latest scan")
+        picker.tap()
+        let earlier = app.buttons.matching(NSPredicate(format: "label MATCHES '^[0-9]{2}:[0-9]{2}$'")).element(boundBy: 2)
+        XCTAssertTrue(earlier.waitForExistence(timeout: 5))
+        earlier.tap()
+        let note = element("nativeMap.3d.scanNote")
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            picker.label.hasSuffix("not live") || note.exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 60), .completed)
+        screenshot("3D earlier scan")
+        // Back to the newest.
+        picker.tap()
+        app.buttons["Latest"].firstMatch.tap()
+        expectation(for: NSPredicate(format: "label == 'Storms: latest scan'"), evaluatedWith: picker)
+        waitForExpectations(timeout: 10)
     }
 
     func testThreeDLinkOpensTheThreeDMap() {

@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Buien";
 "native_map_layer_nowcast" = "Radar-nowcast";
 "native_map_inspected_point" = "Geselecteerd punt";
+"native_map_3d_pinch" = "Knijpen";
+"native_map_3d_two_fingers" = "Twee vingers";
+"native_map_3d_tap" = "Tikken";

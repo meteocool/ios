@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Tordenvær";
 "native_map_layer_nowcast" = "Radar-korttidsvarsel";
 "native_map_inspected_point" = "Valgt punkt";
+"native_map_3d_pinch" = "Knip";
+"native_map_3d_two_fingers" = "To fingre";
+"native_map_3d_tap" = "Trykk";

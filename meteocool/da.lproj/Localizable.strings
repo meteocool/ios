@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Uvejr";
 "native_map_layer_nowcast" = "Radar-korttidsprognose";
 "native_map_inspected_point" = "Valgt punkt";
+"native_map_3d_pinch" = "Knib";
+"native_map_3d_two_fingers" = "To fingre";
+"native_map_3d_tap" = "Tryk";

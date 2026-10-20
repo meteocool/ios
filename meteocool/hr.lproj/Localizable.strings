@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Oluje";
 "native_map_layer_nowcast" = "Radarska kratkoročna prognoza";
 "native_map_inspected_point" = "Odabrana točka";
+"native_map_3d_pinch" = "Stisni";
+"native_map_3d_two_fingers" = "Dva prsta";
+"native_map_3d_tap" = "Dodirni";
