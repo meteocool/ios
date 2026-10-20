@@ -497,6 +497,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             clearCovers()
 
             let map = NativeMapView()
+            map.host = self
             map.translatesAutoresizingMaskIntoConstraints = false
             view.insertSubview(map, aboveSubview: webView)
             NSLayoutConstraint.activate([
@@ -1186,4 +1187,27 @@ private final class MapLinkItem: NSObject, UIActivityItemSource {
         }
         return metadata
     }
+}
+
+// MARK: - Native map
+
+extension ViewController: NativeMapHost {
+    func presentOverMap(_ controller: UIViewController) {
+        guard presentedViewController == nil else { return }
+        present(controller, animated: true)
+    }
+
+    func mapCovered(_ covered: Bool, by owner: String) {
+        setCovered(.expandedSheet, covered)
+    }
+
+    func openAR(_ target: StormTarget?) {
+        presentAR(target: target)
+    }
+
+    func shareFromMap(_ share: MapShare, source: UIView?) {
+        presentShare(share, from: source)
+    }
+
+    var arAvailable: Bool { HiddenFeatures.unlocked && ARStormViewController.isAvailable }
 }

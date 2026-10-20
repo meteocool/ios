@@ -19,8 +19,6 @@ final class RadarPlayer: ObservableObject {
     @Published private(set) var index = 0
     @Published private(set) var playing = false
     @Published var palette = "classic"
-    /// Who the data on screen is from (core's `layers/attributions.ts`).
-    @Published var credits = ""
     /// Whether the series has a reading at a point, for the bars.
     var hasReadings: Bool { !timeline.dbz.isEmpty }
 
@@ -127,6 +125,7 @@ final class RadarPlayer: ObservableObject {
 /// user's position, the needle, and the time on screen.
 struct RadarTimelineBar: View {
     @ObservedObject var player: RadarPlayer
+    @ObservedObject var model: NativeMapModel
 
     var body: some View {
         HStack(spacing: 12) {
@@ -146,8 +145,8 @@ struct RadarTimelineBar: View {
                     .accessibilityIdentifier("nativeMap.time")
                 RadarStrip(player: player)
                     .frame(height: 34)
-                if !player.credits.isEmpty {
-                    Text(player.credits)
+                if !model.credits.isEmpty {
+                    Text(model.credits)
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

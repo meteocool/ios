@@ -19,6 +19,8 @@ final class RadarSocket {
     var onEvent: ((String, Data) -> Void)?
     /// After a reconnect: what was missed while away has to be fetched.
     var onReconnect: (() -> Void)?
+    /// Whether the namespace is joined: live, rather than polled.
+    var onConnection: ((Bool) -> Void)?
 
     private let namespace = "/radar"
     private var host: URL
@@ -120,6 +122,7 @@ final class RadarSocket {
         case "0":
             // Joined.
             failures = 0
+            onConnection?(true)
             if everConnected { onReconnect?() }
             everConnected = true
         case "2":
@@ -148,6 +151,7 @@ final class RadarSocket {
     }
 
     private func dropped() {
+        onConnection?(false)
         task?.cancel(with: .abnormalClosure, reason: nil)
         task = nil
         watchdog?.invalidate()

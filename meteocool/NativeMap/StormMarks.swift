@@ -192,37 +192,70 @@ final class StormPath: MKPolyline {
 /// The storms around the map, seen in the last three hours, refetched when
 /// the map leaves what was fetched (core's `StormManager`).
 @MainActor
-final class StormMarks {
-    private weak var mapView: MKMapView?
+final class StormMarks: NativeMapFeature {
+    private weak var map: NativeMapContext?
+    private var mapView: MKMapView? { map?.mapView }
     private var annotations: [StormAnnotation] = []
     private var paths: [StormPath] = []
     private var fetched: MKMapRect = .null
     private var task: URLSessionDataTask?
     private var lastFetch = Date.distantPast
-    private var endpoints: NativeMapEndpoints
+    private var endpoints: NativeMapEndpoints?
     /// The storms on screen are the live picture: hidden on a forecast step.
-    var visible = true {
+    private var visible = false {
         didSet { if visible != oldValue { redraw() } }
     }
+    private var live = true
     /// Storms not seen for ten minutes show only from zoom 10 up.
-    var zoom: Double = 6 {
+    private var zoom: Double = 6 {
         didSet { if (zoom >= 10) != (oldValue >= 10) { redraw() } }
     }
     private var collection: StormCollection?
 
-    init(mapView: MKMapView, endpoints: NativeMapEndpoints) {
-        self.mapView = mapView
-        self.endpoints = endpoints
+    func attach(to map: NativeMapContext) {
+        self.map = map
+        endpoints = map.endpoints
+        map.mapView.register(StormView.self, forAnnotationViewWithReuseIdentifier: StormView.reuse)
+        settingsDidChange()
     }
 
-    func setEndpoints(_ endpoints: NativeMapEndpoints) {
-        self.endpoints = endpoints
-        refresh(force: true)
+    func settingsDidChange() {
+        if let map, map.endpoints != endpoints {
+            endpoints = map.endpoints
+            refresh(force: true)
+        }
+        visible = (map?.isOn(.storms) ?? false) && live && map?.model.capability == .radar
+    }
+
+    func stepDidChange(_ step: RadarStep) {
+        live = step.time == nil || step.isLive
+        settingsDidChange()
+    }
+
+    func regionDidChange() {
+        zoom = map?.zoomLevel ?? zoom
+        refresh()
+    }
+
+    func wake() { refresh(force: true) }
+    func tick() { refresh() }
+
+    func socketEvent(_ name: String, _ data: Data) {
+        if name == "storms" { refresh(force: true) }
+    }
+
+    func view(for annotation: MKAnnotation, in mapView: MKMapView) -> MKAnnotationView? {
+        annotation is StormAnnotation ? mapView.dequeueReusableAnnotationView(withIdentifier: StormView.reuse, for: annotation) : nil
+    }
+
+    func renderer(for overlay: MKOverlay) -> MKOverlayRenderer? {
+        guard let path = overlay as? StormPath else { return nil }
+        return Self.renderer(for: path, dark: map?.model.isDark ?? false)
     }
 
     /// Fetches again when the map left the fetched box, or when told to.
     func refresh(force: Bool = false) {
-        guard let mapView, mapView.bounds.width > 0 else { return }
+        guard let mapView, mapView.bounds.width > 0, let endpoints else { return }
         let visibleRect = mapView.visibleMapRect
         if !force, fetched.contains(visibleRect), Date().timeIntervalSince(lastFetch) < 120 { return }
         let padded = visibleRect.insetBy(dx: -visibleRect.width / 4, dy: -visibleRect.height / 4)
