@@ -43,6 +43,9 @@ protocol NativeMapContext: AnyObject {
     func addToDock<Content: View>(_ content: Content) -> UIView
     /// Switches between core's maps (`lm.setTarget`).
     func setCapability(_ capability: NativeMapModel.Capability)
+    /// A link's query, handed to every part as a link opening the map is
+    /// (`storm`, `cell`, `point`, …), without moving the map.
+    func openLink(_ parameters: [String: String])
     /// The share sheet for a link to what is on screen, under `title`;
     /// centred on `center` when given, with `extra` added to the query.
     func shareMap(title: String, source: UIView?, center: CLLocationCoordinate2D?, extra: [String: String])

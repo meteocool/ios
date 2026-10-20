@@ -66,12 +66,24 @@ struct StormDetailsView: View {
     private var storm: StormProperties? { selection?.summary?.properties ?? selection?.detail?.storm.properties }
     private var classed: Bool { selection.map(StormSelect.knowsSeverity) ?? false }
     private var severity: Int { selection.flatMap(StormSelect.severityOf) ?? 0 }
-    private var colour: Color { Color(uiColor: StormStyle.colour(severity)) }
+    /// The severity's colour; a box of sky's by its peak, as the radar draws it.
+    private var colour: Color {
+        if coreOnly, let peak = selection?.volume?.peakDbz {
+            let rgb = Colormaps.colour(dbz: peak, palette: UserDefaults(suiteName: "group.org.frcy.app.meteocool")?
+                .string(forKey: "radarColorMapping") ?? "classic")
+            return Color(red: Double(rgb.x) / 255, green: Double(rgb.y) / 255, blue: Double(rgb.z) / 255)
+        }
+        return Color(uiColor: StormStyle.colour(severity))
+    }
     private var band: String { StormRules.bandNames[max(0, min(severity, 3))] }
     private var placement: CellPlacement? { track?.placement ?? storm?.placement }
 
+    /// A box of sky with no storm or cell found for it (yet).
+    private var coreOnly: Bool { track == nil && storm == nil && selection?.volume != nil }
+
     /// "Strong", or the place, or "Storm".
     var title: String {
+        if coreOnly { return store.named?.name ?? CoreStrings.t("storm.cloud.unnamed") }
         if classed { return Self.capitalised(CoreStrings.t("storm.band.\(band)")) }
         return store.named?.name ?? Self.capitalised(CoreStrings.t("storm.storm_label.unclassed"))
     }
@@ -82,7 +94,8 @@ struct StormDetailsView: View {
 
     /// The share sheet's subject: "Strong storm, 18 km N of Freising".
     var subject: String {
-        let label = classed ? CoreStrings.t("storm.storm_label.\(band)") : CoreStrings.t("storm.storm_label.unclassed")
+        let label = coreOnly ? (store.named.map { CoreStrings.t("storm.cloud.label", ["place": $0.name]) } ?? CoreStrings.t("storm.cloud.unnamed"))
+            : classed ? CoreStrings.t("storm.storm_label.\(band)") : CoreStrings.t("storm.storm_label.unclassed")
         return [label, place].compactMap { $0 }.joined(separator: ", ")
     }
 
@@ -231,14 +244,18 @@ struct StormDetailsView: View {
 
     private var readingItems: [StormRules.Reading] {
         if let track { return StormRules.cellReadings(track, t) }
-        guard let storm else { return [] }
+        guard storm != nil || selection?.volume != nil else { return [] }
         let step = selection?.detail.flatMap { StormSelect.trackerSeries($0).last }
-        var out = [StormRules.reading("peak", step?.peakDbz ?? storm.peakDbz ?? selection?.volume?.peakDbz, t)]
-        if let area = step?.areaKm2 {
-            out.append(StormRules.Reading(key: "area", label: CoreStrings.t("storm.reading.area"), text: "\(Int(StormDrawing.jsRound(area))) km²",
+        var out = [StormRules.reading("peak", step?.peakDbz ?? storm?.peakDbz ?? selection?.volume?.peakDbz, t)]
+        if let area = step?.areaKm2 ?? selection?.volume?.areaKm2 {
+            // A box of sky's area is above the threshold it was seeded at.
+            let seed = step == nil ? selection?.volume?.seedDbz : nil
+            let label = seed.map { CoreStrings.t("storm.reading.area_above", ["dbz": Int(StormDrawing.jsRound($0))]) }
+                ?? CoreStrings.t("storm.reading.area")
+            out.append(StormRules.Reading(key: "area", label: label, text: "\(Int(StormDrawing.jsRound(area))) km²",
                                           band: nil, bandName: nil, fill: nil))
         }
-        if let speed = storm.speedKmh {
+        if let storm, let speed = storm.speedKmh {
             out.append(StormRules.reading("speed", speed, t, suffix: " " + StormRules.compass16(selection.flatMap(StormSelect.headingOf), t)))
         }
         return out

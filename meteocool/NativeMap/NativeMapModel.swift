@@ -47,6 +47,8 @@ final class NativeMapModel: ObservableObject {
     @Published var compareOpen = false
     /// When the other maps' picture was made (`capLastUpdated`).
     @Published var lastUpdated: Date?
+    /// A box of sky to open as a storm, from the 3D map (core's `cloud`).
+    @Published var volumeRequest: RadarVolume?
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?

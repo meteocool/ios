@@ -48,7 +48,8 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
     /// Brings the hint, sheet and panel in line with the selection.
     func update() {
         guard let map else { return }
-        let radar = map.model.capability == .radar
+        // The 3D map opens a storm's details too.
+        let radar = map.model.capability == .radar || map.model.capability == .cells3d
         let selected = store.selection != nil && radar
         let wantsHint = selected && !store.details && store.twoStage
         let wantsDetails = selected && store.details

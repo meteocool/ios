@@ -108,7 +108,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash()]
+        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash(),
+         ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -629,6 +630,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             if placed { place(link, animated: true) } else { pendingView = link }
             radar.show(time: link.time)
         }
+        for feature in features { _ = feature.open(parameters) }
+    }
+
+    func openLink(_ parameters: [String: String]) {
         for feature in features { _ = feature.open(parameters) }
     }
 

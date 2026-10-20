@@ -223,6 +223,12 @@ final class StormStore: ObservableObject {
         }
     }
 
+    /// A box of sky (core's `cloud`): a storm core without a tracked cell.
+    func openVolume(_ volume: RadarVolume, details: Bool) {
+        selection = StormSelection(id: nil, summary: nil, detail: nil, cell: nil, volume: volume)
+        self.details = details
+    }
+
     /// A cell from a link (`cell=`): fetched, then resolved to its storm.
     func openCell(code: String, details: Bool) {
         guard let map else { return }
