@@ -364,6 +364,49 @@ vertex LineOut line_vertex(uint vid [[vertex_id]], const device LineVertex *vert
 fragment float4 line_fragment(LineOut in [[stage_in]]) {
     return in.colour;
 }
+
+// MARK: - Map ground (the 3D map)
+
+struct GroundVertex {
+    float4 position;                // world metres, w = 1
+    float2 uv;                      // into the ground's picture
+    float2 padding;
+};
+
+struct GroundUniforms {
+    float4x4 viewProjection;
+    float4 camera;
+    float4 haze;                    // rgb: the distance's colour, a: where the ground has faded into it
+};
+
+struct GroundOut {
+    float4 position [[position]];
+    float2 uv;
+    float distance;
+};
+
+vertex GroundOut ground_vertex(uint vid [[vertex_id]], const device GroundVertex *vertices [[buffer(0)]],
+                               constant GroundUniforms &u [[buffer(1)]]) {
+    GroundOut out;
+    float4 p = vertices[vid].position;
+    out.position = u.viewProjection * p;
+    out.uv = vertices[vid].uv;
+    out.distance = length(p.xyz - u.camera.xyz);
+    return out;
+}
+
+/// The map's picture on the ground, fading into the haze towards its edge
+/// so the end of what was fetched is not a hard line.
+fragment float4 ground_fragment(GroundOut in [[stage_in]], constant GroundUniforms &u [[buffer(1)]],
+                                texture2d<float> map [[texture(0)]]) {
+    constexpr sampler s(address::clamp_to_edge, filter::linear, mip_filter::linear);
+    float3 colour = map.sample(s, in.uv).rgb;
+    float2 edge = min(in.uv, 1.0 - in.uv);
+    float rim = 1.0 - smoothstep(0.0, 0.08, min(edge.x, edge.y));
+    float fog = saturate(in.distance / u.haze.a);
+    float fade = max(rim, fog * fog * 0.8);
+    return float4(mix(colour, u.haze.rgb, fade), 1.0);
+}
 """
 }
 
@@ -416,4 +459,18 @@ struct SkyUniforms {
 struct LineVertex {
     var position: SIMD4<Float>
     var colour: SIMD4<Float>
+}
+
+/// Mirrors `GroundVertex` in `StormShaders.source`.
+struct GroundVertex {
+    var position: SIMD4<Float>
+    var uv: SIMD2<Float>
+    var padding = SIMD2<Float>()
+}
+
+/// Mirrors `GroundUniforms` in `StormShaders.source`.
+struct GroundUniforms {
+    var viewProjection: simd_float4x4
+    var camera: SIMD4<Float>
+    var haze: SIMD4<Float>
 }

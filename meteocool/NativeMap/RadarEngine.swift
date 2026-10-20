@@ -309,6 +309,43 @@ final class RadarEngine {
         if scene.show(frame) { renderer?.setNeedsDisplay() }
     }
 
+    /// The step on screen (the newest when there is none yet) as one
+    /// picture of `rect`, `pixels` square, for the 3D map's ground. Nil while
+    /// tiles it needs are still loading: they are asked for, so try again.
+    func drape(_ rect: MKMapRect, pixels: Int, completion: @escaping @MainActor (CGImage?) -> Void) {
+        guard let step = player.step ?? player.timeline.now else { return completion(nil) }
+        let frame = self.frame(for: step)
+        let compositor = self.compositor
+        // As many tiles across as the picture has room for at their own size.
+        let wanted = Int((log2(MKMapSize.world.width * Double(pixels) / (512 * rect.width))).rounded())
+        let z = frame.zoom(for: max(RadarLayer.minZoom, wanted))
+        DispatchQueue.global(qos: .userInitiated).async {
+            var images: [(CGImage, MKMapRect)] = []
+            var pending = false
+            for tile in frame.tiles(z: z, in: rect) {
+                switch compositor.picture(frame, z: z, x: tile.x, y: tile.y, priority: 1) {
+                case .image(let image): images.append((image, RadarTileKey.mapRect(z: z, x: tile.x, y: tile.y)))
+                case .empty: break
+                case .pending: pending = true
+                }
+            }
+            var picture: CGImage?
+            if !pending, let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: pixels * 4,
+                                                 space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) {
+                // Map points, rows down, as the overlay draws them.
+                let scale = Double(pixels) / rect.width
+                context.translateBy(x: 0, y: CGFloat(pixels))
+                context.scaleBy(x: scale, y: -scale)
+                context.translateBy(x: -rect.minX, y: -rect.minY)
+                context.interpolationQuality = .none
+                for (image, tileRect) in images { RadarCompositor.drawTile(image, in: tileRect, context: context) }
+                picture = context.makeImage()
+            }
+            DispatchQueue.main.async { MainActor.assumeIsolated { completion(picture) } }
+        }
+    }
+
     func frame(for step: Int) -> RadarFrameRef {
         RadarFrameRef(layers: player.timeline.layers[step] ?? [], coverage: coverage)
     }

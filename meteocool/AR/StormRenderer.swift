@@ -32,6 +32,19 @@ final class StormRenderer {
         case camera(CVPixelBuffer, CGAffineTransform)
         /// The preview's sky.
         case sky(horizonDip: Double)
+        /// The 3D map: its sky, and the map's picture on the ground under it.
+        case map(MapGround)
+    }
+
+    /// The 3D map's ground: a mesh in world metres and the picture on it.
+    struct MapGround {
+        let texture: MTLTexture
+        let vertices: MTLBuffer
+        let indices: MTLBuffer
+        let indexCount: Int
+        /// The distance's colour, and where the ground has faded into it.
+        let haze: SIMD4<Float>
+        let horizonDip: Double
     }
 
     struct Storm {
@@ -68,6 +81,7 @@ final class StormRenderer {
     private let volumePipeline: MTLRenderPipelineState
     private let compositePipeline: MTLRenderPipelineState
     private let linePipeline: MTLRenderPipelineState
+    private let groundPipeline: MTLRenderPipelineState
     private var textureCache: CVMetalTextureCache?
     private var ramp: MTLTexture?
     private var rampPalette: String?
@@ -142,7 +156,8 @@ final class StormRenderer {
               let camera = pipeline(library, "camera_fragment", format: .bgra8Unorm, blend: false),
               let sky = pipeline(library, "sky_fragment", format: .bgra8Unorm, blend: false),
               let composite = pipeline(library, "composite_fragment", format: .bgra8Unorm, blend: true),
-              let line = pipeline(library, "line_fragment", vertex: "line_vertex", format: .bgra8Unorm, blend: true) else { return nil }
+              let line = pipeline(library, "line_fragment", vertex: "line_vertex", format: .bgra8Unorm, blend: true),
+              let ground = pipeline(library, "ground_fragment", vertex: "ground_vertex", format: .bgra8Unorm, blend: false) else { return nil }
         self.limitsLayers = limitsLayers
         NSLog("AR storms: %@", limitsLayers ? "near to far, at most two layers per pixel" : "far to near through the blender")
         cameraPipeline = camera
@@ -150,6 +165,7 @@ final class StormRenderer {
         volumePipeline = volume
         compositePipeline = composite
         linePipeline = line
+        groundPipeline = ground
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
     }
 
@@ -272,6 +288,23 @@ final class StormRenderer {
             encoder.setRenderPipelineState(skyPipeline)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<SkyUniforms>.stride, index: 0)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        case .map(let ground):
+            var sky = SkyUniforms(inverseViewProjection: frame.pose.viewProjection.inverse,
+                                  camera: SIMD4(frame.pose.position, 1), up: SIMD4(0, 1, 0, 0),
+                                  viewport: SIMD2(Float(size.width), Float(size.height)),
+                                  horizonDip: Float(sin(ground.horizonDip * .pi / 180)), padding: 0)
+            encoder.setRenderPipelineState(skyPipeline)
+            encoder.setFragmentBytes(&sky, length: MemoryLayout<SkyUniforms>.stride, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            var uniforms = GroundUniforms(viewProjection: frame.pose.viewProjection, camera: SIMD4(frame.pose.position, 1),
+                                          haze: ground.haze)
+            encoder.setRenderPipelineState(groundPipeline)
+            encoder.setVertexBuffer(ground.vertices, offset: 0, index: 0)
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GroundUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GroundUniforms>.stride, index: 1)
+            encoder.setFragmentTexture(ground.texture, index: 0)
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: ground.indexCount, indexType: .uint32,
+                                          indexBuffer: ground.indices, indexBufferOffset: 0)
         }
 
         let scale = Float(view.contentScaleFactor)

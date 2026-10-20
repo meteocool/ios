@@ -327,7 +327,14 @@ final class StormMarks: NativeMapFeature {
                 self.store.selection = nil
             }
         }
-        observers = [a, b, c] + (d.map { [$0] } ?? [])
+        let e = map?.model.$volumeRequest.compactMap { $0 }.sink { [weak self] volume in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.map?.model.volumeRequest = nil
+                self.store.openVolume(volume, details: true)
+            }
+        }
+        observers = [a, b, c] + (d.map { [$0] } ?? []) + (e.map { [$0] } ?? [])
     }
 
     private var visible: Bool {
@@ -341,7 +348,8 @@ final class StormMarks: NativeMapFeature {
             added = visible
             if visible { map.mapView.addOverlay(overlay, level: .aboveLabels) } else { map.mapView.removeOverlay(overlay) }
         }
-        if !visible { store.selection = nil }
+        // The 3D map keeps the storm it opened.
+        if !visible, map.model.capability != .cells3d { store.selection = nil }
         redraw()
     }
 

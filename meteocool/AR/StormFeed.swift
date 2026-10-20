@@ -262,6 +262,12 @@ final class StormFeed {
 
     private var inflight: Set<String> = []
     private var retryAfter: [String: Date] = [:]
+    /// A newer scan's list, held back until the volumes replacing the ones
+    /// drawn have loaded, so a new scan replaces the storms on screen at once
+    /// instead of their vanishing until it has loaded; `swapAfter` at most.
+    private var incoming: VolumeIndex?
+    private var incomingSince = Date.distantPast
+    static let swapAfter: TimeInterval = 25
     private var polls: [Task<Void, Never>] = []
     private let session: URLSession
     private let decoder: JSONDecoder = {
@@ -360,10 +366,35 @@ final class StormFeed {
             if listedAt == nil { status = .failed; onChange?() }
             return
         }
-        ingest(index)
+        let listed = Set(entries.map(\.path) + coarse.values.map(\.path))
+        if volumes.isEmpty || Set((index.volumes ?? []).map(\.path)) == listed {
+            ingest(index)
+            incoming = nil
+        } else {
+            if incoming == nil { incomingSince = Date() }
+            incoming = index
+        }
         listedAt = Date()
         status = .ready
         reconcile()
+        onChange?()
+    }
+
+    /// The incoming list's entries that take over from volumes now drawn: the
+    /// same map tile in the newer scan.
+    private func replacements(in index: VolumeIndex) -> [StormEntry] {
+        let shown = Set((entries + Array(coarse.values)).compactMap { volumes[$0.path] != nil ? $0.tile : nil })
+        return (index.volumes ?? []).filter { entry in entry.tile.map(shown.contains) ?? false }
+    }
+
+    /// Swaps the incoming list in once its replacements are here (or have
+    /// failed, or it has waited long enough).
+    private func swapIfReady() {
+        guard let incoming else { return }
+        let waiting = replacements(in: incoming).contains { volumes[$0.path] == nil && retryAfter[$0.path] == nil }
+        guard !waiting || Date().timeIntervalSince(incomingSince) > Self.swapAfter else { return }
+        self.incoming = nil
+        ingest(incoming)
         onChange?()
     }
 
@@ -453,6 +484,10 @@ final class StormFeed {
     /// Storms in front of the camera rank first, then by distance: a storm
     /// behind the viewer can wait until they turn round.
     func reconcile() {
+        swapIfReady()
+        // The newer scan's tiles for the ones drawn, first: they are what
+        // is shown next.
+        let next = incoming.map(replacements(in:)) ?? []
         // Whole storms, in front of the camera first, then nearest, until the
         // budget is spent: half a storm's tiles draws a storm with holes.
         var wanted: [StormEntry] = []
@@ -469,7 +504,7 @@ final class StormFeed {
             bytes += cost
             wanted.append(entry)
         }
-        let wantedPaths = Set(wanted.map(\.path))
+        let wantedPaths = Set(wanted.map(\.path) + next.map(\.path))
         var held = volumes.values.reduce(0) { $0 + $1.textureBytes }
         if held > Self.residentBytes + Self.spareBytes {
             for path in volumes.keys where !wantedPaths.contains(path) {
@@ -479,11 +514,11 @@ final class StormFeed {
             }
         }
         // A new scan replaces every path; drop volumes no longer listed at all.
-        let listed = Set(entries.map(\.path) + coarse.values.map(\.path))
+        let listed = Set(entries.map(\.path) + coarse.values.map(\.path) + next.map(\.path))
         for path in volumes.keys where !listed.contains(path) { volumes[path] = nil }
 
         let now = Date()
-        for entry in wanted where volumes[entry.path] == nil && !inflight.contains(entry.path) {
+        for entry in next + wanted where volumes[entry.path] == nil && !inflight.contains(entry.path) {
             if let after = retryAfter[entry.path], after > now { continue }
             // Four at a time, as core's VOLUME_FETCHES.
             guard inflight.count < 4 else { break }
