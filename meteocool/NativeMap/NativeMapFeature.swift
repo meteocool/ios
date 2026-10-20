@@ -25,6 +25,8 @@ protocol NativeMapContext: AnyObject {
     var radar: RadarEngine { get }
     /// A stored layer switch (`nativeMap.<name>`), on unless turned off.
     func isOn(_ layer: NativeMapLayer) -> Bool
+    /// Stores a layer switch; every part hears it as a settings change.
+    func setOn(_ layer: NativeMapLayer, _ on: Bool)
     /// GET `url`; `handler` gets 2xx bodies on the main actor, nil otherwise.
     func fetch(_ url: URL, _ handler: @escaping @MainActor (Data?, Int?) -> Void)
     /// Moves the map to a view, as a link does.
@@ -35,8 +37,14 @@ protocol NativeMapContext: AnyObject {
     /// it against `view`'s anchors.
     @discardableResult
     func addChrome<Content: View>(_ content: Content) -> UIView
+    /// Hosts a SwiftUI bar in the dock above the tray, over core's strips
+    /// (`SwipeDock`); the caller shows and hides it with `isHidden`.
+    @discardableResult
+    func addToDock<Content: View>(_ content: Content) -> UIView
     /// Switches between core's maps (`lm.setTarget`).
     func setCapability(_ capability: NativeMapModel.Capability)
+    /// The share sheet for a link to what is on screen, under `title`.
+    func shareMap(title: String, source: UIView?)
 }
 
 /// One part of the native map: an overlay, marks, a sheet, a capability.
@@ -105,8 +113,10 @@ struct RadarStep: Equatable {
 /// The app around the native map (`ViewController`).
 @MainActor
 protocol NativeMapHost: AnyObject {
-    /// Presents a sheet or page over the map.
-    func presentOverMap(_ controller: UIViewController)
+    /// Presents a sheet or page over the map; false when something else is
+    /// already up.
+    @discardableResult
+    func presentOverMap(_ controller: UIViewController) -> Bool
     /// Hides the app's own controls while something of the map's covers them.
     func mapCovered(_ covered: Bool, by owner: String)
     /// Opens the AR view at a storm, where it is offered.

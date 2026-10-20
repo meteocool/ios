@@ -1070,8 +1070,9 @@ extension ViewController {
     /// (`screenshotTaken`). `image` is the map as it was, offered beside the
     /// link for a screenshot. `source` is a native control an iPad's popover
     /// points at, in place of the page's rect.
-    func presentShare(_ share: MapShare, image: UIImage? = nil, from source: UIView? = nil) {
-        guard presentedViewController == nil else { return }
+    func presentShare(_ share: MapShare, image: UIImage? = nil, from source: UIView? = nil, over presenter: UIViewController? = nil) {
+        let presenter = presenter ?? self
+        guard presenter.presentedViewController == nil else { return }
         var items: [Any] = [MapLinkItem(share: share, image: image)]
         if let image { items.append(image) }
         let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
@@ -1089,7 +1090,7 @@ extension ViewController {
             }
         }
         sheet.view.accessibilityIdentifier = "map.share"
-        present(sheet, animated: true)
+        presenter.present(sheet, animated: true)
     }
 
     /// The reader just took a screenshot of the map: most likely to send it
@@ -1194,9 +1195,11 @@ private final class MapLinkItem: NSObject, UIActivityItemSource {
 // MARK: - Native map
 
 extension ViewController: NativeMapHost {
-    func presentOverMap(_ controller: UIViewController) {
-        guard presentedViewController == nil else { return }
+    @discardableResult
+    func presentOverMap(_ controller: UIViewController) -> Bool {
+        guard presentedViewController == nil else { return false }
         present(controller, animated: true)
+        return true
     }
 
     func mapCovered(_ covered: Bool, by owner: String) {
@@ -1208,7 +1211,8 @@ extension ViewController: NativeMapHost {
     }
 
     func shareFromMap(_ share: MapShare, source: UIView?) {
-        presentShare(share, from: source)
+        // Over a sheet of the map's own (a storm's) when one is up.
+        presentShare(share, from: source, over: presentedViewController)
     }
 
     var arAvailable: Bool { HiddenFeatures.unlocked && ARStormViewController.isAvailable }
