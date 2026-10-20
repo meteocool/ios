@@ -57,11 +57,16 @@ struct BackToNowPill: View {
     }
 }
 
-/// A strip above the tray: a title, a body, and two ways to hide it, the
-/// close button or a swipe to the left (`DismissableStrip`, `SwipeDock`).
-struct DismissableStrip<Content: View>: View {
-    let title: String
+/// A glass bar above the tray that swipes aside to one action under it, as
+/// a notification does (`SwipeDock`): a short pull parks it with the action
+/// showing, a long one throws it off the edge. A tap on a `tappable` bar
+/// (not on its buttons) raises `tap`.
+struct SwipeDock<Content: View>: View {
+    let action: String
     let theme: ChromeTheme
+    var height: CGFloat = ChromeTheme.stripHeight
+    var strong = false
+    var tap: (() -> Void)?
     let dismiss: () -> Void
     @ViewBuilder let content: () -> Content
 
@@ -77,17 +82,28 @@ struct DismissableStrip<Content: View>: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             ZStack(alignment: .trailing) {
-                // The "Hide" action under the strip.
+                // The action under the bar.
                 RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous)
                     .fill(theme.redVeil)
                     .overlay(alignment: .trailing) {
-                        Button(CoreStrings.t("hide"), action: hide)
+                        Button(action, action: hide)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(-offset > width * Self.commit ? .white : theme.red)
                             .frame(width: max(Self.detent, -offset))
                     }
                     .opacity(offset < 0 ? 1 : 0)
-                strip
+                content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if parked {
+                            withAnimation(.spring(duration: 0.34)) { offset = 0 }
+                            parked = false
+                        } else {
+                            tap?()
+                        }
+                    }
+                    .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous), strong: strong)
                     .offset(x: offset)
                     .gesture(DragGesture(minimumDistance: 6)
                         .onChanged { value in
@@ -108,38 +124,49 @@ struct DismissableStrip<Content: View>: View {
                         })
             }
         }
-        .frame(height: ChromeTheme.stripHeight)
+        .frame(height: height)
         .environment(\.colorScheme, theme.colorScheme)
-    }
-
-    private var strip: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top) {
-                Text(title)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
-                Spacer()
-                Button(action: hide) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(theme.text3)
-                        .frame(width: 44, height: 30)
-                }
-                .accessibilityLabel(CoreStrings.t("close"))
-            }
-            .padding(.leading, 16)
-            content()
-                .padding(.horizontal, 16)
-            Spacer(minLength: 0)
-        }
-        .padding(.top, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous))
     }
 
     private func hide() {
         withAnimation(.easeIn(duration: 0.2)) { dismiss() }
+    }
+}
+
+/// A strip above the tray: a title, a body, and two ways to hide it, the
+/// close button or a swipe to the left (`DismissableStrip`).
+struct DismissableStrip<Content: View>: View {
+    let title: String
+    let theme: ChromeTheme
+    let dismiss: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        SwipeDock(action: CoreStrings.t("hide"), theme: theme, dismiss: dismiss) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(theme.text)
+                        .lineLimit(1)
+                    Spacer()
+                    Button {
+                        withAnimation(.easeIn(duration: 0.2)) { dismiss() }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(theme.text3)
+                            .frame(width: 44, height: 30)
+                    }
+                    .accessibilityLabel(CoreStrings.t("close"))
+                }
+                .padding(.leading, 16)
+                content()
+                    .padding(.horizontal, 16)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 10)
+        }
     }
 }
 
@@ -201,6 +228,7 @@ struct MapToast: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol).font(.system(size: 18)).foregroundStyle(theme.accent)
             Text(text).font(.system(size: 13)).lineSpacing(3).foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Button(action: close) {
                 Image(systemName: "xmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(theme.text3)

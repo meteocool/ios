@@ -77,3 +77,22 @@ struct PressScale: ButtonStyle {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+
+/// The drawers' glass (`--mc-drawer-fill`, `--mc-drawer-backdrop`): a blur
+/// darkened or lightened enough that a sheet over the radar stays readable;
+/// solid where transparency is reduced.
+struct DrawerBackground: View {
+    let dark: Bool
+    @Environment(\.accessibilityReduceTransparency) private var solid
+
+    var body: some View {
+        if solid {
+            (dark ? Color(red: 30 / 255, green: 33 / 255, blue: 40 / 255) : Color(red: 246 / 255, green: 246 / 255, blue: 248 / 255))
+        } else {
+            ZStack {
+                Rectangle().fill(.regularMaterial)
+                (dark ? Color(red: 30 / 255, green: 34 / 255, blue: 42 / 255).opacity(0.62) : Color(red: 250 / 255, green: 250 / 255, blue: 252 / 255).opacity(0.8))
+            }
+        }
+    }
+}

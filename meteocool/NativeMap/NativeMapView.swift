@@ -36,6 +36,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var chrome: [UIView] = []
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
+    /// The bars above the tray, bottom up: core's strips, then the parts'
+    /// bars (a storm's hint), each hidden while it has nothing to say.
+    private let dock = PassthroughStack()
     let monitor = ConnectionMonitor()
     let notices = NoticeState()
     let productScans = ProductScans()
@@ -151,18 +154,26 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         ])
         bottomChrome = tray
 
-        let strips = addChrome(NoticeStrips(player: player, model: model, notices: notices))
+        dock.axis = .vertical
+        dock.spacing = ChromeTheme.gutter
+        dock.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(dock)
         NSLayoutConstraint.activate([
-            strips.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
-            strips.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
-            strips.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter),
+            dock.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
+            dock.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
+            dock.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter),
         ])
+        let strips = addToDock(NoticeStrips(player: player, model: model, notices: notices))
         stripsChrome = strips
+        notices.objectWillChange
+            .sink { [weak self] in DispatchQueue.main.async { self?.updateChromeVisibility() } }
+            .store(in: &observers)
 
+        // Above whichever bars are up, as core counts the open strips and hints.
         let back = addChrome(BackToNowPill(player: player, model: model))
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
-            back.bottomAnchor.constraint(equalTo: strips.topAnchor, constant: -ChromeTheme.gutter),
+            back.bottomAnchor.constraint(equalTo: dock.topAnchor, constant: -ChromeTheme.gutter),
         ])
 
         let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self))
@@ -171,7 +182,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 
-        let toast = addChrome(ToastHost(model: model))
+        let toast = addChrome(ToastHost(model: model, state: chromeState))
         NSLayoutConstraint.activate([
             toast.centerXAnchor.constraint(equalTo: centerXAnchor),
             toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
@@ -184,8 +195,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private func updateChromeVisibility() {
         let radar = model.capability == .radar && !model.trayHidden
         bottomChrome?.isHidden = !radar
-        stripsChrome?.isHidden = !radar
+        dock.isHidden = !radar
         notices.radarShown = radar
+        stripsChrome?.isHidden = !(notices.showNoRadar || notices.showNoForecast)
         setNeedsLayout()
     }
 
@@ -279,6 +291,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         return host.view
     }
 
+    @discardableResult
+    func addToDock<Content: View>(_ content: Content) -> UIView {
+        let host = UIHostingController(rootView: content)
+        host.view.backgroundColor = .clear
+        host.sizingOptions = .intrinsicContentSize
+        dock.insertArrangedSubview(host.view, at: 0)
+        return host.view
+    }
+
     private func configureGestures() {
         let press = UILongPressGestureRecognizer(target: self, action: #selector(longPressed(_:)))
         press.delegate = self
@@ -318,6 +339,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        if abs(chromeState.width - bounds.width) > 0.5 { chromeState.width = bounds.width }
         // Keep Apple's logo and legal link clear of the controls at the bottom.
         if let bottom = bottomChrome {
             let covered = bottom.isHidden ? 0 : bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
@@ -603,7 +625,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     /// A link to what is on screen, in core's spelling, for the share sheet.
-    func share() -> MapShare? {
+    func shareMap(title: String, source: UIView?) {
+        guard let share = share(title: title) else { return }
+        host?.shareFromMap(share, source: source)
+    }
+
+    func share(title: String = "meteocool") -> MapShare? {
         let center = mapView.centerCoordinate
         let time = player.step != player.timeline.now ? player.step : nil
         let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: zoomLevel, time: time)
@@ -615,7 +642,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         let more = extra.isEmpty ? "" : "&" + (components.percentEncodedQuery ?? "")
         let url = MeteocoolEnvironment.current.mapURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             + "/" + link.search + more + "&shared=" + shared
-        guard let data = try? JSONSerialization.data(withJSONObject: ["url": url, "title": "meteocool"]),
+        guard let data = try? JSONSerialization.data(withJSONObject: ["url": url, "title": title]),
               let json = String(data: data, encoding: .utf8) else { return nil }
         return MapShare(json: json, mapHost: MeteocoolEnvironment.current.mapURL.host)
     }
@@ -693,8 +720,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
 /// Holds what the chrome's hosts are laid out against.
 @MainActor
-private final class ChromeState {
+private final class ChromeState: ObservableObject {
     var trayBottom: NSLayoutConstraint?
+    /// The map's width, for chrome that wraps text to it (toasts).
+    @Published var width: CGFloat = 0
 }
 
 /// The status pill, which opens Connection Details.
@@ -713,11 +742,15 @@ private struct PillHost: View {
 /// A toast under the top line, gone after fifteen seconds (`reportToast`).
 private struct ToastHost: View {
     @ObservedObject var model: NativeMapModel
+    @ObservedObject var state: ChromeState
 
     var body: some View {
+        // Never empty: a host laid out at zero size does not grow back.
         ZStack {
+            Color.clear.frame(width: 1, height: 1)
             if let text = model.toast {
                 MapToast(text: text, symbol: "clock.arrow.circlepath", theme: ChromeTheme(dark: model.isDark)) { model.toast = nil }
+                    .frame(width: min(448, max(220, state.width - 120)))
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .task(id: text) {
                         try? await Task.sleep(for: .seconds(15))
@@ -726,5 +759,13 @@ private struct ToastHost: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.toast)
+    }
+}
+
+/// A stack that keeps none of the touches between its bars for itself.
+private final class PassthroughStack: UIStackView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        return hit === self ? nil : hit
     }
 }
