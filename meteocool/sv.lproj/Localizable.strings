@@ -225,3 +225,18 @@
 "ar_alignment_geo" = "Norr från geospårning";
 "ar_turn_left" = "Vrid %.0f° åt vänster";
 "ar_turn_right" = "Vrid %.0f° åt höger";
+
+/* Native MapKit map */
+"native_map_setting" = "Inbyggd karta (beta)";
+"native_map_now" = "Nu";
+"native_map_play" = "Spela upp";
+"native_map_pause" = "Pausa";
+"native_map_timeline" = "Radartid";
+"native_map_mesocyclone" = "Mesocyklon, styrka %ld";
+"native_map_storm" = "Åskväder";
+"native_map_storm_near" = "Åskväder vid %@";
+"native_map_hail" = "Hagel";
+"native_map_layer_lightning" = "Blixtar";
+"native_map_layer_mesocyclones" = "Mesocykloner";
+"native_map_layer_storms" = "Åskväder";
+"native_map_layer_nowcast" = "Radarns korttidsprognos";

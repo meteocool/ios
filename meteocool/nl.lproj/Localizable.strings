@@ -225,3 +225,18 @@
 "ar_alignment_geo" = "Noorden van geotracking";
 "ar_turn_left" = "Draai %.0f° naar links";
 "ar_turn_right" = "Draai %.0f° naar rechts";
+
+/* Native MapKit map */
+"native_map_setting" = "Native kaart (bèta)";
+"native_map_now" = "Nu";
+"native_map_play" = "Afspelen";
+"native_map_pause" = "Pauze";
+"native_map_timeline" = "Radartijd";
+"native_map_mesocyclone" = "Mesocycloon, sterkte %ld";
+"native_map_storm" = "Bui";
+"native_map_storm_near" = "Bui bij %@";
+"native_map_hail" = "Hagel";
+"native_map_layer_lightning" = "Bliksem";
+"native_map_layer_mesocyclones" = "Mesocyclonen";
+"native_map_layer_storms" = "Buien";
+"native_map_layer_nowcast" = "Radar-nowcast";
