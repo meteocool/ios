@@ -407,8 +407,10 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             // The flat map's size: this view covers the same ground, and may
             // not have been laid out yet on its first frame.
             let size = mapView.bounds.size
-            let room = FramingRoom.of(width: Double(size.width), height: Double(size.height),
-                                      phone: traitCollection.horizontalSizeClass == .compact)
+            let phone = traitCollection.horizontalSizeClass == .compact
+            var room = FramingRoom.of(width: Double(size.width), height: Double(size.height), phone: phone)
+            // A wide screen's panel stands left of the app's buttons.
+            if !phone { room.right = max(room.right - Double(ChromeTheme.controlColumn - 12), room.width / 2) }
             let stand = OrbitFraming.stand(lat: focus.latitude, lon: focus.longitude, widthM: focus.widthM, heightM: focus.heightM,
                                            bearing: camera.bearing, room: room, fovY: OrbitCamera.fovY)
             if [stand.latitude, stand.longitude, stand.distance].allSatisfy(\.isFinite) {
@@ -508,13 +510,16 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         }
     }
 
+    /// Runs with every rebuild of the labels; a published value is set only
+    /// when it changes, or the tray (and a menu open in it) redraws each time.
     private func refreshStatus() {
         if state.newestScan != feed.newestScan { state.newestScan = feed.newestScan }
-        switch feed.status {
-        case .loading: state.status = NSLocalizedString("ar_status_loading", comment: "")
-        case .failed: state.status = NSLocalizedString("ar_status_failed", comment: "")
-        case .ready: state.status = feed.nearbyEntries.isEmpty ? NSLocalizedString("ar_no_storms", comment: "") : nil
+        let status: String? = switch feed.status {
+        case .loading: NSLocalizedString("ar_status_loading", comment: "")
+        case .failed: NSLocalizedString("ar_status_failed", comment: "")
+        case .ready: feed.nearbyEntries.isEmpty ? NSLocalizedString("ar_no_storms", comment: "") : nil
         }
+        if state.status != status { state.status = status }
     }
 
     // MARK: Modes

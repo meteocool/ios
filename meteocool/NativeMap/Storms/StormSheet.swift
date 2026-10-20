@@ -23,6 +23,7 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
     private var sheet: UIViewController?
     private var panel: UIView?
     private var panelHeight: NSLayoutConstraint?
+    private var panelOn3d: Bool?
     private var observers = Set<AnyCancellable>()
 
     /// The sheet's two heights (`CellSheet.svelte`): 40 % of the screen, and
@@ -70,6 +71,9 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
         } else if wantsDetails {
             dismissSheet()
             showPanel()
+            // Its content changed: measured again, or a panel first laid out
+            // before it had any stays at that size.
+            DispatchQueue.main.async { [weak self] in self?.panel?.invalidateIntrinsicContentSize() }
         } else {
             dismissSheet()
             removePanel()
@@ -85,9 +89,9 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
     /// is opening over the map (the layer switcher), which a selection cannot
     /// outlive.
     func close(then: @escaping () -> Void) {
-        dismissSheet(then: then)
-        removePanel()
         store.selection = nil
+        removePanel()
+        dismissSheet(then: then)
     }
 
     // MARK: - Phone
@@ -181,17 +185,28 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
     // MARK: - iPad
 
     private func showPanel() {
-        guard let map, panel == nil else { return }
+        guard let map else { return }
+        // Built again for the other map: the 3D map's panel slices the
+        // storm by height where the flat map's cuts it open.
+        let on3d = map.model.capability == .cells3d
+        if let panel {
+            guard panelOn3d != on3d else { return }
+            panel.removeFromSuperview()
+            self.panel = nil
+        }
+        panelOn3d = on3d
         let view = map.addChrome(StormPanel(details: details(wide: true), dark: map.model.isDark))
         view.accessibilityIdentifier = "nativeMap.storm.panel"
         let height = view.heightAnchor.constraint(lessThanOrEqualTo: map.view.safeAreaLayoutGuide.heightAnchor, constant: -24)
         NSLayoutConstraint.activate([
             view.topAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            view.trailingAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            view.trailingAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.trailingAnchor, constant: -ChromeTheme.controlColumn),
             height,
         ])
         view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         panelHeight = height
+        // Never laid out at nothing: a host measured empty does not grow back.
+        view.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
         view.alpha = 0
         UIView.animate(withDuration: 0.2) { view.alpha = 1 }
         panel = view

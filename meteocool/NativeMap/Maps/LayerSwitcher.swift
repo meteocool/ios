@@ -148,6 +148,10 @@ struct LayerSwitcherView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(active ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: active ? 3 : 1))
+                // Clipping draws the picture to the tile but leaves its taps
+                // where it was filled to: the 3D map's tilted snapshot took
+                // the taps of the tile above it.
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(tile.label)

@@ -13,6 +13,9 @@ import SwiftUI
 struct BackToNowPill: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
+    /// Its host measured again: grown from the empty placeholder it was
+    /// laid out at, or the pill is squeezed to its icon and out of reach.
+    var resized: () -> Void = {}
     @State private var shown = false
 
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
@@ -46,6 +49,7 @@ struct BackToNowPill: View {
         }
         .environment(\.colorScheme, theme.colorScheme)
         .animation(.easeOut(duration: 0.2), value: shown)
+        .onChange(of: shown) { _, _ in DispatchQueue.main.async { resized() } }
         .task(id: wanted) {
             if wanted {
                 shown = true
