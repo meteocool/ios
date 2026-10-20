@@ -337,6 +337,8 @@ struct ModelCompareView: View {
             .padding(.top, wide ? 14 : 11)
             .padding(.trailing, wide ? 14 : 12)
         }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.compare")
     }
 

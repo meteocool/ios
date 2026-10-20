@@ -356,11 +356,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
 
         state.setMode = { [weak self] in self?.setMode($0) }
         state.setSlider = { [weak self] in self?.setSlider($0) }
-        state.north = { [weak self] in
-            guard let self else { return }
-            UIView.animate(withDuration: 0.3) { self.camera.bearing = 0 }
-            self.camera.bearing = 0
-        }
+        state.north = { [weak self] in self?.camera.bearing = 0 }
         state.open = { [weak self] in
             guard let self, let key = self.scene?.selectedKey else { return }
             self.open(key)

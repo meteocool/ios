@@ -56,6 +56,8 @@ struct StormDetailsView: View {
             .scrollIndicators(.automatic)
         }
         .overlay(alignment: .topTrailing) { discs }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.storm.details")
     }
 

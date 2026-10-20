@@ -100,6 +100,8 @@ struct LayerSwitcherView: View {
                 }
             }
         }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.layers")
     }
 
@@ -150,7 +152,7 @@ struct LayerSwitcherView: View {
         .buttonStyle(PressScale())
         .accessibilityLabel(tile.label)
         .accessibilityAddTraits(active ? .isSelected : [])
-        .accessibilityIdentifier("nativeMap.layers.\(tile.id.rawValue)")
+        .accessibilityIdentifier("nativeMap.layers.map.\(tile.id.rawValue)")
     }
 
     private func section(_ title: String, @ViewBuilder _ rows: () -> some View) -> some View {

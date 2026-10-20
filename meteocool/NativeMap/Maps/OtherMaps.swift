@@ -369,6 +369,7 @@ final class LightningMap: NativeMapFeature {
             UIView.animate(withDuration: 0.2) {
                 chartHost.isHidden = !wanted
                 chartHost.alpha = wanted ? 1 : 0
+                chartHost.invalidateIntrinsicContentSize()
                 chartHost.superview?.layoutIfNeeded()
             }
         }
@@ -400,6 +401,7 @@ struct LightningChartStrip: View {
             DismissableStrip(title: title, theme: theme, dismiss: state.dismiss) {
                 content(theme)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("nativeMap.lightningChart")
         }
         .padding(.horizontal, ChromeTheme.gutter)
@@ -484,6 +486,8 @@ struct OtherMapTray: View {
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
             .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous))
+            // A container: its own children keep their identifiers.
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("nativeMap.otherTray")
     }
 

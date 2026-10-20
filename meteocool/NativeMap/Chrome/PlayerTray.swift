@@ -38,6 +38,8 @@ struct PlayerTray: View {
         .frame(height: 168)
         .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous), strong: true)
         .environment(\.colorScheme, theme.colorScheme)
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.player")
     }
 

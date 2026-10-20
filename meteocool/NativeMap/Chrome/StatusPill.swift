@@ -192,6 +192,8 @@ struct ConnectionDetails: View {
                 }
             }
         }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.connectionDetails")
     }
 
