@@ -15,5 +15,7 @@ xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainFo
 "$scratch/check-rain"
 xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/CoreStrings.swift meteocool/NativeMap/VectorTile.swift meteocool/NativeMap/Chrome/TimelinePhysics.swift meteocool/NativeMap/Chrome/ConnectionRules.swift meteocool/AR/Colormaps.swift tests/NativeMapCheck.swift -o "$scratch/check-native-map"
 "$scratch/check-native-map"
+xcrun swiftc meteocool/NativeMap/Storms/StormData.swift meteocool/NativeMap/Storms/StormSelection.swift meteocool/NativeMap/Storms/StormDrawing.swift meteocool/NativeMap/Storms/StormRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapStormsCheck.swift -o "$scratch/check-native-map-storms"
+"$scratch/check-native-map-storms"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
 "$scratch/check-widgets"
