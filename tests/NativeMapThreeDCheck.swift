@@ -71,6 +71,7 @@ struct NativeMapThreeDCheck {
 
     static func main() {
         checkTiles()
+        cellVolumes()
         checkFootprint()
         checkLocate()
         checkFraming()
@@ -543,6 +544,110 @@ struct NativeMapThreeDCheck {
         let palette = Colormaps.colour(dbz: 50, palette: "classic")
         near(box.r * 255, Double(palette.x), 0.6)
         near(box.g * 255, Double(palette.y), 0.6)
+    }
+}
+
+extension NativeMapThreeDCheck {
+    /// core's `scripts/tests/cellVolume.test.ts`.
+    static func cellVolumes() {
+        typealias P = CellVolumeModel.Point
+        let square: [[Double]] = [[9, 51], [11, 51], [11, 53], [9, 53]]
+        let layers = [
+            CellThreshold(dbz: 30, areaKm2: 95, topM: 9200, volumeKm3: 400, rings: nil),
+            CellThreshold(dbz: 45, areaKm2: 30, topM: 7600, volumeKm3: 100, rings: nil),
+            CellThreshold(dbz: 55, areaKm2: 4, topM: 6100, volumeKm3: 12, rings: nil),
+        ]
+        func cell(_ structure: [CellThreshold], lon: Double = 10, lat: Double = 52) -> CellVolumeModel.Input {
+            CellVolumeModel.Input(code: "2026092012050010000000", lon: lon, lat: lat, echoBottomM: 1200, polygon: square, structure: structure)
+        }
+        func area(_ ring: [P]) -> Double { abs(CellVolumeModel.shoelace(ring.map { (x: $0.lon, y: $0.lat) })) }
+        let squareRing: [P] = square.map { ($0[0], $0[1]) }
+
+        // A shell scaled to a quarter of the area is half the width; none collapses.
+        let scaled = CellVolumeModel.scale(squareRing, about: (10, 52), ratio: 0.25)
+        near(area(scaled) / area(squareRing), 0.25, 1e-9)
+        near(scaled[0].lon, 9.5, 1e-12)
+        precondition(CellVolumeModel.scale(squareRing, about: (10, 52), ratio: 0).allSatisfy { $0.lon == 10 && $0.lat == 52 })
+
+        // The solved exponent gives a profile of the mean it was asked for.
+        for wanted in [0.12, 0.25, 0.4, 0.55, 0.7, 0.9] {
+            let exponent = CellVolumeModel.exponentForMean(wanted)
+            let n = 400
+            let mean = (0 ..< n).reduce(0.0) { $0 + CellVolumeModel.profile((Double($1) + 0.5) / Double(n), exponent: exponent) } / Double(n)
+            near(mean, wanted, 0.02, "mean for \(wanted)")
+        }
+        precondition(CellVolumeModel.exponentForMean(0.3) > CellVolumeModel.exponentForMean(0.6))
+        for exponent in [0.5, 1, 3] {
+            for k in 1 ... 40 {
+                precondition(CellVolumeModel.profile(Double(k) / 40, exponent: exponent) <= CellVolumeModel.profile(Double(k - 1) / 40, exponent: exponent) + 1e-12)
+            }
+        }
+
+        // A storm with volume to spare stands on its echo base.
+        let model = CellVolumeModel.model(cell(layers))!
+        precondition(model.base == 1200 && model.top == 9200)
+
+        // A body too thin for its column hangs under its own top.
+        let wispy = CellVolumeModel.model(cell([
+            CellThreshold(dbz: 30, areaKm2: 95, topM: 9200, volumeKm3: 400, rings: nil),
+            CellThreshold(dbz: 45, areaKm2: 40, topM: 8000, volumeKm3: 2, rings: nil),
+        ]))!
+        precondition(wispy.base == model.base)
+        let lowest = wispy.bands.map(\.base).min()!
+        let with45 = wispy.bands.filter { $0.rings.contains { $0.dbz == 45 } }
+        precondition(!with45.isEmpty && with45.map(\.base).min()! > lowest + 3000)
+
+        precondition(CellVolumeModel.model(cell([])) == nil)
+
+        // Bands stack without overlapping; rings never touch; only the innermost is opaque.
+        for (index, band) in model.bands.enumerated() {
+            precondition(band.top > band.base)
+            if index > 0 { precondition(band.base >= model.bands[index - 1].top - 1e-6) }
+            for (i, ring) in band.rings.enumerated() {
+                let innermost = i == band.rings.count - 1
+                precondition(ring.outer > ring.inner)
+                if i + 1 < band.rings.count {
+                    precondition(ring.inner > band.rings[i + 1].outer)
+                    precondition(band.rings[i + 1].dbz >= ring.dbz)
+                }
+                precondition((ring.alpha == 1) == innermost && (ring.inner == 0) == innermost)
+            }
+        }
+
+        // A centroid adrift of its outline does not drag the model with it.
+        let adrift = CellVolumeModel.model(cell(layers, lon: 40, lat: 12))!
+        precondition(adrift.centre.lon > 9 && adrift.centre.lon < 11 && adrift.centre.lat > 51 && adrift.centre.lat < 53)
+
+        // Every piece has somewhere to stand, and holes are smaller than their rings.
+        let pieces = CellVolumeModel.pieces(model)
+        precondition(!pieces.isEmpty && pieces.contains { $0.hole != nil })
+        for piece in pieces {
+            precondition(piece.top > piece.base && piece.base >= 0)
+            if let hole = piece.hole { precondition(area(hole) < area(piece.outer)) }
+        }
+
+        // Measured cores: two where the radar saw two, where they were, sized by the profile.
+        let west: [[Double]] = [[9.2, 51.2], [9.6, 51.2], [9.6, 51.6], [9.2, 51.6]]
+        let east: [[Double]] = [[10.4, 52.4], [10.8, 52.4], [10.8, 52.8], [10.4, 52.8]]
+        let measured = CellVolumeModel.model(cell([
+            layers[0], CellThreshold(dbz: 45, areaKm2: 30, topM: 7600, volumeKm3: 100, rings: [west, east]), layers[2],
+        ]))!
+        func cores(_ model: CellVolumeModel.Model) -> [CellVolumeModel.Piece] { CellVolumeModel.pieces(model).filter { $0.tier == 0 && $0.dbz == 45 } }
+        let before = cores(model), after = cores(measured)
+        precondition(!before.isEmpty && after.count == before.count * 2)
+        let centres = after.map { $0.outer.reduce(0) { $0 + $1.lon } / Double($0.outer.count) }
+        precondition(centres.min()! < 9.8 && centres.max()! > 10.2)
+        var byBand: [Double: Double] = [:]
+        for piece in after { byBand[piece.base, default: 0] += area(piece.outer) }
+        let areas = byBand.sorted { $0.key < $1.key }.map(\.value)
+        precondition(areas.count > 1 && areas.indices.allSatisfy { $0 == 0 || areas[$0] <= areas[$0 - 1] + 1e-12 })
+
+        // As `/cells/current` sends a layer.
+        let json = #"{"dbz": 30, "area_km2": 27.4, "top_m": 4036.0, "volume_km3": 70.2, "rings": [[[4.9, 50.3], [4.91, 50.3], [4.91, 50.31], [4.9, 50.31]]]}"#
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let layer = try! decoder.decode(CellThreshold.self, from: Data(json.utf8))
+        precondition(layer.topM == 4036 && layer.rings?.first?.count == 4)
     }
 }
 

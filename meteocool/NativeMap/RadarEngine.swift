@@ -55,7 +55,9 @@ final class RadarEngine {
     var point: CLLocationCoordinate2D? {
         didSet {
             guard let point else { return }
-            if seriesPoint.map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+            // Against the series held, or the one on its way: a stream of
+            // location fixes must not cancel the first request over and over.
+            if (seriesPoint ?? requestedPoint).map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude)
                 .distance(from: CLLocation(latitude: point.latitude, longitude: point.longitude)) > 2000 }) ?? true {
                 load()
             }
@@ -65,6 +67,8 @@ final class RadarEngine {
     private var seriesTask: URLSessionDataTask?
     private(set) var seriesLoaded = Date.distantPast
     private var seriesPoint: CLLocationCoordinate2D?
+    /// The point of the request on its way.
+    private var requestedPoint: CLLocationCoordinate2D?
     private var seriesNetwork: String?
     private var seriesRetry: Timer?
     private var refreshAt: Date?
@@ -192,15 +196,23 @@ final class RadarEngine {
     // MARK: - Series
 
     func load() {
-        seriesTask?.cancel()
-        seriesRetry?.invalidate()
         let point = self.point
         let network = point.flatMap { coverage.network(at: MKMapPoint($0)) }
         let products = product.timeseriesProducts
         let url = endpoints.timeseries(latitude: point?.latitude, longitude: point?.longitude,
                                        network: network, nowcast: nowcast, products: products)
+        // The same question already on its way (a wake, a reconnect, a fix
+        // a few metres on) is left to answer rather than asked again: asked
+        // again and again, as a flapping socket would, it never answers.
+        if let seriesTask, seriesTask.state == .running, seriesTask.originalRequest?.url == url { return }
+        seriesTask?.cancel()
+        seriesRetry?.invalidate()
         seriesLoaded = Date()
-        seriesTask = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        requestedPoint = point
+        // A stalled answer is asked again soon rather than after a minute.
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        seriesTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             let status = (response as? HTTPURLResponse)?.statusCode
             let series = status == 200 ? data.flatMap { try? RadarSeries.decode($0) } : nil
             let cancelled = (error as? URLError)?.code == .cancelled

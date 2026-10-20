@@ -66,6 +66,16 @@ final class StormRenderer {
         var storms: [Storm]
         var under: [WorldLine]
         var over: [WorldLine]
+        /// The 3D map's KONRAD3D cells, as solids.
+        var solids: Solids? = nil
+    }
+
+    /// Triangles of `SolidVertex`, the opaque ones first, then the glass.
+    struct Solids {
+        let vertices: MTLBuffer
+        let opaqueCount: Int
+        let glassCount: Int
+        let light: SIMD3<Float>
     }
 
     let device: MTLDevice
@@ -82,6 +92,11 @@ final class StormRenderer {
     private let compositePipeline: MTLRenderPipelineState
     private let linePipeline: MTLRenderPipelineState
     private let groundPipeline: MTLRenderPipelineState
+    private let solidPipeline: MTLRenderPipelineState
+    private let glassPipeline: MTLRenderPipelineState
+    private let solidDepth: MTLDepthStencilState?
+    private let glassDepth: MTLDepthStencilState?
+    private let noDepth: MTLDepthStencilState?
     private var textureCache: CVMetalTextureCache?
     private var ramp: MTLTexture?
     private var rampPalette: String?
@@ -99,6 +114,9 @@ final class StormRenderer {
         self.queue = queue
         view.device = device
         view.colorPixelFormat = .bgra8Unorm
+        // The 3D map's cell solids hide each other by depth; nothing else writes it.
+        view.depthStencilPixelFormat = .depth32Float
+        view.clearDepth = 1
         view.framebufferOnly = true
 
         func compile(fetch: Bool) -> MTLLibrary? {
@@ -124,6 +142,8 @@ final class StormRenderer {
             descriptor.fragmentFunction = library.makeFunction(name: fragment)
             let attachment = descriptor.colorAttachments[0]!
             attachment.pixelFormat = format
+            // The drawable's pass carries the depth buffer; the storms' own does not.
+            if format == .bgra8Unorm { descriptor.depthAttachmentPixelFormat = .depth32Float }
             if layers { descriptor.colorAttachments[1].pixelFormat = Self.layersFormat }
             if blend {
                 // Premultiplied "over": what is drawn later is in front.
@@ -157,7 +177,9 @@ final class StormRenderer {
               let sky = pipeline(library, "sky_fragment", format: .bgra8Unorm, blend: false),
               let composite = pipeline(library, "composite_fragment", format: .bgra8Unorm, blend: true),
               let line = pipeline(library, "line_fragment", vertex: "line_vertex", format: .bgra8Unorm, blend: true),
-              let ground = pipeline(library, "ground_fragment", vertex: "ground_vertex", format: .bgra8Unorm, blend: false) else { return nil }
+              let ground = pipeline(library, "ground_fragment", vertex: "ground_vertex", format: .bgra8Unorm, blend: false),
+              let solid = pipeline(library, "solid_fragment", vertex: "solid_vertex", format: .bgra8Unorm, blend: false),
+              let glass = pipeline(library, "solid_fragment", vertex: "solid_vertex", format: .bgra8Unorm, blend: true) else { return nil }
         self.limitsLayers = limitsLayers
         NSLog("AR storms: %@", limitsLayers ? "near to far, at most two layers per pixel" : "far to near through the blender")
         cameraPipeline = camera
@@ -166,6 +188,19 @@ final class StormRenderer {
         compositePipeline = composite
         linePipeline = line
         groundPipeline = ground
+        solidPipeline = solid
+        glassPipeline = glass
+        func depth(write: Bool, test: Bool) -> MTLDepthStencilState? {
+            let descriptor = MTLDepthStencilDescriptor()
+            descriptor.depthCompareFunction = test ? .lessEqual : .always
+            descriptor.isDepthWriteEnabled = write
+            return device.makeDepthStencilState(descriptor: descriptor)
+        }
+        // The opaque core writes depth; the glass is tested against it but
+        // does not hide the glass behind it (core's tier order).
+        solidDepth = depth(write: true, test: true)
+        glassDepth = depth(write: false, test: true)
+        noDepth = depth(write: false, test: false)
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
     }
 
@@ -309,6 +344,24 @@ final class StormRenderer {
 
         let scale = Float(view.contentScaleFactor)
         drawLines(frame.under, pose: frame.pose, size: size, scale: scale, encoder: encoder)
+        if let solids = frame.solids, solids.opaqueCount + solids.glassCount > 0 {
+            var uniforms = SolidUniforms(viewProjection: frame.pose.viewProjection, light: SIMD4(solids.light, 0))
+            encoder.setVertexBuffer(solids.vertices, offset: 0, index: 0)
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<SolidUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<SolidUniforms>.stride, index: 1)
+            encoder.setCullMode(.none)
+            if solids.opaqueCount > 0 {
+                encoder.setRenderPipelineState(solidPipeline)
+                encoder.setDepthStencilState(solidDepth)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: solids.opaqueCount)
+            }
+            if solids.glassCount > 0 {
+                encoder.setRenderPipelineState(glassPipeline)
+                encoder.setDepthStencilState(glassDepth)
+                encoder.drawPrimitives(type: .triangle, vertexStart: solids.opaqueCount, vertexCount: solids.glassCount)
+            }
+            encoder.setDepthStencilState(noDepth)
+        }
         if let target {
             encoder.setRenderPipelineState(compositePipeline)
             encoder.setFragmentTexture(target, index: 0)

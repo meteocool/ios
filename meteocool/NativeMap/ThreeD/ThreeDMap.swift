@@ -299,6 +299,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     private let state = ThreeDState()
     private let feed = StormFeed()
     private let ground = ThreeDGround()
+    private let cellSolids = CellSolids()
     private var renderer: StormRenderer?
     private var scene: StormScene?
     private var hud: UIView?
@@ -634,12 +635,44 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         var lines = scene.lines(groups: groups, feed: feed, pose: pose)
         lines.under = lines.under.map(Self.stretch)
         lines.over = lines.over.map(Self.stretch)
+        // KONRAD3D's cells as solids, where the switch is on; not inside a
+        // radar volume that draws the same weather measured another way.
+        var solids: StormRenderer.Solids?
+        if map.isOn(.cells3d) {
+            let nearby = feed.cells.filter { cell in
+                Geo.distanceBearing(fromLat: camera.latitude, lon: camera.longitude, toLat: cell.lat, lon: cell.lon).metres <= StormFeed.rangeMetres
+            }
+            var hasher = Hasher()
+            for cell in nearby {
+                hasher.combine(cell.code)
+                hasher.combine(cell.t)
+            }
+            let key = "\(hasher.finalize())|\(scene.frame.latitude),\(scene.frame.longitude)|\(scene.palette)"
+            cellSolids.update(cells: nearby, hidden: Self.insideVolumes(nearby, drawn: drawn), scene: scene, device: renderer.device, key: key)
+            solids = cellSolids.current
+            lines.under += cellSolids.footprints
+        }
         renderer.retain(only: Set(feed.volumes.keys))
         let background: StormRenderer.Background = ground.current.map { .map($0) } ?? .sky(horizonDip: 0)
-        renderer.draw(StormRenderer.Frame(background: background, pose: pose, storms: storms, under: lines.under, over: lines.over),
+        renderer.draw(StormRenderer.Frame(background: background, pose: pose, storms: storms, under: lines.under, over: lines.over,
+                                          solids: solids),
                       in: view)
         updateOverlays(pose: pose)
         if abs(state.bearing - camera.bearing) > 0.5 { state.bearing = camera.bearing }
+    }
+
+    /// The cells standing inside a drawn volume's box (core's `hiddenCodes`).
+    private static func insideVolumes(_ cells: [TrackedCell], drawn: [(storm: PlacedStorm, group: StormGroup)]) -> Set<String> {
+        let boxes = drawn.compactMap { storm, _ -> (lon: Double, lat: Double, halfX: Double, halfY: Double)? in
+            guard let volume = storm.volume else { return nil }
+            return (storm.entry.lon, storm.entry.lat, volume.extentM.x / 2000, volume.extentM.y / 2000)
+        }
+        guard !boxes.isEmpty else { return [] }
+        return Set(cells.filter { cell in
+            boxes.contains { box in
+                abs((cell.lon - box.lon) * 111.32 * cos(box.lat * .pi / 180)) <= box.halfX && abs((cell.lat - box.lat) * 110.57) <= box.halfY
+            }
+        }.map(\.code))
     }
 
     private static func stretch(_ line: WorldLine) -> WorldLine {

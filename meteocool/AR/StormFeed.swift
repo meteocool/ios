@@ -114,6 +114,10 @@ struct TrackedCell: Decodable, Sendable {
     let forecast: [ForecastPoint]?
     /// The box this cell's centroid stands in, if one was built.
     let volume: VolumeRef?
+    /// Its outline, `[lon, lat]`, and each threshold's area, top and volume:
+    /// what the 3D map's cell solids are built from (`CellVolume`).
+    let polygon: [[Double]]?
+    let structure: [CellThreshold]?
 }
 
 struct CellIndex: Decodable, Sendable {
