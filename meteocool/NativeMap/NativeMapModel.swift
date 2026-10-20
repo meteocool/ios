@@ -76,6 +76,31 @@ final class NativeMapModel: ObservableObject {
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+    /// The open storm's slice, turned in its panel, cut on the 3D map.
+    let cut = StormCut()
+    /// The storm open, as the 3D map finds and cuts it; nil without one.
+    @Published var opened: OpenedStorm?
+}
+
+/// The open storm, by what the 3D map knows its storms by: a tracked cell's
+/// code, a volume's path; and the way its track runs, which its cut is
+/// measured from.
+struct OpenedStorm: Equatable {
+    var cell: String?
+    var volume: String?
+    var headingDeg: Double?
+
+    init(_ selection: StormSelection) {
+        cell = selection.cell?.code
+        volume = selection.cell?.volume?.path ?? selection.volume?.path
+        headingDeg = StormSelect.headingOf(selection)
+    }
+
+    /// The same storm, perhaps with a newer heading.
+    func isSame(as other: OpenedStorm?) -> Bool {
+        guard let other else { return false }
+        return cell == other.cell && volume == other.volume
+    }
 }
 
 /// A storm to frame when the 3D map opens: where, and how big as drawn.

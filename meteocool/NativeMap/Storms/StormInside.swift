@@ -178,11 +178,11 @@ final class VolumeCanvas: MTKView, MTKViewDelegate {
 struct StormCutaway: View {
     let volume: StormVolume
     let palette: String
-    /// The storm's heading, which the first cut runs across.
+    /// The storm's heading, which the first cut runs along.
     let headingDeg: Double?
+    @ObservedObject var cut: StormCut
 
     @State private var started = Date()
-    @State private var rotation = 0.0
     @State private var dragFrom: Double?
     @Environment(\.accessibilityReduceMotion) private var still
 
@@ -193,20 +193,68 @@ struct StormCutaway: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: still)) { context in
             let elapsed = min(context.date.timeIntervalSince(started), Self.turnSeconds)
             let spin = still ? Double.pi * 0.25 : elapsed / Self.turnSeconds * 2 * .pi
-            StormVolumeView(volume: volume, palette: palette, cut: .vertical((headingDeg ?? 0) + rotation), spin: spin, tilt: 0.32)
+            StormVolumeView(volume: volume, palette: palette, cut: .vertical((headingDeg ?? 0) + cut.shown), spin: spin, tilt: 0.32)
         }
         .gesture(DragGesture(minimumDistance: 2)
             .onChanged { value in
-                if dragFrom == nil { dragFrom = rotation }
-                rotation = (dragFrom ?? 0) + value.translation.width * 0.6
+                if dragFrom == nil {
+                    cut.stopSweep(keep: true)
+                    dragFrom = cut.angle
+                }
+                cut.set((dragFrom ?? 0) + value.translation.width * 0.6)
             }
             .onEnded { _ in dragFrom = nil })
         .accessibilityElement()
-        .accessibilityLabel(CoreStrings.t("storm.section.inside"))
+        .accessibilityLabel(CoreStrings.t("storm.cut.cutaway_aria"))
+        .accessibilityValue(CutAngle.label(cut.shown, reference: headingDeg == nil ? .north : .track))
         .accessibilityAdjustableAction { direction in
-            rotation += direction == .increment ? 15 : -15
+            cut.stopSweep(keep: true)
+            cut.set(cut.angle + (direction == .increment ? 15 : -15))
         }
         .accessibilityIdentifier("nativeMap.storm.cutaway")
+    }
+}
+
+/// Under the cutaway: the two cuts that mean something, a tap away, and
+/// what the picture is (`CellCutaway.svelte`'s buttons and caption). The cut
+/// on shows by its style, not its size.
+struct CutawaySnaps: View {
+    @ObservedObject var cut: StormCut
+    let reference: CutAngle.Reference
+
+    var body: some View {
+        let (first, second) = CutAngle.snapLabels(reference)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                snap(first, to: 0, on: abs(cut.angle) < 1 || abs(cut.angle) > 179, id: "nativeMap.storm.cut.along")
+                snap(second, to: 90, on: abs(abs(cut.angle) - 90) < 1, id: "nativeMap.storm.cut.across")
+            }
+            Text(CoreStrings.t("storm.cut.cutaway_caption", ["cut": CutAngle.label(cut.shown, reference: reference)]))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("nativeMap.storm.cut.caption")
+        }
+        .padding(.top, 4)
+    }
+
+    private func snap(_ title: String, to degrees: Double, on: Bool, id: String) -> some View {
+        Button {
+            cut.stopSweep(keep: false)
+            withAnimation(.easeOut(duration: 0.2)) { cut.set(degrees) }
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(on ? .semibold : .regular))
+                .foregroundStyle(on ? Color.white : Color.primary)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 32)
+                .background(on ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color(.tertiarySystemFill)), in: Capsule())
+                // The hit region a finger needs, round a smaller capsule.
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressScale())
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier(id)
     }
 }
 

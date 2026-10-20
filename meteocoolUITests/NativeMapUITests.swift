@@ -194,7 +194,11 @@ final class NativeMapUITests: XCTestCase {
     /// A German city the radar has no rain for over the last two hours,
     /// asked of the deployment the app opens on.
     private func dryCity() -> (lat: Double, lon: Double)? {
-        let cities = [(52.52, 13.40), (48.14, 11.58), (50.94, 6.96), (51.34, 12.37), (49.45, 11.08), (53.55, 9.99), (50.11, 8.68)]
+        // German cities: their readings are DWD's alone, as the app's are
+        // there; elsewhere a network's nowcast joins them.
+        let cities = [(52.52, 13.40), (48.14, 11.58), (50.94, 6.96), (51.34, 12.37), (49.45, 11.08), (53.55, 9.99), (50.11, 8.68),
+                      (51.05, 13.74), (52.37, 9.73), (48.78, 9.18), (53.08, 8.80), (54.32, 10.14), (54.09, 12.10), (47.99, 7.85),
+                      (49.24, 6.99), (50.98, 11.03), (52.13, 11.63), (49.01, 12.10), (51.31, 9.48), (51.96, 7.63), (48.57, 13.43)]
         return cities.first { city in
             guard let url = URL(string: "https://api-next.meteocool.com/v3/radar/timeseries?lat=\(city.0)&lon=\(city.1)"),
                   let data = try? Data(contentsOf: url),
@@ -314,6 +318,20 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         XCTAssertTrue(element("nativeMap.storm.radars").waitForExistence(timeout: 10))
         screenshot("storm core on the 3D map")
+        // The map draws it cut; the dial turns the cut, which swings on its
+        // own until taken hold of.
+        let dial = element("nativeMap.storm.dial")
+        XCTAssertTrue(dial.waitForExistence(timeout: 10), "The slice dial")
+        let first = dial.value as? String ?? ""
+        // Once the map has found the core among its storms.
+        XCTAssertTrue(waitForValue(dial, timeout: 40) { $0 != first }, "The slice swings")
+        dial.swipeLeft()
+        // Back to north–south, from wherever the flick left it.
+        let reset = element("nativeMap.storm.dial.reset")
+        if reset.waitForExistence(timeout: 3) { reset.tap() }
+        XCTAssertTrue(waitForValue(dial) { $0 == "cut north to south" || $0 == "cut along the storm's track" },
+                      "Reset: \(dial.value as? String ?? "")")
+        screenshot("storm core cut north to south")
         // The layer switcher drops the core, its panel first.
         openLayers()
         XCTAssertTrue(element("nativeMap.storm.details").waitForNonExistence(timeout: 5))
@@ -368,50 +386,49 @@ final class NativeMapUITests: XCTestCase {
     }
 
     func testStormPanelCutsItOpenAndOpensItInThreeD() throws {
-        // A storm whose newest step is the patch a listed core was cut from:
-        // the scan the demo's cores and storms are both at now.
-        var found: (id: String, core: Core)?
-        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
-        search: for core in demoCores().prefix(12) {
-            guard let feature = core.feature, let stamp = feature.split(separator: "/").first(where: { $0.count == 16 && $0.hasSuffix("Z") })
-            else { continue }
-            let box = [core.lon - 0.4, core.lat - 0.3, core.lon + 0.4, core.lat + 0.3].map { String(format: "%.3f", $0) }.joined(separator: ",")
-            guard let answer = demoJSON("storms?bbox=\(box)&since=\(since)") as? [String: Any],
-                  let storms = answer["features"] as? [[String: Any]] else { continue }
-            for storm in storms {
-                guard let properties = storm["properties"] as? [String: Any], let id = properties["id"] as? String,
-                      let seen = properties["last_seen"] as? String,
-                      seen.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: ":", with: "") == stamp,
-                      let url = URL(string: "https://data-demo.meteocool.com/storms/\(id)"),
-                      let detail = try? String(contentsOf: url, encoding: .utf8), detail.contains("\"\(feature)\"") else { continue }
-                found = (id, core)
-                break search
-            }
-        }
-        guard let found else { throw XCTSkip("No demo storm holds a listed core this scan") }
-        launch(link: "?latLonZ=\(found.core.lat),\(found.core.lon),8&storm=\(found.id)", demo: true)
+        // A cell of the test's own whose volume is a core the demo lists:
+        // the demo's storms and its cores do not always meet in one scan.
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        let code = "2026102012009999999998"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code, lat: core.lat, lon: core.lon, volume: core.path)
+        // Cut across, as the link says.
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),8&cell=\(code)&cut=90", demo: true)
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
-        XCTAssertTrue(element("nativeMap.storm.cutaway").waitForExistence(timeout: 30), "The panel cuts the storm open")
-        XCTAssertTrue(element("nativeMap.storm.radars").exists)
+        let cutaway = element("nativeMap.storm.cutaway")
+        for _ in 0 ..< 4 where !cutaway.exists { element("nativeMap.storm.details").swipeUp() }
+        XCTAssertTrue(cutaway.waitForExistence(timeout: 30), "The panel cuts the storm open")
+        XCTAssertTrue(waitForValue(cutaway) { $0 == "cut across the storm's track" }, "The link's cut: \(cutaway.value as? String ?? "")")
+        XCTAssertTrue(element("nativeMap.storm.cut.caption").exists)
         screenshot("storm cut open")
+        // The snaps: back along its track.
+        let along = element("nativeMap.storm.cut.along")
+        for _ in 0 ..< 3 where !along.isHittable { element("nativeMap.storm.details").swipeUp() }
+        along.tap()
+        XCTAssertTrue(waitForValue(cutaway) { $0 == "cut along the storm's track" })
         let open3d = element("nativeMap.storm.open3d")
+        for _ in 0 ..< 3 where !open3d.isHittable { element("nativeMap.storm.details").swipeUp() }
         XCTAssertTrue(open3d.waitForExistence(timeout: 5))
         open3d.tap()
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        // Cut on the map where it stands, the dial in the panel to turn it.
+        let dial = element("nativeMap.storm.dial")
+        XCTAssertTrue(dial.waitForExistence(timeout: 30), "The slice dial")
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+        screenshot("storm cut on the 3D map")
     }
 
     /// A KONRAD3D cell measured in three layers, as `/cells/tracks/{code}`
     /// sends it, seen a minute ago.
-    private static func cellFixture(code: String) -> String {
+    private static func cellFixture(code: String, lat: Double = 48.14, lon: Double = 11.56, volume: String? = nil) -> String {
         let iso = ISO8601DateFormatter()
         let seen = iso.string(from: Date().addingTimeInterval(-60))
         let born = iso.string(from: Date().addingTimeInterval(-40 * 60))
+        let volumePart = volume.map { " \"volume\": {\"path\": \"\($0)\", \"coverage\": 0.9, \"sites\": [\"isn\"], \"tier\": 2}," } ?? ""
         return """
         {"type": "Feature", "properties": {"code": "\(code)", "first_seen": "\(born)", "last_seen": "\(seen)",
          "n_steps": 9, "active": true, "max_severity": 2, "max_dbz": 58, "echo_top_max_m": 11000, "echo_bottom_m": 1200,
-         "polygon": [[11.50, 48.10], [11.62, 48.10], [11.62, 48.18], [11.50, 48.18]],
-         "series": [{"t": "\(seen)", "lon": 11.56, "lat": 48.14, "severity": 2, "max_dbz": 58, "echo_top_m": 11000, "area_km2": 95}],
+         "polygon": [[\(lon - 0.06), \(lat - 0.04)], [\(lon + 0.06), \(lat - 0.04)], [\(lon + 0.06), \(lat + 0.04)], [\(lon - 0.06), \(lat + 0.04)]],
+         "series": [{"t": "\(seen)", "lon": \(lon), "lat": \(lat), "severity": 2, "max_dbz": 58, "echo_top_m": 11000, "area_km2": 95, "heading_deg": 60}],\(volumePart)
          "structure": [{"dbz": 30, "area_km2": 95, "top_m": 9200, "volume_km3": 400},
                        {"dbz": 45, "area_km2": 30, "top_m": 7600, "volume_km3": 100},
                        {"dbz": 55, "area_km2": 4, "top_m": 6100, "volume_km3": 12}]}}
@@ -608,9 +625,12 @@ final class NativeMapUITests: XCTestCase {
     }
 
     func testThreeDLinkOpensTheThreeDMap() {
-        launch(link: "?latLonZ=44,3.5,7&layer=cells3d", demo: true)
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=30&bearing=-135", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.3d.north").exists)
+        // Tilted and turned as the link says.
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(waitForValue(canvas) { $0 == "30,-135" }, "The link's camera: \(canvas.value as? String ?? "")")
     }
 
     func testStormAndPointShareTheirLinks() {
@@ -628,7 +648,8 @@ final class NativeMapUITests: XCTestCase {
         top.press(forDuration: 0.05, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)))
         XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
         element("nativeMap.storm.close").tap()
-        // A place's, from the hold menu.
+        // A place's, from the hold menu, once the storm's panel has gone.
+        XCTAssertTrue(element("nativeMap.storm.details").waitForNonExistence(timeout: 5))
         hold(0.5, 0.3)
         let share = element("nativeMap.point.share")
         XCTAssertTrue(share.waitForExistence(timeout: 5))

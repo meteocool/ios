@@ -389,10 +389,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         stormClosed = map.model.$stormOpen.dropFirst().filter { !$0 }.sink { [weak self] _ in
             DispatchQueue.main.async { self?.select(nil, toggle: false) }
         }
+        openedChanged = map.model.$opened.removeDuplicates().sink { [weak self] opened in
+            DispatchQueue.main.async { self?.openedDidChange(opened) }
+        }
         installGestures()
     }
 
     private var stormClosed: AnyCancellable?
+    private var openedChanged: AnyCancellable?
 
     /// Full rate while a finger moves the map and a moment after; half when
     /// it is only looked at, where the storms' own motion reads the same and
@@ -414,6 +418,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     /// on the 3D map arrives before either).
     func show() {
         framePending = true
+        openedKey = nil
         feed.start()
         touched()
         metalView.isPaused = false
@@ -435,28 +440,15 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         framePending = false
         camera = OrbitCamera.from(center: mapView.centerCoordinate, zoom: zoom, heading: mapView.camera.heading,
                                   height: Double(mapView.bounds.height))
+        if let link = pendingLink {
+            pendingLink = nil
+            place(link)
+        }
         // A storm opened in 3D from elsewhere: framed in the room the panel
         // leaves, from low down, among its neighbours.
         if let focus = map?.model.focus3D {
             map?.model.focus3D = nil
-            // The flat map's size: this view covers the same ground, and may
-            // not have been laid out yet on its first frame.
-            let size = mapView.bounds.size
-            let phone = traitCollection.horizontalSizeClass == .compact
-            var room = FramingRoom.of(width: Double(size.width), height: Double(size.height), phone: phone)
-            // A wide screen's panel stands left of the app's buttons.
-            if !phone { room.right = max(room.right - Double(ChromeTheme.controlColumn - 12), room.width / 2) }
-            let stand = OrbitFraming.stand(lat: focus.latitude, lon: focus.longitude, widthM: focus.widthM, heightM: focus.heightM,
-                                           bearing: camera.bearing, room: room, fovY: OrbitCamera.fovY)
-            if [stand.latitude, stand.longitude, stand.distance].allSatisfy(\.isFinite) {
-                camera.latitude = stand.latitude
-                camera.longitude = stand.longitude
-                camera.distance = min(max(stand.distance, OrbitCamera.distances.lowerBound), OrbitCamera.distances.upperBound)
-                camera.pitch = min(stand.pitch, OrbitCamera.pitches.upperBound)
-            } else {
-                camera.latitude = focus.latitude
-                camera.longitude = focus.longitude
-            }
+            stand(on: focus, bearing: camera.bearing)
         }
         let frame = GeoFrame(latitude: camera.latitude, longitude: camera.longitude, altitude: 0)
         if let scene { scene.move(to: frame) } else { scene = StormScene(frame: frame) }
@@ -465,9 +457,129 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         feed.viewer = (camera.latitude, camera.longitude)
     }
 
+    // MARK: The open storm
+
+    /// The storm open in the panel, and the key of the 3D map's storm it is
+    /// once found among them; whether that one is cut (`TIER_UNOPENABLE`).
+    private var opened: OpenedStorm?
+    private var openedKey: String?
+    private var openedCut = false
+
+    /// A storm opened, closed, or the same one with a newer heading.
+    private func openedDidChange(_ next: OpenedStorm?) {
+        let same = next?.isSame(as: opened) ?? false
+        opened = next
+        guard !same else { return }
+        openedKey = nil
+        openedCut = false
+        if next == nil { map?.model.cut.stopSweep(keep: false) }
+        resolveOpened()
+    }
+
+    /// Finds the open storm among the 3D map's, once they are placed:
+    /// highlighted, cut along its track where it stands, the cut turned to
+    /// face the camera and the camera stood before it, then swung a while
+    /// (core's `openSelection`, `frameOpened`, `startSweep`).
+    private func resolveOpened() {
+        guard let opened, openedKey == nil, let map, map.model.capability == .cells3d, !isHidden, !framePending,
+              let group = groups.first(where: { group in
+                  (opened.volume != nil && group.tiles.contains { $0.entry.path == opened.volume })
+                      || (opened.cell != nil && group.cell?.code == opened.cell)
+              })
+        else { return }
+        openedKey = group.key
+        select(group.key, toggle: false)
+        // Not seen well enough to open: whole on the map, and nothing cut.
+        guard group.reference.entry.tier != 1 else { return }
+        openedCut = true
+        faceCut(group, heading: opened.headingDeg ?? 0)
+        map.model.cut.startSweep()
+    }
+
+    /// The half kept is whichever faces the camera: a cut turned half way
+    /// round is the same cut. Then, unless a link has just set the camera,
+    /// the camera stands square to the cut, from low down.
+    private func faceCut(_ group: StormGroup, heading: Double) {
+        guard let cut = map?.model.cut else { return }
+        var direction = heading + cut.angle
+        let facing = CutAngle.normalise(direction - 90 - camera.bearing)
+        let flipped = CutAngle.normalise(direction + 90 - camera.bearing)
+        if abs(flipped) < abs(facing) {
+            direction += 180
+            cut.set(cut.angle + 180)
+        }
+        if let at = linkCameraAt, CACurrentMediaTime() - at < Self.linkCameraKept { return }
+        let peak = group.reference.entry
+        stand(on: ThreeDFocus(latitude: peak.lat, longitude: peak.lon, areaKm2: group.areaKm2, topM: group.echoTopM),
+              bearing: Geo.normalise(direction - 90))
+    }
+
+    /// The open storm's cut on this frame: its key and the way it runs.
+    private func openCut() -> (key: String, alongDeg: Double)? {
+        guard openedCut, let openedKey, let opened, let cut = map?.model.cut else { return nil }
+        return (openedKey, (opened.headingDeg ?? 0) + cut.shown)
+    }
+
+    /// The camera stood where `focus` fills the room the panel leaves,
+    /// looking along `bearing`.
+    private func stand(on focus: ThreeDFocus, bearing: Double) {
+        guard let map else { return }
+        // The flat map's size: this view covers the same ground, and may
+        // not have been laid out yet on its first frame.
+        let size = map.mapView.bounds.size
+        let phone = traitCollection.horizontalSizeClass == .compact
+        var room = FramingRoom.of(width: Double(size.width), height: Double(size.height), phone: phone)
+        // A wide screen's panel stands left of the app's buttons.
+        if !phone { room.right = max(room.right - Double(ChromeTheme.controlColumn - 12), room.width / 2) }
+        let stand = OrbitFraming.stand(lat: focus.latitude, lon: focus.longitude, widthM: focus.widthM, heightM: focus.heightM,
+                                       bearing: bearing, room: room, fovY: OrbitCamera.fovY)
+        camera.bearing = bearing
+        if [stand.latitude, stand.longitude, stand.distance].allSatisfy(\.isFinite) {
+            camera.latitude = stand.latitude
+            camera.longitude = stand.longitude
+            camera.distance = min(max(stand.distance, OrbitCamera.distances.lowerBound), OrbitCamera.distances.upperBound)
+            camera.pitch = min(stand.pitch, OrbitCamera.pitches.upperBound)
+        } else {
+            camera.latitude = focus.latitude
+            camera.longitude = focus.longitude
+        }
+        touched()
+    }
+
+    // MARK: Links
+
+    /// A link's camera (`setCamera`): where, how tilted, which way.
+    struct LinkCamera {
+        var view: NativeMapLink?
+        var pitch: Double?
+        var bearing: Double?
+    }
+
+    private var pendingLink: LinkCamera?
+    private var linkCameraAt: CFTimeInterval?
+    /// How long a camera a link set is kept from an opening storm's framing.
+    static let linkCameraKept: CFTimeInterval = 3
+
+    func applyLink(_ link: LinkCamera) {
+        if link.pitch != nil || link.bearing != nil { linkCameraAt = CACurrentMediaTime() }
+        if framePending { pendingLink = link } else { place(link) }
+    }
+
+    private func place(_ link: LinkCamera) {
+        if let view = link.view, let map {
+            camera = OrbitCamera.from(center: CLLocationCoordinate2D(latitude: view.latitude, longitude: view.longitude), zoom: view.zoom,
+                                      heading: camera.bearing, height: Double(map.mapView.bounds.height))
+        }
+        if let pitch = link.pitch { camera.pitch = min(max(pitch, OrbitCamera.pitches.lowerBound), OrbitCamera.pitches.upperBound) }
+        if let bearing = link.bearing { camera.bearing = bearing }
+        touched()
+    }
+
     func hide() {
         feed.stop()
         metalView.isPaused = true
+        // The swing only where the cut is drawn.
+        map?.model.cut.stopSweep(keep: true)
     }
 
     func wake() {
@@ -791,6 +903,8 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             groupByKey = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, $0) })
             drawn = drawTargets(scene: scene, groupByKey: groupByKey)
         }
+        if opened != nil, openedKey == nil { resolveOpened() }
+        scene.openCut = openCut()
         let light = scene.light()
         let target = CGSize(width: view.drawableSize.width * renderer.resolutionScale,
                             height: view.drawableSize.height * renderer.resolutionScale)
@@ -836,6 +950,10 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
                       in: view)
         updateOverlays(pose: pose)
         if abs(state.bearing - camera.bearing) > 0.5 { state.bearing = camera.bearing }
+        #if DEBUG
+        let tilt = "\(Int(camera.pitch.rounded())),\(Int(CutAngle.normalise(camera.bearing.rounded())))"
+        if view.accessibilityValue != tilt { view.accessibilityValue = tilt }
+        #endif
     }
 
     /// The cells standing inside a drawn volume's box (core's `hiddenCodes`).
@@ -1161,6 +1279,33 @@ final class ThreeDMap: NativeMapFeature {
     func settingsDidChange() { view?.applySettings() }
 
     func stepDidChange(_ step: RadarStep) { view?.stepChanged(step) }
+
+    /// A link's `pitch` and `bearing`, and its view, for the 3D map shown
+    /// (core's `parseLink`: tilted at most 85, turned folded).
+    func open(_ link: [String: String]) -> Bool {
+        guard let map, map.model.capability == .cells3d else { return false }
+        func number(_ key: String) -> Double? { link[key].flatMap(Double.init).flatMap { $0.isFinite ? $0 : nil } }
+        let camera = ThreeDMapView.LinkCamera(view: link["latLonZ"].flatMap { NativeMapLink(search: "latLonZ=" + $0) },
+                                              pitch: number("pitch").map { min(max($0, 0), 85) },
+                                              bearing: number("bearing").map(CutAngle.normalise))
+        guard camera.view != nil || camera.pitch != nil || camera.bearing != nil else { return false }
+        (view ?? makeView(map)).applyLink(camera)
+        // The storm, the cut, the point are other parts'.
+        return false
+    }
+
+    func linkParameters() -> [String: String] {
+        guard let view, map?.model.capability == .cells3d else { return [:] }
+        return ["pitch": String(Int(view.camera.pitch.rounded())),
+                "bearing": String(Int(CutAngle.normalise(view.camera.bearing.rounded())))]
+    }
+
+    func linkView() -> NativeMapLink? {
+        guard let view, let map, map.model.capability == .cells3d else { return nil }
+        let camera = view.camera
+        return NativeMapLink(latitude: camera.latitude, longitude: camera.longitude,
+                             zoom: camera.zoom(height: Double(map.mapView.bounds.height)))
+    }
 
     func wake() {
         if map?.model.capability == .cells3d { view?.wake() }

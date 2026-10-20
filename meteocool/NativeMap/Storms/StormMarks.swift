@@ -314,6 +314,8 @@ final class StormMarks: NativeMapFeature {
         let b = store.$selection.sink { [weak self] selection in
             DispatchQueue.main.async {
                 self?.map?.model.selectedStorm = selection?.id
+                let opened = selection.map(OpenedStorm.init)
+                if self?.map?.model.opened != opened { self?.map?.model.opened = opened }
                 if self?.map?.model.stormOpen != (selection != nil) { self?.map?.model.stormOpen = selection != nil }
                 self?.redraw()
                 self?.sheet?.update()
@@ -446,22 +448,35 @@ final class StormMarks: NativeMapFeature {
 
     func open(_ link: [String: String]) -> Bool {
         let details = link["details"] != "0"
+        let cut = CutAngle.fromLink(link["cut"])
         if let id = link["storm"], !id.isEmpty {
             map?.setOn(.storms, true)
-            store.open(id: id, details: details)
+            opening(cut, same: store.selection?.id == id) { store.open(id: id, details: details) }
             return true
         }
         if let code = link["cell"], !code.isEmpty {
             map?.setOn(.storms, true)
-            store.openCell(code: code, details: details)
+            opening(cut, same: store.selection?.cell?.code == code) { store.openCell(code: code, details: details) }
             return true
         }
         // A box of sky opens on the 3D map only, where it is drawn.
         if let cloud = link["cloud"], map?.model.capability == .cells3d, let path = NativeMapLink.cloudPath(cloud) {
-            store.openCloud(path: path, details: details)
+            opening(cut, same: store.selection?.volume?.path == path) { store.openCloud(path: path, details: details) }
             return true
         }
         return false
+    }
+
+    /// A link's slice: turned now on the storm already open, else held for
+    /// the one the link opens, which would otherwise open along its track.
+    private func opening(_ cut: Double?, same: Bool, _ open: () -> Void) {
+        if same {
+            open()
+            if let cut { map?.model.cut.set(cut) }
+        } else {
+            store.linkCut = cut
+            open()
+        }
     }
 
     func linkParameters() -> [String: String] {
@@ -475,6 +490,12 @@ final class StormMarks: NativeMapFeature {
             out["cloud"] = cloud
         }
         if !store.details { out["details"] = "0" }
+        // Only a storm with a volume has a slice to turn.
+        let tracked = selection.id != nil || selection.cell != nil
+        if selection.cell?.volume != nil || selection.volume != nil, tracked || map?.model.capability == .cells3d,
+           let cut = map.flatMap({ CutAngle.toLink($0.model.cut.angle) }) {
+            out["cut"] = cut
+        }
         return out
     }
 

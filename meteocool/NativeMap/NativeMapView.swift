@@ -682,9 +682,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     func share(title: String = "meteocool", center: CLLocationCoordinate2D? = nil, extra given: [String: String] = [:]) -> MapShare? {
-        let center = center ?? mapView.centerCoordinate
+        // The 3D map's camera where it is the map shown (core's `mapView`).
+        let shown = features.lazy.compactMap { $0.linkView() }.first
+        let center = center ?? shown.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) } ?? mapView.centerCoordinate
         let time = player.step != player.timeline.now ? player.step : nil
-        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: zoomLevel, time: time)
+        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
         let shared = NativeMapLink.frameLink(Int(Date().timeIntervalSince1970) / 60 * 60)
         var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
         extra.merge(given) { _, new in new }

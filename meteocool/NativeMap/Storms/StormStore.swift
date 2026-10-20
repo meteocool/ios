@@ -29,6 +29,12 @@ final class StormStore: ObservableObject {
             if selection == nil { details = false }
             if StormSelect.selectionKey(selection) != StormSelect.selectionKey(oldValue), !StormSelect.isResolution(oldValue, selection) {
                 named = nil
+                // Every storm opens cut along its own track: an angle turned
+                // for the last one means nothing for this one. A link's
+                // angle waits for the storm it opens (App.svelte's `cutFor`).
+                map?.model.cut.stopSweep(keep: false)
+                map?.model.cut.set(selection == nil ? 0 : linkCut ?? 0)
+                if selection != nil { linkCut = nil }
             }
             selectionChanged(from: oldValue)
         }
@@ -43,6 +49,8 @@ final class StormStore: ObservableObject {
     @Published private(set) var named: (name: String, area: String?)?
     /// Bumped when marks must be drawn again: an answer, a frame, a selection.
     @Published private(set) var revision = 0
+    /// A link's slice, for the storm it is opening (`cut`).
+    var linkCut: Double?
 
     weak var map: NativeMapContext?
     /// The box the held storms were asked for.
