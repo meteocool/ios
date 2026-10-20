@@ -29,6 +29,14 @@ protocol NativeMapContext: AnyObject {
     func fetch(_ url: URL, _ handler: @escaping @MainActor (Data?, Int?) -> Void)
     /// Moves the map to a view, as a link does.
     func place(_ link: NativeMapLink, animated: Bool)
+    /// The view the map's parts add controls to (`addChrome`), above the map.
+    var view: UIView { get }
+    /// Hosts a SwiftUI control over the map, sized to fit; the caller places
+    /// it against `view`'s anchors.
+    @discardableResult
+    func addChrome<Content: View>(_ content: Content) -> UIView
+    /// Switches between core's maps (`lm.setTarget`).
+    func setCapability(_ capability: NativeMapModel.Capability)
 }
 
 /// One part of the native map: an overlay, marks, a sheet, a capability.
@@ -57,6 +65,13 @@ protocol NativeMapFeature: AnyObject {
     func settingsDidChange()
     /// The map was put away or the app went to the background.
     func stop()
+    /// Another of core's maps is shown (`NativeMapModel.capability`).
+    func capabilityDidChange(_ capability: NativeMapModel.Capability)
+    /// A link's query (core's `lib/deepLink.ts`: `storm`, `cell`, `cloud`,
+    /// `point`, …), every part in turn; true when this part took it.
+    func open(_ link: [String: String]) -> Bool
+    /// What this part adds to a link to the map on screen.
+    func linkParameters() -> [String: String]
 }
 
 extension NativeMapFeature {
@@ -73,6 +88,9 @@ extension NativeMapFeature {
     func socketEvent(_ name: String, _ data: Data) {}
     func settingsDidChange() {}
     func stop() {}
+    func capabilityDidChange(_ capability: NativeMapModel.Capability) {}
+    func open(_ link: [String: String]) -> Bool { false }
+    func linkParameters() -> [String: String] { [:] }
 }
 
 /// The step on screen, as parts need to know it.
@@ -103,6 +121,7 @@ protocol NativeMapHost: AnyObject {
 enum NativeMapLayer: String, CaseIterable {
     case lightning, mesocyclones, storms, nowcast, snow, cells3d, terrain3d
 
-    /// Whether it is on before the user has chosen.
-    var defaultOn: Bool { true }
+    /// Whether it is on before the user has chosen: as core's settings
+    /// (`layer3dCells` off, the rest on).
+    var defaultOn: Bool { self != .cells3d }
 }

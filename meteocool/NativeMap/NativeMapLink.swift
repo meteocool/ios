@@ -37,6 +37,16 @@ struct NativeMapLink: Equatable {
         (self.latitude, self.longitude, self.zoom, self.time) = (latitude, longitude, zoom, time)
     }
 
+    /// Every parameter of a link's search, first value of each.
+    static func parameters(_ search: String) -> [String: String] {
+        let query = search.hasPrefix("?") ? String(search.dropFirst()) : search
+        var out: [String: String] = [:]
+        for item in URLComponents(string: "?" + query)?.queryItems ?? [] where out[item.name] == nil {
+            out[item.name] = item.value ?? ""
+        }
+        return out
+    }
+
     /// The link's search, spelled as core writes it.
     var search: String {
         var search = "?latLonZ=" + [String(format: "%.5f", latitude), String(format: "%.5f", longitude), String(format: "%.2f", zoom)]
