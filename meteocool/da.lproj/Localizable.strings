@@ -240,3 +240,4 @@
 "native_map_layer_mesocyclones" = "Mesocykloner";
 "native_map_layer_storms" = "Uvejr";
 "native_map_layer_nowcast" = "Radar-korttidsprognose";
+"native_map_inspected_point" = "Valgt punkt";

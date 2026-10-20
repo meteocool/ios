@@ -240,3 +240,4 @@
 "native_map_layer_mesocyclones" = "Mezociklonai";
 "native_map_layer_storms" = "Audros";
 "native_map_layer_nowcast" = "Radaro trumpalaikė prognozė";
+"native_map_inspected_point" = "Pasirinktas taškas";
