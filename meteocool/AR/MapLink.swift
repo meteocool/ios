@@ -43,7 +43,16 @@ enum MapLink {
     /// The search of a shared map link (core's `lib/shareLink.ts`), or nil
     /// for a URL that is not one: another host, another page (`ios.html`),
     /// or the bare root, which is the website rather than a place on the map.
+    /// Other apps open the map with `meteocool://map?…` (Better Rain Alarm
+    /// does), the same query on meteocool's own scheme; `meteocool://` alone
+    /// just opens the app.
     static func search(opening url: URL) -> String? {
+        if url.scheme == "meteocool" {
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  components.host == "map", components.path.isEmpty || components.path == "/",
+                  let query = components.percentEncodedQuery, !query.isEmpty else { return nil }
+            return "?" + query
+        }
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               components.scheme == "https", components.port == nil,
               let host = components.host, MeteocoolEnvironment.isWebHost(host),
