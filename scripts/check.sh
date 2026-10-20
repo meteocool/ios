@@ -17,7 +17,7 @@ xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarPixe
 xcrun swiftc meteocool/NativeMap/Point/PointRules.swift meteocool/NativeMap/Point/ReverseGeocoder.swift meteocool/NativeMap/Point/ModelCompareRules.swift meteocool/NativeMap/Point/LightningRules.swift meteocool/NativeMap/Point/PrecipTypesRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapPointCheck.swift -o "$scratch/check-native-map-point"
 "$scratch/check-native-map-point"
 "$scratch/check-native-map"
-xcrun swiftc meteocool/NativeMap/Storms/StormData.swift meteocool/NativeMap/Storms/StormSelection.swift meteocool/NativeMap/Storms/StormDrawing.swift meteocool/NativeMap/Storms/StormRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapStormsCheck.swift -o "$scratch/check-native-map-storms"
+xcrun swiftc meteocool/NativeMap/Storms/StormData.swift meteocool/NativeMap/Storms/StormSelection.swift meteocool/NativeMap/Storms/StormDrawing.swift meteocool/NativeMap/Storms/StormRules.swift meteocool/NativeMap/Storms/CloudHintRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapStormsCheck.swift -o "$scratch/check-native-map-storms"
 "$scratch/check-native-map-storms"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
 "$scratch/check-widgets"

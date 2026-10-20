@@ -204,6 +204,125 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(hint.waitForNonExistence(timeout: 5))
     }
 
+    // MARK: - Storm cores
+
+    /// The demo deployment's answer at `path`, as JSON.
+    private func demoJSON(_ path: String) -> Any? {
+        guard let url = URL(string: "https://data-demo.meteocool.com/" + path), let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data)
+    }
+
+    private struct Core {
+        let path: String
+        let lat: Double
+        let lon: Double
+        let feature: String?
+        /// The `cloud` link's spelling: `<scan>/<name>`.
+        var link: String { path.split(separator: "/").suffix(2).joined(separator: "/").replacingOccurrences(of: ".mcvx", with: "") }
+    }
+
+    /// The openable storm cores the demo lists now, strongest first.
+    private func demoCores() -> [Core] {
+        guard let answer = demoJSON("cells/volumes") as? [String: Any], let volumes = answer["volumes"] as? [[String: Any]] else { return [] }
+        return volumes
+            .filter { ($0["tier"] as? Int ?? 2) >= 2 && ($0["coarse"] as? Bool) != true }
+            .sorted { ($0["peak_dbz"] as? Double ?? 0) > ($1["peak_dbz"] as? Double ?? 0) }
+            .compactMap { volume in
+                guard let path = volume["path"] as? String, let lat = volume["lat"] as? Double, let lon = volume["lon"] as? Double else { return nil }
+                return Core(path: path, lat: lat, lon: lon, feature: volume["feature"] as? String)
+            }
+    }
+
+    func testCloudLinkOpensItsCoreOnTheThreeDMap() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),8&layer=cells3d&cloud=\(core.link)", demo: true)
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
+        // Its slice at a height, and the radars that saw it.
+        XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+        XCTAssertTrue(element("nativeMap.storm.radars").waitForExistence(timeout: 10))
+        screenshot("storm core on the 3D map")
+        // The layer switcher drops the core, its panel first.
+        openLayers()
+        XCTAssertTrue(element("nativeMap.storm.details").waitForNonExistence(timeout: 5))
+    }
+
+    func testThreeDTagOpensTheCoreOnTheThreeDMap() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),8", demo: true)
+        waitForSeries()
+        let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
+        XCTAssertTrue(tags.firstMatch.waitForExistence(timeout: 30), "A tag beside the strongest core")
+        let onScreen = (0 ..< tags.count).map { tags.element(boundBy: $0) }.first { tag in
+            let frame = tag.frame
+            return frame.midX > 30 && frame.midX < 320 && frame.midY > 150 && frame.midY < 600
+        }
+        let tag = try XCTUnwrap(onScreen, "A tag in view")
+        screenshot("3D tags")
+        tag.tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
+        XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+        screenshot("core opened from its tag")
+        // A detour: closing the core goes back to the flat map.
+        element("nativeMap.storm.close").tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+    }
+
+    func testStormPanelCutsItOpenAndOpensItInThreeD() throws {
+        // A storm whose newest step is the patch a listed core was cut from:
+        // the scan the demo's cores and storms are both at now.
+        var found: (id: String, core: Core)?
+        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
+        search: for core in demoCores().prefix(12) {
+            guard let feature = core.feature, let stamp = feature.split(separator: "/").first(where: { $0.count == 16 && $0.hasSuffix("Z") })
+            else { continue }
+            let box = [core.lon - 0.4, core.lat - 0.3, core.lon + 0.4, core.lat + 0.3].map { String(format: "%.3f", $0) }.joined(separator: ",")
+            guard let answer = demoJSON("storms?bbox=\(box)&since=\(since)") as? [String: Any],
+                  let storms = answer["features"] as? [[String: Any]] else { continue }
+            for storm in storms {
+                guard let properties = storm["properties"] as? [String: Any], let id = properties["id"] as? String,
+                      let seen = properties["last_seen"] as? String,
+                      seen.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: ":", with: "") == stamp,
+                      let url = URL(string: "https://data-demo.meteocool.com/storms/\(id)"),
+                      let detail = try? String(contentsOf: url, encoding: .utf8), detail.contains("\"\(feature)\"") else { continue }
+                found = (id, core)
+                break search
+            }
+        }
+        guard let found else { throw XCTSkip("No demo storm holds a listed core this scan") }
+        launch(link: "?latLonZ=\(found.core.lat),\(found.core.lon),8&storm=\(found.id)", demo: true)
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
+        XCTAssertTrue(element("nativeMap.storm.cutaway").waitForExistence(timeout: 30), "The panel cuts the storm open")
+        XCTAssertTrue(element("nativeMap.storm.radars").exists)
+        screenshot("storm cut open")
+        let open3d = element("nativeMap.storm.open3d")
+        XCTAssertTrue(open3d.waitForExistence(timeout: 5))
+        open3d.tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+    }
+
+    func testCellPanelShowsItsMeasuredStructure() throws {
+        // A KONRAD3D cell the demo measured in layers, opened by its link:
+        // from the tracks, which keep a cell for a while after the newest
+        // run's list has moved on.
+        let answer = demoJSON("cells/tracks?bbox=-10,35,30,60") as? [String: Any]
+        let cells = (answer?["features"] as? [[String: Any]] ?? []).compactMap { track -> (String, Double, Double)? in
+            guard let p = track["properties"] as? [String: Any], let structure = p["structure"] as? [Any], !structure.isEmpty,
+                  let code = p["code"] as? String, let at = (p["series"] as? [[String: Any]])?.last,
+                  let lat = at["lat"] as? Double, let lon = at["lon"] as? Double else { return nil }
+            return (code, lat, lon)
+        }
+        guard let (code, lat, lon) = cells.first else { throw XCTSkip("No KONRAD3D cell with a structure in the last runs") }
+        launch(link: "?latLonZ=\(lat),\(lon),8&cell=\(code)", demo: true)
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
+        let model = element("nativeMap.storm.structure")
+        XCTAssertTrue(model.waitForExistence(timeout: 20), "The cell's measured model")
+        screenshot("cell structure")
+    }
+
     // MARK: - Layers and the other maps
 
     private func openLayers() {

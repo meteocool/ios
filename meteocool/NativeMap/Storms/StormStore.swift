@@ -183,6 +183,9 @@ final class StormStore: ObservableObject {
             familyRoot = nil
         }
         if selection.cell == nil, selection.summary?.properties.placement == nil { lookUpName() }
+        if selection.id != nil, selection.volume == nil, !offered.isEmpty {
+            DispatchQueue.main.async { [weak self] in self?.attachVolume() }
+        }
     }
 
     private func fetchDetail(_ id: String, key: String) {
@@ -223,10 +226,56 @@ final class StormStore: ObservableObject {
         }
     }
 
-    /// A box of sky (core's `cloud`): a storm core without a tracked cell.
+    /// A box of sky (core's `cloud`, `openCloudIn3D`): the open storm's own
+    /// when it holds the box's patch, else a storm core on its own.
     func openVolume(_ volume: RadarVolume, details: Bool) {
-        selection = StormSelection(id: nil, summary: nil, detail: nil, cell: nil, volume: volume)
+        selection = StormSelect.withVolume(selection, volume)
         self.details = details
+    }
+
+    /// The volumes listed now (`offerVolumes`): a storm opened on the flat
+    /// map finds the box its patch is in, for its panel's cutaway.
+    private var offered: [RadarVolume] = []
+
+    func offerVolumes(_ volumes: [RadarVolume]) {
+        offered = volumes
+        attachVolume()
+    }
+
+    private func attachVolume() {
+        guard let current = selection, current.id != nil, current.volume == nil,
+              let volume = StormSelect.volumeOfStorm(offered, current) else { return }
+        selection?.volume = volume
+    }
+
+    /// A box of sky from a link (`cloud=`, core's `restoreCloud`): the listed
+    /// one, or one from an earlier scan read from its own file.
+    func openCloud(path: String, details: Bool) {
+        guard let map else { return }
+        let open: (RadarVolume) -> Void = { [weak self] volume in
+            self?.openVolume(volume, details: details)
+        }
+        map.fetch(map.endpoints.data.appendingPathComponent("cells/volumes")) { [weak self] data, _ in
+            if let listed = data.flatMap(StormJSON.volumes)?.first(where: { $0.path == path }) {
+                open(listed)
+                return
+            }
+            Task { @MainActor [weak self] in
+                guard let url = URL(string: path, relativeTo: NetworkHelper.assetURL),
+                      let (body, response) = try? await URLSession.shared.data(from: url),
+                      (response as? HTTPURLResponse)?.statusCode == 200,
+                      let volume = try? await Task.detached(priority: .userInitiated, operation: { try StormVolume.decode(body) }).value
+                else {
+                    self?.map?.model.toast = CoreStrings.t("storm.toast.volume_gone")
+                    return
+                }
+                let header = volume.header
+                open(RadarVolume(path: path, coverage: header.coverage ?? 0, code: header.code, lon: header.lon, lat: header.lat,
+                                 referenceTime: header.referenceTime, network: header.network ?? "de",
+                                 scannedAt: header.scannedAt, oldestScanAt: header.oldestScanAt, sites: header.sites ?? [],
+                                 tier: header.tier ?? 2))
+            }
+        }
     }
 
     /// A cell from a link (`cell=`): fetched, then resolved to its storm.

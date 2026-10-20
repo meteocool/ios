@@ -18,6 +18,13 @@ struct StormDetailsView: View {
     let share: () -> Void
     /// Opens the AR view at the storm; nil where AR is not offered.
     let openAR: (() -> Void)?
+    /// On the 3D map: its slice by height instead of the vertical cut.
+    var on3d = false
+    /// The storm on the 3D map; nil there, or where it cannot be shown.
+    var openIn3D: (() -> Void)?
+
+    @StateObject private var loader = VolumeLoader()
+    @State private var scrolled = false
 
     @Environment(\.colorScheme) private var scheme
     private let t: StormTranslate = { CoreStrings.t($0, $1) }
@@ -31,6 +38,7 @@ struct StormDetailsView: View {
                     stats(now: now)
                     signals
                     readings
+                    structure
                     if let openAR {
                         Button(action: openAR) {
                             Text(NSLocalizedString("map_ar", comment: ""))
@@ -43,6 +51,7 @@ struct StormDetailsView: View {
                         .padding(.top, 10)
                         .accessibilityIdentifier("nativeMap.storm.ar")
                     }
+                    inside
                     history(now: now)
                     merges
                     family(now: now)
@@ -54,6 +63,19 @@ struct StormDetailsView: View {
                 .padding(.bottom, 28)
             }
             .scrollIndicators(.automatic)
+            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, now in
+                scrolled = now
+            }
+            // What scrolls up fades out in the strip the discs stand in,
+            // rather than running under them (core's `.body.scrolled`).
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: scrolled ? 40 : 11)
+                    Color.black
+                }
+                .animation(.easeOut(duration: 0.2), value: scrolled)
+            }
         }
         .overlay(alignment: .topTrailing) { discs }
         // A container: its own children keep their identifiers.
@@ -127,8 +149,12 @@ struct StormDetailsView: View {
     private var valueFont: Font { .system(size: wide ? 15 : 17, weight: .semibold).monospacedDigit() }
 
     private func heading(_ key: String, aside: String? = nil) -> some View {
+        heading(title: CoreStrings.t(key), aside: aside)
+    }
+
+    private func heading(title: String, aside: String? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(CoreStrings.t(key)).font(headingFont).tracking(-0.19)
+            Text(title).font(headingFont).tracking(-0.19)
             Spacer()
             if let aside { Text(aside).font(.system(size: 13)).foregroundStyle(.tertiary) }
         }
@@ -263,6 +289,22 @@ struct StormDetailsView: View {
         return out
     }
 
+    /// The measured model, numbers first and shapes after (core's
+    /// `storm.section.structure`). Not on a phone's 3D map, where it would
+    /// cost the map half the screen.
+    @ViewBuilder
+    private var structure: some View {
+        if let track, !(on3d && !wide), let input = CellModelView.input(track) {
+            heading("storm.section.structure", aside: CoreStrings.t("storm.section.structure_aside"))
+            CellModelView(input: input, frame: CellModelView.familyFrame(track, family: store.family),
+                          palette: UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic")
+            Text(CoreStrings.t("storm.model_at", ["time": clock(lastSeen)]))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
     @ViewBuilder
     private var readings: some View {
         let items = readingItems
@@ -307,6 +349,96 @@ struct StormDetailsView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityValue(item.bandName ?? "")
+    }
+
+    // MARK: Inside
+
+    /// The volume behind the storm: the cell's own, else the box picked for it.
+    private var volumeInfo: (path: String, sites: [String], coverage: Double?, tier: Int)? {
+        if let volume = track?.volume { return (volume.path, volume.sites, volume.coverage, volume.tier) }
+        if let volume = selection?.volume { return (volume.path, volume.sites, volume.coverage, volume.tier) }
+        return nil
+    }
+
+    private var palette: String {
+        UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic"
+    }
+
+    /// The cutaway (the flat map) or the CAPPI (the 3D map), and the radars.
+    @ViewBuilder
+    private var inside: some View {
+        if let info = volumeInfo {
+            if on3d {
+                if info.tier == 1 {
+                    Text(CoreStrings.t("storm.volume.not_openable")).font(.system(size: 13)).foregroundStyle(.secondary)
+                        .padding(.top, 14)
+                }
+                heading(title: "CAPPI", aside: CoreStrings.t("storm.volume.cappi_aside"))
+                volumeBody(info.path, height: 220) { StormCappi(volume: $0, palette: palette) }
+            } else {
+                heading("storm.section.inside", aside: CoreStrings.t("storm.section.inside_aside"))
+                volumeBody(info.path, height: 200) { volume in
+                    StormCutaway(volume: volume, palette: palette, headingDeg: selection.flatMap(StormSelect.headingOf))
+                }
+                if let openIn3D {
+                    Button(action: openIn3D) {
+                        Label(CoreStrings.t("storm.open_3d"), systemImage: "cube")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .foregroundStyle(Color.accentColor)
+                            .background(Color.accentColor.opacity(scheme == .dark ? 0.24 : 0.14), in: Capsule())
+                    }
+                    .buttonStyle(PressScale())
+                    .padding(.top, 10)
+                    .accessibilityIdentifier("nativeMap.storm.open3d")
+                }
+            }
+            radars(info)
+        }
+    }
+
+    @ViewBuilder
+    private func volumeBody(_ path: String, height: CGFloat, @ViewBuilder content: @escaping (StormVolume) -> some View) -> some View {
+        Group {
+            if let volume = loader.volume {
+                content(volume)
+            } else if loader.failed {
+                Text(CoreStrings.t("storm.volume.unavailable")).font(.system(size: 13)).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(height: height)
+        .onAppear { loader.load(path) }
+        .onChange(of: path) { _, next in loader.load(next) }
+    }
+
+    @ViewBuilder
+    private func radars(_ info: (path: String, sites: [String], coverage: Double?, tier: Int)) -> some View {
+        let position = selection.flatMap(StormSelect.positionOf)
+        let radars = position.map { RadarSites.contributions(info.sites, lat: $0.lat, lon: $0.lon) }
+            ?? info.sites.map { RadarSites.Contribution(code: $0, name: $0.uppercased(), distanceKm: nil, lowestBeamKm: nil, site: nil) }
+        if !radars.isEmpty {
+            heading("storm.volume.radars", aside: info.coverage.map { CoreStrings.t("storm.volume.coverage", ["pct": Int(($0 * 100).rounded())]) })
+            if let position {
+                RadarMinimap(radars: radars, lat: position.lat, lon: position.lon).frame(height: 170)
+            }
+            VStack(spacing: 0) {
+                ForEach(radars) { radar in
+                    HStack {
+                        Text(radar.name)
+                        Spacer()
+                        if let km = radar.distanceKm { Text("\(Int(km.rounded())) km").foregroundStyle(.secondary).monospacedDigit() }
+                    }
+                    .font(.system(size: 14))
+                    .padding(.vertical, 7)
+                    Divider()
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("nativeMap.storm.radars")
+        }
     }
 
     // MARK: History

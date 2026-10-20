@@ -325,7 +325,8 @@ final class RadarEngine {
     /// picture of `rect`, `pixels` square, for the 3D map's ground. Nil while
     /// tiles it needs are still loading: they are asked for, so try again.
     func drape(_ rect: MKMapRect, pixels: Int, completion: @escaping @MainActor (CGImage?) -> Void) {
-        guard let step = player.step ?? player.timeline.now else { return completion(nil) }
+        guard let step = player.step ?? player.timeline.now, rect.width > 0, rect.width.isFinite, rect.minX.isFinite, rect.minY.isFinite
+        else { return completion(nil) }
         let frame = self.frame(for: step)
         let compositor = self.compositor
         // As many tiles across as the picture has room for at their own size.

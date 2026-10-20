@@ -178,6 +178,21 @@ struct NativeMapCheck {
         precondition(NativeMapLink(search: "?latLonZ=91,11,6") == nil && NativeMapLink(search: "?latLonZ=48,11") == nil)
         precondition(NativeMapLink(search: "?t=20260924T1945Z") == nil)
         precondition(NativeMapLink.frameTime("20260231T1200Z") == nil && NativeMapLink.frameTime("20260924T2560Z") == nil)
+        // A storm core's volume (`cloud`): core's `deepLink.test.ts`, every naming both ways, nothing else.
+        let oldest = "meteoradar/volumes/20260924T194500/R39853139.mcvx"
+        precondition(NativeMapLink.cloudLink(oldest) == "20260924T194500/R39853139")
+        precondition(NativeMapLink.cloudPath("20260924T194500/R39853139") == oldest)
+        let positioned = "meteoradar/volumes/20261001T142500/de-G1401218632.mcvx"
+        precondition(NativeMapLink.cloudLink(positioned) == "20261001T142500/de-G1401218632")
+        precondition(NativeMapLink.cloudPath("20261001T142500/de-G1401218632") == positioned)
+        let tiled = "meteoradar/volumes/20261005T142500/fr-T100054200360.mcvx"
+        precondition(NativeMapLink.cloudLink(tiled) == "20261005T142500/fr-T100054200360")
+        precondition(NativeMapLink.cloudPath("20261005T142500/fr-T100054200360") == tiled)
+        precondition(NativeMapLink.cloudPath("20261005T142500/fr-T1000542003600") == nil)
+        precondition(NativeMapLink.cloudPath("../../etc/passwd") == nil)
+        precondition(NativeMapLink.cloudPath("20260924T194500/R39853139/../../x") == nil)
+        precondition(NativeMapLink.cloudPath("20260924T194500/2026092421259838083011") == nil)
+        precondition(NativeMapLink.cloudLink("meteoradar/volumes/elsewhere/R1.mcvx") == nil)
         // core's messages: arguments, plurals with exact matches and CLDR categories, select, nesting.
         let hours = "{hours, plural, =0 {Rain Likely Within the Hour} one {Rain Likely in # Hour} other {Rain Likely in # Hours}}"
         precondition(ICUMessage.format(hours, ["hours": 0], language: "en") == "Rain Likely Within the Hour")
