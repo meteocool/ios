@@ -50,6 +50,9 @@ final class NativeMapModel: ObservableObject {
     @Published var lastUpdated: Date?
     /// A box of sky to open as a storm, from the 3D map (core's `cloud`).
     @Published var volumeRequest: RadarVolume?
+    /// Whether a storm is open anywhere: the 3D map lets go of its own
+    /// highlight when it closes.
+    @Published var stormOpen = false
     /// The storm cores listed now (`/cells/volumes`), for the selection.
     @Published var volumes: [RadarVolume] = []
     /// Where the 3D map opens next instead of the flat map's view

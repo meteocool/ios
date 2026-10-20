@@ -84,6 +84,9 @@ final class StormRenderer {
     let device: MTLDevice
     /// The storm pass's resolution relative to the drawable's.
     var resolutionScale: CGFloat = 0.5
+    /// Each frame's GPU time in seconds, on Metal's own thread: for the 3D
+    /// map's frame-time log (`MC_FRAME_TIMING`).
+    var onGPUTime: (@Sendable (Double) -> Void)?
     /// Samples along a ray across a whole 40 km box, the size before tiles;
     /// a shorter stretch of ray inside a box takes proportionally fewer.
     var steps: Float = 96
@@ -383,7 +386,11 @@ final class StormRenderer {
         // The camera textures must outlive the GPU's use of them.
         // Metal calls this on a thread of its own, hence `@Sendable` and the box.
         let held = HeldTextures(heldTextures)
-        buffer.addCompletedHandler { @Sendable _ in _ = held }
+        let report = onGPUTime
+        buffer.addCompletedHandler { @Sendable done in
+            _ = held
+            report?(done.gpuEndTime - done.gpuStartTime)
+        }
         buffer.commit()
     }
 

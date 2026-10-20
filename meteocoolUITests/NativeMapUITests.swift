@@ -81,7 +81,9 @@ final class NativeMapUITests: XCTestCase {
     }
 
     func testPlayingMovesThroughTheSteps() {
-        launch()
+        // The demo: it always has a forecast to play into, where a live
+        // deployment can be without one for a while.
+        launch(demo: true)
         waitForSeries()
         let start = timeline.value as? String ?? ""
         playButton.tap()
@@ -206,12 +208,16 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let storms = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
         XCTAssertTrue(storms.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
-        // One on screen, clear of the controls: MapKit lists marks off the edge too.
+        // One on screen, clear of the controls (MapKit lists marks off the
+        // edge too) and of the "3D" tags, which stand over the discs.
         let screen = app.windows.firstMatch.frame
+        let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
+        let tagFrames = (0 ..< tags.count).map { tags.element(boundBy: $0).frame.insetBy(dx: -6, dy: -6) }
         let onScreen = (0 ..< storms.count).map { storms.element(boundBy: $0) }.first { storm in
             let frame = storm.frame
             return frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.8
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
+                && !tagFrames.contains { $0.intersects(frame) }
         }
         XCTAssertNotNil(onScreen, "A storm in view")
         onScreen?.tap()

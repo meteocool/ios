@@ -116,9 +116,12 @@ final class ThreeDGround {
         min(max(camera.distance * 2.6, 40_000), 900_000)
     }
 
+    /// `replacing` builds even while another build runs, which it supersedes;
+    /// `ready` runs in the same turn the new ground takes over (the scene's
+    /// origin moving with it, so nothing is drawn misplaced or missing).
     func build(_ camera: OrbitCamera, key: String, scene: StormScene, device: MTLDevice, radar: RadarEngine, dark: Bool,
-               terrain: Bool) {
-        guard !building else { return }
+               terrain: Bool, replacing: Bool = false, ready: (@MainActor () -> Void)? = nil) {
+        guard !building || replacing else { return }
         building = true
         token += 1
         let mine = token
@@ -141,6 +144,7 @@ final class ThreeDGround {
                   let (vertices, indices, count) = Self.mesh(rect, scene: scene, heights: relief, device: device),
                   mine == self.token else { return }
             let haze: SIMD4<Float> = dark ? SIMD4(0.09, 0.11, 0.14, Float(radius * 1.15)) : SIMD4(0.80, 0.84, 0.88, Float(radius * 1.15))
+            ready?()
             self.current = StormRenderer.MapGround(texture: texture, vertices: vertices, indices: indices, indexCount: count,
                                                    haze: haze, horizonDip: 0)
             self.centre = centre
@@ -342,9 +346,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         metalView.accessibilityIdentifier = "nativeMap.3d.canvas"
         addSubview(metalView)
         renderer = StormRenderer(view: metalView)
+        renderer?.onGPUTime = { [timing, resolution] seconds in
+            if FrameTiming.on { timing.gpu(seconds) }
+            resolution.report(seconds)
+        }
         labels.translatesAutoresizingMaskIntoConstraints = false
         labels.onSelect = { [weak self] key in self?.select(key, toggle: true) }
-        labels.onOpen = { [weak self] key in self?.open(key) }
+        labels.onOpen = { [weak self] key in self?.openOnMap(key) }
+        labels.rightClearance = ChromeTheme.controlColumn
         addSubview(labels)
         let host = UIHostingController(rootView: ThreeDHUD(state: state, model: map.model))
         host.view.backgroundColor = .clear
@@ -376,7 +385,23 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             self.open(key)
         }
         feed.onChange = { [weak self] in self?.feedChanged() }
+        // The storm closed (its panel, the layer switcher): its highlight goes too.
+        stormClosed = map.model.$stormOpen.dropFirst().filter { !$0 }.sink { [weak self] _ in
+            DispatchQueue.main.async { self?.select(nil, toggle: false) }
+        }
         installGestures()
+    }
+
+    private var stormClosed: AnyCancellable?
+
+    /// Full rate while a finger moves the map and a moment after; half when
+    /// it is only looked at, where the storms' own motion reads the same and
+    /// the GPU and battery do half the work.
+    private var touchedAt = CACurrentMediaTime()
+    static let idleAfter: CFTimeInterval = 2
+    private func touched() {
+        touchedAt = CACurrentMediaTime()
+        if metalView.preferredFramesPerSecond != 60 { metalView.preferredFramesPerSecond = 60 }
     }
 
     @available(*, unavailable)
@@ -390,11 +415,21 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     func show() {
         framePending = true
         feed.start()
+        touched()
         metalView.isPaused = false
         refreshStatus()
     }
 
     private var framePending = false
+    private let timing = FrameTiming()
+    private let resolution = AdaptiveResolution()
+    private struct PlaceKey: Equatable {
+        let revision: Int
+        let latitude: Double
+        let longitude: Double
+    }
+    private var placedFor: PlaceKey?
+    private var groupByKey: [String: StormGroup] = [:]
 
     private func frame(from mapView: MKMapView, zoom: Double) {
         framePending = false
@@ -517,7 +552,9 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         let status: String? = switch feed.status {
         case .loading: NSLocalizedString("ar_status_loading", comment: "")
         case .failed: NSLocalizedString("ar_status_failed", comment: "")
-        case .ready: feed.nearbyEntries.isEmpty ? NSLocalizedString("ar_no_storms", comment: "") : nil
+        // What was placed is what is near: ranking every box again by
+        // distance here was the 3D map's longest stall.
+        case .ready: placed.isEmpty ? NSLocalizedString("ar_no_storms", comment: "") : nil
         }
         if state.status != status { state.status = status }
     }
@@ -525,6 +562,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     // MARK: Modes
 
     private func setMode(_ mode: ARViewMode) {
+        touched()
         state.mode = mode
         let value = sliderValues[mode] ?? mode.slider?.initial ?? 0
         state.slider = value
@@ -535,6 +573,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     }
 
     private func setSlider(_ value: Double) {
+        touched()
         state.slider = value
         sliderValues[state.mode] = value
         scene?.sliderValue = value
@@ -570,6 +609,17 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         labelsBuiltAt = .distantPast
         refreshSliderText()
         UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    /// The label's "Open on Map": the flat radar map, centred on the storm,
+    /// with it open there.
+    private func openOnMap(_ key: String) {
+        guard let map, let peak = feed.entries.filter({ $0.stormKey == key }).max(by: { ($0.peakDbz ?? 0) < ($1.peakDbz ?? 0) })
+        else { return }
+        let zoom = max(map.zoomLevel, 8)
+        map.setCapability(.radar)
+        map.place(NativeMapLink(latitude: peak.lat, longitude: peak.lon, zoom: zoom), animated: false)
+        open(key)
     }
 
     /// A storm's details: by its cell where it has one, else by the tile
@@ -616,6 +666,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     }
 
     @objc private func panned(_ recognizer: UIPanGestureRecognizer) {
+        touched()
         let translation = recognizer.translation(in: metalView)
         recognizer.setTranslation(.zero, in: metalView)
         let perPoint = camera.metresPerPoint(height: Double(metalView.bounds.height))
@@ -634,12 +685,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     }
 
     @objc private func tilted(_ recognizer: UIPanGestureRecognizer) {
+        touched()
         let translation = recognizer.translation(in: metalView)
         recognizer.setTranslation(.zero, in: metalView)
         camera.pitch = min(max(camera.pitch - Double(translation.y) * 0.3, OrbitCamera.pitches.lowerBound), OrbitCamera.pitches.upperBound)
     }
 
     @objc private func pinched(_ recognizer: UIPinchGestureRecognizer) {
+        touched()
         camera.distance = min(max(camera.distance / Double(recognizer.scale), OrbitCamera.distances.lowerBound), OrbitCamera.distances.upperBound)
         recognizer.scale = 1
         map?.model.detour?.camera = nil
@@ -647,16 +700,19 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     }
 
     @objc private func rotated(_ recognizer: UIRotationGestureRecognizer) {
+        touched()
         camera.bearing = Geo.normalise(camera.bearing - Double(recognizer.rotation) * 180 / .pi)
         recognizer.rotation = 0
     }
 
     @objc private func tapped(_ recognizer: UITapGestureRecognizer) {
+        touched()
         guard let pose = lastPose, let scene else { return }
         select(scene.pick(recognizer.location(in: metalView), pose: pose, targets: drawn)?.key, toggle: false)
     }
 
     @objc private func doubleTapped(_ recognizer: UITapGestureRecognizer) {
+        touched()
         camera.distance = max(OrbitCamera.distances.lowerBound, camera.distance / 2)
         cameraSettled()
     }
@@ -665,13 +721,26 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     /// away the scene is moved under it.
     private func cameraSettled() {
         feed.viewer = (camera.latitude, camera.longitude)
-        guard let scene else { return }
+        guard let scene, let map, let renderer else { return }
         let away = Geo.distanceBearing(fromLat: scene.frame.latitude, lon: scene.frame.longitude,
                                        toLat: camera.latitude, lon: camera.longitude).metres
+        // Far from the scene's origin: moved under the camera, once the
+        // ground for there is ready, so the old one stays until it is.
         if away > 150_000 {
-            scene.move(to: GeoFrame(latitude: camera.latitude, longitude: camera.longitude, altitude: 0))
-            ground.reset()
+            let next = GeoFrame(latitude: camera.latitude, longitude: camera.longitude, altitude: 0)
+            let fresh = StormScene(frame: next)
+            fresh.palette = scene.palette
+            ground.build(camera, key: groundKey(map, scene: scene), scene: fresh, device: renderer.device, radar: map.radar,
+                         dark: map.model.isDark, terrain: map.isOn(.terrain3d), replacing: true) { [weak self] in
+                self?.scene?.move(to: next)
+            }
         }
+    }
+
+    /// What the ground is built for: the radar step and its palette, the
+    /// map's look, the terrain switch.
+    private func groundKey(_ map: NativeMapContext, scene: StormScene) -> String {
+        "\(stepKey)|\(map.model.isDark)|\(map.isOn(.terrain3d))|\(scene.palette)"
     }
 
     // MARK: Drawing
@@ -683,31 +752,49 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     }
 
     private func render(in view: MTKView) {
+        let started = CACurrentMediaTime()
+        defer {
+            if FrameTiming.on {
+                timing.frame(cpu: CACurrentMediaTime() - started, storms: drawn.count,
+                             drawable: view.drawableSize, scale: renderer?.resolutionScale ?? 0)
+            }
+        }
         guard let map else { return }
         if framePending {
             guard map.mapView.bounds.height > 0 else { return }
             frame(from: map.mapView, zoom: map.zoomLevel)
         }
         guard let renderer, let scene else { return }
+        renderer.resolutionScale = resolution.scale
+        if CACurrentMediaTime() - touchedAt > Self.idleAfter, view.preferredFramesPerSecond != 30 {
+            view.preferredFramesPerSecond = 30
+        }
         let viewport = view.bounds.size
         guard viewport.width > 0 else { return }
         let pose = camera.pose(in: scene, viewport: viewport)
         lastPose = pose
-        let key = "\(stepKey)|\(map.model.isDark)|\(map.isOn(.terrain3d))"
+        let key = groundKey(map, scene: scene)
         if ground.wants(camera, key: key) {
             ground.build(camera, key: key, scene: scene, device: renderer.device, radar: map.radar, dark: map.model.isDark,
                          terrain: map.isOn(.terrain3d))
         }
         scene.now = Date()
         scene.alignmentError = 0
-        placed = scene.placeAll(feed.nearbyEntries, volumes: feed.volumes) { [feed] in feed.cell(for: $0) }
-        groups = scene.groups(placed)
-        let groupByKey = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, $0) })
+        // Placed again only when the storms or the scene's origin change: the
+        // boxes stand still between scans, and placing them all each frame
+        // was most of a frame's time on a phone.
+        let placeKey = PlaceKey(revision: feed.revision, latitude: scene.frame.latitude, longitude: scene.frame.longitude)
+        if placeKey != placedFor {
+            placedFor = placeKey
+            placed = scene.placeAll(feed.nearbyEntries, volumes: feed.volumes) { [feed] in feed.cell(for: $0) }
+            groups = scene.groups(placed)
+            groupByKey = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, $0) })
+            drawn = drawTargets(scene: scene, groupByKey: groupByKey)
+        }
         let light = scene.light()
         let target = CGSize(width: view.drawableSize.width * renderer.resolutionScale,
                             height: view.drawableSize.height * renderer.resolutionScale)
         let eye = SIMD3<Double>(pose.position)
-        drawn = drawTargets(scene: scene, groupByKey: groupByKey)
         let storms = drawn.compactMap { storm, group -> StormRenderer.Storm? in
             guard let volume = storm.volume, volume.marchBounds != nil else { return nil }
             var uniforms = scene.uniforms(for: storm, group: group, volume: volume, pose: pose, target: target, light: light)
@@ -953,6 +1040,77 @@ extension ThreeDHUD {
         .accessibilityLabel(face.map { CoreStrings.t("time_3d.past_aria", ["time": StatusPill.clock($0)]) } ?? CoreStrings.t("time_3d.latest_aria"))
         .accessibilityHint(CoreStrings.t("time_3d.choose"))
         .accessibilityIdentifier("nativeMap.3d.scan")
+    }
+}
+
+/// The 3D map's frame times on the console every two seconds, while
+/// `MC_FRAME_TIMING` is set: frames a second, the main thread's time per
+/// frame and the GPU's.
+/// The storms' render resolution, kept to what the GPU draws in time: a
+/// phone's GPU raymarching dozens of storms took longer than a frame at the
+/// simulator's half resolution. Lowered while frames run long, raised again
+/// when there is room, a step a second at most.
+final class AdaptiveResolution: @unchecked Sendable {
+    static let range: ClosedRange<CGFloat> = 0.3 ... 0.5
+    static let step: CGFloat = 0.05
+    /// Under 60 Hz's 16.7 ms with room for the rest of the frame.
+    static let slow = 0.012
+    static let fast = 0.006
+    private let lock = NSLock()
+    private var current: CGFloat = range.upperBound
+    private var times: [Double] = []
+    private var changedAt = CACurrentMediaTime()
+
+    var scale: CGFloat { lock.withLock { current } }
+
+    /// A frame's GPU time, from Metal's thread.
+    func report(_ seconds: Double) {
+        lock.withLock {
+            times.append(seconds)
+            let now = CACurrentMediaTime()
+            guard times.count >= 20, now - changedAt >= 1 else { return }
+            let typical = times.sorted()[times.count / 2]
+            times.removeAll(keepingCapacity: true)
+            changedAt = now
+            if typical > Self.slow {
+                current = max(Self.range.lowerBound, current - Self.step)
+            } else if typical < Self.fast {
+                current = min(Self.range.upperBound, current + Self.step)
+            }
+        }
+    }
+}
+
+final class FrameTiming: @unchecked Sendable {
+    static let on = ProcessInfo.processInfo.environment["MC_FRAME_TIMING"] != nil
+    private let lock = NSLock()
+    private var cpu: [Double] = []
+    private var gpu: [Double] = []
+    private var since = CACurrentMediaTime()
+
+    func frame(cpu seconds: Double, storms: Int, drawable: CGSize, scale: CGFloat) {
+        lock.withLock {
+            cpu.append(seconds)
+            let now = CACurrentMediaTime()
+            guard now - since >= 2 else { return }
+            func ms(_ values: [Double], _ f: ([Double]) -> Double) -> String {
+                values.isEmpty ? "-" : String(format: "%.1f", f(values) * 1000)
+            }
+            let sorted = cpu.sorted()
+            let p95 = sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]
+            print(String(format: "FRAMES fps=%.1f", Double(cpu.count) / (now - since)),
+                  "cpu avg=\(ms(cpu) { $0.reduce(0, +) / Double($0.count) }) p95=\(ms([p95]) { $0[0] }) max=\(ms(cpu) { $0.max()! })",
+                  "gpu avg=\(ms(gpu) { $0.reduce(0, +) / Double($0.count) }) max=\(ms(gpu) { $0.max()! })",
+                  "storms=\(storms) drawable=\(Int(drawable.width))x\(Int(drawable.height)) scale=\(scale)")
+            fflush(stdout)
+            cpu.removeAll(keepingCapacity: true)
+            gpu.removeAll(keepingCapacity: true)
+            since = now
+        }
+    }
+
+    func gpu(_ seconds: Double) {
+        lock.withLock { gpu.append(seconds) }
     }
 }
 

@@ -314,6 +314,7 @@ final class StormMarks: NativeMapFeature {
         let b = store.$selection.sink { [weak self] selection in
             DispatchQueue.main.async {
                 self?.map?.model.selectedStorm = selection?.id
+                if self?.map?.model.stormOpen != (selection != nil) { self?.map?.model.stormOpen = selection != nil }
                 self?.redraw()
                 self?.sheet?.update()
                 self?.endDetour()
@@ -358,10 +359,15 @@ final class StormMarks: NativeMapFeature {
         map.setCapability(origin.capability)
         // After the tray is back: the camera's centre is the middle of the
         // map above it, as when it was saved.
+        // MapKit centres the camera inside the map's margins, which the tray
+        // sets as it comes back; set again once it has, or the view lands
+        // half a tray off.
         if let camera = origin.camera {
-            DispatchQueue.main.async { [weak map] in
-                map?.view.layoutIfNeeded()
-                map?.mapView.setCamera(camera, animated: false)
+            for delay in [0.0, 0.35] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak map] in
+                    map?.view.layoutIfNeeded()
+                    map?.mapView.setCamera(camera, animated: false)
+                }
             }
         }
     }
