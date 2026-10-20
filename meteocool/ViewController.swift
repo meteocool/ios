@@ -20,6 +20,13 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     var autoFocusOnce = false
     var zoomOnce = false
     var webviewReady = false
+    /// The MapKit map shown in place of the web view while `nativeMap` is on
+    /// in Settings; nil while the web map is shown.
+    private(set) var nativeMap: NativeMapView?
+    /// Whether the map on screen can take the host's calls.
+    private var mapReady: Bool { nativeMap != nil || webviewReady }
+    /// What the share sheet's popover points at and screenshots show.
+    private var mapSurface: UIView { nativeMap ?? webView }
     private var recovery: MapRecovery!
     /// "Trying again" over the map while it keeps failing to load.
     /// Not a button: `MapRecovery` retries on its own.
@@ -104,10 +111,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Only `.began` triggers a transition. The recognizers also fire on every
     /// `.changed`, and the state machine needs one transition per gesture.
     @objc func mapGesture(_ recognizer: UIGestureRecognizer) {
-        if let pinch = recognizer as? UIPinchGestureRecognizer, let webView {
+        if let pinch = recognizer as? UIPinchGestureRecognizer, let webView, nativeMap == nil {
             TrackpadBridge.pinch(pinch, in: webView)
         }
-        if let rotation = recognizer as? UIRotationGestureRecognizer, let webView {
+        if let rotation = recognizer as? UIRotationGestureRecognizer, let webView, nativeMap == nil {
             TrackpadBridge.rotate(rotation, in: webView)
         }
         guard recognizer.state == .began, locationStateMachine?.state == .tracking else { return }
@@ -195,6 +202,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 SharedLocationUpdater.stopAccurateLocationUpdates()
                 self.positionButton.setImage(UIImage(systemName: "location",withConfiguration: UIImage.SymbolConfiguration(scale: .large)),for: .normal)
                 self.webView.evaluateJavaScript("window.lm.updateLocation(-1, -1, -1, false, false);")
+                self.nativeMap?.showLocation(nil, zoom: false, focus: false)
             case .active where trigger == .mapMove:
                 // The user moved the map while following. Stop following and
                 // keep the map where the user moved it.
@@ -239,9 +247,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             self?.loadStatusBackdrop?.isHidden = !visible
             self?.loadStatus.isHidden = !visible
         })
-        loadMap()
+        applyMapSurface()
+        if nativeMap == nil { loadMap() }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.injectSettings),
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.settingsChanged),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
         // Mode in Settings, or "Disable Demo Mode", switched the deployment:
         // load that deployment's map without a restart.
@@ -331,7 +340,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Called when the map finishes loading and when onboarding ends.
     private func activateLocationIfAuthorized() {
         let status = SharedLocationUpdater.authorizationStatus
-        guard webviewReady, locationStateMachine?.state == .off,
+        guard mapReady, locationStateMachine?.state == .off,
               status == .authorizedWhenInUse || status == .authorizedAlways else { return }
         if userDefaults?.bool(forKey: "autoZoom") == true {
             zoomOnce = true
@@ -342,6 +351,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Loads the map page from scratch. `MapRecovery` calls it again until
     /// the page reports in with `requestSettings`.
     @objc private func loadMap() {
+        // The native map reads the deployment and features itself.
+        if let nativeMap {
+            nativeMap.applySettings()
+            return
+        }
         webviewReady = false
         layerSwitcherButton.isEnabled = false
         webView.load(URLRequest(url: MeteocoolEnvironment.current.webURL))
@@ -359,6 +373,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Every new page has to report in, including one the page loads itself
     /// (core's service worker reloads it after an update).
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        guard nativeMap == nil else { return }
         webviewReady = false
         layerSwitcherButton.isEnabled = false
         recovery.loadStarted()
@@ -366,26 +381,28 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         // Cancelled means another load replaced this one.
-        if (error as NSError).code != NSURLErrorCancelled { recovery.failed(.navigation) }
+        if (error as NSError).code != NSURLErrorCancelled, nativeMap == nil { recovery.failed(.navigation) }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         // A page that reported in runs, whatever happened to the rest of its load.
-        if (error as NSError).code != NSURLErrorCancelled, !webviewReady { recovery.failed(.navigation) }
+        if (error as NSError).code != NSURLErrorCancelled, !webviewReady, nativeMap == nil { recovery.failed(.navigation) }
     }
 
     /// The web content process died: out of memory, or a GPU fault.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        guard nativeMap == nil else { return }
         recovery.failed(.crash)
     }
 
     @objc func willResignActive() {
         linkPlacedView = false
+        nativeMap?.player.pause()
         if webviewReady { webView.evaluateJavaScript("window.leaveForeground?.();") }
     }
 
     @objc func willEnterForeground() {
-        guard webviewReady else { return }
+        guard mapReady else { return }
         if userDefaults?.bool(forKey: "autoZoom") == true, !linkPlacedView {
             zoomOnce = true
             autoFocusOnce = true
@@ -397,6 +414,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     @objc func didBecomeActive(){
+        if let nativeMap {
+            nativeMap.start()
+            return
+        }
         if webviewReady {
             self.webView.evaluateJavaScript("window.enterForeground?.();")
         }
@@ -419,6 +440,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
+        // The native map's layers are the button's own menu.
+        guard nativeMap == nil else { return }
         setCovered(.layerSwitcher, true)
         webView.evaluateJavaScript("window.openLayerswitcher();") { [weak self] _, error in
             if error != nil {
@@ -428,6 +451,13 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     func notify(location: CLLocation) {
+        if let nativeMap {
+            guard locationStateMachine?.state != .off else { return }
+            nativeMap.showLocation(location, zoom: zoomOnce, focus: autoFocus || autoFocusOnce)
+            zoomOnce = false
+            autoFocusOnce = false
+            return
+        }
         guard webviewReady else { return }
         // Pass the same fix to the geolocation shim. This resolves pending
         // getCurrentPosition calls in the page and updates its watchers.
@@ -443,6 +473,57 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         }
         if (autoFocusOnce){
             autoFocusOnce = false
+        }
+    }
+
+    /// Settings changed: which map is shown, and what it shows.
+    @objc func settingsChanged() {
+        applyMapSurface()
+        nativeMap?.applySettings()
+        injectSettings()
+    }
+
+    /// Shows the native map or the web map, as `nativeMap` in Settings says.
+    /// The web view stays in place under the native map, blank, so its
+    /// handlers and scripts are ready when the web map comes back.
+    private func applyMapSurface() {
+        let native = userDefaults?.bool(forKey: NativeMapView.settingKey) == true
+        if native, nativeMap == nil {
+            recovery.stop()
+            webviewReady = false
+            webView.stopLoading()
+            webView.loadHTMLString("", baseURL: nil)
+            webView.isHidden = true
+            clearCovers()
+
+            let map = NativeMapView()
+            map.translatesAutoresizingMaskIntoConstraints = false
+            view.insertSubview(map, aboveSubview: webView)
+            NSLayoutConstraint.activate([
+                map.topAnchor.constraint(equalTo: view.topAnchor),
+                map.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                map.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            ])
+            nativeMap = map
+            layerSwitcherButton.menu = map.layerMenu()
+            layerSwitcherButton.showsMenuAsPrimaryAction = true
+            layerSwitcherButton.isEnabled = true
+            map.start()
+            // The location button may already be on: the dot from the last fix, without moving the map.
+            if locationStateMachine?.state != .off, let location = SharedLocationUpdater.getCurrentLocation() {
+                map.showLocation(location, zoom: false, focus: false)
+            }
+            if userDefaults?.bool(forKey: "onboardingDone") == true { activateLocationIfAuthorized() }
+            if let link = pendingLink { openLink(search: link) }
+        } else if !native, let map = nativeMap {
+            map.stop()
+            map.removeFromSuperview()
+            nativeMap = nil
+            layerSwitcherButton.menu = nil
+            layerSwitcherButton.showsMenuAsPrimaryAction = false
+            webView.isHidden = false
+            loadMap()
         }
     }
 
@@ -802,6 +883,10 @@ extension ViewController {
     /// A page that is down is retried at once instead, and one that has
     /// navigated away is replaced by the map.
     private func showRadarMap() {
+        if let nativeMap {
+            nativeMap.showLive()
+            return
+        }
         if let host = webView.url?.host, host != MeteocoolEnvironment.current.webURL.host {
             loadMap()
             return
@@ -945,13 +1030,18 @@ extension ViewController {
     /// been dragged.
     func openLink(search: String) {
         linkPlacedView = true
-        guard webviewReady else {
-            pendingLink = search
-            return
+        if let nativeMap {
+            pendingLink = nil
+            nativeMap.open(search: search)
+        } else {
+            guard webviewReady else {
+                pendingLink = search
+                return
+            }
+            pendingLink = nil
+            guard let script = MapLink.openScript(search: search) else { return }
+            webView.evaluateJavaScript(script)
         }
-        pendingLink = nil
-        guard let script = MapLink.openScript(search: search) else { return }
-        webView.evaluateJavaScript(script)
         autoFocusOnce = false
         zoomOnce = false
         if locationStateMachine?.state == .tracking {
@@ -983,15 +1073,15 @@ extension ViewController {
         if let image { items.append(image) }
         let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let popover = sheet.popoverPresentationController {
-            popover.sourceView = webView
+            popover.sourceView = mapSurface
             if let source {
                 popover.sourceView = source
                 popover.sourceRect = source.bounds
-            } else if let rect = share.sourceRect?.intersection(webView.bounds), !rect.isNull {
+            } else if let rect = share.sourceRect?.intersection(mapSurface.bounds), !rect.isNull {
                 popover.sourceRect = rect
             } else {
                 // Nothing on the page to point at: the middle of the map, no arrow.
-                popover.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 0, height: 0)
+                popover.sourceRect = CGRect(x: mapSurface.bounds.midX, y: mapSurface.bounds.midY, width: 0, height: 0)
                 popover.permittedArrowDirections = []
             }
         }
@@ -1007,8 +1097,12 @@ extension ViewController {
     /// the AR view, a share sheet already up), and only once the page can say
     /// what it shows: a page from before sharing has no `window.shareLink`.
     @objc fileprivate func screenshotTaken() {
-        guard webviewReady, presentedViewController == nil, view.window != nil,
+        guard mapReady, presentedViewController == nil, view.window != nil,
               UIApplication.shared.applicationState == .active else { return }
+        if let nativeMap {
+            if let share = nativeMap.share() { presentShare(share, image: nativeMap.snapshot()) }
+            return
+        }
         currentShareLink { [weak self] share in
             self?.webView.takeSnapshot(with: nil) { [weak self] image, _ in
                 self?.presentShare(share, image: image)
@@ -1029,7 +1123,7 @@ extension ViewController {
     }
 
     fileprivate func shareMap() {
-        guard webviewReady, presentedViewController == nil else { return }
+        guard mapReady, presentedViewController == nil else { return }
         currentShareLink { [weak self] share in
             guard let self else { return }
             self.presentShare(share, from: self.shareButtonBackdrop ?? self.shareButton)
@@ -1044,6 +1138,10 @@ extension ViewController {
     /// What the page says a link to the map should be. Nothing from a page
     /// that predates sharing, which has no `window.shareLink`.
     private func currentShareLink(_ handler: @escaping (MapShare) -> Void) {
+        if let share = nativeMap?.share() {
+            handler(share)
+            return
+        }
         webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") { result, _ in
             guard let json = result as? String,
                   let share = MapShare(json: json, mapHost: MeteocoolEnvironment.current.webURL.host) else { return }

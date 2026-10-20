@@ -86,6 +86,9 @@ targets:
       - sdk: ActivityKit.framework
       # Reloads the widgets when the location or a setting they show changes.
       - sdk: WidgetKit.framework
+      # The native radar map (NativeMap/), shown instead of the web map
+      # while "Native Map" is on in Settings.
+      - sdk: MapKit.framework
       - target: NotificationService
       - target: RainActivity
     scheme:

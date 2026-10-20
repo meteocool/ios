@@ -225,3 +225,18 @@
 "ar_alignment_geo" = "Nord fra geosporing";
 "ar_turn_left" = "Drei %.0f° til venstre";
 "ar_turn_right" = "Drei %.0f° til høyre";
+
+/* Native MapKit map */
+"native_map_setting" = "Innebygd kart (beta)";
+"native_map_now" = "Nå";
+"native_map_play" = "Spill av";
+"native_map_pause" = "Pause";
+"native_map_timeline" = "Radartid";
+"native_map_mesocyclone" = "Mesosyklon, styrke %ld";
+"native_map_storm" = "Tordenvær";
+"native_map_storm_near" = "Tordenvær ved %@";
+"native_map_hail" = "Hagl";
+"native_map_layer_lightning" = "Lyn";
+"native_map_layer_mesocyclones" = "Mesosykloner";
+"native_map_layer_storms" = "Tordenvær";
+"native_map_layer_nowcast" = "Radar-korttidsvarsel";

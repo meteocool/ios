@@ -115,6 +115,19 @@ final class MapRecovery {
         }
     }
 
+    /// The web map was put away for the native one: nothing to watch or
+    /// retry until the next `loadStarted`.
+    func stop() {
+        watchdog?.cancel()
+        watchdog = nil
+        retry?.cancel()
+        retry = nil
+        retryInForeground = false
+        readySince = nil
+        stopWatchingView()
+        showStatus(false)
+    }
+
     /// The page reported in.
     func loadSucceeded() {
         watchdog?.cancel()
