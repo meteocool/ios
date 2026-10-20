@@ -442,8 +442,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
     
     @IBAction func layerSwitcher(sender: AnyObject){
-        // The native map's layers are the button's own menu.
-        guard nativeMap == nil else { return }
+        if let nativeMap {
+            nativeMap.openLayers()
+            return
+        }
         setCovered(.layerSwitcher, true)
         webView.evaluateJavaScript("window.openLayerswitcher();") { [weak self] _, error in
             if error != nil {
@@ -509,8 +511,6 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             ])
             nativeMap = map
-            layerSwitcherButton.menu = map.layerMenu()
-            layerSwitcherButton.showsMenuAsPrimaryAction = true
             layerSwitcherButton.isEnabled = true
             map.start()
             // The location button may already be on: the dot from the last fix, without moving the map.
@@ -523,8 +523,6 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             map.stop()
             map.removeFromSuperview()
             nativeMap = nil
-            layerSwitcherButton.menu = nil
-            layerSwitcherButton.showsMenuAsPrimaryAction = false
             webView.isHidden = false
             loadMap()
         }

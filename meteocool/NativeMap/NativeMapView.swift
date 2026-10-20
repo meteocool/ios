@@ -36,6 +36,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var chrome: [UIView] = []
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
+    private var otherChrome: UIView?
+    /// The dock stands on the radar's tray, or on another map's bar.
+    private var dockOnTray: NSLayoutConstraint?
+    private var dockOnOther: NSLayoutConstraint?
     /// The bars above the tray, bottom up: core's strips, then the parts'
     /// bars (a storm's hint), each hidden while it has nothing to say.
     private let dock = PassthroughStack()
@@ -104,7 +108,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash()]
+        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash()]
     }
 
     /// Adds a part; it is attached at once.
@@ -154,6 +158,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         ])
         bottomChrome = tray
 
+        // The other flat maps' bar, where the tray is.
+        let other = addChrome(OtherMapTray(model: model))
+        NSLayoutConstraint.activate([
+            other.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: ChromeTheme.gutter),
+            other.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -ChromeTheme.gutter),
+            other.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21),
+        ])
+        otherChrome = other
+
         dock.axis = .vertical
         dock.spacing = ChromeTheme.gutter
         dock.translatesAutoresizingMaskIntoConstraints = false
@@ -161,8 +174,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         NSLayoutConstraint.activate([
             dock.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
             dock.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
-            dock.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter),
         ])
+        dockOnTray = dock.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter)
+        dockOnOther = dock.bottomAnchor.constraint(equalTo: other.topAnchor, constant: -ChromeTheme.gutter)
+        dockOnTray?.isActive = true
         let strips = addToDock(NoticeStrips(player: player, model: model, notices: notices))
         stripsChrome = strips
         notices.objectWillChange
@@ -195,7 +210,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private func updateChromeVisibility() {
         let radar = model.capability == .radar && !model.trayHidden
         bottomChrome?.isHidden = !radar
-        dock.isHidden = !radar
+        otherChrome?.isHidden = !(model.capability == .lightning || model.capability == .precipitationTypes) || model.trayHidden
+        // Its content changed while it was hidden: measured again now it shows.
+        otherChrome?.invalidateIntrinsicContentSize()
+        // The dock stays up on the lightning map for its histogram.
+        dock.isHidden = !radar && model.capability != .lightning
+        let onTray = model.capability == .radar
+        if dockOnTray?.isActive != onTray {
+            dockOnTray?.isActive = false
+            dockOnOther?.isActive = false
+            (onTray ? dockOnTray : dockOnOther)?.isActive = true
+        }
         notices.radarShown = radar
         stripsChrome?.isHidden = !(notices.showNoRadar || notices.showNoForecast)
         setNeedsLayout()
@@ -343,7 +368,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         super.layoutSubviews()
         if abs(chromeState.width - bounds.width) > 0.5 { chromeState.width = bounds.width }
         // Keep Apple's logo and legal link clear of the controls at the bottom.
-        if let bottom = bottomChrome {
+        if let bottom = [bottomChrome, otherChrome].compactMap({ $0 }).first(where: { !$0.isHidden }) ?? bottomChrome {
             let covered = bottom.isHidden ? 0 : bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
             if abs(mapView.layoutMargins.bottom - covered) > 1 {
                 mapView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: max(covered, 0), right: 0)
@@ -433,37 +458,28 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         applySettings()
     }
 
-    /// The layers button's menu: what the native map draws over the radar.
-    func layerMenu() -> UIMenu {
-        let layers: [NativeMapLayer] = [.lightning, .mesocyclones, .storms, .nowcast]
-        return UIMenu(title: NSLocalizedString("map_layers", comment: ""), children: [
-            UIDeferredMenuElement.uncached { [weak self] completion in
-                guard let self else { return completion([]) }
-                completion(layers.map { layer in
-                    UIAction(title: Self.title(layer), image: UIImage(systemName: Self.symbol(layer)),
-                             state: self.isOn(layer) ? .on : .off) { [weak self] _ in
-                        guard let self else { return }
-                        self.setOn(layer, !self.isOn(layer))
-                    }
-                })
-            },
-        ])
-    }
-
-    private static func title(_ layer: NativeMapLayer) -> String {
-        NSLocalizedString("native_map_layer_\(layer.rawValue)", comment: "")
-    }
-
-    private static func symbol(_ layer: NativeMapLayer) -> String {
-        switch layer {
-        case .lightning: return "bolt.fill"
-        case .mesocyclones: return "tornado"
-        case .storms: return "cloud.bolt.rain.fill"
-        case .nowcast: return "clock.arrow.trianglehead.counterclockwise.rotate.90"
-        case .snow: return "snowflake"
-        case .cells3d: return "cube"
-        case .terrain3d: return "mountain.2"
-        }
+    /// The layers button's panel: core's maps as tiles, and what the radar
+    /// map draws over the radar.
+    func openLayers() {
+        model.selectedStorm = nil
+        let snapshots = LayerSnapshots()
+        let region = mapView.region
+        snapshots.take(region: region, size: CGSize(width: 360, height: 180), dark: model.isDark)
+        let fromStart = Binding<Bool>(
+            get: { [weak self] in self?.defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false },
+            set: { [weak self] in
+                self?.defaults?.set($0, forKey: "nativeMap.playbackFromStart")
+                self?.applySettings()
+            })
+        let view = LayerSwitcherView(model: model, snapshots: snapshots,
+                                     isOn: { [weak self] in self?.isOn($0) ?? $0.defaultOn },
+                                     setOn: { [weak self] in self?.setOn($0, $1) },
+                                     fromStart: fromStart,
+                                     choose: { [weak self] capability in
+                                         self?.dismissSheet { self?.setCapability(capability) }
+                                     },
+                                     close: { [weak self] in self?.dismissSheet() })
+        presentSheet(UIHostingController(rootView: view), detents: [.medium(), .large()])
     }
 
     /// Reads the stored settings: palette, base map, rotation, deployment,
@@ -620,6 +636,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         guard capability != model.capability else { return }
         model.capability = capability
         radar.visible = capability == .radar
+        radar.underlay = capability == .lightning
+        model.lastUpdated = nil
         updateChromeVisibility()
         for feature in features { feature.capabilityDidChange(capability) }
         for feature in features { feature.settingsDidChange() }

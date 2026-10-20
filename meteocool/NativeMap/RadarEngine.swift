@@ -417,7 +417,10 @@ final class RadarEngine {
     /// 0.75 as core draws the radar; fainter while it is behind (core's
     /// `lib/freshness.ts`), so an old picture does not pass for the weather now.
     private var opacity: CGFloat {
-        0.75 * (stale ? 0.45 : 1) * (dimmed ? 0.55 : 1)
+        guard visible || underlay else { return 0 }
+        // Under the lightning map's strikes (`RAIN_UNDERLAY_OPACITY`).
+        if !visible { return 0.3 }
+        return 0.75 * (stale ? 0.45 : 1) * (dimmed ? 0.55 : 1)
     }
 
     private func updateOpacity() {
@@ -426,7 +429,12 @@ final class RadarEngine {
 
     /// Hides or shows the radar, for maps that draw something else.
     var visible = true {
-        didSet { renderer?.alpha = visible ? opacity : 0 }
+        didSet { updateOpacity() }
+    }
+
+    /// Faint, under another map (the lightning map's rain).
+    var underlay = false {
+        didSet { updateOpacity() }
     }
 
     private static let networkCredits = [
