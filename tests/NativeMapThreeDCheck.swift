@@ -210,6 +210,27 @@ struct NativeMapThreeDCheck {
     // MARK: stormFrame.test.ts (framingCamera)
 
     static func checkFraming() {
+        // An orbit camera framing an opened storm: its middle on the ray to
+        // the middle of the room above the sheet, and the storm in the room.
+        do {
+            let room = FramingRoom.of(width: 402, height: 874, phone: true)
+            for (width, height, bearing) in [(8_000.0, 18_000.0, 0.0), (40_000, 15_000, 90), (120_000, 18_000, 200)] {
+                let stand = OrbitFraming.stand(lat: 50, lon: 8, widthM: width, heightM: height, bearing: bearing, room: room, fovY: 36.87)
+                let p = stand.pitch * .pi / 180, b = bearing * .pi / 180
+                // Metres north and east of the orbited point to the storm.
+                let north = (50 - stand.latitude) * 111_320, east = (8 - stand.longitude) * 111_320 * cos(50 * .pi / 180)
+                let beyond = north * cos(b) + east * sin(b)
+                precondition(abs(-north * sin(b) + east * cos(b)) < 1, "straight ahead")
+                // In the camera's vertical plane: ahead and up from the eye.
+                let ahead = beyond + stand.distance * sin(p), up = height / 2 - stand.distance * cos(p)
+                let below = atan2(-up, ahead), axis = .pi / 2 - p
+                let focal = room.height / 2 / tan(36.87 / 2 * .pi / 180)
+                let y = room.height / 2 + tan(below - axis) * focal
+                near(y, (room.top + room.bottom) / 2, 0.5, "storm on the room's middle")
+                let range = hypot(ahead, up)
+                precondition(width * focal / range <= (room.right - room.left) + 1e-6, "fits across")
+            }
+        }
         let phone = FramingRoom(width: 375, height: 812, top: 64, bottom: 812 * (1 - 0.32), left: 0, right: 375)
         precondition(FramingRoom.of(width: 375, height: 812, phone: true) == phone)
         let desktop = FramingRoom(width: 1440, height: 900, top: 64, bottom: 900 - 88, left: 0, right: 1440 - 416)
@@ -648,6 +669,18 @@ extension NativeMapThreeDCheck {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let layer = try! decoder.decode(CellThreshold.self, from: Data(json.utf8))
         precondition(layer.topM == 4036 && layer.rings?.first?.count == 4)
+
+        // The panel's frame: ground to top, at the cell's reach; a family's
+        // envelope, held to four times the open cell's own.
+        let own = CellVolumeModel.frameOf(model)
+        precondition(own == CellVolumeModel.Frame(radiusKm: model.radiusKm, lowKm: 0, highKm: 9.2))
+        let parent = CellVolumeModel.Frame(radiusKm: model.radiusKm * 2, lowKm: -0.2, highKm: 14)
+        precondition(CellVolumeModel.familyFrame(own: own, relatives: [parent])
+            == CellVolumeModel.Frame(radiusKm: model.radiusKm * 2, lowKm: 0, highKm: 14))
+        let giant = CellVolumeModel.Frame(radiusKm: model.radiusKm * 15, lowKm: 0, highKm: 60)
+        let held = CellVolumeModel.familyFrame(own: own, relatives: [giant])
+        near(held.radiusKm, model.radiusKm * 4, 1e-9)
+        precondition(held.highKm == 9.2 * 4 && CellVolumeModel.familyFrame(own: own, relatives: []) == own)
     }
 }
 

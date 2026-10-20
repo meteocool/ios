@@ -6,6 +6,7 @@
 //
 
 import Combine
+import MapKit
 import CoreLocation
 import Foundation
 
@@ -49,6 +50,16 @@ final class NativeMapModel: ObservableObject {
     @Published var lastUpdated: Date?
     /// A box of sky to open as a storm, from the 3D map (core's `cloud`).
     @Published var volumeRequest: RadarVolume?
+    /// The storm cores listed now (`/cells/volumes`), for the selection.
+    @Published var volumes: [RadarVolume] = []
+    /// Where the 3D map opens next instead of the flat map's view
+    /// (`openStormIn3D`).
+    var focus3D: ThreeDFocus?
+    /// The map and view a storm was opened on the 3D map from (core's
+    /// `open3d.ts` origin): closing that storm goes back. The view is
+    /// dropped once the 3D map is moved, and the whole of it once another
+    /// map is picked.
+    var detour: (capability: Capability, camera: MKMapCamera?)?
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?
@@ -62,4 +73,21 @@ final class NativeMapModel: ObservableObject {
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+}
+
+/// A storm to frame when the 3D map opens: where, and how big as drawn.
+struct ThreeDFocus: Equatable {
+    var latitude: Double
+    var longitude: Double
+    var widthM: Double
+    var heightM: Double
+
+    /// A box of sky's or a storm's, from its area above the threshold; its
+    /// height as the 3D map stretches it, the echo top where one is known.
+    init(latitude: Double, longitude: Double, areaKm2: Double?, topM: Double?) {
+        self.latitude = latitude
+        self.longitude = longitude
+        widthM = max(2 * (max(areaKm2 ?? 300, 1) / .pi).squareRoot() * 1000, 8_000)
+        heightM = (topM ?? 12_000) * ThreeDScale.vertical
+    }
 }

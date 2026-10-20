@@ -61,6 +61,27 @@ struct NativeMapLink: Equatable {
         return calendar
     }()
 
+    /// A storm core's volume in a link (`cloud`, core's `cloudLink`): its
+    /// scan and name, `20260924T194500/de-T100054400355`, for its path
+    /// `meteoradar/volumes/<scan>/<name>.mcvx`. Nil for a path laid out
+    /// some other way.
+    static func cloudLink(_ path: String) -> String? {
+        guard let match = path.wholeMatch(of: cloudPathPattern) else { return nil }
+        return "\(match.1)/\(match.2)"
+    }
+
+    /// The volume's path back from its link form (`cloudPath`).
+    static func cloudPath(_ link: String) -> String? {
+        guard let match = link.wholeMatch(of: cloudLinkPattern) else { return nil }
+        return "meteoradar/volumes/\(match.1)/\(match.2).mcvx"
+    }
+
+    /// A tile's name, a position's from before tiles, or the bare one before
+    /// networks (`CLOUD_NAME`).
+    nonisolated(unsafe) private static let cloudLinkPattern = #/(\d{8}T\d{6})/((?:[a-z]{2}-)?(?:T\d{12}|G\d{10}|R\d{1,12}))/#
+    nonisolated(unsafe) private static let cloudPathPattern =
+        #/meteoradar/volumes/(\d{8}T\d{6})/((?:[a-z]{2}-)?(?:T\d{12}|G\d{10}|R\d{1,12}))\.mcvx/#
+
     /// `20260924T1945Z` to a unix second.
     static func frameTime(_ text: String) -> Int? {
         let chars = Array(text)

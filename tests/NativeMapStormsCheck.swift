@@ -32,6 +32,7 @@ struct NativeMapStormsCheck {
         cellPulse()
         timeTicks()
         swipeAway()
+        cloudHints()
         decoding()
         extras()
         print("NativeMapStormsCheck: \(count) checks passed")
@@ -1060,6 +1061,59 @@ struct NativeMapStormsCheck {
             precondition(layout.edges.count == 2 && a.isSelf && a.peak == "55 dBZ")
             precondition(layout.nowX != nil && layout.width >= layout.nowX! + 12)
             precondition(layout.height == 8 + 2 * StormRules.nodeH + 10 + StormRules.axisH)
+        }
+    }
+
+    // MARK: - cloudHints.test.ts
+
+    static func cloudHints() {
+        func at(_ hhmm: String) -> String { "2026-10-01T\(hhmm):00Z" }
+        func cloud(_ path: String, _ hhmm: String, network: String = "de", system: String? = nil, peak: Double = 50,
+                   lon: Double = 8, lat: Double = 54) -> RadarVolume {
+            var volume = RadarVolume(path: path, coverage: 1, code: path, lon: lon, lat: lat, referenceTime: at(hhmm), network: network)
+            volume.system = system
+            volume.peakDbz = peak
+            return volume
+        }
+        func scans(_ de: String, _ networks: [String: String] = [:]) -> [String: Int] {
+            var out = networks.mapValues { CloudHintRules.scanTime(at($0))! }
+            out["de"] = CloudHintRules.scanTime(at(de))!
+            return out
+        }
+        func stale(_ clouds: [RadarVolume], _ radar: [String: Int]) -> [String] {
+            clouds.filter { CloudHintRules.isBehind($0, liveScans: radar) }.map(\.path).sorted()
+        }
+        test("a core stays tagged, greyed, when the radar moves past its scan, until its own scan's land") {
+            let a = cloud("a", "00:00"), b = cloud("b", "00:04", network: "fr")
+            precondition(stale([a, b], scans("00:00", ["fr": "00:04"])).isEmpty)
+            // DWD's 00:05 frame lands before its cores are built; France's has not moved.
+            precondition(stale([a, b], scans("00:05", ["fr": "00:04"])) == ["a"])
+            precondition(stale([cloud("c", "00:05"), b], scans("00:05", ["fr": "00:04"])).isEmpty)
+        }
+        test("with no radar known, every core is tagged, none greyed") {
+            precondition(stale([cloud("a", "00:00")], [:]).isEmpty)
+        }
+        test("a storm boxed by several tiles carries one tag, on its strongest") {
+            let tiles = [cloud("a", "00:00", system: "T1", peak: 40), cloud("b", "00:00", system: "T1", peak: 58),
+                         cloud("c", "00:00", system: "T2", peak: 35), cloud("d", "00:00", peak: 30), cloud("e", "00:00", peak: 31)]
+            precondition(CloudHintRules.onePerStorm(tiles).map(\.path) == ["b", "c", "d", "e"])
+        }
+        test("a wide zoom keeps one tag per neighbourhood, current before stale, then the strongest") {
+            func tag(_ path: String, peak: Double, stale: Bool = false, lon: Double) -> CloudHintRules.Tag {
+                CloudHintRules.Tag(cloud: cloud(path, "00:00", peak: peak, lon: lon), stale: stale)
+            }
+            // 0.2° of longitude at 54° N is about 13 km: 23 px at zoom 7, under its 67.
+            let near = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.2), tag("far", peak: 30, lon: 10)]
+            precondition(CloudHintRules.thin(near, zoom: 7).map(\.cloud.path) == ["strong", "far"])
+            precondition(CloudHintRules.thin(near, zoom: 7.9).map(\.cloud.path) == ["strong", "far"], "the level's spacing, not the zoom's")
+            let behind = [tag("old", peak: 60, stale: true, lon: 8), tag("new", peak: 40, lon: 8.2)]
+            precondition(CloudHintRules.thin(behind, zoom: 7).map(\.cloud.path) == ["new"])
+            // From zoom 9 only overlap counts: 13 km is 92 px there, clear of a 34 px pill.
+            precondition(CloudHintRules.thin(near, zoom: 9).map(\.cloud.path) == ["strong", "weak", "far"])
+            // Two pills a kilometre apart overlap until zoom 12 or so.
+            let touching = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.015)]
+            precondition(CloudHintRules.thin(touching, zoom: 9.5).map(\.cloud.path) == ["strong"])
+            precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong", "weak"])
         }
     }
 }

@@ -225,6 +225,9 @@ struct RadarTimeline: Sendable {
     let scanRange: (freshest: Int, stalest: Int)?
     /// The nowcast domains with a lead on each forecast step.
     let nowcastDomains: [Int: [String]]
+    /// The scan of each network's radar on the live step, DWD's as `de`
+    /// (core's `liveRadarScans`): what a storm's volume is judged behind by.
+    let liveScans: [String: Int]
 
     /// Steps after `now`: forecasts.
     func isForecast(_ step: Int) -> Bool { now.map { step > $0 } ?? false }
@@ -241,7 +244,7 @@ struct RadarTimeline: Sendable {
 
     init(steps: [Int], gridNow: Int, now: Int?, lastPlayable: Int?, layers: [Int: [RadarLayer]], dbz: [Int: Double],
          serverTime: Int, replay: Bool = false, product: RadarProduct = .hx, drawn: RadarProduct = .hx,
-         scanRange: (freshest: Int, stalest: Int)? = nil, nowcastDomains: [Int: [String]] = [:]) {
+         scanRange: (freshest: Int, stalest: Int)? = nil, nowcastDomains: [Int: [String]] = [:], liveScans: [String: Int] = [:]) {
         self.steps = steps
         self.gridNow = gridNow
         self.now = now
@@ -254,6 +257,7 @@ struct RadarTimeline: Sendable {
         self.drawn = drawn
         self.scanRange = scanRange
         self.nowcastDomains = nowcastDomains
+        self.liveScans = liveScans
     }
 
     /// Composes the series. `clock` is the device's time, which seeds the
@@ -418,7 +422,8 @@ struct RadarTimeline: Sendable {
 
         self.init(steps: steps, gridNow: grid, now: now, lastPlayable: lastPlayable, layers: layers, dbz: dbz,
                   serverTime: series.serverTime, replay: series.replay ?? false, product: product, drawn: drawn,
-                  scanRange: range, nowcastDomains: domains)
+                  scanRange: range, nowcastDomains: domains,
+                  liveScans: newest.mapValues { scan($0.step, $0.frame) }.merging(hxScan.map { ["de": $0] } ?? [:]) { $1 })
     }
 
     private static func layer(_ code: String, _ frame: RadarFrame, maxZoom: Int, clip: RadarClip) -> RadarLayer? {

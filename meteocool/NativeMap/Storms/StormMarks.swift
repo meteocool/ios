@@ -314,9 +314,15 @@ final class StormMarks: NativeMapFeature {
                 self?.map?.model.selectedStorm = selection?.id
                 self?.redraw()
                 self?.sheet?.update()
+                self?.endDetour()
             }
         }
-        let c = store.$details.sink { [weak self] _ in DispatchQueue.main.async { self?.sheet?.update() } }
+        let c = store.$details.sink { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.sheet?.update()
+                self?.endDetour()
+            }
+        }
         // Another part cleared the selection (a hold on the map, the model
         // comparison): the store follows. Only a storm's id is mirrored, so a
         // cell still being resolved is left alone.
@@ -334,7 +340,28 @@ final class StormMarks: NativeMapFeature {
                 self.store.openVolume(volume, details: true)
             }
         }
-        observers = [a, b, c] + (d.map { [$0] } ?? []) + (e.map { [$0] } ?? [])
+        let f = map?.model.$volumes.sink { [weak self] volumes in
+            DispatchQueue.main.async { self?.store.offerVolumes(volumes) }
+        }
+        observers = [a, b, c] + (d.map { [$0] } ?? []) + (e.map { [$0] } ?? []) + (f.map { [$0] } ?? [])
+    }
+
+    /// A storm opened on the 3D map from the flat one, closed: back to the
+    /// map and the view it came from (core's `returnFrom3D`). Closing means
+    /// its panel going, which on a phone can leave it selected.
+    private func endDetour() {
+        guard let map, map.model.capability == .cells3d, let origin = map.model.detour,
+              store.selection == nil || !store.details else { return }
+        map.model.detour = nil
+        map.setCapability(origin.capability)
+        // After the tray is back: the camera's centre is the middle of the
+        // map above it, as when it was saved.
+        if let camera = origin.camera {
+            DispatchQueue.main.async { [weak map] in
+                map?.view.layoutIfNeeded()
+                map?.mapView.setCamera(camera, animated: false)
+            }
+        }
     }
 
     private var visible: Bool {
@@ -354,6 +381,9 @@ final class StormMarks: NativeMapFeature {
     }
 
     func stepDidChange(_ step: RadarStep) {
+        // The 3D map keeps the storm it opened, whatever the flat map's
+        // timeline does meanwhile (a new scan landing, say).
+        if map?.model.capability == .cells3d { return }
         if !visible || step.isForecast {
             store.show(.hidden)
         } else if step.isLive || step.time == nil {
@@ -418,19 +448,36 @@ final class StormMarks: NativeMapFeature {
             store.openCell(code: code, details: details)
             return true
         }
+        // A box of sky opens on the 3D map only, where it is drawn.
+        if let cloud = link["cloud"], map?.model.capability == .cells3d, let path = NativeMapLink.cloudPath(cloud) {
+            store.openCloud(path: path, details: details)
+            return true
+        }
         return false
     }
 
     func linkParameters() -> [String: String] {
         guard let selection = store.selection else { return [:] }
         var out: [String: String] = [:]
-        if let id = selection.id { out["storm"] = id } else if let cell = selection.cell { out["cell"] = cell.code }
+        if let id = selection.id {
+            out["storm"] = id
+        } else if let cell = selection.cell {
+            out["cell"] = cell.code
+        } else if let volume = selection.volume, map?.model.capability == .cells3d, let cloud = NativeMapLink.cloudLink(volume.path) {
+            out["cloud"] = cloud
+        }
         if !store.details { out["details"] = "0" }
         return out
     }
 
     func stop() {
         sheet?.dismiss()
+    }
+
+    /// Drops the selection, its panel put away first (`StormSheet.close`).
+    func dropSelection(then: @escaping () -> Void) {
+        guard store.selection != nil, let sheet else { then(); return }
+        sheet.close(then: then)
     }
 
     // MARK: - Drawing

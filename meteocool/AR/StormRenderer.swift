@@ -34,6 +34,9 @@ final class StormRenderer {
         case sky(horizonDip: Double)
         /// The 3D map: its sky, and the map's picture on the ground under it.
         case map(MapGround)
+        /// Nothing: a storm alone over whatever the view stands on (the
+        /// storm panel's cutaway and CAPPI).
+        case clear
     }
 
     /// The 3D map's ground: a mesh in world metres and the picture on it.
@@ -298,7 +301,11 @@ final class StormRenderer {
 
         // The frame: background, ground lines, storms, lines over them.
         pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        if case .clear = frame.background {
+            pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        } else {
+            pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        }
         guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
         var heldTextures: [CVMetalTexture] = []
         switch frame.background {
@@ -340,6 +347,8 @@ final class StormRenderer {
             encoder.setFragmentTexture(ground.texture, index: 0)
             encoder.drawIndexedPrimitives(type: .triangle, indexCount: ground.indexCount, indexType: .uint32,
                                           indexBuffer: ground.indices, indexBufferOffset: 0)
+        case .clear:
+            break
         }
 
         let scale = Float(view.contentScaleFactor)

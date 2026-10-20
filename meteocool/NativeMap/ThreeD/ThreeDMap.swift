@@ -160,8 +160,11 @@ final class ThreeDGround {
     private static func snapshot(_ rect: MKMapRect, dark: Bool) async -> CGImage? {
         let options = MKMapSnapshotter.Options()
         options.mapRect = rect
-        options.size = CGSize(width: pixels / 2, height: pixels / 2)
-        options.traitCollection = UITraitCollection(traitsFrom: [UITraitCollection(displayScale: 2),
+        // At 1x over the whole texture rather than 2x over half of it: the
+        // same pixels, but finer tiles and labels half the size, which the
+        // tilted camera magnifies near the bottom of the screen.
+        options.size = CGSize(width: pixels, height: pixels)
+        options.traitCollection = UITraitCollection(traitsFrom: [UITraitCollection(displayScale: 1),
                                                                   UITraitCollection(userInterfaceStyle: dark ? .dark : .light)])
         let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
         configuration.pointOfInterestFilter = .excludingAll
@@ -397,6 +400,27 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         framePending = false
         camera = OrbitCamera.from(center: mapView.centerCoordinate, zoom: zoom, heading: mapView.camera.heading,
                                   height: Double(mapView.bounds.height))
+        // A storm opened in 3D from elsewhere: framed in the room the panel
+        // leaves, from low down, among its neighbours.
+        if let focus = map?.model.focus3D {
+            map?.model.focus3D = nil
+            // The flat map's size: this view covers the same ground, and may
+            // not have been laid out yet on its first frame.
+            let size = mapView.bounds.size
+            let room = FramingRoom.of(width: Double(size.width), height: Double(size.height),
+                                      phone: traitCollection.horizontalSizeClass == .compact)
+            let stand = OrbitFraming.stand(lat: focus.latitude, lon: focus.longitude, widthM: focus.widthM, heightM: focus.heightM,
+                                           bearing: camera.bearing, room: room, fovY: OrbitCamera.fovY)
+            if [stand.latitude, stand.longitude, stand.distance].allSatisfy(\.isFinite) {
+                camera.latitude = stand.latitude
+                camera.longitude = stand.longitude
+                camera.distance = min(max(stand.distance, OrbitCamera.distances.lowerBound), OrbitCamera.distances.upperBound)
+                camera.pitch = min(stand.pitch, OrbitCamera.pitches.upperBound)
+            } else {
+                camera.latitude = focus.latitude
+                camera.longitude = focus.longitude
+            }
+        }
         let frame = GeoFrame(latitude: camera.latitude, longitude: camera.longitude, altitude: 0)
         if let scene { scene.move(to: frame) } else { scene = StormScene(frame: frame) }
         applySettings()
@@ -600,6 +624,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
                                     metres: hypot(east, north))
         camera.latitude = min(max(moved.lat, -80), 80)
         camera.longitude = moved.lon
+        map?.model.detour?.camera = nil
         if recognizer.state == .ended { cameraSettled() }
     }
 
@@ -612,6 +637,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     @objc private func pinched(_ recognizer: UIPinchGestureRecognizer) {
         camera.distance = min(max(camera.distance / Double(recognizer.scale), OrbitCamera.distances.lowerBound), OrbitCamera.distances.upperBound)
         recognizer.scale = 1
+        map?.model.detour?.camera = nil
         if recognizer.state == .ended { cameraSettled() }
     }
 

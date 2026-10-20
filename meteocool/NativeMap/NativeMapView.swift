@@ -108,7 +108,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash(),
+        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), CloudHints(), PointFeature(), RadarWash(),
          ThreeDMap()]
     }
 
@@ -463,7 +463,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The layers button's panel: core's maps as tiles, and what the radar
     /// map draws over the radar.
     func openLayers() {
-        model.selectedStorm = nil
+        // The switcher drops the storm open (core's App.svelte), its panel
+        // put away before the switcher can come up.
+        if let marks = features.lazy.compactMap({ $0 as? StormMarks }).first, marks.store.selection != nil {
+            marks.dropSelection { [weak self] in self?.openLayers() }
+            return
+        }
         let snapshots = LayerSnapshots()
         let region = mapView.region
         snapshots.take(region: region, size: CGSize(width: 360, height: 180), dark: model.isDark)
@@ -621,7 +626,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // A link shared a while ago says so (`share.stale`).
         if let shared = parameters["shared"].flatMap(NativeMapLink.frameTime),
            let ago = ShareAge.text(sharedAt: shared, now: Int(Date().timeIntervalSince1970)) {
-            let key = parameters["storm"] != nil || parameters["cell"] != nil ? "share.stale_storm" : "share.stale"
+            let key = parameters["storm"] != nil || parameters["cell"] != nil || parameters["cloud"] != nil ? "share.stale_storm" : "share.stale"
             model.toast = CoreStrings.t(key, ["ago": ago])
         }
         if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
@@ -640,6 +645,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     func setCapability(_ capability: NativeMapModel.Capability) {
         guard capability != model.capability else { return }
+        if capability != .cells3d { model.detour = nil }
         model.capability = capability
         radar.visible = capability == .radar
         radar.underlay = capability == .lightning

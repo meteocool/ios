@@ -36,6 +36,50 @@ struct FramingRoom: Equatable, Sendable {
     }
 }
 
+/// Where the native 3D map's orbit camera stands for a storm opened from
+/// elsewhere (a tag, a panel's button): the storm filling the room above the
+/// sheet, from low down (`frameOpened`, for an orbit camera rather than
+/// MapLibre's).
+enum OrbitFraming {
+    /// Steeper than core's 76°: its neighbours peel away from an opened
+    /// storm there, and here a squall line's would stand in front of it.
+    static let pitch = 60.0
+    /// How much of the room the storm is given: less than core's, with its
+    /// neighbours around it rather than its cut filling the screen.
+    static let fill = 0.4
+
+    struct Stand: Equatable {
+        var latitude: Double
+        var longitude: Double
+        /// Metres from the eye to the point it orbits.
+        var distance: Double
+        var pitch: Double
+    }
+
+    /// `widthM` across and `heightM` tall (as drawn, stretched), standing at
+    /// `lat`/`lon`, seen along `bearing` through a `fovY`-degree lens.
+    static func stand(lat: Double, lon: Double, widthM: Double, heightM: Double, bearing: Double,
+                      room: FramingRoom, fovY: Double) -> Stand {
+        let p = pitch * .pi / 180
+        let focal = room.height / 2 / tan(fovY / 2 * .pi / 180)
+        // The storm's middle on the room's: this far above the view's axis.
+        let above = atan((room.height / 2 - (room.top + room.bottom) / 2) / focal)
+        // The range along that ray at which it fits across the room and up it.
+        let across = (room.right - room.left) * fill
+        let up = (room.bottom - room.top) * fill
+        let range = max(widthM * focal / across, heightM * sin(p) * focal / up, 6_000)
+        // The ray dips this far below the horizon to the storm's middle.
+        let dip = .pi / 2 - p - above
+        let distance = (range * sin(dip) + heightM / 2) / cos(p)
+        // How far beyond the orbited point the storm stands, along the ground.
+        let beyond = range * cos(dip) - distance * sin(p)
+        let b = bearing * .pi / 180
+        return Stand(latitude: lat - beyond * cos(b) / 111_320,
+                     longitude: lon - beyond * sin(b) / (111_320 * cos(lat * .pi / 180)),
+                     distance: distance, pitch: pitch)
+    }
+}
+
 /// core's `lib/stormFrame.ts` `framingCamera`.
 ///
 /// No app dependencies here: `scripts/check.sh` compiles this file alone.

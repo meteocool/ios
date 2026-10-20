@@ -324,4 +324,37 @@ enum CellVolumeModel {
             }
         }
     }
+
+    // MARK: - Frames (`ModelFrame`)
+
+    /// The box a picture of a cell is scaled to fit: its reach from the
+    /// centre, and ground (or an echo base below sea level) to top, km.
+    struct Frame: Equatable {
+        var radiusKm: Double
+        var lowKm: Double
+        var highKm: Double
+    }
+
+    /// The box a single cell needs (`frameOf`).
+    static func frameOf(_ model: Model) -> Frame {
+        Frame(radiusKm: model.radiusKm, lowKm: min(model.base / 1000, 0), highKm: model.top / 1000)
+    }
+
+    /// The smallest box that holds both (`unionFrame`).
+    static func union(_ a: Frame, _ b: Frame) -> Frame {
+        Frame(radiusKm: max(a.radiusKm, b.radiusKm), lowKm: min(a.lowKm, b.lowKm), highKm: max(a.highKm, b.highKm))
+    }
+
+    /// How much wider than the open cell's own a family's frame may grow
+    /// (`MAX_FRAME_RATIO`): past it a small cell would be a dot.
+    static let maxFrameRatio = 4.0
+
+    /// One frame for a family, so size means something across a hop
+    /// (`frameFor`): their envelope, held to `maxFrameRatio` of the cell's own.
+    static func familyFrame(own: Frame, relatives: [Frame]) -> Frame {
+        let frame = relatives.reduce(own, union)
+        return Frame(radiusKm: min(frame.radiusKm, own.radiusKm * maxFrameRatio),
+                     lowKm: max(frame.lowKm, own.lowKm * maxFrameRatio),
+                     highKm: min(frame.highKm, max(own.highKm, 1) * maxFrameRatio))
+    }
 }

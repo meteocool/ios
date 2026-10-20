@@ -9,6 +9,8 @@
 //
 
 import Combine
+import CoreLocation
+import MapKit
 import SwiftUI
 import UIKit
 
@@ -79,6 +81,15 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
         removePanel()
     }
 
+    /// Drops the storm and puts its panel away, then `then`: something else
+    /// is opening over the map (the layer switcher), which a selection cannot
+    /// outlive.
+    func close(then: @escaping () -> Void) {
+        dismissSheet(then: then)
+        removePanel()
+        store.selection = nil
+    }
+
     // MARK: - Phone
 
     private func details(wide: Bool) -> StormDetailsView {
@@ -88,8 +99,12 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
                          },
                          close: { [weak self] in self?.close() },
                          share: { [weak self] in self?.share() },
-                         openAR: arTarget == nil || map?.host?.arAvailable != true ? nil : { [weak self] in self?.openAR() })
+                         openAR: arTarget == nil || map?.host?.arAvailable != true ? nil : { [weak self] in self?.openAR() },
+                         on3d: map?.model.capability == .cells3d,
+                         openIn3D: map?.model.capability == .cells3d ? nil : { [weak self] in self?.openIn3D() })
     }
+
+    private var retrying = false
 
     private func presentSheet() {
         guard let map else { return }
@@ -119,7 +134,17 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
             presentation.prefersEdgeAttachedInCompactHeight = true
             presentation.delegate = self
         }
-        guard map.host?.presentOverMap(controller) == true else { return }
+        guard map.host?.presentOverMap(controller) == true else {
+            // Something else is up (the demo's notice, a sheet on its way
+            // out): tried again shortly, while the details are still wanted.
+            guard !retrying else { return }
+            retrying = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.retrying = false
+                self?.update()
+            }
+            return
+        }
         sheet = controller
         map.model.trayHidden = true
     }
@@ -198,6 +223,19 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
         if let code = selection.cell?.code { return .cell(code) }
         if let path = selection.volume?.path { return .volume(path) }
         return nil
+    }
+
+    /// The storm on the 3D map, cut open where it stands among its neighbours.
+    private func openIn3D() {
+        guard let map, let selection = store.selection, let at = StormSelect.positionOf(selection) else { return }
+        let step = selection.detail.flatMap { StormSelect.trackerSeries($0).last }
+        map.model.focus3D = ThreeDFocus(latitude: at.lat, longitude: at.lon,
+                                        areaKm2: selection.volume?.areaKm2 ?? step?.areaKm2 ?? selection.cell?.series.last?.areaKm2,
+                                        topM: selection.cell?.echoTopMaxM)
+        let from = (map.model.capability, map.mapView.camera.copy() as? MKMapCamera)
+        map.setCapability(.cells3d)
+        map.model.detour = from
+        update()
     }
 
     private func openAR() {
