@@ -37,10 +37,6 @@ final class RadarEngine {
     private let compositor: RadarCompositor
     private let scene: RadarScene
 
-    /// Whether core's own nowcast is drawn on forecast steps (`meteocoolNowcast`).
-    var nowcast = true {
-        didSet { if nowcast != oldValue { load() } }
-    }
     /// The observed picture chosen (`radarProduct`): its past comes with the
     /// series, asked for by name.
     var product = RadarProduct.hx {
@@ -177,7 +173,7 @@ final class RadarEngine {
             let refresh = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["refresh"] as? String
             if refresh == "radar" || refresh == "nowcast" { scheduleRefresh(after: 1) }
         case "nowcast":
-            if nowcast { scheduleRefresh(after: 2) }
+            scheduleRefresh(after: 2)
         case "network":
             // A network's new composite: the live step's, fetched with the
             // next series rather than on its own.
@@ -200,7 +196,7 @@ final class RadarEngine {
         let network = point.flatMap { coverage.network(at: MKMapPoint($0)) }
         let products = product.timeseriesProducts
         let url = endpoints.timeseries(latitude: point?.latitude, longitude: point?.longitude,
-                                       network: network, nowcast: nowcast, products: products)
+                                       network: network, products: products)
         // The same question already on its way (a wake, a reconnect, a fix
         // a few metres on) is left to answer rather than asked again: asked
         // again and again, as a flapping socket would, it never answers.
@@ -244,7 +240,7 @@ final class RadarEngine {
 
     private func compose() {
         guard let series else { return }
-        let timeline = RadarTimeline(series: series, clock: Int(Date().timeIntervalSince1970), nowcast: nowcast,
+        let timeline = RadarTimeline(series: series, clock: Int(Date().timeIntervalSince1970),
                                      network: seriesNetwork, product: product)
         player.setTimeline(timeline)
         updatePreloaded()

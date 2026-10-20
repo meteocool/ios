@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D ist die Erkennung und Verfolgung von Gewitterzellen im Radarverbund des Deutschen Wetterdienstes (DWD). Gezeichnet werden keine realistischen Wolkenvolumen: Jede Zelle ist ihr Umriss am Boden, zu Stufen gestapelt, deren Größe und Höhe aus wenigen Kennzahlen folgen, die KONRAD3D je Intensitätsstufe meldet. Sie vertragen sich schlecht mit den Radarvolumen der 3D-Karte und kommen erst Minuten nach dem Radar, wir empfehlen daher, sie ausgeschaltet zu lassen.";
 "settings.map" = "Karte";
 "settings.map_3d" = "3D-Karte";
-"settings.meteocool_nowcast" = "meteocool-Nowcast (experimentell)";
-"settings.meteocool_nowcast_hint" = "Sagt die nächsten zwei Stunden über der Schweiz, Frankreich, Tschechien, Polen, Belgien, der Slowakei, Litauen, Estland, Kroatien, Dänemark, den Niederlanden, Finnland, Schweden und Norwegen aus deren eigenem Radar voraus, wie meteocool es fortschreibt. Über Deutschland bleibt die Vorhersage des Deutschen Wetterdienstes. Experimentell: kann falsch, spät oder gar nicht da sein.";
 "settings.mode" = "Modus";
 "settings.mode_hint" = "Lädt die Karte im gewählten Modus neu, mit derselben Ansicht. Jeder Modus hat seine eigenen Einstellungen.";
 "settings.modes.demo" = "Demo";

@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D on Saksa ilmateenistuse (DWD) süsteem, mis tuvastab ja jälgib tema radarivõrgus äikeserakke. Joonistatu ei ole realistlik pilve ruumala: iga rakk on tema kontuur maapinnal, laotud astmeteks, mille suurus ja kõrgus tulenevad mõnest arvust, mida KONRAD3D iga tugevusastme kohta edastab. Need ei sobi kokku 3D-kaardi radarimahtudega ja saabuvad radarist mitu minutit hiljem, seega soovitame selle välja lülitatuks jätta.";
 "settings.map" = "Kaart";
 "settings.map_3d" = "3D-kaart";
-"settings.meteocool_nowcast" = "meteocooli lühiprognoos (katseline)";
-"settings.meteocool_nowcast_hint" = "Prognoosib järgmist kahte tundi Šveitsi, Prantsusmaa, Tšehhi, Poola, Belgia, Slovakkia, Leedu, Eesti, Horvaatia, Taani, Hollandi, Soome, Rootsi ja Norra kohal nende oma radariandmete põhjal, nii nagu meteocool neid ekstrapoleerib. Saksamaal jääb kehtima Saksa ilmateenistuse prognoos. Katseline: see võib olla vale, hilineda või puududa.";
 "settings.mode" = "Režiim";
 "settings.mode_hint" = "Laadib kaardi valitud režiimis samas vaates uuesti. Igal režiimil on oma seaded.";
 "settings.modes.demo" = "Demo";

@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D on Saksan sääpalvelun (DWD) tutkaverkon ukkossolujen tunnistus ja seuranta. Sen piirtämät muodot eivät ole todellisia pilvitilavuuksia: jokainen solu on sen ääriviiva maassa, pinottuna kerroksiksi, joiden koko ja korkeus perustuvat muutamaan lukuun, jotka KONRAD3D ilmoittaa kullekin voimakkuustasolle. Ne sopivat huonosti yhteen 3D-kartan tutkatilavuuksien kanssa ja saapuvat minuutteja tutkan jälkeen, joten suosittelemme pitämään tämän pois päältä.";
 "settings.map" = "Kartta";
 "settings.map_3d" = "3D-kartta";
-"settings.meteocool_nowcast" = "meteocoolin lähiennuste (kokeellinen)";
-"settings.meteocool_nowcast_hint" = "Ennustaa seuraavat kaksi tuntia Sveitsin, Ranskan, Tšekin, Puolan, Belgian, Slovakian, Liettuan, Viron, Kroatian, Tanskan, Alankomaiden, Suomen, Ruotsin ja Norjan alueella niiden omasta tutkasta, sellaisena kuin meteocool sitä jatkaa eteenpäin. Saksassa käytetään edelleen Saksan sääpalvelun (DWD) ennustetta. Kokeellinen: ennuste voi olla väärä, myöhässä tai puuttua kokonaan.";
 "settings.mode" = "Tila";
 "settings.mode_hint" = "Lataa kartan uudelleen valitussa tilassa samalla näkymällä. Jokaisella tilalla on omat asetuksensa.";
 "settings.modes.demo" = "Demo";

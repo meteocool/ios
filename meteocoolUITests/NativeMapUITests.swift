@@ -1,3 +1,4 @@
+import CoreLocation
 import XCTest
 
 /// The native MapKit map (`meteocool/NativeMap`), against the staging and
@@ -142,7 +143,7 @@ final class NativeMapUITests: XCTestCase {
         element("nativeMap.pill").tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForExistence(timeout: 5))
         screenshot("connection details")
-        app.buttons["Close"].firstMatch.tap()
+        element("nativeMap.connectionDetails").buttons["Close"].firstMatch.tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForNonExistence(timeout: 5))
     }
 
@@ -539,7 +540,7 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7", demo: true)
         waitForSeries()
         openLayers()
-        for layer in ["lightning", "mesocyclones", "storms", "nowcast", "fromStart", "cells3d", "terrain3d"] {
+        for layer in ["lightning", "mesocyclones", "storms", "fromStart", "cells3d", "terrain3d"] {
             let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
             for _ in 0 ..< 4 where !toggle.isHittable { element("nativeMap.layers").swipeUp() }
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)
@@ -634,6 +635,46 @@ final class NativeMapUITests: XCTestCase {
         share.tap()
         XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The place's share sheet")
         screenshot("point share")
+    }
+
+    func testLocateButtonCentresOnTheUser() {
+        // Berlin, held whatever the simulator's own position is.
+        app.resetAuthorizationStatus(for: .location)
+        app.launchEnvironment["MC_USER_LOCATION"] = "52.520,13.405"
+        // And the simulator's own, so Core Location has a fix to deliver.
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 52.520, longitude: 13.405))
+        // The system's question, answered when it comes up.
+        addUIInterruptionMonitor(withDescription: "Location") { alert in
+            for label in ["Allow While Using App", "Allow Once", "Allow"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+        launch(link: "?latLonZ=48.14,11.58,8")
+        waitForSeries()
+        let view = element("nativeMap.view")
+        XCTAssertTrue(view.waitForExistence(timeout: 10))
+        app.buttons["map.location"].tap()
+        // The monitor runs on the next interaction with the app.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow While Using App"]
+        if allow.waitForExistence(timeout: 5) { allow.tap() } else { app.tap() }
+        let deadline = Date().addingTimeInterval(20)
+        func centre() -> (Double, Double)? {
+            let parts = (view.value as? String)?.split(separator: ",").compactMap { Double($0) } ?? []
+            return parts.count >= 2 ? (parts[0], parts[1]) : nil
+        }
+        while Date() < deadline, !(centre().map { abs($0.0 - 52.52) < 0.3 && abs($0.1 - 13.405) < 0.3 } ?? false) {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        let at = centre()
+        XCTAssertNotNil(at)
+        XCTAssertEqual(at?.0 ?? 0, 52.52, accuracy: 0.3, "Centred on the user, not still on Munich")
+        XCTAssertEqual(at?.1 ?? 0, 13.405, accuracy: 0.3)
+        screenshot("located")
+        // Leaves no permission behind: the tests after it see no position.
+        app.resetAuthorizationStatus(for: .location)
     }
 
     // MARK: - The app around it

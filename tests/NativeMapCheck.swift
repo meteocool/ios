@@ -102,7 +102,9 @@ struct NativeMapCheck {
         precondition(timeline.steps.first == now - 7200 && timeline.steps.last == now + 7200 && timeline.steps.count == 49)
         // The Swiss run ends a step before WN: playing stops there (`lastStepWithRuns`).
         precondition(timeline.lastPlayable == now + 300, "\(String(describing: timeline.lastPlayable))")
-        precondition(RadarTimeline(series: series, clock: now + 120, nowcast: false).lastPlayable == now + 600)
+        // Without a network's run, playing goes on to WN's end.
+        let wnOnly = try! RadarSeries.decode(Data(json.replacingOccurrences(of: "nowcast_ch", with: "nowcast_xx").utf8))
+        precondition(RadarTimeline(series: wnOnly, clock: now + 120).lastPlayable == now + 600)
         precondition(timeline.step(nearest: now + 700) == now + 300 && !timeline.isPlayable(now + 600))
         // The bars stop where readings stop: from the first forecast step on (`forecastGapFrom`).
         precondition(timeline.forecastGap == 25.0 / 49.0, "\(String(describing: timeline.forecastGap))")
@@ -132,8 +134,8 @@ struct NativeMapCheck {
         // Readings: the series' own, and on a forecast step the asked network's nowcast where it has one.
         let swiss = RadarTimeline(series: series, clock: now + 120, network: "ch")
         precondition(swiss.dbz[now] == 30 && swiss.dbz[now + 300] == nil && timeline.dbz[now + 300] == nil)
-        // Without the nowcast setting, WN alone.
-        precondition(RadarTimeline(series: series, clock: now, nowcast: false).layers[now + 300]!.map(\.key) == ["de"])
+        // Without a network's run, WN alone.
+        precondition(RadarTimeline(series: wnOnly, clock: now).layers[now + 300]!.map(\.key) == ["de"])
 
         precondition(timeline.offsetLabel(now, now: "Now") == "Now")
         precondition(timeline.offsetLabel(now - 7200, now: "Now") == "-2h")

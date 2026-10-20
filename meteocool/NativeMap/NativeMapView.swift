@@ -316,7 +316,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         } else {
             notices.noForecastHere = false
         }
-        notices.nowcast = isOn(.nowcast)
     }
 
     /// Hosts a SwiftUI view over the map, sized to fit; the caller places it.
@@ -527,7 +526,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             radar.setEndpoints(next)
             socket.setHost(next.api)
         }
-        radar.nowcast = isOn(.nowcast)
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
         for feature in features { feature.settingsDidChange() }
         updateCredits()
@@ -769,6 +767,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+        #if DEBUG
+        // Where the map is, for UI tests (`nativeMap.view`'s value), in a
+        // link's spelling: MapKit keeps the map's own value to itself.
+        accessibilityIdentifier = "nativeMap.view"
+        accessibilityValue = String(format: "%.3f,%.3f,%.1f", mapView.centerCoordinate.latitude,
+                                    mapView.centerCoordinate.longitude, zoomLevel)
+        #endif
         radar.regionDidChange()
         updateCoverage()
         for feature in features { feature.regionDidChange() }

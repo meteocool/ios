@@ -583,8 +583,6 @@
 "settings.konrad_cells_hint" = "KONRAD3D är den tyska vädertjänstens (DWD) detektering och spårning av åskceller i dess radarnätverk. Det som ritas är inte realistiska molnvolymer: varje cell är sin kontur vid marken, staplad i nivåer vars storlek och höjd bygger på några få värden som KONRAD3D rapporterar per intensitetsnivå. De krockar med 3D-kartans radarvolymer och kommer minuter efter radarn, så vi rekommenderar att du låter detta vara avstängt.";
 "settings.map" = "Karta";
 "settings.map_3d" = "3D-karta";
-"settings.meteocool_nowcast" = "meteocools korttidsprognos (experimentell)";
-"settings.meteocool_nowcast_hint" = "Förutsäger de kommande två timmarna över Schweiz, Frankrike, Tjeckien, Polen, Belgien, Slovakien, Litauen, Estland, Kroatien, Danmark, Nederländerna, Finland, Sverige och Norge utifrån ländernas egen radar, så som meteocool extrapolerar den. Tyskland behåller den tyska vädertjänstens prognos. Experimentell: den kan vara fel, sen eller saknas.";
 "settings.mode" = "Läge";
 "settings.mode_hint" = "Laddar om kartan i det valda läget, med samma vy. Varje läge har sina egna inställningar.";
 "settings.modes.demo" = "Demo";
