@@ -181,7 +181,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         super.layoutSubviews()
         // Keep Apple's logo and legal link clear of the controls at the bottom.
         if let bottom = bottomChrome {
-            let covered = bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
+            let covered = bottom.isHidden ? 0 : bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
             if abs(mapView.layoutMargins.bottom - covered) > 1 {
                 mapView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: max(covered, 0), right: 0)
             }
@@ -343,6 +343,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.credits = names.isEmpty ? "" : "© " + names.joined(separator: ", © ")
     }
 
+    var view: UIView { self }
+
     // MARK: - Data
 
     func fetch(_ url: URL, _ handler: @escaping @MainActor (Data?, Int?) -> Void) {
@@ -381,11 +383,29 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         player.showLive()
     }
 
-    /// A link's view and frame (core's `latLonZ` and `t`).
+    /// A link: its map (`layer`), view and frame (`latLonZ`, `t`), and
+    /// whatever its parts take from it (a storm, a point, …).
     func open(search: String) {
-        guard let link = NativeMapLink(search: search) else { return }
-        if placed { place(link, animated: true) } else { pendingView = link }
-        radar.show(time: link.time)
+        let parameters = NativeMapLink.parameters(search)
+        if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
+            setCapability(capability)
+        }
+        if let link = NativeMapLink(search: search) {
+            if placed { place(link, animated: true) } else { pendingView = link }
+            radar.show(time: link.time)
+        }
+        for feature in features { _ = feature.open(parameters) }
+    }
+
+    func setCapability(_ capability: NativeMapModel.Capability) {
+        guard capability != model.capability else { return }
+        model.capability = capability
+        radar.visible = capability == .radar
+        bottomChrome?.isHidden = capability != .radar
+        setNeedsLayout()
+        for feature in features { feature.capabilityDidChange(capability) }
+        for feature in features { feature.settingsDidChange() }
+        updateCredits()
     }
 
     /// A link to what is on screen, in core's spelling, for the share sheet.
@@ -394,8 +414,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         let time = player.step != player.timeline.now ? player.step : nil
         let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: zoomLevel, time: time)
         let shared = NativeMapLink.frameLink(Int(Date().timeIntervalSince1970) / 60 * 60)
+        var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
+        for feature in features { extra.merge(feature.linkParameters()) { first, _ in first } }
+        var components = URLComponents()
+        components.queryItems = extra.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
+        let more = extra.isEmpty ? "" : "&" + (components.percentEncodedQuery ?? "")
         let url = MeteocoolEnvironment.current.mapURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            + "/" + link.search + "&shared=" + shared
+            + "/" + link.search + more + "&shared=" + shared
         guard let data = try? JSONSerialization.data(withJSONObject: ["url": url, "title": "meteocool"]),
               let json = String(data: data, encoding: .utf8) else { return nil }
         return MapShare(json: json, mapHost: MeteocoolEnvironment.current.mapURL.host)
