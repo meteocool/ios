@@ -241,6 +241,14 @@ final class RadarCompositor: @unchecked Sendable {
                 context.addPath(domain.exclusive)
                 context.clip(using: .evenOdd)
                 drawTile(image, in: key.mapRect, context: context)
+            case .allNetworks:
+                context.addPath(coverage.allNetworks)
+                context.clip(using: .evenOdd)
+                drawTile(image, in: key.mapRect, context: context)
+            case .whole:
+                let extent = RadarCoverage.wholeExtent
+                context.clip(to: CGRect(x: extent.minX, y: extent.minY, width: extent.width, height: extent.height))
+                drawTile(image, in: key.mapRect, context: context)
             case .dwd(let holes):
                 let extent = RadarCoverage.dwdExtent
                 context.clip(to: CGRect(x: extent.minX, y: extent.minY, width: extent.width, height: extent.height))

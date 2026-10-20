@@ -80,3 +80,22 @@ struct NativeMapLink: Equatable {
         return String(format: "%04d%02d%02dT%02d%02dZ", c.year!, c.month!, c.day!, c.hour!, c.minute!)
     }
 }
+
+/// How long ago a link was shared, when that is long enough to say
+/// (core's `lib/shareLink.ts`: 15 minutes, with five of clock skew forgiven).
+enum ShareAge {
+    static let staleAfter = 900
+    static let skew = 300
+
+    /// "2 hours ago"-style text, or nil for a fresh link.
+    static func text(sharedAt: Int, now: Int, locale: Locale = .current) -> String? {
+        let age = now - sharedAt
+        guard age >= staleAfter, age > -skew else { return nil }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = locale
+        formatter.unitsStyle = .full
+        var components = DateComponents()
+        if age < 3600 { components.minute = -(age / 60) } else if age < 48 * 3600 { components.hour = -(age / 3600) } else { components.day = -(age / 86400) }
+        return formatter.localizedString(from: components)
+    }
+}
