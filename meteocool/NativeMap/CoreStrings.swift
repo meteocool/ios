@@ -19,6 +19,18 @@ enum CoreStrings {
         return ICUMessage.format(message, args, language: language)
     }
 
+    /// A message without core's markup: `<br />` as a line break, other tags
+    /// and entities dropped.
+    static func plain(_ key: String, _ args: [String: Any] = [:]) -> String {
+        var text = t(key, args)
+        text = text.replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        for (entity, character) in ["&amp;": "&", "&nbsp;": "\u{00A0}", "&lt;": "<", "&gt;": ">", "&quot;": "\""] {
+            text = text.replacingOccurrences(of: entity, with: character)
+        }
+        return text
+    }
+
     /// The language the app's strings are shown in.
     static var language: String {
         Bundle.main.preferredLocalizations.first.map { String($0.prefix(2)) } ?? "en"

@@ -99,7 +99,14 @@ struct NativeMapCheck {
         let series = try! RadarSeries.decode(Data(json.utf8))
         let timeline = RadarTimeline(series: series, clock: now + 120)
         precondition(timeline.now == now, "\(String(describing: timeline.now))")
-        precondition(timeline.steps.first == now - 7200 && timeline.steps.last == now + 600)
+        precondition(timeline.steps.first == now - 7200 && timeline.steps.last == now + 7200 && timeline.steps.count == 49)
+        // The Swiss run ends a step before WN: playing stops there (`lastStepWithRuns`).
+        precondition(timeline.lastPlayable == now + 300, "\(String(describing: timeline.lastPlayable))")
+        precondition(RadarTimeline(series: series, clock: now + 120, nowcast: false).lastPlayable == now + 600)
+        precondition(timeline.step(nearest: now + 700) == now + 300 && !timeline.isPlayable(now + 600))
+        // The bars stop where readings stop: from the first forecast step on (`forecastGapFrom`).
+        precondition(timeline.forecastGap == 25.0 / 49.0, "\(String(describing: timeline.forecastGap))")
+        precondition(timeline.barCeiling == 45)
         precondition(timeline.isForecast(now + 300) && !timeline.isForecast(now))
         precondition(timeline.dbz[now] == 30 && timeline.dbz[now - 900] == 10)
 
@@ -133,6 +140,35 @@ struct NativeMapCheck {
         precondition(timeline.offsetLabel(now + 2700, now: "Now") == "+45m")
         precondition(timeline.offsetLabel(now + 5400, now: "Now") == "+1h30m")
         precondition(timeline.step(nearest: now + 100) == now)
+
+        // Products: merged and colmax draw whole, DMAX draws in DWD's place with
+        // colmax around it, and a product too far behind HX falls back to HX.
+        let productJSON = """
+        {"frames": {"\(now - 300)": \(frame("b")), "\(now)": \(frame("c"))},
+         "networks": {"ch": {"\(now)": \(frame("ch2"))}},
+         "products": {"merged": {"\(now)": \(frame("m"))}, "dmax": {"\(now)": \(frame("dm")), "\(now - 300)": \(frame("dm0"))},
+                      "colmax": {"\(now - 300)": \(frame("cm"))}},
+         "server_time": \(now + 120), "replay": true}
+        """
+        let products = try! RadarSeries.decode(Data(productJSON.utf8))
+        let merged = RadarTimeline(series: products, clock: now + 120, product: .merged)
+        precondition(merged.drawn == .merged && merged.replay)
+        precondition(merged.layers[now]!.map { "\($0.key):\($0.tileId)" } == ["merged:v-m"] && merged.layers[now]![0].clip == .whole)
+        // No merged frame for the step before: HX and the networks there.
+        precondition(merged.layers[now - 300]!.last!.tileId == "v-b")
+        precondition(merged.scanRange! == (now, now))
+        let dmax = RadarTimeline(series: products, clock: now + 120, product: .dmax)
+        precondition(dmax.layers[now]!.map { "\($0.key):\($0.tileId)" } == ["around:v-cm", "de:v-dm"], "\(dmax.layers[now]!)")
+        if case let .dwd(holes) = dmax.layers[now]!.last!.clip { precondition(holes == RadarTimeline.networks) } else { preconditionFailure() }
+        precondition(dmax.layers[now - 300]!.map { "\($0.key):\($0.tileId)" } == ["around:v-cm", "de:v-dm0"])
+        precondition(dmax.scanRange! == (now, now - 300))
+        let behind = RadarTimeline(series: products, clock: now + 2000, product: .colmax)
+        precondition(behind.drawn == .colmax)
+        let late = try! RadarSeries.decode(Data(productJSON.replacingOccurrences(of: "\"\(now - 300)\": \(frame("cm"))", with: "\"\(now - 1200)\": \(frame("cm"))").utf8))
+        let fellBack = RadarTimeline(series: late, clock: now + 120, product: .colmax)
+        precondition(fellBack.drawn == .hx && fellBack.fellBack && fellBack.layers[now]!.last!.tileId == "v-c")
+        precondition(RadarProduct(setting: "nonsense") == .hx && RadarProduct.dmax.timeseriesProducts == ["dmax", "colmax"])
+        precondition(!RadarTimeline.nowcastNetworks.contains("ie"))
 
         // Links: core's spelling both ways, junk refused.
         let link = NativeMapLink(search: "?layer=radar&latLonZ=48.13710,11.57540,9.50&t=20260924T1945Z&shared=20260924T1950Z")
@@ -186,6 +222,55 @@ struct NativeMapCheck {
         precondition(strikes.features[0].parts == [[CGPoint(x: 1, y: 2), CGPoint(x: 4, y: 6)]], "\(strikes.features[0].parts)")
         precondition(strikes.features[0].properties["kind"] == .string("cg") && strikes.features[0].properties["age"] == .double(1.5))
         precondition((try? VectorTile(data: Data([0x1A, 0x05, 0x0A]))) == nil)
+        // The strip's physics (core's lib/timeline.ts).
+        precondition(TimelinePhysics.rubberBand(5, last: 48) == 5)
+        precondition(abs(TimelinePhysics.rubberBand(-1.5, last: 48) - -0.75) < 1e-9)
+        precondition(TimelinePhysics.rubberBand(-1000, last: 48) > -1.5 && TimelinePhysics.rubberBand(1000, last: 48) < 49.5)
+        precondition(TimelinePhysics.restingStep(23.2, last: 40, detent: 24) == 24)
+        precondition(TimelinePhysics.restingStep(22.4, last: 40, detent: 24) == 22)
+        precondition(TimelinePhysics.restingStep(45, last: 40, detent: nil) == 40)
+        // A slow glide over the detent is caught there; a fast one passes.
+        let caught = TimelinePhysics.glideStep(position: 23.9, velocity: 0.01, dt: 16, last: 40, detent: 24)
+        precondition(caught.position == 24 && caught.velocity == 0, "\(caught)")
+        let passed = TimelinePhysics.glideStep(position: 23.9, velocity: 0.05, dt: 16, last: 40, detent: 24)
+        precondition(passed.position > 24 && passed.velocity > 0)
+        precondition(TimelinePhysics.glideStep(position: 39.9, velocity: 0.05, dt: 16, last: 40, detent: nil) == (40, 0))
+        precondition(TimelinePhysics.ease(1) == 1 && TimelinePhysics.ease(0) == 0 && TimelinePhysics.ease(0.5) == 0.875)
+        let grid = (0 ..< 49).map { 1_000_200 - 7200 + $0 * 300 }
+        let axis = TimelinePhysics.axisTicks(steps: grid, gridNow: 1_000_200).map(\.step)
+        precondition(axis == [1_000_200 - 7200, 1_000_200 - 3600, 1_000_200, 1_000_200 + 3600, 1_000_200 + 7200], "\(axis)")
+        precondition(TimelinePhysics.isMajor(1_000_200 + 1800, gridNow: 1_000_200) && !TimelinePhysics.isMajor(1_000_200 + 300, gridNow: 1_000_200))
+
+        // The pill's rules (core's lib/degraded.ts, updateCadence.ts, freshness.ts).
+        precondition(ConnectionRules.quantile([1, 2, 3, 4], 0.5) == 2.5 && ConnectionRules.quantile([], 0.5) == nil)
+        let clock = Date(timeIntervalSince1970: 2_000_000)
+        func record(_ seconds: TimeInterval, _ duration: TimeInterval, status: Int? = 200, endpoint: String = "/v3/radar/timeseries") -> RequestRecord {
+            RequestRecord(service: "radar_grid", endpoint: endpoint, time: clock.addingTimeInterval(-seconds), status: status,
+                          duration: duration, bytes: 0, cached: false)
+        }
+        let slow = (0 ..< 6).map { record(Double(60 - $0), 5) }
+        precondition(ConnectionRules.slowResponses(slow, now: clock)?.count == 6)
+        // Three quick answers after the slow ones: recovered.
+        precondition(ConnectionRules.slowResponses(slow + [record(3, 0.2), record(2, 0.2), record(1, 0.2)], now: clock) == nil)
+        precondition(ConnectionRules.slowResponses(Array(slow.prefix(4)), now: clock) == nil)
+        precondition(ConnectionRules.failingEndpoints([record(10, 1, status: 500, endpoint: "/v3/radar/europe")], now: clock) == ["/v3/radar/europe"])
+        precondition(ConnectionRules.failingEndpoints([record(10, 1, status: 404, endpoint: "/v3/radar/snow")], now: clock).isEmpty)
+        precondition(ConnectionRules.failingEndpoints([record(400, 1, status: 500)], now: clock).isEmpty)
+        precondition(ConnectionRules.failingEndpoints([record(20, 1, status: 500), record(10, 1)], now: clock).isEmpty)
+        precondition(ConnectionRules.cadence(processedTimes: [0, 300, 600, 900]) == 300)
+        precondition(ConnectionRules.cadence(processedTimes: [0, 300, 600]) == nil)
+        precondition(ConnectionRules.cadence(processedTimes: [0, 300, 600, 900, 5000]) == 300)
+        precondition(ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1600))
+        precondition(!ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1500))
+        precondition(ConnectionRules.outdated(newestObservation: 1000, period: nil, now: 1361))
+        precondition(!ConnectionRules.outdated(newestObservation: 1000, period: nil, now: 1360))
+
+        // A shared link's age: said only past 15 minutes.
+        let english = Locale(identifier: "en_US")
+        precondition(ShareAge.text(sharedAt: 1000, now: 1600, locale: english) == nil)
+        precondition(ShareAge.text(sharedAt: 1000, now: 1000 + 7200, locale: english) == "2 hours ago", "\(String(describing: ShareAge.text(sharedAt: 1000, now: 8200, locale: english)))")
+        precondition(ShareAge.text(sharedAt: 1000, now: 1000 + 20 * 60, locale: english) == "20 minutes ago")
+        precondition(ShareAge.text(sharedAt: 1000, now: 1000 + 3 * 86400, locale: english) == "3 days ago")
         print("NativeMapCheck passed")
     }
 }

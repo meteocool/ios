@@ -18,7 +18,7 @@ import UIKit
 /// shows this in place of the web view while the native map is on
 /// (`nativeMap` in Settings).
 @MainActor
-final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestureRecognizerDelegate {
+final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestureRecognizerDelegate, ObservableObject {
     /// Where the map opens without a link or a location (core's `latLonZ` default).
     static let defaultView = NativeMapLink(latitude: 49.0, longitude: 11.0, zoom: 6)
     /// The stored switch that puts this map in place of the web view.
@@ -35,6 +35,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private(set) var features: [NativeMapFeature] = []
     private var chrome: [UIView] = []
     private var bottomChrome: UIView?
+    private var stripsChrome: UIView?
+    let monitor = ConnectionMonitor()
+    let notices = NoticeState()
+    let productScans = ProductScans()
+    /// Bumped on each foreground and wake, for the pill's dimming.
+    @Published private var wakes = 0
+    var wakeCount: Int { wakes }
+    private let chromeState = ChromeState()
     private let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
     private var ticker: Timer?
     private var started = false
@@ -54,8 +62,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         radar.onStep = { [weak self] _ in self?.stepChanged() }
         radar.onSeries = { [weak self] series in
-            self?.model.serverTime = Date(timeIntervalSince1970: TimeInterval(series.serverTime))
+            guard let self else { return }
+            self.model.serverTime = Date(timeIntervalSince1970: TimeInterval(series.serverTime))
+            // A fresh series answers the staleness.
+            self.model.stale = false
+            self.radar.stale = false
+            self.updateCoverage()
         }
+        radar.onGaveUp = { [weak self] product in self?.gaveUp(product) }
+        monitor.radarStale = { [weak self] in self?.model.stale ?? false }
+        monitor.newestProcessed = { [weak self] in self?.radar.processedTimes ?? (nil, nil) }
+        observeSettings()
         socket.onEvent = { [weak self] name, data in self?.socketEvent(name, data) }
         socket.onReconnect = { [weak self] in self?.wake() }
         socket.onConnection = { [weak self] connected in self?.model.connected = connected }
@@ -117,15 +134,137 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     /// The SwiftUI controls over the map, each in its own host so the map
-    /// keeps every touch that misses them.
+    /// keeps every touch that misses them: the tray at the bottom, the strips
+    /// above it, "Back to now" above those, the status pill on the top line,
+    /// and toasts under it.
     private func configureChrome() {
-        let bottom = addChrome(RadarTimelineBar(player: player, model: model))
+        let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
+                                  openProducts: { [weak self] in self?.openProducts() })
+        let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
+        // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
+        let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
+        chromeState.trayBottom = trayBottom
         NSLayoutConstraint.activate([
-            bottom.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
-            bottom.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
-            bottom.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            tray.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: ChromeTheme.gutter),
+            tray.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -ChromeTheme.gutter),
+            trayBottom,
         ])
-        bottomChrome = bottom
+        bottomChrome = tray
+
+        let strips = addChrome(NoticeStrips(player: player, model: model, notices: notices))
+        NSLayoutConstraint.activate([
+            strips.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
+            strips.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
+            strips.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter),
+        ])
+        stripsChrome = strips
+
+        let back = addChrome(BackToNowPill(player: player, model: model))
+        NSLayoutConstraint.activate([
+            back.centerXAnchor.constraint(equalTo: centerXAnchor),
+            back.bottomAnchor.constraint(equalTo: strips.topAnchor, constant: -ChromeTheme.gutter),
+        ])
+
+        let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self))
+        NSLayoutConstraint.activate([
+            pill.centerXAnchor.constraint(equalTo: centerXAnchor),
+            pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
+        ])
+
+        let toast = addChrome(ToastHost(model: model))
+        NSLayoutConstraint.activate([
+            toast.centerXAnchor.constraint(equalTo: centerXAnchor),
+            toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
+            toast.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter + 44 + ChromeTheme.gutter),
+        ])
+    }
+
+    /// The tray, strips and "Back to now" are the radar map's; other maps
+    /// and a storm's sheet put them away.
+    private func updateChromeVisibility() {
+        let radar = model.capability == .radar && !model.trayHidden
+        bottomChrome?.isHidden = !radar
+        stripsChrome?.isHidden = !radar
+        notices.radarShown = radar
+        setNeedsLayout()
+    }
+
+    /// Clears a long-pressed point: the bars are your own position's again
+    /// (core's `returnToCurrentPosition`).
+    func clearPoint() {
+        model.point = nil
+        if let location = model.userLocation { radar.point = location.coordinate }
+        updateTitle()
+    }
+
+    /// The tray's title: the place's name once known, else what the bars
+    /// measure; nothing without a position or a point.
+    private func updateTitle() {
+        if model.point != nil {
+            model.trayTitle = model.placeName ?? CoreStrings.t("precipitation_at_point")
+        } else if model.userLocation != nil {
+            model.trayTitle = model.placeName ?? CoreStrings.t("precipitation_here")
+        } else {
+            model.trayTitle = nil
+        }
+    }
+
+    func openProducts() {
+        productScans.load(self)
+        let menu = UIHostingController(rootView: ProductMenu(player: player, model: model, scans: productScans,
+                                                            close: { [weak self] in self?.dismissSheet() },
+                                                            explain: { [weak self] in self?.openExplainer() }))
+        presentSheet(menu, detents: [.medium(), .large()])
+    }
+
+    private func openExplainer() {
+        dismissSheet { [weak self] in
+            guard let self else { return }
+            let explainer = UIHostingController(rootView: RadarExplainer(palette: self.player.palette,
+                                                                         close: { [weak self] in self?.dismissSheet() }))
+            self.presentSheet(explainer, detents: [.large()])
+        }
+    }
+
+    func openConnectionDetails() {
+        let details = UIHostingController(rootView: ConnectionDetails(player: player, model: model, monitor: monitor,
+                                                                      close: { [weak self] in self?.dismissSheet() }))
+        presentSheet(details, detents: [.large()])
+    }
+
+    /// A sheet over the map, the app's buttons hidden while it is up.
+    func presentSheet(_ controller: UIViewController, detents: [UISheetPresentationController.Detent]) {
+        controller.modalPresentationStyle = .pageSheet
+        if let sheet = controller.sheetPresentationController {
+            sheet.detents = detents
+            sheet.prefersGrabberVisible = true
+        }
+        host?.presentOverMap(controller)
+    }
+
+    private func dismissSheet(then: (() -> Void)? = nil) {
+        guard let presenter = window?.rootViewController else { then?(); return }
+        presenter.dismiss(animated: true, completion: then)
+    }
+
+    /// Whether the radar or its forecast covers the view (core's notices and
+    /// `canPlay`): the networks' boxes for the radar; for the forecast, a
+    /// 12×12 sample of the view against DWD's reach and the nowcast runs.
+    private func updateCoverage() {
+        guard model.capability == .radar, mapView.bounds.width > 0 else { return }
+        let visible = mapView.visibleMapRect
+        let out = !RadarCoverage.touchesRadar(visible)
+        notices.outOfRadar = out
+        player.outOfRadar = out
+        let timeline = player.timeline
+        let anyRun = Set(timeline.nowcastDomains.values.flatMap { $0 })
+        player.noForecast = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: Array(anyRun)) >= 1
+        if let step = player.step, timeline.isForecast(step) {
+            notices.noForecastHere = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: timeline.nowcastDomains[step] ?? []) >= 1
+        } else {
+            notices.noForecastHere = false
+        }
+        notices.nowcast = isOn(.nowcast)
     }
 
     /// Hosts a SwiftUI view over the map, sized to fit; the caller places it.
@@ -205,6 +344,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Starts loading and listening; the map is on screen.
     func start() {
+        player.returnedToForeground()
+        wakes += 1
         guard !started else { return }
         started = true
         radar.start()
@@ -228,6 +369,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Everything again: the app came back, or the socket did (core's wake).
     private func wake() {
+        // On wake core judges the radar's age: out of date until a new grid lands.
+        let now = Int(Date().timeIntervalSince1970)
+        if ConnectionRules.outdated(newestObservation: player.timeline.now, period: radar.processedTimes.cadence, now: now) {
+            model.stale = true
+            radar.stale = true
+        }
         radar.wake()
         for feature in features { feature.wake() }
     }
@@ -239,6 +386,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func stepChanged() {
+        updateCoverage()
         let step = RadarStep(time: player.step, isLive: player.step != nil && player.step == player.timeline.now,
                              isForecast: player.step.map(player.timeline.isForecast) ?? false)
         for feature in features { feature.stepDidChange(step) }
@@ -316,6 +464,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         radar.nowcast = isOn(.nowcast)
+        player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
         for feature in features { feature.settingsDidChange() }
         updateCredits()
     }
@@ -348,11 +497,51 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     // MARK: - Data
 
     func fetch(_ url: URL, _ handler: @escaping @MainActor (Data?, Int?) -> Void) {
+        let started = Date()
+        NetworkLog.shared.started()
         URLSession.shared.dataTask(with: url) { data, response, _ in
             let status = (response as? HTTPURLResponse)?.statusCode
+            NetworkLog.shared.finished(RequestRecord(service: NetworkLog.service(of: url), endpoint: url.path, time: Date(),
+                                                     status: status, duration: Date().timeIntervalSince(started),
+                                                     bytes: data?.count ?? 0, cached: false))
             let body = status.map { (200 ..< 300).contains($0) } == true ? data : nil
             Task { @MainActor in handler(body, status) }
         }.resume()
+    }
+
+    /// Keeps the chrome's own settings stored, and the radar in step with them.
+    private func observeSettings() {
+        model.legendDBZ = defaults?.string(forKey: "nativeMap.radarLegendUnit") == "dbz"
+        model.product = RadarProduct(setting: defaults?.string(forKey: "nativeMap.radarProduct"))
+        radar.product = model.product
+        model.$legendDBZ.dropFirst()
+            .sink { [weak self] dbz in self?.defaults?.set(dbz ? "dbz" : "pictogram", forKey: "nativeMap.radarLegendUnit") }
+            .store(in: &observers)
+        model.$product.dropFirst()
+            .sink { [weak self] product in
+                self?.defaults?.set(product.rawValue, forKey: "nativeMap.radarProduct")
+                self?.radar.product = product
+            }
+            .store(in: &observers)
+        model.$selectedStorm
+            .sink { [weak self] storm in self?.radar.dimmed = storm != nil }
+            .store(in: &observers)
+        Publishers.CombineLatest3(model.$point, model.$userLocation, model.$placeName)
+            .sink { [weak self] _, _, _ in DispatchQueue.main.async { self?.updateTitle() } }
+            .store(in: &observers)
+        Publishers.CombineLatest(model.$capability, model.$trayHidden)
+            .sink { [weak self] _, _ in DispatchQueue.main.async { self?.updateChromeVisibility() } }
+            .store(in: &observers)
+    }
+
+    /// The chosen product has no frame at all: back to the lowest scan, and
+    /// say so (`giveUpChoice`).
+    private func gaveUp(_ product: RadarProduct) {
+        model.product = .hx
+        model.toast = CoreStrings.t("chrome.radar_product.gave_up", [
+            "product": CoreStrings.t("chrome.radar_product.\(product.rawValue)"),
+            "fallback": CoreStrings.t("chrome.radar_product.hx"),
+        ])
     }
 
     // MARK: - The host's calls
@@ -387,6 +576,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// whatever its parts take from it (a storm, a point, …).
     func open(search: String) {
         let parameters = NativeMapLink.parameters(search)
+        // A link shared a while ago says so (`share.stale`).
+        if let shared = parameters["shared"].flatMap(NativeMapLink.frameTime),
+           let ago = ShareAge.text(sharedAt: shared, now: Int(Date().timeIntervalSince1970)) {
+            let key = parameters["storm"] != nil || parameters["cell"] != nil ? "share.stale_storm" : "share.stale"
+            model.toast = CoreStrings.t(key, ["ago": ago])
+        }
         if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
             setCapability(capability)
         }
@@ -401,8 +596,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         guard capability != model.capability else { return }
         model.capability = capability
         radar.visible = capability == .radar
-        bottomChrome?.isHidden = capability != .radar
-        setNeedsLayout()
+        updateChromeVisibility()
         for feature in features { feature.capabilityDidChange(capability) }
         for feature in features { feature.settingsDidChange() }
         updateCredits()
@@ -491,7 +685,46 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
         radar.regionDidChange()
+        updateCoverage()
         for feature in features { feature.regionDidChange() }
         updateCredits()
+    }
+}
+
+/// Holds what the chrome's hosts are laid out against.
+@MainActor
+private final class ChromeState {
+    var trayBottom: NSLayoutConstraint?
+}
+
+/// The status pill, which opens Connection Details.
+private struct PillHost: View {
+    @ObservedObject var player: RadarPlayer
+    @ObservedObject var model: NativeMapModel
+    @ObservedObject var monitor: ConnectionMonitor
+    @ObservedObject var owner: NativeMapView
+
+    var body: some View {
+        StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() }, wakes: owner.wakeCount)
+            .opacity(model.capability == .radar ? 1 : 0)
+    }
+}
+
+/// A toast under the top line, gone after fifteen seconds (`reportToast`).
+private struct ToastHost: View {
+    @ObservedObject var model: NativeMapModel
+
+    var body: some View {
+        ZStack {
+            if let text = model.toast {
+                MapToast(text: text, symbol: "clock.arrow.circlepath", theme: ChromeTheme(dark: model.isDark)) { model.toast = nil }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: text) {
+                        try? await Task.sleep(for: .seconds(15))
+                        if !Task.isCancelled, model.toast == text { model.toast = nil }
+                    }
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: model.toast)
     }
 }

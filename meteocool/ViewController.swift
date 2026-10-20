@@ -397,7 +397,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
     @objc func willResignActive() {
         linkPlacedView = false
-        nativeMap?.player.pause()
+        nativeMap?.player.leftForeground()
         if webviewReady { webView.evaluateJavaScript("window.leaveForeground?.();") }
     }
 
@@ -425,6 +425,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     @IBAction func locationButton(sender: AnyObject){
+        // Locating clears a long-pressed point, as core's locate button does.
+        nativeMap?.clearPoint()
         let status = SharedLocationUpdater.authorizationStatus
         if status == .notDetermined {
             SharedLocationUpdater.requestAuthorization({ [weak self] granted, _ in

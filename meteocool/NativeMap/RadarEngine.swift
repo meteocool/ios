@@ -21,6 +21,15 @@ final class RadarEngine {
     var onStep: ((Int) -> Void)?
     /// Called when the series was loaded again.
     var onSeries: ((RadarSeries) -> Void)?
+    /// Called when the chosen product has no frame at all (`givesUpChoice`).
+    var onGaveUp: ((RadarProduct) -> Void)?
+    /// The radar is out of date: drawn fainter (`STALE_OPACITY`).
+    var stale = false { didSet { updateOpacity() } }
+    /// A storm is selected: the radar steps back (`INSPECT_OPACITY`).
+    var dimmed = false { didSet { updateOpacity() } }
+    /// The newest observation's build time and the learned cadence, for the
+    /// pill's "publish cadence" rule.
+    private(set) var processedTimes: (newest: Int?, cadence: Int?) = (nil, nil)
 
     private weak var mapView: MKMapView?
     private var endpoints: NativeMapEndpoints
@@ -32,6 +41,15 @@ final class RadarEngine {
     var nowcast = true {
         didSet { if nowcast != oldValue { load() } }
     }
+    /// The observed picture chosen (`radarProduct`): its past comes with the
+    /// series, asked for by name.
+    var product = RadarProduct.hx {
+        didSet {
+            guard product != oldValue else { return }
+            if product.timeseriesProducts != seriesProducts { load() } else { compose() }
+        }
+    }
+    private var seriesProducts: [String] = []
     /// The point the series' readings are for: the user's position or a
     /// long-pressed point (that wins, as in core).
     var point: CLLocationCoordinate2D? {
@@ -178,8 +196,9 @@ final class RadarEngine {
         seriesRetry?.invalidate()
         let point = self.point
         let network = point.flatMap { coverage.network(at: MKMapPoint($0)) }
+        let products = product.timeseriesProducts
         let url = endpoints.timeseries(latitude: point?.latitude, longitude: point?.longitude,
-                                       network: network, nowcast: nowcast)
+                                       network: network, nowcast: nowcast, products: products)
         seriesLoaded = Date()
         seriesTask = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             let status = (response as? HTTPURLResponse)?.statusCode
@@ -197,8 +216,15 @@ final class RadarEngine {
                 self.series = series
                 self.seriesPoint = point
                 self.seriesNetwork = network
+                self.seriesProducts = products
+                let built = series.frames.values.compactMap { $0 }.filter(\.isObservation).map(\.processedTime)
+                self.processedTimes = (built.max(), ConnectionRules.cadence(processedTimes: built))
                 self.compose()
                 self.onSeries?(series)
+                if self.product == .merged || self.product == .colmax,
+                   series.products?[self.product.rawValue]?.isEmpty ?? true {
+                    self.onGaveUp?(self.product)
+                }
             }
         }
         seriesTask?.resume()
@@ -207,8 +233,9 @@ final class RadarEngine {
     private func compose() {
         guard let series else { return }
         let timeline = RadarTimeline(series: series, clock: Int(Date().timeIntervalSince1970), nowcast: nowcast,
-                                     network: seriesNetwork)
+                                     network: seriesNetwork, product: product)
         player.setTimeline(timeline)
+        updatePreloaded()
         if let time = pendingTime {
             pendingTime = nil
             player.show(time: time)
@@ -304,6 +331,14 @@ final class RadarEngine {
     /// Pictures were put together: a held step may be ready now.
     private func prepared() {
         if let held = heldFrame, isReady(held) { display(held) }
+        updatePreloaded()
+    }
+
+    /// Which steps are ready to show, for the strip's preload fill.
+    private func updatePreloaded() {
+        let timeline = player.timeline
+        let ready = Set(timeline.steps.filter { timeline.isPlayable($0) && !(timeline.layers[$0]?.isEmpty ?? true) && isReady($0) })
+        if ready != player.preloaded { player.preloaded = ready }
     }
 
     /// Puts the pictures of the steps coming up together ahead of time:
@@ -382,9 +417,7 @@ final class RadarEngine {
     /// 0.75 as core draws the radar; fainter while it is behind (core's
     /// `lib/freshness.ts`), so an old picture does not pass for the weather now.
     private var opacity: CGFloat {
-        let now = Int(Date().timeIntervalSince1970)
-        let stale = player.timeline.now.map { now - $0 > 15 * 60 } ?? false
-        return stale ? 0.75 * 0.45 : 0.75
+        0.75 * (stale ? 0.45 : 1) * (dimmed ? 0.55 : 1)
     }
 
     private func updateOpacity() {

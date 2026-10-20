@@ -41,4 +41,19 @@ final class NativeMapModel: ObservableObject {
     /// Something the map put over the controls, by owner; the controls hide
     /// while any is set.
     @Published var covers = Set<String>()
+    /// The tray is out of the way (a storm's sheet is up).
+    @Published var trayHidden = false
+    /// The place the tray's bars are for (core's strip title): the place
+    /// name once known, else what the bars measure; nil without a position.
+    @Published var trayTitle: String?
+    /// The name of the place the bars are for, from reverse geocoding.
+    @Published var placeName: String?
+    /// The legend shows dBZ values instead of pictograms (`radarLegendUnit`).
+    @Published var legendDBZ = false
+    /// The observed picture chosen (`radarProduct`).
+    @Published var product = RadarProduct.hx
+    /// The radar is behind (core's `radarStale`): dimmed, "Out of date".
+    @Published var stale = false
+    /// A toast at the top (core's `reportToast`), gone after a while.
+    @Published var toast: String?
 }

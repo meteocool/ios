@@ -13,7 +13,7 @@ xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch
 "$scratch/check-share"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainForecastCheck.swift -o "$scratch/check-rain"
 "$scratch/check-rain"
-xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/CoreStrings.swift meteocool/NativeMap/VectorTile.swift meteocool/AR/Colormaps.swift tests/NativeMapCheck.swift -o "$scratch/check-native-map"
+xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/CoreStrings.swift meteocool/NativeMap/VectorTile.swift meteocool/NativeMap/Chrome/TimelinePhysics.swift meteocool/NativeMap/Chrome/ConnectionRules.swift meteocool/AR/Colormaps.swift tests/NativeMapCheck.swift -o "$scratch/check-native-map"
 "$scratch/check-native-map"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
 "$scratch/check-widgets"
