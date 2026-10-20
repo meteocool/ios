@@ -188,6 +188,36 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
     }
 
+    /// A German city the radar has no rain for over the last two hours,
+    /// asked of the deployment the app opens on.
+    private func dryCity() -> (lat: Double, lon: Double)? {
+        let cities = [(52.52, 13.40), (48.14, 11.58), (50.94, 6.96), (51.34, 12.37), (49.45, 11.08), (53.55, 9.99), (50.11, 8.68)]
+        return cities.first { city in
+            guard let url = URL(string: "https://api-next.meteocool.com/v3/radar/timeseries?lat=\(city.0)&lon=\(city.1)"),
+                  let data = try? Data(contentsOf: url),
+                  let series = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let frames = series["frames"] as? [String: Any] else { return false }
+            let readings = frames.values.compactMap { ($0 as? [String: Any])?["dbz"] as? Double }
+            return !readings.isEmpty && readings.allSatisfy { $0 <= 0 }
+        }
+    }
+
+    func testDryOutlookOpensTheModelComparison() throws {
+        guard let city = dryCity() else { throw XCTSkip("Rain over every city asked") }
+        app.launchEnvironment["MC_USER_LOCATION"] = "\(city.lat),\(city.lon)"
+        launch(link: "?latLonZ=\(city.lat),\(city.lon),8")
+        waitForSeries()
+        // Dry here: the outlook of the days to come, and the way to every model.
+        XCTAssertTrue(element("nativeMap.outlook").waitForExistence(timeout: 40), "The dry outlook")
+        let all = element("nativeMap.outlook.all")
+        XCTAssertTrue(all.waitForExistence(timeout: 20))
+        screenshot("dry outlook")
+        all.tap()
+        XCTAssertTrue(element("nativeMap.compare").waitForExistence(timeout: 10))
+        element("nativeMap.compare.close").tap()
+        XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
+    }
+
     // MARK: - Storms
 
     /// Where the demo's newest storm is now: its replay moves on.
@@ -313,6 +343,27 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
     }
 
+    func testThreeDLabelOpensTheStormOnTheFlatMap() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),7&layer=cells3d", demo: true)
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
+        // A storm's label, in the open part of the screen.
+        let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
+        let screen = app.windows.firstMatch.frame
+        let label = try XCTUnwrap((0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
+            label.isHittable && label.frame.midY > screen.height * 0.2 && label.frame.midY < screen.height * 0.7
+        }, "A label in view")
+        label.tap()
+        let open = app.buttons["ar.openOnMap"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        open.tap()
+        // The flat map, the storm open on it.
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
+        screenshot("storm opened on the flat map")
+    }
+
     func testStormPanelCutsItOpenAndOpensItInThreeD() throws {
         // A storm whose newest step is the patch a listed core was cut from:
         // the scan the demo's cores and storms are both at now.
@@ -347,24 +398,32 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
     }
 
-    func testCellPanelShowsItsMeasuredStructure() throws {
-        // A KONRAD3D cell the demo measured in layers, opened by its link:
-        // from the tracks, which keep a cell for a while after the newest
-        // run's list has moved on.
-        let answer = demoJSON("cells/tracks?bbox=-10,35,30,60") as? [String: Any]
-        let cells = (answer?["features"] as? [[String: Any]] ?? []).compactMap { track -> (String, Double, Double)? in
-            guard let p = track["properties"] as? [String: Any], let structure = p["structure"] as? [Any], !structure.isEmpty,
-                  let code = p["code"] as? String, let at = (p["series"] as? [[String: Any]])?.last,
-                  let lat = at["lat"] as? Double, let lon = at["lon"] as? Double else { return nil }
-            return (code, lat, lon)
-        }
-        // One whose own track is served: a run's tracks can lag its list.
-        let served = cells.first { (demoJSON("cells/tracks/\($0.0)") as? [String: Any])?["properties"] != nil }
-        guard let (code, lat, lon) = served else { throw XCTSkip("No KONRAD3D cell with a structure in the last runs") }
-        launch(link: "?latLonZ=\(lat),\(lon),8&cell=\(code)", demo: true)
+    /// A KONRAD3D cell measured in three layers, as `/cells/tracks/{code}`
+    /// sends it, seen a minute ago.
+    private static func cellFixture(code: String) -> String {
+        let iso = ISO8601DateFormatter()
+        let seen = iso.string(from: Date().addingTimeInterval(-60))
+        let born = iso.string(from: Date().addingTimeInterval(-40 * 60))
+        return """
+        {"type": "Feature", "properties": {"code": "\(code)", "first_seen": "\(born)", "last_seen": "\(seen)",
+         "n_steps": 9, "active": true, "max_severity": 2, "max_dbz": 58, "echo_top_max_m": 11000, "echo_bottom_m": 1200,
+         "polygon": [[11.50, 48.10], [11.62, 48.10], [11.62, 48.18], [11.50, 48.18]],
+         "series": [{"t": "\(seen)", "lon": 11.56, "lat": 48.14, "severity": 2, "max_dbz": 58, "echo_top_m": 11000, "area_km2": 95}],
+         "structure": [{"dbz": 30, "area_km2": 95, "top_m": 9200, "volume_km3": 400},
+                       {"dbz": 45, "area_km2": 30, "top_m": 7600, "volume_km3": 100},
+                       {"dbz": 55, "area_km2": 4, "top_m": 6100, "volume_km3": 12}]}}
+        """
+    }
+
+    func testCellPanelShowsItsMeasuredStructure() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
         let model = element("nativeMap.storm.structure")
-        XCTAssertTrue(model.waitForExistence(timeout: 20), "The cell's measured model")
+        // Below the readings: scrolled to where it is drawn.
+        for _ in 0 ..< 4 where !model.exists { element("nativeMap.storm.details").swipeUp() }
+        XCTAssertTrue(model.waitForExistence(timeout: 10), "The cell's measured model")
         screenshot("cell structure")
     }
 

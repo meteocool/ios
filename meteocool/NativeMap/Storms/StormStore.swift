@@ -281,6 +281,17 @@ final class StormStore: ObservableObject {
     /// A cell from a link (`cell=`): fetched, then resolved to its storm.
     func openCell(code: String, details: Bool) {
         guard let map else { return }
+        #if DEBUG && targetEnvironment(simulator)
+        // UI tests open a cell of their own (`MC_CELL_FIXTURE`, a track
+        // feature as `/cells/tracks/{code}` sends it): the demo's cells come
+        // and go with its replay.
+        if let fixture = ProcessInfo.processInfo.environment["MC_CELL_FIXTURE"],
+           let track = StormJSON.track(Data(fixture.utf8)), track.code == code {
+            selection = StormSelect.withCell(selection, track)
+            self.details = details
+            return
+        }
+        #endif
         map.fetch(map.endpoints.data.appendingPathComponent("cells/tracks/\(code)")) { [weak self] data, status in
             guard let self else { return }
             if let data, let track = StormJSON.track(data) {
