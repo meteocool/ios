@@ -92,6 +92,16 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // `--environment-variables` on a phone).
         if let search = ProcessInfo.processInfo.environment["MC_NATIVE_MAP_LINK"] { open(search: search) }
         #endif
+        #if DEBUG && targetEnvironment(simulator)
+        // And a position of the user's own (`MC_USER_LOCATION='48.14,11.58'`),
+        // held whatever Core Location says: UI tests of what is shown for it.
+        if let pair = ProcessInfo.processInfo.environment["MC_USER_LOCATION"]?.split(separator: ","), pair.count == 2,
+           let latitude = Double(pair[0]), let longitude = Double(pair[1]) {
+            heldLocation = CLLocation(coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude), altitude: 0,
+                                      horizontalAccuracy: 30, verticalAccuracy: -1, timestamp: Date())
+            showLocation(heldLocation, zoom: false, focus: false)
+        }
+        #endif
         // Nothing to keep live in the background; `ViewController` starts
         // it again when the app is active.
         NotificationCenter.default.addObserver(self, selector: #selector(enteredBackground),
@@ -600,11 +610,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     // MARK: - The host's calls
 
+    /// A position for UI tests that Core Location does not replace.
+    private var heldLocation: CLLocation?
+
     /// The user's position from the location button, as core's
     /// `lm.updateLocation`: `zoom` zooms in by the fix's accuracy, `focus`
     /// centres on it. Nil hides the dot.
     func showLocation(_ location: CLLocation?, zoom: Bool, focus: Bool) {
-        mapView.showsUserLocation = location != nil
+        let location = heldLocation ?? location
+        mapView.showsUserLocation = location != nil && heldLocation == nil
         model.userLocation = location
         guard let location else { return }
         if focus {
