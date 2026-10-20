@@ -313,6 +313,12 @@ enum ARCheck {
                      "https://app.meteocool.com.evil.example/?layer=radar", "https://evil.example/?layer=radar"] {
             precondition(opening(link) == nil, link)
         }
+        // Other apps' links into the map, on meteocool's own scheme.
+        precondition(opening("meteocool://map?latLonZ=48.1374,11.5755,9.0") == "?latLonZ=48.1374,11.5755,9.0")
+        for link in ["meteocool://", "meteocool://map", "meteocool://map?", "meteocool://other?latLonZ=1,2,3",
+                     "meteocool://map/ios.html?layer=radar"] {
+            precondition(opening(link) == nil, link)
+        }
         let script = MapLink.openScript(search: "?a=\"</script>")!
         precondition(script.contains(#"["?a=\"<\/script>"][0]"#) || script.contains(#"["?a=\"</script>"][0]"#), script)
     }
