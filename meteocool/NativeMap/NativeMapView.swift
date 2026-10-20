@@ -86,9 +86,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         for feature in Self.makeFeatures() { add(feature) }
         applySettings()
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG || FRAME_TIMING
         // A view and frame to open at, to hold the map against core's:
-        // `MC_NATIVE_MAP_LINK='?latLonZ=45.8,4.6,7'`.
+        // `MC_NATIVE_MAP_LINK='?latLonZ=45.8,4.6,7'` (devicectl's
+        // `--environment-variables` on a phone).
         if let search = ProcessInfo.processInfo.environment["MC_NATIVE_MAP_LINK"] { open(search: search) }
         #endif
         // Nothing to keep live in the background; `ViewController` starts

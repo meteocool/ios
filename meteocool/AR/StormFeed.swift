@@ -231,16 +231,25 @@ final class StormFeed {
     /// does not refetch what was just dropped.
     static let spareBytes = 8 * 1024 * 1024
 
+    /// Bumped whenever what the storms are placed and drawn from changes:
+    /// the boxes, their volumes and cells, or where they are seen from.
+    private(set) var revision = 0
     private(set) var status: Status = .loading
     /// The storms' fine tiles, or their boxes from before tiles.
-    private(set) var entries: [StormEntry] = []
+    private(set) var entries: [StormEntry] = [] { didSet { if entries != oldValue { revision &+= 1 } } }
     /// Coarse zoom-9 tiles, by `tile`: about 1 km a voxel, drawn in place of
     /// the fine tiles inside them for storms far away (see `drawUnit`).
-    private(set) var coarse: [[Int]: StormEntry] = [:]
-    private(set) var volumes: [String: StormVolume] = [:]
-    private(set) var cellsByPath: [String: TrackedCell] = [:]
+    private(set) var coarse: [[Int]: StormEntry] = [:] { didSet { if coarse != oldValue { revision &+= 1 } } }
+    private(set) var volumes: [String: StormVolume] = [:] {
+        didSet { if volumes.count != oldValue.count || volumes.keys.contains(where: { oldValue[$0] == nil }) { revision &+= 1 } }
+    }
+    private(set) var cellsByPath: [String: TrackedCell] = [:] {
+        didSet { if cellsByPath.mapValues({ $0.code + ($0.t ?? "") }) != oldValue.mapValues({ $0.code + ($0.t ?? "") }) { revision &+= 1 } }
+    }
     /// The cells as last read, linked to boxes by `linkCells`.
-    private(set) var cells: [TrackedCell] = []
+    private(set) var cells: [TrackedCell] = [] {
+        didSet { if cells.map({ $0.code + ($0.t ?? "") }) != oldValue.map({ $0.code + ($0.t ?? "") }) { revision &+= 1 } }
+    }
     private(set) var tracks: [String: CellTrack] = [:]
     private(set) var strikes: [LightningStrike] = []
     private(set) var mesocyclones: [Mesocyclone] = []
@@ -253,6 +262,7 @@ final class StormFeed {
     /// Where the viewer stands. Storms are filtered and ranked from here.
     var viewer: (lat: Double, lon: Double)? {
         didSet {
+            revision &+= 1
             reconcile()
             // Tracks are asked for around the viewer; the poll's first round
             // may have gone by before there was one.
@@ -275,7 +285,9 @@ final class StormFeed {
     /// An earlier scan shown in place of the newest (the 3D map's picker),
     /// and the newest list, kept for when it goes back.
     private(set) var pinnedScan: Int?
-    private var latestIndex: VolumeIndex?
+    private var latestIndex: VolumeIndex? {
+        didSet { newestScan = (latestIndex?.volumes ?? []).compactMap { ScanHistory.scan(ofPath: $0.path) }.max() }
+    }
     private var polls: [Task<Void, Never>] = []
     private let session: URLSession
     private let decoder: JSONDecoder = {
@@ -399,9 +411,9 @@ final class StormFeed {
     // MARK: Earlier scans
 
     /// The newest scan listed, unix seconds.
-    var newestScan: Int? {
-        (latestIndex?.volumes ?? []).compactMap { ScanHistory.scan(ofPath: $0.path) }.max()
-    }
+    /// Kept as the list arrives: read by the 3D map's tray several times a
+    /// second, and parsing every path's scan each time stalled its frames.
+    private(set) var newestScan: Int?
 
     /// Asks the bucket for `scan`'s storms around where they are now, and
     /// shows them in place of the newest; false when it found none.

@@ -350,6 +350,8 @@ struct ModelCompareView: View {
                     footer
                 }
             }
+            // Full width while the models are still being asked, too.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, wide ? 18 : 16)
             .padding(.top, wide ? 4 : 21)
             .padding(.bottom, 28)
