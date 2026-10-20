@@ -45,6 +45,8 @@ final class NativeMapModel: ObservableObject {
     @Published var trayHidden = false
     /// The model comparison is open (`modelCompareAt`).
     @Published var compareOpen = false
+    /// When the other maps' picture was made (`capLastUpdated`).
+    @Published var lastUpdated: Date?
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?
