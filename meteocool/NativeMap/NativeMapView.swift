@@ -224,6 +224,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
         notices.radarShown = radar
         stripsChrome?.isHidden = !(notices.showNoRadar || notices.showNoForecast)
+        stripsChrome?.invalidateIntrinsicContentSize()
         setNeedsLayout()
     }
 

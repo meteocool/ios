@@ -57,6 +57,8 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
             UIView.animate(withDuration: 0.2) {
                 self.hint.isHidden = !wantsHint
                 self.hint.alpha = wantsHint ? 1 : 0
+                // Its content changed while it was hidden: measured again.
+                self.hint.invalidateIntrinsicContentSize()
                 self.hint.superview?.layoutIfNeeded()
             }
         }
@@ -319,6 +321,8 @@ struct StormHintBar: View {
             .padding(.trailing, 2)
             .frame(maxHeight: .infinity)
         }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.storm.hint")
     }
 }

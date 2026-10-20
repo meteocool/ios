@@ -90,6 +90,7 @@ final class DryOutlookDock {
             UIView.animate(withDuration: 0.2) {
                 self.host.isHidden = !wanted
                 self.host.alpha = wanted ? 1 : 0
+                self.host.invalidateIntrinsicContentSize()
                 self.host.superview?.layoutIfNeeded()
             }
         }
@@ -187,6 +188,8 @@ struct DryOutlookStrip: View {
             .padding(.top, 8)
             .environment(\.colorScheme, theme.colorScheme)
         }
+        // A container: its own children keep their identifiers.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.outlook")
     }
 }

@@ -184,11 +184,13 @@ struct NoticeStrips: View {
                 DismissableStrip(title: CoreStrings.t("radar_no_coverage"), theme: theme, dismiss: { notices.noRadarDismissed = true }) {
                     Text(CoreStrings.plain("radar_no_coverage_body")).notice(theme)
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("nativeMap.strip.noRadar")
             } else if notices.showNoForecast {
                 DismissableStrip(title: CoreStrings.t("forecast_no_coverage"), theme: theme, dismiss: { notices.noForecastDismissed = true }) {
                     Text(CoreStrings.plain(notices.nowcast ? "forecast_no_coverage_body_nowcast" : "forecast_no_coverage_body")).notice(theme)
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("nativeMap.strip.noForecast")
             }
         }
