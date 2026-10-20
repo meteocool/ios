@@ -179,7 +179,13 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let storms = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
         XCTAssertTrue(storms.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
-        storms.element(boundBy: min(2, storms.count - 1)).tap()
+        // One on screen, clear of the controls: MapKit lists marks off the edge too.
+        let onScreen = (0 ..< storms.count).map { storms.element(boundBy: $0) }.first { storm in
+            let frame = storm.frame
+            return frame.midX > 30 && frame.midX < 320 && frame.midY > 150 && frame.midY < 600
+        }
+        XCTAssertNotNil(onScreen, "A storm in view")
+        onScreen?.tap()
         let hint = element("nativeMap.storm.hint")
         XCTAssertTrue(hint.waitForExistence(timeout: 10))
         element("nativeMap.storm.hint.details").tap()
@@ -268,7 +274,8 @@ final class NativeMapUITests: XCTestCase {
         launch()
         waitForSeries()
         app.buttons["map.share.button"].tap()
-        let sheet = app.otherElements["map.share"].firstMatch
+        // The app names its sheet; newer systems show their own list in its place.
+        let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 10))
         screenshot("share sheet")
     }

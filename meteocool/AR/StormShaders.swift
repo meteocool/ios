@@ -365,6 +365,42 @@ fragment float4 line_fragment(LineOut in [[stage_in]]) {
     return in.colour;
 }
 
+// MARK: - Cell solids (the 3D map)
+
+struct SolidVertex {
+    float4 position;                // world metres, w = 1
+    float4 normal;                  // xyz
+    float4 colour;                  // straight RGBA
+};
+
+struct SolidUniforms {
+    float4x4 viewProjection;
+    float4 light;                   // xyz: towards the light
+};
+
+struct SolidOut {
+    float4 position [[position]];
+    float3 normal;
+    float4 colour;
+};
+
+vertex SolidOut solid_vertex(uint vid [[vertex_id]], const device SolidVertex *vertices [[buffer(0)]],
+                             constant SolidUniforms &u [[buffer(1)]]) {
+    SolidOut out;
+    out.position = u.viewProjection * vertices[vid].position;
+    out.normal = vertices[vid].normal.xyz;
+    out.colour = vertices[vid].colour;
+    return out;
+}
+
+/// Lit from the sun's side and the sky, so a column's walls read as walls.
+fragment float4 solid_fragment(SolidOut in [[stage_in]], constant SolidUniforms &u [[buffer(1)]]) {
+    float3 n = normalize(in.normal);
+    float shade = 0.62 + 0.38 * saturate(dot(n, normalize(u.light.xyz)));
+    float3 rgb = in.colour.rgb * shade;
+    return float4(rgb * in.colour.a, in.colour.a);
+}
+
 // MARK: - Map ground (the 3D map)
 
 struct GroundVertex {
@@ -473,4 +509,17 @@ struct GroundUniforms {
     var viewProjection: simd_float4x4
     var camera: SIMD4<Float>
     var haze: SIMD4<Float>
+}
+
+/// Mirrors `SolidVertex` in `StormShaders.source`.
+struct SolidVertex {
+    var position: SIMD4<Float>
+    var normal: SIMD4<Float>
+    var colour: SIMD4<Float>
+}
+
+/// Mirrors `SolidUniforms` in `StormShaders.source`.
+struct SolidUniforms {
+    var viewProjection: simd_float4x4
+    var light: SIMD4<Float>
 }
