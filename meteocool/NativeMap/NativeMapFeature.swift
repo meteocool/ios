@@ -43,8 +43,15 @@ protocol NativeMapContext: AnyObject {
     func addToDock<Content: View>(_ content: Content) -> UIView
     /// Switches between core's maps (`lm.setTarget`).
     func setCapability(_ capability: NativeMapModel.Capability)
-    /// The share sheet for a link to what is on screen, under `title`.
-    func shareMap(title: String, source: UIView?)
+    /// The share sheet for a link to what is on screen, under `title`;
+    /// centred on `center` when given, with `extra` added to the query.
+    func shareMap(title: String, source: UIView?, center: CLLocationCoordinate2D?, extra: [String: String])
+}
+
+extension NativeMapContext {
+    func shareMap(title: String, source: UIView?) {
+        shareMap(title: title, source: source, center: nil, extra: [:])
+    }
 }
 
 /// One part of the native map: an overlay, marks, a sheet, a capability.
@@ -60,6 +67,8 @@ protocol NativeMapFeature: AnyObject {
     func didTap(at coordinate: CLLocationCoordinate2D, point: CGPoint) -> Bool
     /// A long press on the map; true when handled.
     func didLongPress(at coordinate: CLLocationCoordinate2D) -> Bool
+    /// The map is about to move (a pan, a zoom, a link).
+    func regionWillChange()
     func regionDidChange()
     /// The step on screen changed (also when the timeline was replaced).
     func stepDidChange(_ step: RadarStep)
@@ -89,6 +98,7 @@ extension NativeMapFeature {
     func didSelect(_ annotation: MKAnnotation) -> Bool { false }
     func didTap(at coordinate: CLLocationCoordinate2D, point: CGPoint) -> Bool { false }
     func didLongPress(at coordinate: CLLocationCoordinate2D) -> Bool { false }
+    func regionWillChange() {}
     func regionDidChange() {}
     func stepDidChange(_ step: RadarStep) {}
     func wake() {}

@@ -317,7 +317,17 @@ final class StormMarks: NativeMapFeature {
             }
         }
         let c = store.$details.sink { [weak self] _ in DispatchQueue.main.async { self?.sheet?.update() } }
-        observers = [a, b, c]
+        // Another part cleared the selection (a hold on the map, the model
+        // comparison): the store follows. Only a storm's id is mirrored, so a
+        // cell still being resolved is left alone.
+        let d = map?.model.$selectedStorm.dropFirst().sink { [weak self] id in
+            DispatchQueue.main.async {
+                guard let self, id == nil, self.map?.model.selectedStorm == nil,
+                      let selection = self.store.selection, selection.id != nil else { return }
+                self.store.selection = nil
+            }
+        }
+        observers = [a, b, c] + (d.map { [$0] } ?? [])
     }
 
     private var visible: Bool {

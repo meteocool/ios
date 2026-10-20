@@ -104,7 +104,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), RadarWash()]
+        [SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), PointFeature(), RadarWash()]
     }
 
     /// Adds a part; it is attached at once.
@@ -314,7 +314,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        // Taps on marks are the map's own (`didSelect`).
+        // Taps on marks are the map's own (`didSelect`); a hold is the map's
+        // wherever it lands, as core's is.
+        if gestureRecognizer is UILongPressGestureRecognizer { return true }
         var view = touch.view
         while let current = view, current !== mapView {
             if current is MKAnnotationView { return false }
@@ -625,17 +627,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     /// A link to what is on screen, in core's spelling, for the share sheet.
-    func shareMap(title: String, source: UIView?) {
-        guard let share = share(title: title) else { return }
+    func shareMap(title: String, source: UIView?, center: CLLocationCoordinate2D?, extra: [String: String]) {
+        guard let share = share(title: title, center: center, extra: extra) else { return }
         host?.shareFromMap(share, source: source)
     }
 
-    func share(title: String = "meteocool") -> MapShare? {
-        let center = mapView.centerCoordinate
+    func share(title: String = "meteocool", center: CLLocationCoordinate2D? = nil, extra given: [String: String] = [:]) -> MapShare? {
+        let center = center ?? mapView.centerCoordinate
         let time = player.step != player.timeline.now ? player.step : nil
         let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: zoomLevel, time: time)
         let shared = NativeMapLink.frameLink(Int(Date().timeIntervalSince1970) / 60 * 60)
         var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
+        extra.merge(given) { _, new in new }
         for feature in features { extra.merge(feature.linkParameters()) { first, _ in first } }
         var components = URLComponents()
         components.queryItems = extra.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
@@ -708,6 +711,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
         _ = features.first { $0.didSelect(annotation) }
+    }
+
+    func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+        for feature in features { feature.regionWillChange() }
     }
 
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {

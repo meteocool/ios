@@ -43,6 +43,8 @@ final class NativeMapModel: ObservableObject {
     @Published var covers = Set<String>()
     /// The tray is out of the way (a storm's sheet is up).
     @Published var trayHidden = false
+    /// The model comparison is open (`modelCompareAt`).
+    @Published var compareOpen = false
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?
