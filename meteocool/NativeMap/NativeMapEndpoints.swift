@@ -51,6 +51,7 @@ struct NativeMapEndpoints: Equatable, Sendable {
     }
 
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }
+    var snow: URL { api.appendingPathComponent("v3/radar/snow") }
     var lightning: URL { data.appendingPathComponent("lightning_cache") }
     var mesocyclones: URL { data.appendingPathComponent("mesocyclones/all/") }
 

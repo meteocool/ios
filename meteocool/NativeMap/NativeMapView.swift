@@ -71,6 +71,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // it again when the app is active.
         NotificationCenter.default.addObserver(self, selector: #selector(enteredBackground),
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: NativeMapView, _: UITraitCollection) in
+            view.appearanceChanged()
+        }
         model.$covers
             .sink { [weak self] covers in self?.host?.mapCovered(!covers.isEmpty, by: "nativeMap") }
             .store(in: &observers)
@@ -81,7 +84,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [LightningMarks(), MesocycloneMarks(), StormMarks()]
+        [SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), RadarWash()]
     }
 
     /// Adds a part; it is attached at once.
@@ -190,8 +193,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
+    private func appearanceChanged() {
         let dark = traitCollection.userInterfaceStyle == .dark
         if dark != model.isDark {
             model.isDark = dark
