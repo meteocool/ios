@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Åskväder";
 "native_map_layer_nowcast" = "Radarns korttidsprognos";
 "native_map_inspected_point" = "Vald punkt";
+"native_map_3d_pinch" = "Nyp";
+"native_map_3d_two_fingers" = "Två fingrar";
+"native_map_3d_tap" = "Tryck";

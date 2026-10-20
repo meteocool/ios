@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Äikesed";
 "native_map_layer_nowcast" = "Radari lühiprognoos";
 "native_map_inspected_point" = "Valitud punkt";
+"native_map_3d_pinch" = "Näpista";
+"native_map_3d_two_fingers" = "Kaks sõrme";
+"native_map_3d_tap" = "Puuduta";

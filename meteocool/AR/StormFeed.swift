@@ -272,6 +272,10 @@ final class StormFeed {
     private var incoming: VolumeIndex?
     private var incomingSince = Date.distantPast
     static let swapAfter: TimeInterval = 25
+    /// An earlier scan shown in place of the newest (the 3D map's picker),
+    /// and the newest list, kept for when it goes back.
+    private(set) var pinnedScan: Int?
+    private var latestIndex: VolumeIndex?
     private var polls: [Task<Void, Never>] = []
     private let session: URLSession
     private let decoder: JSONDecoder = {
@@ -370,6 +374,14 @@ final class StormFeed {
             if listedAt == nil { status = .failed; onChange?() }
             return
         }
+        latestIndex = index
+        if pinnedScan != nil {
+            // An earlier scan is on show; the newest waits for "Latest".
+            listedAt = Date()
+            status = .ready
+            onChange?()
+            return
+        }
         let listed = Set(entries.map(\.path) + coarse.values.map(\.path))
         if volumes.isEmpty || Set((index.volumes ?? []).map(\.path)) == listed {
             ingest(index)
@@ -380,6 +392,56 @@ final class StormFeed {
         }
         listedAt = Date()
         status = .ready
+        reconcile()
+        onChange?()
+    }
+
+    // MARK: Earlier scans
+
+    /// The newest scan listed, unix seconds.
+    var newestScan: Int? {
+        (latestIndex?.volumes ?? []).compactMap { ScanHistory.scan(ofPath: $0.path) }.max()
+    }
+
+    /// Asks the bucket for `scan`'s storms around where they are now, and
+    /// shows them in place of the newest; false when it found none.
+    func showScan(_ scan: Int, progress: @escaping @MainActor (Double) -> Void) async -> (found: Bool, failed: Bool) {
+        let listed = latestIndex?.volumes ?? (entries + Array(coarse.values))
+        let template = listed.first?.path ?? ScanHistory.fallbackTemplate
+        var known: [String: Int] = [:]
+        for entry in listed {
+            if let network = entry.network, known[network] == nil, let at = ScanHistory.scan(ofPath: entry.path) { known[network] = at }
+        }
+        let session = session
+        let result = await ScanHistory.find(scan: scan, places: ScanHistory.places(from: listed, viewer: viewer), template: template,
+                                            knownScans: known, fetch: { path in
+                                                guard let url = URL(string: path, relativeTo: NetworkHelper.assetURL) else { return nil }
+                                                var request = URLRequest(url: url)
+                                                request.timeoutInterval = 30
+                                                let (data, response) = try await session.data(for: request)
+                                                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                                                if status == 403 || status == 404 { return nil }
+                                                guard (200 ..< 300).contains(status) else { throw URLError(.badServerResponse) }
+                                                return try StormVolume.decode(data)
+                                            }, progress: progress)
+        guard !result.entries.isEmpty else { return (false, result.failed > 0) }
+        pinnedScan = scan
+        incoming = nil
+        entries = result.entries.filter { $0.coarse != true }
+        coarse = Dictionary(result.entries.compactMap { entry in entry.coarse == true ? entry.tile.map { ($0, entry) } : nil },
+                            uniquingKeysWith: { first, _ in first })
+        for (path, volume) in result.volumes { volumes[path] = volume }
+        linkCells()
+        reconcile()
+        onChange?()
+        return (true, false)
+    }
+
+    /// Back to the newest scan.
+    func showLatest() {
+        guard pinnedScan != nil else { return }
+        pinnedScan = nil
+        if let latestIndex { ingest(latestIndex) }
         reconcile()
         onChange?()
     }

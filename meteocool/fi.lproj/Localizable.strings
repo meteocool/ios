@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Ukkoset";
 "native_map_layer_nowcast" = "Tutkan lähiennuste";
 "native_map_inspected_point" = "Valittu kohta";
+"native_map_3d_pinch" = "Nipistä";
+"native_map_3d_two_fingers" = "Kaksi sormea";
+"native_map_3d_tap" = "Napauta";

@@ -241,3 +241,6 @@
 "native_map_layer_storms" = "Audros";
 "native_map_layer_nowcast" = "Radaro trumpalaikė prognozė";
 "native_map_inspected_point" = "Pasirinktas taškas";
+"native_map_3d_pinch" = "Suimkite";
+"native_map_3d_two_fingers" = "Du pirštai";
+"native_map_3d_tap" = "Bakstelėkite";

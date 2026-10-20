@@ -284,6 +284,14 @@ final class ThreeDState: ObservableObject {
     @Published var bearing: Double = 0
     @Published var dark = true
     @Published var selected: String?
+    /// The scan the storms are from: nil for the newest (`cloudsTime`).
+    @Published var scanShown: Int?
+    @Published var scanLoading: Int?
+    @Published var scanProgress = 0.0
+    @Published var scanNote: String?
+    @Published var newestScan: Int?
+    var pickScan: (Int?) -> Void = { _ in }
+    var openGuide: () -> Void = {}
     var setMode: (ARViewMode) -> Void = { _ in }
     var setSlider: (Double) -> Void = { _ in }
     var north: () -> Void = {}
@@ -358,6 +366,8 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         state.setMode = { [weak self] in self?.setMode($0) }
         state.setSlider = { [weak self] in self?.setSlider($0) }
         state.north = { [weak self] in self?.camera.bearing = 0 }
+        state.pickScan = { [weak self] in self?.pickScan($0) }
+        state.openGuide = { [weak self] in self?.openGuide() }
         state.open = { [weak self] in
             guard let self, let key = self.scene?.selectedKey else { return }
             self.open(key)
@@ -426,7 +436,56 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         refreshStatus()
     }
 
+    // MARK: The guide
+
+    /// What the marks mean and how to move the map (`Guide3D.svelte`).
+    private func openGuide() {
+        guard let map else { return }
+        var controller: UIViewController?
+        let guide = ThreeDGuide(palette: scene?.palette ?? "classic") { controller?.dismiss(animated: true) }
+        let host = UIHostingController(rootView: guide)
+        controller = host
+        host.modalPresentationStyle = .pageSheet
+        host.sheetPresentationController?.detents = [.medium(), .large()]
+        host.sheetPresentationController?.prefersGrabberVisible = true
+        map.host?.presentOverMap(host)
+    }
+
+    // MARK: Earlier scans
+
+    /// One of the last two hours' scans, looked for in the bucket, or the
+    /// newest again (`Cells3DCapability.showScan`). The radar under it is
+    /// the same scan's.
+    private func pickScan(_ scan: Int?) {
+        guard let map else { return }
+        guard let scan else {
+            feed.showLatest()
+            state.scanShown = nil
+            state.scanLoading = nil
+            map.player.showLive()
+            return
+        }
+        state.scanLoading = scan
+        state.scanProgress = 0
+        state.scanNote = nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let result = await self.feed.showScan(scan) { [weak self] share in self?.state.scanProgress = share }
+            guard self.state.scanLoading == scan else { return }
+            self.state.scanLoading = nil
+            if result.found {
+                self.state.scanShown = scan
+                map.player.show(time: scan)
+            } else {
+                self.state.scanNote = CoreStrings.t(result.failed ? "time_3d.failed" : "time_3d.nothing", ["time": StatusPill.clock(scan)])
+                try? await Task.sleep(for: .seconds(6))
+                if self.state.scanNote != nil { self.state.scanNote = nil }
+            }
+        }
+    }
+
     private func refreshStatus() {
+        if state.newestScan != feed.newestScan { state.newestScan = feed.newestScan }
         switch feed.status {
         case .loading: state.status = NSLocalizedString("ar_status_loading", comment: "")
         case .failed: state.status = NSLocalizedString("ar_status_failed", comment: "")
@@ -745,17 +804,30 @@ struct ThreeDHUD: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            if let note = state.scanNote ?? state.status {
+                Text(note)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(theme.text)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .chromeGlass(theme, in: Capsule())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier(state.scanNote != nil ? "nativeMap.3d.scanNote" : "nativeMap.3d.status")
+            }
             HStack {
-                if let status = state.status {
-                    Text(status)
+                scanPicker
+                Spacer()
+                Button(action: state.openGuide) {
+                    Text(CoreStrings.t("guide_3d.pill"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(theme.text)
                         .padding(.horizontal, 12)
                         .frame(height: 32)
+                        .foregroundStyle(theme.text)
                         .chromeGlass(theme, in: Capsule())
-                        .accessibilityIdentifier("nativeMap.3d.status")
                 }
-                Spacer()
+                .buttonStyle(PressScale())
+                .accessibilityHint(CoreStrings.t("guide_3d.open"))
+                .accessibilityIdentifier("nativeMap.3d.guideButton")
                 if state.selected != nil {
                     Button(action: state.open) {
                         Text(CoreStrings.t("storm.hint.details") + " ›")
@@ -814,6 +886,42 @@ struct ThreeDHUD: View {
             .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous))
         }
         .environment(\.colorScheme, theme.colorScheme)
+    }
+}
+
+extension ThreeDHUD {
+    /// "Latest", or one of the last two hours' scans (`ScanPicker.svelte`):
+    /// filled with its time while the map is not live.
+    @ViewBuilder
+    var scanPicker: some View {
+        let theme = ChromeTheme(dark: model.isDark)
+        let face = state.scanLoading ?? state.scanShown
+        Menu {
+            Button(CoreStrings.t("time_3d.latest")) { state.pickScan(nil) }
+            if let newest = state.newestScan {
+                ForEach(ScanHistory.earlierScans(newest: newest), id: \.self) { scan in
+                    Button(StatusPill.clock(scan)) { state.pickScan(scan) }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                if state.scanLoading != nil {
+                    ProgressView(value: state.scanProgress).progressViewStyle(.circular).controlSize(.mini)
+                } else {
+                    Image(systemName: "clock.arrow.circlepath").font(.system(size: 13, weight: .semibold))
+                }
+                Text(face.map(StatusPill.clock) ?? CoreStrings.t("time_3d.latest"))
+                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+            .foregroundStyle(state.scanShown != nil ? Color.white : theme.text)
+            .background(state.scanShown != nil ? AnyShapeStyle(theme.accent) : AnyShapeStyle(Color.clear), in: Capsule())
+            .chromeGlass(theme, in: Capsule())
+        }
+        .accessibilityLabel(face.map { CoreStrings.t("time_3d.past_aria", ["time": StatusPill.clock($0)]) } ?? CoreStrings.t("time_3d.latest_aria"))
+        .accessibilityHint(CoreStrings.t("time_3d.choose"))
+        .accessibilityIdentifier("nativeMap.3d.scan")
     }
 }
 
