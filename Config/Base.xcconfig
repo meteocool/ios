@@ -13,6 +13,14 @@ BUNDLE_PREFIX = org.frcy.app
 // Apple Developer Team ID used for automatic signing.
 DEVELOPMENT_TEAM = 4L2672L4VX
 
+// The app icon: AppIcon for the App Store; local builds may set
+// AppIconNative, the same with a radar-coloured sash, to tell them apart on a
+// home screen (scripts/app-icon.py makes both).
+APP_ICON = AppIcon
+// The other icon stays out of the build.
+APP_ICON_UNUSED = AppIconNative.icon
+EXCLUDED_SOURCE_FILE_NAMES = $(APP_ICON_UNUSED)
+
 // ---- Versioning -----------------------------------------------------------
 
 MARKETING_VERSION = 4.0.0
