@@ -47,25 +47,28 @@ struct SliceDial: View {
                     .font(.subheadline.weight(.semibold))
                     .accessibilityHidden(true)
                 Spacer(minLength: 0)
-                if abs(CutAngle.normalise(cut.shown)).truncatingRemainder(dividingBy: 180) >= 1 {
-                    Button(action: reset) {
-                        Label(CoreStrings.t(reference == .north ? "storm.cut.reset_north" : "storm.cut.reset_track"),
-                              systemImage: "arrow.uturn.backward")
-                            .font(.footnote.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 30)
-                            .background(Color(.tertiarySystemFill), in: Capsule())
-                            // The hit region a finger needs, round a smaller capsule.
-                            .padding(.vertical, 7)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressScale())
-                    .transition(.opacity)
-                    .accessibilityIdentifier("nativeMap.storm.dial.reset")
+                // Shown once the cut is off the track (or north–south); its
+                // fade is its own, not the caption's, which only changes.
+                let off = abs(CutAngle.normalise(cut.shown)).truncatingRemainder(dividingBy: 180) >= 1
+                Button(action: reset) {
+                    Label(CoreStrings.t(reference == .north ? "storm.cut.reset_north" : "storm.cut.reset_track"),
+                          systemImage: "arrow.uturn.backward")
+                        .font(.footnote.weight(.medium))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 30)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                        // The hit region a finger needs, round a smaller capsule.
+                        .padding(.vertical, 7)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(PressScale())
+                .opacity(off ? 1 : 0)
+                .allowsHitTesting(off)
+                .accessibilityHidden(!off)
+                .animation(.easeOut(duration: 0.15), value: off)
+                .accessibilityIdentifier("nativeMap.storm.dial.reset")
             }
             .frame(minHeight: 44)
-            .animation(.easeOut(duration: 0.15), value: abs(CutAngle.normalise(cut.shown)).truncatingRemainder(dividingBy: 180) >= 1)
             ruler
         }
         .onAppear { angle = cut.shown }

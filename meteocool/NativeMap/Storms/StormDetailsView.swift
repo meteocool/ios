@@ -29,6 +29,7 @@ struct StormDetailsView: View {
     @State private var scrolled = false
 
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.dynamicTypeSize) private var typeSize
     private let t: StormTranslate = { CoreStrings.t($0, $1) }
 
     var body: some View {
@@ -45,7 +46,7 @@ struct StormDetailsView: View {
                     if let openAR {
                         Button(action: openAR) {
                             Text(NSLocalizedString("map_ar", comment: ""))
-                                .font(.system(size: 15, weight: .semibold))
+                                .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                                 .frame(maxWidth: .infinity, minHeight: 44)
                                 .foregroundStyle(Color.accentColor)
                                 .background(Color.accentColor.opacity(scheme == .dark ? 0.24 : 0.14), in: Capsule())
@@ -148,11 +149,18 @@ struct StormDetailsView: View {
 
     // MARK: - Type (`glass.css:105-111`)
 
-    private var titleFont: Font { .system(size: wide ? 22 : 24, weight: .bold) }
-    private var subtitleFont: Font { .system(size: wide ? 14 : 15, weight: .medium) }
-    private var headingFont: Font { .system(size: wide ? 17 : 19, weight: .bold) }
-    private var labelFont: Font { .system(size: wide ? 12 : 13, weight: .medium) }
-    private var valueFont: Font { .system(size: wide ? 15 : 17, weight: .semibold).monospacedDigit() }
+    // The panel's own sizes, growing with Dynamic Type as the text styles
+    // nearest them do.
+    @ScaledMetric(relativeTo: .title2) private var titleScale = 1.0
+    @ScaledMetric(relativeTo: .subheadline) private var subtitleScale = 1.0
+    @ScaledMetric(relativeTo: .title3) private var headingScale = 1.0
+    @ScaledMetric(relativeTo: .footnote) private var labelScale = 1.0
+    @ScaledMetric(relativeTo: .body) private var valueScale = 1.0
+    private var titleFont: Font { .system(size: (wide ? 22 : 24) * titleScale, weight: .bold) }
+    private var subtitleFont: Font { .system(size: (wide ? 14 : 15) * subtitleScale, weight: .medium) }
+    private var headingFont: Font { .system(size: (wide ? 17 : 19) * headingScale, weight: .bold) }
+    private var labelFont: Font { .system(size: (wide ? 12 : 13) * labelScale, weight: .medium) }
+    private var valueFont: Font { .system(size: (wide ? 15 : 17) * valueScale, weight: .semibold).monospacedDigit() }
 
     private func heading(_ key: String, aside: String? = nil) -> some View {
         heading(title: CoreStrings.t(key), aside: aside)
@@ -162,7 +170,7 @@ struct StormDetailsView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(title).font(headingFont).tracking(-0.19)
             Spacer()
-            if let aside { Text(aside).font(.system(size: 13)).foregroundStyle(.tertiary) }
+            if let aside { Text(aside).scaledFont(13, relativeTo: .footnote).foregroundStyle(.tertiary) }
         }
         .padding(.top, 26)
         .padding(.bottom, 10)
@@ -236,7 +244,7 @@ struct StormDetailsView: View {
                 FlowLayout(spacing: 6) {
                     ForEach(items, id: \.text) { item in
                         Text(item.text)
-                            .font(.system(size: 13, weight: .semibold))
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .lineLimit(1)
                             .padding(.vertical, 5)
                             .padding(.horizontal, 11)
@@ -305,7 +313,7 @@ struct StormDetailsView: View {
             CellModelView(input: input, frame: CellModelView.familyFrame(track, family: store.family),
                           palette: UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic")
             Text(CoreStrings.t("storm.model_at", ["time": clock(lastSeen)]))
-                .font(.system(size: 12))
+                .scaledFont(12, relativeTo: .caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
         }
@@ -316,11 +324,15 @@ struct StormDetailsView: View {
         let items = readingItems
         if !items.isEmpty {
             heading("storm.section.readings")
+            // Two to a row, or one where the text is too large to share.
+            let perRow = typeSize.isAccessibilitySize ? 1 : 2
             Grid(alignment: .topLeading, horizontalSpacing: wide ? 20 : 16, verticalSpacing: 14) {
-                ForEach(Array(stride(from: 0, to: items.count, by: 2)), id: \.self) { row in
+                ForEach(Array(stride(from: 0, to: items.count, by: perRow)), id: \.self) { row in
                     GridRow {
                         readingCell(items[row])
-                        if row + 1 < items.count { readingCell(items[row + 1]) } else { Color.clear.gridCellUnsizedAxes([.horizontal, .vertical]) }
+                        if perRow == 2 {
+                            if row + 1 < items.count { readingCell(items[row + 1]) } else { Color.clear.gridCellUnsizedAxes([.horizontal, .vertical]) }
+                        }
                     }
                 }
             }
@@ -338,9 +350,9 @@ struct StormDetailsView: View {
     private func readingCell(_ item: StormRules.Reading) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(StormRules.sentence(item.label)).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+                Text(StormRules.sentence(item.label)).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 4)
-                Text(item.text).font(.system(size: wide ? 15 : 16, weight: .semibold).monospacedDigit()).foregroundStyle(bandInk(item.band))
+                Text(item.text).scaledFont(wide ? 15 : 16, weight: .semibold, relativeTo: .callout, digits: true).foregroundStyle(bandInk(item.band))
             }
             if let fill = item.fill {
                 GeometryReader { geometry in
@@ -392,7 +404,7 @@ struct StormDetailsView: View {
         if let info = volumeInfo {
             if on3d {
                 if info.tier == 1 {
-                    Text(CoreStrings.t("storm.volume.not_openable")).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(CoreStrings.t("storm.volume.not_openable")).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                         .padding(.top, 14)
                 }
                 heading(title: "CAPPI", aside: CoreStrings.t("storm.volume.cappi_aside"))
@@ -408,7 +420,7 @@ struct StormDetailsView: View {
                 if let openIn3D {
                     Button(action: openIn3D) {
                         Label(CoreStrings.t("storm.open_3d"), systemImage: "cube")
-                            .font(.system(size: 15, weight: .semibold))
+                            .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .foregroundStyle(Color.accentColor)
                             .background(Color.accentColor.opacity(scheme == .dark ? 0.24 : 0.14), in: Capsule())
@@ -428,7 +440,7 @@ struct StormDetailsView: View {
             if let volume = loader.volume {
                 content(volume)
             } else if loader.failed {
-                Text(CoreStrings.t("storm.volume.unavailable")).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(CoreStrings.t("storm.volume.unavailable")).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -456,7 +468,7 @@ struct StormDetailsView: View {
                         Spacer()
                         if let km = radar.distanceKm { Text("\(Int(km.rounded())) km").foregroundStyle(.secondary).monospacedDigit() }
                     }
-                    .font(.system(size: 14))
+                    .scaledFont(14, relativeTo: .subheadline)
                     .padding(.vertical, 7)
                     Divider()
                 }
@@ -517,7 +529,7 @@ struct StormDetailsView: View {
             heading("storm.section.history")
             ForEach(Array(panels.enumerated()), id: \.offset) { index, panel in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(panel.title), \(panel.unit)").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("\(panel.title), \(panel.unit)").scaledFont(12, relativeTo: .caption).foregroundStyle(.secondary)
                     HistoryChart(panel: panel, span: span, now: now, first: index == 0, colour: colour)
                         .aspectRatio(336 / panel.height, contentMode: .fit)
                         .accessibilityLabel(CoreStrings.t("storm.history.aria", ["title": panel.title, "unit": panel.unit]))
@@ -615,12 +627,12 @@ struct StormDetailsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let into {
                     Button(CoreStrings.t("storm.merges.into") + " ›") { store.open(id: into) }
-                        .font(.system(size: 13, weight: .medium))
+                        .scaledFont(13, weight: .medium, relativeTo: .footnote)
                         .padding(.vertical, 4)
                 }
                 ForEach(from, id: \.id) { other in
                     Button(CoreStrings.t("storm.merges.from", ["time": clock(other.properties.lastSeen)]) + " ›") { store.open(id: other.properties.id) }
-                        .font(.system(size: 13, weight: .medium))
+                        .scaledFont(13, weight: .medium, relativeTo: .footnote)
                         .padding(.vertical, 4)
                 }
             }
@@ -672,7 +684,7 @@ struct StormDetailsView: View {
             Spacer()
             Text(value).monospacedDigit().foregroundStyle(ink).multilineTextAlignment(.trailing)
         }
-        .font(.system(size: wide ? 14 : 15))
+        .scaledFont(wide ? 14 : 15, relativeTo: .subheadline)
         .padding(.vertical, 10)
     }
 
@@ -690,7 +702,7 @@ struct StormDetailsView: View {
     private func disc(_ symbol: String, label: String, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: wide ? 14 : 18, weight: .semibold))
+                .scaledFont(wide ? 14 : 18, weight: .semibold, relativeTo: .body)
                 .foregroundStyle(.secondary)
                 .frame(width: wide ? 30 : 44, height: wide ? 30 : 44)
                 .background(Color.secondary.opacity(0.12), in: Circle())

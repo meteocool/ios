@@ -116,11 +116,14 @@ final class StormSheet: NSObject, UISheetPresentationControllerDelegate {
         if let sheet {
             // Keep it, new storm or not: the details follow the store.
             (sheet as? UIHostingController<StormSheetRoot>)?.rootView = StormSheetRoot(details: details(wide: false), dark: map.model.isDark)
+            // The system's sheet glass in the map's light or dark too.
+            sheet.overrideUserInterfaceStyle = map.model.isDark ? .dark : .light
             return
         }
         let controller = UIHostingController(rootView: StormSheetRoot(details: details(wide: false), dark: map.model.isDark))
         controller.modalPresentationStyle = .pageSheet
         controller.view.backgroundColor = .clear
+        controller.overrideUserInterfaceStyle = map.model.isDark ? .dark : .light
         controller.view.accessibilityIdentifier = "nativeMap.storm.sheet"
         if let presentation = controller.sheetPresentationController {
             presentation.detents = [
@@ -271,7 +274,7 @@ struct StormSheetRoot: View {
         details
             .environment(\.colorScheme, dark ? .dark : .light)
             // A UIKit-presented sheet: the fill goes under the content.
-            .background(DrawerBackground(dark: dark).ignoresSafeArea())
+            .sheetFill(dark: dark)
     }
 }
 
@@ -282,14 +285,10 @@ private struct StormPanel: View {
     let dark: Bool
 
     var body: some View {
-        let theme = ChromeTheme(dark: dark)
         details
             .frame(width: StormSheet.panelWidth)
-            .background(DrawerBackground(dark: dark))
-            .clipShape(RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous).stroke(theme.edge.opacity(0.5), lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
-            .environment(\.colorScheme, theme.colorScheme)
+            .panelFill(dark: dark)
+            .environment(\.colorScheme, dark ? .dark : .light)
     }
 }
 
@@ -341,16 +340,16 @@ struct StormHintBar: View {
                 Circle().fill(ended ? theme.text3 : colour).frame(width: 10, height: 10)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(StormDetailsView.capitalised(title))
-                        .font(.system(size: 13, weight: .bold))
+                        .scaledFont(13, weight: .bold, relativeTo: .footnote)
                         .lineLimit(1)
                         .foregroundStyle(theme.text)
-                    Text(life).font(.system(size: 12)).foregroundStyle(theme.text2).lineLimit(1)
+                    Text(life).scaledFont(12, relativeTo: .caption).foregroundStyle(theme.text2).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: open) {
                     HStack(spacing: 4) {
-                        Text(CoreStrings.t("storm.hint.details")).font(.system(size: 13, weight: .semibold))
-                        Text("›").font(.system(size: 16)).opacity(0.75)
+                        Text(CoreStrings.t("storm.hint.details")).scaledFont(13, weight: .semibold, relativeTo: .footnote)
+                        Text("›").scaledFont(16, relativeTo: .callout).opacity(0.75)
                     }
                     .padding(.leading, 12)
                     .padding(.trailing, 10)
@@ -364,7 +363,7 @@ struct StormHintBar: View {
                     withAnimation(.easeIn(duration: 0.2)) { store.selection = nil }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                         .foregroundStyle(theme.text3)
                         .frame(width: 44, height: 44)
                 }

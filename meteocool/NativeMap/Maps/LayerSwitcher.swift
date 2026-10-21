@@ -137,7 +137,7 @@ struct LayerSwitcherView: View {
                 }
                 .overlay(alignment: .bottomLeading) {
                     Text(tile.label)
-                        .font(.system(size: 15, weight: .semibold))
+                        .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
@@ -160,7 +160,7 @@ struct LayerSwitcherView: View {
 
     private func section(_ title: String, @ViewBuilder _ rows: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 17, weight: .bold))
+            Text(title).scaledFont(17, weight: .bold, relativeTo: .body)
             VStack(spacing: 12) { rows() }
                 .padding(14)
                 .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

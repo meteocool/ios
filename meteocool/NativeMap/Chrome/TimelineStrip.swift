@@ -170,7 +170,7 @@ struct TimelineStrip: View {
                         .frame(height: Self.plotHeight)
                 } else if let gap = player.timeline.forecastGap {
                     Text(CoreStrings.t("forecast_none_here"))
-                        .font(.system(size: 12))
+                        .scaledFont(12, relativeTo: .caption)
                         .foregroundStyle(theme.text2)
                         .multilineTextAlignment(.center)
                         .frame(width: width * (1 - gap), height: Self.plotHeight)
@@ -208,7 +208,7 @@ struct TimelineStrip: View {
         let x = (CGFloat(max(-1.5, min(position, Double(count) + 0.5))) + 0.5) * width / CGFloat(count)
         let text = player.timeline.steps.indices.contains(index) ? player.offsetLabel(player.timeline.steps[index]) : ""
         return Text(text)
-            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+            .scaledFont(11, weight: .semibold, relativeTo: .caption2, digits: true)
             .foregroundStyle(.white)
             .padding(.horizontal, 7)
             .padding(.vertical, 1)

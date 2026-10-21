@@ -146,7 +146,7 @@ struct DryOutlookStrip: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .center) {
                     Text(title)
-                        .font(.system(size: 13, weight: .bold))
+                        .scaledFont(13, weight: .bold, relativeTo: .footnote)
                         .foregroundStyle(theme.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -154,8 +154,8 @@ struct DryOutlookStrip: View {
                     Spacer(minLength: 6)
                     Button { state.open(outlook.hours) } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "chart.xyaxis.line").font(.system(size: 11, weight: .semibold))
-                            Text(CoreStrings.t("dry_outlook_link")).font(.system(size: 12, weight: .semibold))
+                            Image(systemName: "chart.xyaxis.line").scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                            Text(CoreStrings.t("dry_outlook_link")).scaledFont(12, weight: .semibold, relativeTo: .caption)
                         }
                         .padding(.horizontal, 10)
                         .frame(height: 26)
@@ -166,7 +166,7 @@ struct DryOutlookStrip: View {
                     .accessibilityIdentifier("nativeMap.outlook.all")
                     Button(action: state.dismiss) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .semibold))
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .foregroundStyle(theme.text3)
                             .frame(width: 36, height: 30)
                     }
@@ -178,7 +178,7 @@ struct DryOutlookStrip: View {
                     if let series = state.series {
                         SpreadChart(series: series, from: outlook.from, steps: outlook.hours, spec: .rainfall, compact: true, dark: state.dark)
                     } else {
-                        Text(CoreStrings.t("dry_outlook_loading")).font(.system(size: 12)).foregroundStyle(theme.text2)
+                        Text(CoreStrings.t("dry_outlook_loading")).scaledFont(12, relativeTo: .caption).foregroundStyle(theme.text2)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
                 }

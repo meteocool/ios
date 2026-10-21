@@ -355,7 +355,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         labels.onOpen = { [weak self] key in self?.openOnMap(key) }
         labels.rightClearance = ChromeTheme.controlColumn
         addSubview(labels)
-        let host = UIHostingController(rootView: ThreeDHUD(state: state, model: map.model))
+        let host = UIHostingController(rootView: ThreeDHUD(state: state, model: map.model).chromeTypeSize())
         host.view.backgroundColor = .clear
         host.sizingOptions = .intrinsicContentSize
         host.view.translatesAutoresizingMaskIntoConstraints = false
@@ -1042,7 +1042,7 @@ struct ThreeDHUD: View {
         VStack(spacing: 8) {
             if let note = state.scanNote ?? state.status {
                 Text(note)
-                    .font(.system(size: 13, weight: .semibold))
+                    .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                     .foregroundStyle(theme.text)
                     .padding(.horizontal, 12)
                     .frame(height: 32)
@@ -1055,34 +1055,40 @@ struct ThreeDHUD: View {
                 Spacer()
                 Button(action: state.openGuide) {
                     Text(CoreStrings.t("guide_3d.pill"))
-                        .font(.system(size: 13, weight: .semibold))
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                         .padding(.horizontal, 12)
                         .frame(height: 32)
                         .foregroundStyle(theme.text)
-                        .chromeGlass(theme, in: Capsule())
+                        .chromeGlass(theme, in: Capsule(), interactive: true)
+                        .hitTarget()
                 }
                 .buttonStyle(PressScale())
                 .accessibilityHint(CoreStrings.t("guide_3d.open"))
                 .accessibilityIdentifier("nativeMap.3d.guideButton")
                 if state.selected != nil {
                     Button(action: state.open) {
-                        Text(CoreStrings.t("storm.hint.details") + " ›")
-                            .font(.system(size: 13, weight: .semibold))
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                            .foregroundStyle(theme.accent)
-                            .chromeGlass(theme, in: Capsule())
+                        HStack(spacing: 4) {
+                            Text(CoreStrings.t("storm.hint.details"))
+                            Image(systemName: "chevron.right").imageScale(.small)
+                        }
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
+                        .padding(.horizontal, 12)
+                        .frame(height: 32)
+                        .foregroundStyle(theme.accent)
+                        .chromeGlass(theme, in: Capsule(), interactive: true)
+                        .hitTarget()
                     }
                     .buttonStyle(PressScale())
                     .accessibilityIdentifier("nativeMap.3d.details")
                 }
                 Button(action: state.north) {
                     Image(systemName: "location.north.line.fill")
-                        .font(.system(size: 15, weight: .semibold))
+                        .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                         .rotationEffect(.degrees(-state.bearing))
                         .foregroundStyle(theme.text)
                         .frame(width: 40, height: 40)
-                        .chromeGlass(theme, in: Circle())
+                        .chromeGlass(theme, in: Circle(), interactive: true)
+                        .hitTarget()
                 }
                 .buttonStyle(PressScale())
                 .accessibilityLabel(NSLocalizedString("compass_N", comment: ""))
@@ -1094,7 +1100,7 @@ struct ThreeDHUD: View {
                         ForEach(ThreeDMapView.modes) { mode in
                             Button { state.setMode(mode) } label: {
                                 Text(mode.title)
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                                     .padding(.horizontal, 12)
                                     .frame(height: 32)
                                     .foregroundStyle(state.mode == mode ? Color.white : theme.text)
@@ -1112,7 +1118,7 @@ struct ThreeDHUD: View {
                         Slider(value: Binding(get: { state.slider }, set: { state.setSlider($0) }), in: slider.range)
                             .accessibilityIdentifier("nativeMap.3d.slider")
                         Text(state.sliderText)
-                            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
                             .foregroundStyle(theme.text2)
                             .frame(minWidth: 64, alignment: .trailing)
                     }
@@ -1144,16 +1150,17 @@ extension ThreeDHUD {
                 if state.scanLoading != nil {
                     ProgressView(value: state.scanProgress).progressViewStyle(.circular).controlSize(.mini)
                 } else {
-                    Image(systemName: "clock.arrow.circlepath").font(.system(size: 13, weight: .semibold))
+                    Image(systemName: "clock.arrow.circlepath").scaledFont(13, weight: .semibold, relativeTo: .footnote)
                 }
                 Text(face.map(StatusPill.clock) ?? CoreStrings.t("time_3d.latest"))
-                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                    .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
             }
             .padding(.horizontal, 12)
             .frame(height: 32)
             .foregroundStyle(state.scanShown != nil ? Color.white : theme.text)
             .background(state.scanShown != nil ? AnyShapeStyle(theme.accent) : AnyShapeStyle(Color.clear), in: Capsule())
-            .chromeGlass(theme, in: Capsule())
+            .chromeGlass(theme, in: Capsule(), interactive: true)
+            .hitTarget()
         }
         .accessibilityLabel(face.map { CoreStrings.t("time_3d.past_aria", ["time": StatusPill.clock($0)]) } ?? CoreStrings.t("time_3d.latest_aria"))
         .accessibilityHint(CoreStrings.t("time_3d.choose"))

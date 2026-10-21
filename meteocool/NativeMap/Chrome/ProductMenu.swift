@@ -46,11 +46,11 @@ struct ProductMenu: View {
                                 Text(CoreStrings.t("chrome.radar_product.group_\(group.group)"))
                                 Spacer()
                                 if group.group == "lowest" {
-                                    Text(CoreStrings.t("chrome.radar_product.age_heading")).font(.system(size: 10, weight: .semibold))
+                                    Text(CoreStrings.t("chrome.radar_product.age_heading")).scaledFont(10, weight: .semibold, relativeTo: .caption2)
                                 }
                             }
                             Text(CoreStrings.t("chrome.radar_product.group_\(group.group)_hint"))
-                                .font(.system(size: 11, weight: .medium))
+                                .scaledFont(11, weight: .medium, relativeTo: .caption2)
                                 .textCase(nil)
                         }
                     }
@@ -60,7 +60,7 @@ struct ProductMenu: View {
                         "product": CoreStrings.t("chrome.radar_product.\(model.product.rawValue)"),
                         "fallback": CoreStrings.t("chrome.radar_product.hx"),
                     ]))
-                    .font(.system(size: 12, weight: .medium))
+                    .scaledFont(12, weight: .medium, relativeTo: .caption)
                     .foregroundStyle(.orange)
                 }
             }
@@ -90,21 +90,21 @@ struct ProductMenu: View {
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .scaledFont(13, weight: .bold, relativeTo: .footnote)
                     .foregroundStyle(.tint)
                     .opacity(model.product == product ? 1 : 0)
                     .frame(width: 16)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_option")).font(.system(size: 14, weight: .semibold))
-                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_hint")).font(.system(size: 12, weight: .medium))
+                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_option")).scaledFont(14, weight: .semibold, relativeTo: .subheadline)
+                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_hint")).scaledFont(12, weight: .medium, relativeTo: .caption)
                         .foregroundStyle(.secondary)
-                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_grid")).font(.system(size: 11, weight: .medium).monospacedDigit())
+                    Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_grid")).scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
                         .foregroundStyle(.tertiary)
                 }
                 Spacer(minLength: 4)
                 TimelineView(.periodic(from: .now, by: 15)) { context in
                     Text(age(product, now: context.date))
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
                         .foregroundStyle(behind(product) ? Color.orange : Color.secondary)
                         .multilineTextAlignment(.trailing)
                 }

@@ -46,7 +46,7 @@ struct ThreeDGuide: View {
                         Image(systemName: "bolt.fill").foregroundStyle(Color(red: 1, green: 0.82, blue: 0.4)).frame(width: 44)
                     }
                     Text(CoreStrings.t("guide_3d.heights", ["scale": String(ThreeDScale.vertical)]))
-                        .font(.system(size: 13))
+                        .scaledFont(13, relativeTo: .footnote)
                         .foregroundStyle(.secondary)
                 }
                 Section(CoreStrings.t("guide_3d.controls")) {
@@ -75,8 +75,8 @@ struct ThreeDGuide: View {
         HStack(alignment: .top, spacing: 12) {
             swatch().frame(width: 44, alignment: .leading).padding(.top, 3)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 15, weight: .semibold))
-                Text(body).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(title).scaledFont(15, weight: .semibold, relativeTo: .subheadline)
+                Text(body).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
             }
         }
         .accessibilityElement(children: .combine)
@@ -85,9 +85,9 @@ struct ThreeDGuide: View {
     private func control(_ gesture: String, _ does: String, symbol: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).frame(width: 44)
-            Text(gesture).font(.system(size: 15, weight: .semibold))
+            Text(gesture).scaledFont(15, weight: .semibold, relativeTo: .subheadline)
             Spacer()
-            Text(does).font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+            Text(does).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)
     }

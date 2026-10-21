@@ -415,7 +415,7 @@ struct LightningChartStrip: View {
             bars(bins, theme)
         } else {
             Text(CoreStrings.t(state.unavailable ? "lightning_unavailable" : "lightning_none"))
-                .font(.system(size: 12)).foregroundStyle(theme.text2)
+                .scaledFont(12, relativeTo: .caption).foregroundStyle(theme.text2)
         }
     }
 
@@ -425,9 +425,9 @@ struct LightningChartStrip: View {
         return HStack(alignment: .top, spacing: 6) {
             // The y axis at its ends only (`yTickLabel`).
             VStack(alignment: .trailing, spacing: 0) {
-                Text(String(peak)).font(.system(size: 9).monospacedDigit())
+                Text(String(peak)).scaledFont(9, relativeTo: .caption2, digits: true)
                 Spacer(minLength: 0)
-                Text("0").font(.system(size: 9).monospacedDigit())
+                Text("0").scaledFont(9, relativeTo: .caption2, digits: true)
             }
             .foregroundStyle(theme.text3)
             .frame(height: height)
@@ -448,7 +448,7 @@ struct LightningChartStrip: View {
                     Spacer()
                     Text(CoreStrings.t("now"))
                 }
-                .font(.system(size: 9))
+                .scaledFont(9, relativeTo: .caption2)
                 .foregroundStyle(theme.text3)
             }
         }
@@ -496,7 +496,7 @@ struct OtherMapTray: View {
             HStack(alignment: .center, spacing: 10) {
                 // Two lines, as core breaks it.
                 Text(CoreStrings.plain("chrome.scales.precipitation_types"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .scaledFont(11, weight: .semibold, relativeTo: .caption2)
                     .foregroundStyle(theme.text2)
                     .lineLimit(2)
                     .fixedSize()
@@ -507,7 +507,7 @@ struct OtherMapTray: View {
                                 .fill(Color(red: Double(entry.rgb >> 16 & 0xFF) / 255, green: Double(entry.rgb >> 8 & 0xFF) / 255,
                                             blue: Double(entry.rgb & 0xFF) / 255).opacity(PrecipTypes.opacity))
                                 .frame(height: 8)
-                            Text(CoreStrings.t(entry.key)).font(.system(size: 9)).foregroundStyle(theme.text2).lineLimit(1)
+                            Text(CoreStrings.t(entry.key)).scaledFont(9, relativeTo: .caption2).foregroundStyle(theme.text2).lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
                     }
@@ -533,11 +533,11 @@ struct LightningLegend: View {
             .clipShape(Capsule())
             HStack {
                 ForEach(LightningRules.legendMinutes, id: \.self) { minutes in
-                    Text(String(minutes)).font(.system(size: 10).monospacedDigit()).foregroundStyle(theme.text2)
+                    Text(String(minutes)).scaledFont(10, relativeTo: .caption2, digits: true).foregroundStyle(theme.text2)
                     if minutes != LightningRules.legendMinutes.last { Spacer(minLength: 0) }
                 }
             }
-            Text(CoreStrings.t("chrome.scales.minutes", ["count": 2])).font(.system(size: 10)).foregroundStyle(theme.text3)
+            Text(CoreStrings.t("chrome.scales.minutes", ["count": 2])).scaledFont(10, relativeTo: .caption2).foregroundStyle(theme.text3)
         }
         .accessibilityElement(children: .combine)
     }
@@ -560,7 +560,7 @@ struct LastUpdatedLabel: View {
                         .background(Circle().stroke(theme.tint, lineWidth: 2.5))
                         .frame(width: 12, height: 12)
                     Text(PrecipTypes.lastUpdated(relative, prefix: CoreStrings.t("last_updated")))
-                        .font(.system(size: 12, weight: .medium))
+                        .scaledFont(12, weight: .medium, relativeTo: .caption)
                         .foregroundStyle(theme.text2)
                 }
                 .accessibilityElement(children: .combine)

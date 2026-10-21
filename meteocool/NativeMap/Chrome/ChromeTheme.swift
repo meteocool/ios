@@ -47,8 +47,14 @@ struct ChromeTheme {
 extension View {
     /// core's glass: Liquid Glass where there is one, else a material with
     /// core's fill over it, so text never sits on bare blur.
-    func chromeGlass<S: Shape>(_ theme: ChromeTheme, in shape: S, strong: Bool = false) -> some View {
-        modifier(ChromeGlass(theme: theme, shape: shape, strong: strong))
+    func chromeGlass<S: Shape>(_ theme: ChromeTheme, in shape: S, strong: Bool = false, interactive: Bool = false) -> some View {
+        modifier(ChromeGlass(theme: theme, shape: shape, strong: strong, interactive: interactive))
+    }
+
+    /// The 44 pt a finger needs round a smaller control (the HIG's minimum
+    /// hit region), without growing what is drawn.
+    func hitTarget() -> some View {
+        frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
     }
 }
 
@@ -56,19 +62,53 @@ private struct ChromeGlass<S: Shape>: ViewModifier {
     let theme: ChromeTheme
     let shape: S
     let strong: Bool
+    /// A button's glass, which answers a touch.
+    let interactive: Bool
     @Environment(\.accessibilityReduceTransparency) private var solid
 
     func body(content: Content) -> some View {
         if solid {
             content.background((theme.dark ? Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255) : Color.white).opacity(0.94), in: shape)
         } else if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
+            content.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
         } else {
             content
                 .background(strong ? theme.fillStrong : theme.fill, in: shape)
                 .background(.ultraThinMaterial, in: shape)
                 .overlay(shape.stroke(theme.edge, lineWidth: 1))
                 .shadow(color: .black.opacity(0.18), radius: 15, y: 10)
+        }
+    }
+}
+
+extension View {
+    /// A phone sheet's fill. The system draws the sheet itself in Liquid
+    /// Glass, inset at half height; a panel this full of text and pictures
+    /// adds a standard material inside it, as the HIG has the content layer
+    /// do, so it stays legible over a bright radar. core's drawer fill
+    /// before iOS 26.
+    @ViewBuilder
+    func sheetFill(dark: Bool) -> some View {
+        if #available(iOS 26.0, *) {
+            background(.regularMaterial)
+        } else {
+            background(DrawerBackground(dark: dark).ignoresSafeArea())
+        }
+    }
+
+    /// A wide screen's floating panel: regular Liquid Glass, which keeps a
+    /// panel full of text legible over the radar; core's drawer fill, edge
+    /// and shadow before iOS 26.
+    @ViewBuilder
+    func panelFill(dark: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous)
+        if #available(iOS 26.0, *) {
+            clipShape(shape).glassEffect(.regular, in: shape)
+        } else {
+            background(DrawerBackground(dark: dark))
+                .clipShape(shape)
+                .overlay(shape.stroke(ChromeTheme(dark: dark).edge.opacity(0.5), lineWidth: 1))
+                .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
         }
     }
 }
@@ -98,5 +138,37 @@ struct DrawerBackground: View {
                 (dark ? Color(red: 30 / 255, green: 34 / 255, blue: 42 / 255).opacity(0.62) : Color(red: 250 / 255, green: 250 / 255, blue: 252 / 255).opacity(0.8))
             }
         }
+    }
+}
+
+extension View {
+    /// The system font at `size` points at the default text size, growing
+    /// and shrinking with Dynamic Type as `style` does: the chrome's own
+    /// sizes, which the text styles do not all have, read at any setting.
+    func scaledFont(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle, digits: Bool = false) -> some View {
+        modifier(ScaledFont(size: size, weight: weight, style: style, digits: digits))
+    }
+
+    /// The largest text the map's own controls grow to: over the map they
+    /// must leave it room, and the sheets they open carry the larger sizes.
+    func chromeTypeSize() -> some View {
+        dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+}
+
+private struct ScaledFont: ViewModifier {
+    @ScaledMetric private var size: CGFloat
+    private let weight: Font.Weight
+    private let digits: Bool
+
+    init(size: CGFloat, weight: Font.Weight, style: Font.TextStyle, digits: Bool) {
+        _size = ScaledMetric(wrappedValue: size, relativeTo: style)
+        self.weight = weight
+        self.digits = digits
+    }
+
+    func body(content: Content) -> some View {
+        let font = Font.system(size: size, weight: weight)
+        content.font(digits ? font.monospacedDigit() : font)
     }
 }

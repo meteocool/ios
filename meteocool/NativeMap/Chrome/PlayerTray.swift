@@ -48,7 +48,7 @@ struct PlayerTray: View {
         HStack(spacing: 10) {
             if let title = model.trayTitle {
                 Text(title)
-                    .font(.system(size: 13, weight: .bold))
+                    .scaledFont(13, weight: .bold, relativeTo: .footnote)
                     .tracking(-0.13)
                     .foregroundStyle(theme.text)
                     .lineLimit(1)
@@ -58,7 +58,7 @@ struct PlayerTray: View {
             if model.point != nil, model.userLocation != nil {
                 Button(action: actions.showForMyLocation) {
                     Label(CoreStrings.t("show_for_my_location"), systemImage: "location.viewfinder")
-                        .font(.system(size: 12, weight: .semibold))
+                        .scaledFont(12, weight: .semibold, relativeTo: .caption)
                         .labelStyle(ChipLabel())
                         .foregroundStyle(theme.accent)
                         .padding(.vertical, 3)
@@ -73,7 +73,7 @@ struct PlayerTray: View {
             if model.point != nil, model.userLocation == nil {
                 Button(action: actions.showForMyLocation) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                         .foregroundStyle(theme.text3)
                         .frame(width: 30, height: 30)
                         .background(theme.tint, in: Circle())
@@ -91,7 +91,7 @@ struct PlayerTray: View {
 private struct ChipLabel: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 4) {
-            configuration.icon.font(.system(size: 11, weight: .semibold))
+            configuration.icon.scaledFont(11, weight: .semibold, relativeTo: .caption2)
             configuration.title
         }
     }
@@ -106,7 +106,7 @@ struct PlayButton: View {
         let enabled = player.playing || player.canPlay
         Button(action: player.togglePlay) {
             Image(systemName: player.playing ? "pause.fill" : "play.fill")
-                .font(.system(size: 15, weight: .semibold))
+                .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                 .offset(x: player.playing ? 0 : 2)
                 .foregroundStyle(enabled ? Color.white : theme.text3)
                 .frame(width: ChromeTheme.control, height: ChromeTheme.control)
@@ -201,10 +201,10 @@ struct RadarLegend: View {
                 let at = (value - Self.low) / (high - Self.low)
                 HStack(spacing: 1) {
                     Text("\(Int(value))")
-                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .scaledFont(11, weight: .semibold, relativeTo: .caption2, digits: true)
                         .foregroundStyle(theme.text)
                     if value == values.last {
-                        Text("dBZ").font(.system(size: 8, weight: .medium)).foregroundStyle(theme.text2)
+                        Text("dBZ").scaledFont(8, weight: .medium, relativeTo: .caption2).foregroundStyle(theme.text2)
                     }
                 }
                 .fixedSize()
@@ -228,7 +228,7 @@ struct ProductPill: View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             Button(action: open) {
                 HStack(spacing: 5) {
-                    Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "antenna.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
                     Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_short"))
                     Group {
                         if forecast {
@@ -239,10 +239,10 @@ struct ProductPill: View {
                             Text(Self.age(timeline.scanRange, now: context.date))
                         }
                     }
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
                     .foregroundStyle(theme.text2)
                 }
-                .font(.system(size: 11, weight: .semibold))
+                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
                 .foregroundStyle(theme.text)
                 .lineLimit(1)
                 .padding(.horizontal, 10)

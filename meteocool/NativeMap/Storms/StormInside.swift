@@ -297,7 +297,7 @@ struct StormCappi: View {
                 StormVolumeView(volume: volume, palette: palette, cut: .slab(km),
                                 spin: still ? 0.6 : elapsed / Self.turnSeconds * 2 * .pi, tilt: 0.72)
                 Text(String(format: "%.1f km", km))
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(.thinMaterial, in: Capsule())

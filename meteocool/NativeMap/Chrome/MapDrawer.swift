@@ -44,11 +44,7 @@ final class MapDrawer: NSObject, UISheetPresentationControllerDelegate {
         if wide {
             let root = AnyView(content
                 .frame(width: StormSheet.panelWidth)
-                .background(DrawerBackground(dark: dark))
-                .clipShape(RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous)
-                    .stroke(ChromeTheme(dark: dark).edge.opacity(0.5), lineWidth: 1))
-                .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+                .panelFill(dark: dark)
                 .environment(\.colorScheme, dark ? .dark : .light))
             if let panelHost {
                 panelHost.rootView = root
@@ -73,14 +69,17 @@ final class MapDrawer: NSObject, UISheetPresentationControllerDelegate {
             return
         }
         let root = AnyView(content
-            .background(DrawerBackground(dark: dark).ignoresSafeArea())
+            .sheetFill(dark: dark)
             .environment(\.colorScheme, dark ? .dark : .light))
         if let sheet {
             sheet.rootView = root
+            // The system's sheet glass in the map's light or dark too.
+            sheet.overrideUserInterfaceStyle = dark ? .dark : .light
             return
         }
         let controller = UIHostingController(rootView: root)
         controller.view.backgroundColor = .clear
+        controller.overrideUserInterfaceStyle = dark ? .dark : .light
         controller.modalPresentationStyle = .pageSheet
         controller.view.accessibilityIdentifier = "nativeMap.drawer.\(owner)"
         if let presentation = controller.sheetPresentationController {
