@@ -241,9 +241,12 @@ final class NativeMapUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(menu.frame.minY, top, "Under the status bar for the hold at \(spot)")
             XCTAssertLessThanOrEqual(menu.frame.maxY, window.maxY - 20, "Off the bottom for the hold at \(spot)")
             if spot == 0.2 { screenshot("point menu near the top") }
-            // Put away by a tap beside it.
+            // Put away by a tap beside it, which goes no further: the map
+            // under it stays as it was, whatever live mark is there.
             app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.06, dy: 0.5)).tap()
             XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+            XCTAssertFalse(element("nativeMap.3d").exists, "The tap that put the menu away opened nothing")
+            XCTAssertFalse(element("nativeMap.storm.details").exists)
         }
     }
 
