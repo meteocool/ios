@@ -126,9 +126,19 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 5))
         back.tap()
         // Live again: the button goes. The live step is the one it left, or
-        // "Now" if a newer scan came in meanwhile.
+        // a later one if a newer scan came in meanwhile.
         XCTAssertTrue(back.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(waitForValue(timeline) { $0 == live || $0 == "Now" }, "Back to \(live), at \(timeline.value ?? "")")
+        func minutes(_ label: String) -> Int? {
+            if label == "Now" { return 0 }
+            var total = 0, sign = 1, number = 0
+            for character in label {
+                if character == "-" { sign = -1 } else if let digit = character.wholeNumberValue { number = number * 10 + digit }
+                else if character == "h" { total += number * 60; number = 0 } else if character == "m" { total += number; number = 0 }
+            }
+            return label.contains(where: \.isNumber) ? sign * total : nil
+        }
+        let left = minutes(live) ?? 0
+        XCTAssertTrue(waitForValue(timeline) { (minutes($0) ?? .min) >= left }, "Back to \(live) or later, at \(timeline.value ?? "")")
     }
 
     func testLegendSwitchesToDbz() {
@@ -894,6 +904,44 @@ final class NativeMapUITests: XCTestCase {
     }
 
     // MARK: - The app around it
+
+    func testLocateButtonFliesTheThreeDMapToTheUser() {
+        // Berlin, held, while the 3D map looks at the south of France.
+        app.resetAuthorizationStatus(for: .location)
+        app.launchEnvironment["MC_USER_LOCATION"] = "52.520,13.405"
+        #if targetEnvironment(simulator)
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 52.520, longitude: 13.405))
+        #endif
+        addUIInterruptionMonitor(withDescription: "Location") { alert in
+            for label in ["Allow While Using App", "Allow Once", "Allow"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=40")
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,") }, "The link's tilt: \(canvas.value ?? "")")
+        app.buttons["map.location"].tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow While Using App"]
+        if allow.waitForExistence(timeout: 5) { allow.tap() } else { app.tap() }
+        // Over the reader, still tilted as it was; their dot on the ground.
+        func camera() -> [Double] { (canvas.value as? String)?.split(separator: ",").compactMap { Double($0) } ?? [] }
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline, !(camera().count >= 4 && abs(camera()[2] - 52.52) < 0.3 && abs(camera()[3] - 13.405) < 0.3) {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        let at = camera()
+        XCTAssertGreaterThanOrEqual(at.count, 4, "\(canvas.value ?? "")")
+        XCTAssertEqual(at.count >= 4 ? at[2] : 0, 52.52, accuracy: 0.3, "Over the user, not still over France")
+        XCTAssertEqual(at.count >= 4 ? at[3] : 0, 13.405, accuracy: 0.3)
+        XCTAssertEqual(at.first ?? 0, 40, accuracy: 1, "As tilted as before")
+        XCTAssertTrue(element("nativeMap.3d.location").waitForExistence(timeout: 10), "The reader's dot")
+        screenshot("3D map located")
+        app.resetAuthorizationStatus(for: .location)
+    }
 
     func testShareSendsALinkToTheView() {
         launch()

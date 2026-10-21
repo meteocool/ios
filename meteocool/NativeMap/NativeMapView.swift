@@ -620,13 +620,16 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.userLocation = location
         guard let location else { return }
         if focus {
-            if zoom {
-                let accuracy = location.horizontalAccuracy
-                place(NativeMapLink(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
-                                    zoom: accuracy < 800 ? 10 : accuracy < 2000 ? 9 : 8), animated: true)
+            let accuracy = location.horizontalAccuracy
+            let level: Double? = zoom ? (accuracy < 800 ? 10 : accuracy < 2000 ? 9 : 8) : nil
+            if let level {
+                place(NativeMapLink(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, zoom: level),
+                      animated: true)
             } else {
                 mapView.setCenter(location.coordinate, animated: true)
             }
+            // The 3D map, where it is the map shown, flies its own camera.
+            _ = features.first { $0.lookAt(location.coordinate, zoom: level) }
         }
         // The readings are for a long-pressed point while there is one.
         if model.point == nil { radar.point = location.coordinate }
