@@ -13,9 +13,9 @@ final class NativeMapUITests: XCTestCase {
 
     /// Starts the app on the native map: `link` is a map search to open at
     /// (`MC_NATIVE_MAP_LINK`, read by simulator debug builds).
-    private func launch(link: String? = nil, demo: Bool = false) {
+    private func launch(link: String? = nil, demo: Bool = false, hiddenFeatures: Bool = false) {
         app.launchArguments = ["--ui-test-reset", "--native-map", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-                               "-environment", demo ? "demo" : "staging"]
+                               "-environment", demo ? "demo" : "staging"] + (hiddenFeatures ? ["--hidden-features"] : [])
         if let link { app.launchEnvironment["MC_NATIVE_MAP_LINK"] = link }
         app.launch()
         if demo {
@@ -569,12 +569,15 @@ final class NativeMapUITests: XCTestCase {
         let details = element("nativeMap.storm.details")
         XCTAssertTrue(details.waitForExistence(timeout: 30))
         let ar = element("nativeMap.storm.ar")
-        #if targetEnvironment(simulator)
-        // No camera to look through: not offered.
+        // A hidden feature: not offered until unlocked.
         for _ in 0 ..< 3 { details.swipeUp() }
-        XCTAssertFalse(ar.exists, "No AR without ARKit")
-        #else
+        XCTAssertFalse(ar.exists, "AR stays hidden until unlocked")
+        // Unlocked from the start this time.
+        app.terminate()
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)", hiddenFeatures: true)
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
         for _ in 0 ..< 4 where !ar.isHittable { details.swipeUp() }
+        XCTAssertTrue(ar.waitForExistence(timeout: 5), "AR offered once unlocked")
         // The camera and the position, asked the first time.
         addUIInterruptionMonitor(withDescription: "AR permissions") { alert in
             for label in ["Allow While Using App", "OK", "Allow"] where alert.buttons[label].exists {
@@ -584,16 +587,20 @@ final class NativeMapUITests: XCTestCase {
             return false
         }
         ar.tap()
+        // The camera's view on a phone, a still sky on the simulator, with the
+        // storm the panel was for among the storms drawn.
         let view = element("ar.view")
         for _ in 0 ..< 10 where !view.exists {
             app.tap()
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         XCTAssertTrue(view.waitForExistence(timeout: 15), "The AR view, at the storm")
+        XCTAssertTrue(element("ar.close").waitForExistence(timeout: 5))
         screenshot("AR from the storm panel")
         element("ar.close").tap()
         XCTAssertTrue(view.waitForNonExistence(timeout: 10))
-        #endif
+        // Back on the map it was opened from.
+        XCTAssertTrue(element("nativeMap.view").waitForExistence(timeout: 5))
     }
 
     func testCellPanelShowsItsMeasuredStructure() {
