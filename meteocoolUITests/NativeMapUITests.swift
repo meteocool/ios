@@ -125,7 +125,10 @@ final class NativeMapUITests: XCTestCase {
         let back = element("nativeMap.backToNow")
         XCTAssertTrue(back.waitForExistence(timeout: 5))
         back.tap()
-        XCTAssertTrue(waitForValue(timeline) { $0 == live }, "Back to \(live), at \(timeline.value ?? "")")
+        // Live again: the button goes. The live step is the one it left, or
+        // "Now" if a newer scan came in meanwhile.
+        XCTAssertTrue(back.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(waitForValue(timeline) { $0 == live || $0 == "Now" }, "Back to \(live), at \(timeline.value ?? "")")
     }
 
     func testLegendSwitchesToDbz() {
@@ -449,25 +452,35 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
         XCTAssertTrue(tags.firstMatch.waitForExistence(timeout: 30), "A tag beside the strongest core")
+        // The tags as one snapshot, once the map has come to rest and the
+        // list stops changing: queried one by one, a live list reorders
+        // under the query, and a tag still sliding is elsewhere by the tap.
+        func tagFrames() -> [CGRect] {
+            var frames: [CGRect] = []
+            func collect(_ node: XCUIElementSnapshot) {
+                if node.identifier == "nativeMap.cloudHint" { frames.append(node.frame) }
+                node.children.forEach(collect)
+            }
+            if let snapshot = try? app.snapshot() { collect(snapshot) }
+            return frames
+        }
+        var frames = tagFrames()
+        for _ in 0 ..< 20 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let now = tagFrames()
+            if now == frames, !now.isEmpty { break }
+            frames = now
+        }
         // One in the open middle of the screen, clear of the controls and a
         // wide screen's panel.
         let screen = app.windows.firstMatch.frame
-        let onScreen = (0 ..< tags.count).map { tags.element(boundBy: $0) }.first { tag in
-            let frame = tag.frame
-            return frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.75
+        let target = try XCTUnwrap(frames.first { frame in
+            frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.75
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
-        }
-        let tag = try XCTUnwrap(onScreen, "A tag in view")
-        // Once the map has come to rest: a tag still sliding with it is
-        // somewhere else by the time the tap lands.
-        var last = CGRect.null
-        for _ in 0 ..< 20 where tag.frame != last {
-            last = tag.frame
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-        }
+        }, "A tag in view")
         screenshot("3D tags")
-        tag.tap()
-        if !element("nativeMap.3d").waitForExistence(timeout: 5), tag.exists { tag.tap() }
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        origin.withOffset(CGVector(dx: target.midX, dy: target.midY)).tap()
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
