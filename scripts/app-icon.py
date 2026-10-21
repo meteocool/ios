@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Generate meteocool/AppIcon.icon, the Icon Composer document for the app icon.
+"""Generate meteocool/AppIcon.icon, the Icon Composer document for the app icon,
+and meteocool/AppIconNative.icon, the same with a radar-coloured sash across
+its lower right corner: the icon of local builds with the native map
+(Local.xcconfig's `APP_ICON = AppIconNative`), to tell them from the App
+Store's on a home screen.
 
 The icon is the meteocool logo (two light-blue clouds with a dark outline and
 rain), rebuilt as layers so Liquid Glass can add refraction, highlights and
@@ -31,6 +35,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "AppStore_Images/Logo/Logo Light.svg"
 ICON = ROOT / "meteocool/AppIcon.icon"
+NATIVE = ROOT / "meteocool/AppIconNative.icon"
+
+# The sash: a band across the lower right corner, clear of the logo and
+# inside the icon's rounded mask, coloured along its length with the radar's
+# classic palette from light rain to the heaviest (meteocool/AR/Colormaps.swift).
+SASH = (1560, 1760)
+SASH_COLOURS = ["#62BAD8", "#3BD66D", "#0FBF15", "#FFE200", "#FF9300", "#FF0000", "#AA0000"]
 
 INK = (26, 46, 66)          # the outline and rain; the logo's black, softened
 PAPER_DARK = (16, 24, 34)   # the dark rendition's background
@@ -88,11 +99,14 @@ def main():
         "rain-dark.svg": rain("white"),
     }
 
-    if ICON.exists():
-        shutil.rmtree(ICON)
-    (ICON / "Assets").mkdir(parents=True)
-    for name, body in art.items():
-        (ICON / "Assets" / name).write_text(svg(body))
+    near, far = SASH
+    stops = "".join(f'<stop offset="{i / (len(SASH_COLOURS) - 1):.3f}" stop-color="{c}"/>'
+                    for i, c in enumerate(SASH_COLOURS))
+    sash = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS}" height="{CANVAS}" '
+            f'viewBox="0 0 {CANVAS} {CANVAS}"><defs><linearGradient id="radar" gradientUnits="userSpaceOnUse" '
+            f'x1="{near - CANVAS}" y1="{CANVAS}" x2="{CANVAS}" y2="{near - CANVAS}">{stops}</linearGradient></defs>'
+            f'<polygon points="{near - CANVAS},{CANVAS} {CANVAS},{near - CANVAS} {CANVAS},{far - CANVAS} '
+            f'{far - CANVAS},{CANVAS}" fill="url(#radar)"/></svg>\n')
 
     def layer(name, light, dark):
         return {
@@ -114,7 +128,7 @@ def main():
     def solid(c):
         return {"solid": "srgb:" + ",".join(f"{v / 255:.5f}" for v in (*c, 255))}
 
-    document = {
+    base = {
         "fill-specializations": [
             {"value": solid((255, 255, 255))},
             {"appearance": "dark", "value": solid(PAPER_DARK)},
@@ -127,7 +141,22 @@ def main():
         ],
         "supported-platforms": {"squares": ["iOS"]},
     }
-    (ICON / "icon.json").write_text(json.dumps(document, indent=2) + "\n")
+    sash_group = {
+        "layers": [{"name": "sash", "image-name-specializations": [{"value": "sash.svg"}], "glass": False}],
+        "shadow": {"kind": "neutral", "opacity": 0.35},
+        "translucency": {"enabled": False, "value": 0.5},
+    }
+    native = {**base, "groups": [sash_group, *base["groups"]]}
+
+    for path, document, extra in [(ICON, base, {}), (NATIVE, native, {"sash.svg": sash})]:
+        if path.exists():
+            shutil.rmtree(path)
+        (path / "Assets").mkdir(parents=True)
+        for name, body in art.items():
+            (path / "Assets" / name).write_text(svg(body))
+        for name, body in extra.items():
+            (path / "Assets" / name).write_text(body)
+        (path / "icon.json").write_text(json.dumps(document, indent=2) + "\n")
 
 
 if __name__ == "__main__":
