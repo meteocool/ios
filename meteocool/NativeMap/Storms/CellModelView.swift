@@ -122,19 +122,28 @@ struct CellModelView: View {
                 held = (dragFrom ?? 0) + value.translation.width * 0.012
             }
             .onEnded { _ in dragFrom = nil })
-        .task(id: "\(input.code)|\(palette)") {
-            mesh = CellVolumeModel.model(input).map { CellMesh($0, palette: palette) }
-            started = Date()
-            turned = false
-            try? await Task.sleep(for: .seconds(2 * .pi / Self.spin))
-            turned = true
-        }
+        // Built on appearing, and again for another cell or palette. Not in a
+        // `.task`, which a UIKit-presented sheet's panel never started.
+        .onAppear(perform: build)
+        .onChange(of: "\(input.code)|\(palette)") { _, _ in build() }
         .accessibilityElement()
         .accessibilityLabel(CoreStrings.t("storm.model_aria"))
         .accessibilityAdjustableAction { direction in
             held = (held ?? angle(at: Date())) + (direction == .increment ? 0.4 : -0.4)
         }
-        .accessibilityIdentifier("nativeMap.storm.structure")
+        // Named once there is a model to see, so a test waits for the picture.
+        .accessibilityIdentifier(mesh == nil ? "nativeMap.storm.structure.empty" : "nativeMap.storm.structure")
+    }
+
+    /// The model's faces, and one turn from now before it rests.
+    private func build() {
+        mesh = CellVolumeModel.model(input).map { CellMesh($0, palette: palette) }
+        let start = Date()
+        started = start
+        turned = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2 * .pi / Self.spin) {
+            if started == start { turned = true }
+        }
     }
 
     private func angle(at date: Date) -> Double {
