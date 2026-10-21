@@ -68,10 +68,17 @@ final class NativeMapUITests: XCTestCase {
     /// a storm's disc), which a hold would open instead.
     private func hold(_ dx: CGFloat, _ dy: CGFloat) {
         let frame = map.frame
-        let marks = app.descendants(matching: .any)
-            // A storm's disc is named for its id, which has digits; its panel's parts have none.
-            .matching(NSPredicate(format: "identifier == 'nativeMap.cloudHint' OR identifier MATCHES 'nativeMap\\\\.storm\\\\.[A-Za-z_-]*[0-9].*'"))
-            .allElementsBoundByIndex.map { $0.frame.insetBy(dx: -24, dy: -24) }
+        // One snapshot of the screen: the live marks come and go between
+        // queries made one by one.
+        var marks: [CGRect] = []
+        func collect(_ node: XCUIElementSnapshot) {
+            let id = node.identifier
+            if id == "nativeMap.cloudHint" || (id.hasPrefix("nativeMap.storm.") && id.contains(where: \.isNumber)) {
+                marks.append(node.frame.insetBy(dx: -24, dy: -24))
+            }
+            node.children.forEach(collect)
+        }
+        if let snapshot = try? app.snapshot() { collect(snapshot) }
         let tries = [(dx, dy), (dx, dy + 0.08), (dx, dy - 0.08), (dx - 0.2, dy), (dx + 0.2, dy), (dx - 0.2, dy + 0.1), (dx + 0.2, dy + 0.1)]
         let spot = tries.first { x, y in
             let point = CGPoint(x: frame.minX + frame.width * x, y: frame.minY + frame.height * y)
@@ -448,8 +455,16 @@ final class NativeMapUITests: XCTestCase {
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
         }
         let tag = try XCTUnwrap(onScreen, "A tag in view")
+        // Once the map has come to rest: a tag still sliding with it is
+        // somewhere else by the time the tap lands.
+        var last = CGRect.null
+        for _ in 0 ..< 20 where tag.frame != last {
+            last = tag.frame
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        }
         screenshot("3D tags")
         tag.tap()
+        if !element("nativeMap.3d").waitForExistence(timeout: 5), tag.exists { tag.tap() }
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
