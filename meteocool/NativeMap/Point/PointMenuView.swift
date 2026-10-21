@@ -107,7 +107,7 @@ struct PointMenuView: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(menu.title)
-                .font(.system(size: 14, weight: .bold))
+                .scaledFont(14, weight: .bold, relativeTo: .subheadline)
                 .tracking(-0.14)
                 .foregroundStyle(PointStyle.text)
                 .lineLimit(1)
@@ -136,17 +136,17 @@ struct PointMenuView: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
+                    .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PointStyle.accent)
                     .frame(width: 32, height: 32)
                     .background(PointStyle.accentTint, in: Circle())
                 VStack(alignment: .leading, spacing: 1) {
                     Text(CoreStrings.t(label))
-                        .font(.system(size: 15, weight: .semibold))
+                        .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                         .tracking(-0.15)
                         .foregroundStyle(PointStyle.text)
                     Text(CoreStrings.t(sub))
-                        .font(.system(size: 12))
+                        .scaledFont(12, relativeTo: .caption)
                         .foregroundStyle(PointStyle.text2)
                 }
                 .lineLimit(1)

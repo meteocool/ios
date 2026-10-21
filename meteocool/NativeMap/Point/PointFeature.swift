@@ -87,7 +87,7 @@ final class PointFeature: NativeMapFeature {
         let overlay = PointMenuOverlay(frame: map.view.bounds)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.onClose = { [weak self] in self?.closeMenu() }
-        let host = UIHostingController(rootView: PointMenuView(menu: menu).environment(\.colorScheme, map.model.isDark ? .dark : .light))
+        let host = UIHostingController(rootView: PointMenuView(menu: menu).chromeTypeSize().environment(\.colorScheme, map.model.isDark ? .dark : .light))
         host.view.backgroundColor = .clear
         host.sizingOptions = .intrinsicContentSize
         map.view.addSubview(overlay)

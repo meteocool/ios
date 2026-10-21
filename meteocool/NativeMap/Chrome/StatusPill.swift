@@ -40,17 +40,17 @@ struct StatusPill: View {
                     HStack(spacing: 6) {
                         if case .time(let step) = state {
                             Text(Self.clock(step))
-                                .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                                .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
                         } else {
                             dot(state)
-                            Text(title(state)).font(.system(size: 12, weight: .semibold)).tracking(0.12)
+                            Text(title(state)).scaledFont(12, weight: .semibold, relativeTo: .caption).tracking(0.12)
                         }
                     }
                     .foregroundStyle(theme.text)
                     .padding(.leading, isTime(state) ? 12 : 10)
                     .padding(.trailing, 12)
                     .frame(height: ChromeTheme.pillHeight)
-                    .chromeGlass(theme, in: Capsule())
+                    .chromeGlass(theme, in: Capsule(), interactive: true)
                     .opacity(state == .live && dimmed ? 0.5 : 1)
                     .frame(height: 44)
                     .contentShape(Rectangle())
@@ -181,7 +181,7 @@ struct ConnectionDetails: View {
                         row(d("position"), model.userLocation.map { String(format: "%.3f, %.3f", $0.coordinate.latitude, $0.coordinate.longitude) } ?? d("not_shared"))
                     }
                 }
-                .font(.system(size: 13))
+                .scaledFont(13, relativeTo: .footnote)
             }
             .navigationTitle(CoreStrings.t("connection_details"))
             .navigationBarTitleDisplayMode(.inline)
@@ -237,7 +237,7 @@ struct ConnectionDetails: View {
                     Text(d("service.\(service)"))
                     Spacer()
                     Text("n \(durations.count) · \(d("median")) \(Int((ConnectionRules.quantile(durations, 0.5) ?? 0) * 1000)) ms · p95 \(Int((ConnectionRules.quantile(durations, 0.95) ?? 0) * 1000)) ms")
-                        .font(.system(size: 11).monospacedDigit())
+                        .scaledFont(11, relativeTo: .caption2, digits: true)
                         .foregroundStyle(.secondary)
                 }
             }

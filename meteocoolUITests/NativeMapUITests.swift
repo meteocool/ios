@@ -63,9 +63,21 @@ final class NativeMapUITests: XCTestCase {
         add(attachment)
     }
 
-    /// Holds the map at a point given as fractions of its size.
+    /// Holds the map at a point given as fractions of its size, or the
+    /// nearest spot clear of the marks live data puts there (a core's 3D tag,
+    /// a storm's disc), which a hold would open instead.
     private func hold(_ dx: CGFloat, _ dy: CGFloat) {
-        map.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy)).press(forDuration: 1.0)
+        let frame = map.frame
+        let marks = app.descendants(matching: .any)
+            // A storm's disc is named for its id, which has digits; its panel's parts have none.
+            .matching(NSPredicate(format: "identifier == 'nativeMap.cloudHint' OR identifier MATCHES 'nativeMap\\\\.storm\\\\.[A-Za-z_-]*[0-9].*'"))
+            .allElementsBoundByIndex.map { $0.frame.insetBy(dx: -24, dy: -24) }
+        let tries = [(dx, dy), (dx, dy + 0.08), (dx, dy - 0.08), (dx - 0.2, dy), (dx + 0.2, dy), (dx - 0.2, dy + 0.1), (dx + 0.2, dy + 0.1)]
+        let spot = tries.first { x, y in
+            let point = CGPoint(x: frame.minX + frame.width * x, y: frame.minY + frame.height * y)
+            return !marks.contains { $0.contains(point) }
+        } ?? (dx, dy)
+        map.coordinate(withNormalizedOffset: CGVector(dx: spot.0, dy: spot.1)).press(forDuration: 1.0)
     }
 
     // MARK: - Radar and its tray

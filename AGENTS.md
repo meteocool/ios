@@ -92,3 +92,19 @@ maps) and "Adopting Liquid Glass":
 - VoiceOver labels, values and adjustable actions on every custom control.
   Every gesture has an onscreen alternative. Support Voice Control, Switch
   Control and keyboard navigation through standard controls.
+
+### In this codebase
+- `chromeGlass(_:in:interactive:)` (ChromeTheme.swift) is the map's glass
+  chrome: system Liquid Glass on iOS 26 and later, with a solid fill under
+  Reduce Transparency. Pass `interactive: true` on buttons.
+- `hitTarget()` gives a smaller control its 44 pt hit region without changing
+  its look.
+- `scaledFont(_:weight:relativeTo:digits:)` keeps a custom point size but
+  scales it with Dynamic Type. Use it, or a text style, for every font. A
+  `Canvas` drawing's labels are the exception and stay fixed.
+- `chromeTypeSize()` caps the controls over the map at xxxLarge. Sheets and
+  panels scale fully; switch layouts at accessibility sizes, as the storm
+  panel's readings do.
+- `sheetFill(dark:)` and `panelFill(dark:)` draw the phone sheets and wide
+  panels: the system's glass sheet with a standard material for text-heavy
+  content, regular glass for floating panels, and core's fill before iOS 26.

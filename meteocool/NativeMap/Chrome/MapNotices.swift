@@ -31,11 +31,11 @@ struct BackToNowPill: View {
                 Button(action: player.showLive) {
                     HStack(spacing: 6) {
                         Text(CoreStrings.t("chrome.playback.back_to_latest"))
-                            .font(.system(size: 13, weight: .semibold))
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .tracking(-0.13)
                             .foregroundStyle(theme.text)
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 12, weight: .semibold))
+                            .scaledFont(12, weight: .semibold, relativeTo: .caption)
                             .foregroundStyle(theme.accent)
                     }
                     .padding(.horizontal, 14)
@@ -91,7 +91,7 @@ struct SwipeDock<Content: View>: View {
                     .fill(theme.redVeil)
                     .overlay(alignment: .trailing) {
                         Button(action, action: hide)
-                            .font(.system(size: 13, weight: .semibold))
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .foregroundStyle(-offset > width * Self.commit ? .white : theme.red)
                             .frame(width: max(Self.detent, -offset))
                     }
@@ -150,7 +150,7 @@ struct DismissableStrip<Content: View>: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
                     Text(title)
-                        .font(.system(size: 13, weight: .bold))
+                        .scaledFont(13, weight: .bold, relativeTo: .footnote)
                         .foregroundStyle(theme.text)
                         .lineLimit(1)
                     Spacer()
@@ -158,7 +158,7 @@ struct DismissableStrip<Content: View>: View {
                         withAnimation(.easeIn(duration: 0.2)) { dismiss() }
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .semibold))
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .foregroundStyle(theme.text3)
                             .frame(width: 44, height: 30)
                     }
@@ -203,8 +203,8 @@ struct NoticeStrips: View {
 }
 
 private extension Text {
-    func notice(_ theme: ChromeTheme) -> some View {
-        font(.system(size: 12)).lineSpacing(2).foregroundStyle(theme.text2).lineLimit(4)
+    @MainActor func notice(_ theme: ChromeTheme) -> some View {
+        scaledFont(12, relativeTo: .caption).lineSpacing(2).foregroundStyle(theme.text2).lineLimit(4)
     }
 }
 
@@ -231,12 +231,12 @@ struct MapToast: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: symbol).font(.system(size: 18)).foregroundStyle(theme.accent)
-            Text(text).font(.system(size: 13)).lineSpacing(3).foregroundStyle(theme.text)
+            Image(systemName: symbol).scaledFont(18, relativeTo: .body).foregroundStyle(theme.accent)
+            Text(text).scaledFont(13, relativeTo: .footnote).lineSpacing(3).foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Button(action: close) {
-                Image(systemName: "xmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(theme.text3)
+                Image(systemName: "xmark").scaledFont(12, weight: .semibold, relativeTo: .caption).foregroundStyle(theme.text3)
             }
             .accessibilityLabel(CoreStrings.t("close"))
         }

@@ -321,7 +321,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// Hosts a SwiftUI view over the map, sized to fit; the caller places it.
     @discardableResult
     func addChrome<Content: View>(_ content: Content) -> UIView {
-        let host = UIHostingController(rootView: content)
+        let host = UIHostingController(rootView: content.chromeTypeSize())
         host.view.backgroundColor = .clear
         host.view.translatesAutoresizingMaskIntoConstraints = false
         host.sizingOptions = .intrinsicContentSize
@@ -332,7 +332,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     @discardableResult
     func addToDock<Content: View>(_ content: Content) -> UIView {
-        let host = UIHostingController(rootView: content)
+        let host = UIHostingController(rootView: content.chromeTypeSize())
         host.view.backgroundColor = .clear
         host.sizingOptions = .intrinsicContentSize
         dock.insertArrangedSubview(host.view, at: 0)

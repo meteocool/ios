@@ -199,11 +199,11 @@ struct SpreadChart: View {
         } ?? ""
         let x = f.x(picked.index)
         return VStack(alignment: .leading, spacing: 2) {
-            Text(time).font(.system(size: 11, weight: .semibold))
+            Text(time).scaledFont(11, weight: .semibold, relativeTo: .caption2)
             Text("\(CompareModels.label(picked.model)): \(value.map { String(format: "%.1f", $0) } ?? "–")\(spec.unit)")
-                .font(.system(size: 11))
+                .scaledFont(11, relativeTo: .caption2)
             Text(CoreStrings.t("compare.spread.tooltip", ["median": median, "spread": spread, "count": env.count[safe: picked.index] ?? 0]))
-                .font(.system(size: 10)).foregroundStyle(.secondary)
+                .scaledFont(10, relativeTo: .caption2).foregroundStyle(.secondary)
         }
         .padding(8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -336,11 +336,11 @@ struct ModelCompareView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if !wide { header.padding(.trailing, 56) }
                 if model.loading {
-                    Text(CoreStrings.t("compare.loading")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 24)
+                    Text(CoreStrings.t("compare.loading")).scaledFont(15, relativeTo: .subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
                 } else if let error = model.error {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(CoreStrings.t("compare.error")).font(.system(size: 15))
-                        Text(error).font(.system(size: 13)).foregroundStyle(.secondary)
+                        Text(CoreStrings.t("compare.error")).scaledFont(15, relativeTo: .subheadline)
+                        Text(error).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                         Button(CoreStrings.t("retry"), action: model.load).buttonStyle(.bordered)
                     }
                     .padding(.vertical, 16)
@@ -378,7 +378,7 @@ struct ModelCompareView: View {
     private var closeDisc: some View {
         Button(action: close) {
             Image(systemName: "xmark")
-                .font(.system(size: wide ? 14 : 18, weight: .semibold))
+                .scaledFont(wide ? 14 : 18, weight: .semibold, relativeTo: .body)
                 .foregroundStyle(.secondary)
                 .frame(width: wide ? 30 : 44, height: wide ? 30 : 44)
                 .background(Color.secondary.opacity(0.12), in: Circle())
@@ -391,12 +391,12 @@ struct ModelCompareView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(model.place ?? String(format: "%.3f, %.3f", model.latitude, model.longitude))
-                .font(.system(size: wide ? 22 : 24, weight: .bold))
+                .scaledFont(wide ? 22 : 24, weight: .bold, relativeTo: .title2)
                 .tracking(-0.48)
                 .accessibilityLabel(model.place.map { CoreStrings.t("compare.title_place", ["place": $0]) } ?? CoreStrings.t("compare.title"))
                 .accessibilityIdentifier("nativeMap.compare.title")
             Text(model.forecast.map { CoreStrings.t("compare.responding", ["count": $0.respondingModels.count]) } ?? CoreStrings.t("compare.comparing"))
-                .font(.system(size: wide ? 14 : 15, weight: .medium))
+                .scaledFont(wide ? 14 : 15, weight: .medium, relativeTo: .subheadline)
                 .foregroundStyle(.secondary)
         }
         .padding(.bottom, 14)
@@ -404,9 +404,9 @@ struct ModelCompareView: View {
 
     private func heading(_ text: String, aside: String? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(text).font(.system(size: wide ? 17 : 19, weight: .bold)).tracking(-0.19)
+            Text(text).scaledFont(wide ? 17 : 19, weight: .bold, relativeTo: .title3).tracking(-0.19)
             Spacer()
-            if let aside { Text(aside).font(.system(size: 13)).foregroundStyle(.tertiary) }
+            if let aside { Text(aside).scaledFont(13, relativeTo: .footnote).foregroundStyle(.tertiary) }
         }
         .padding(.top, 18)
         .padding(.bottom, 6)
@@ -417,7 +417,7 @@ struct ModelCompareView: View {
     private var spread: some View {
         VStack(alignment: .leading, spacing: 8) {
             heading(CoreStrings.t("compare.spread.heading", ["variable": CoreStrings.t("compare.variable.\(model.spec.variable)")]))
-            Text(CoreStrings.t("compare.spread.sub")).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(CoreStrings.t("compare.spread.sub")).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Picker(CoreStrings.t("compare.spread.variable_group"), selection: Binding(
@@ -437,7 +437,7 @@ struct ModelCompareView: View {
             }
             if let error = model.spreadError {
                 HStack {
-                    Text(CoreStrings.t("compare.spread.error") + " " + error).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(CoreStrings.t("compare.spread.error") + " " + error).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                     Button(CoreStrings.t("retry"), action: model.loadSpread).buttonStyle(.bordered).controlSize(.small)
                 }
             } else if let series = model.hourly[model.spec.variable] {
@@ -459,7 +459,7 @@ struct ModelCompareView: View {
             HStack(spacing: 5) { RoundedRectangle(cornerRadius: 2).fill(accent.opacity(0.18)).frame(width: 14, height: 9); Text(CoreStrings.t("compare.spread.range")) }
             HStack(spacing: 5) { Capsule().fill(Color.primary.opacity(0.3)).frame(width: 14, height: 1); Text(CoreStrings.t("compare.models", ["count": count == 0 ? 21 : count])) }
         }
-        .font(.system(size: 12))
+        .scaledFont(12, relativeTo: .caption)
         .foregroundStyle(.secondary)
     }
 
@@ -518,26 +518,26 @@ struct ModelCompareView: View {
         let tier = Consensus.tier(day.high.predictability)
         let code = WeatherCodes.code(day.code.value)
         return HStack(spacing: 10) {
-            Text(day.name).font(.system(size: 15, weight: .semibold)).frame(width: 74, alignment: .leading).lineLimit(1)
-            Text(WeatherCodes.icon(day.code.value)).font(.system(size: 20))
+            Text(day.name).scaledFont(15, weight: .semibold, relativeTo: .subheadline).frame(width: 74, alignment: .leading).lineLimit(1)
+            Text(WeatherCodes.icon(day.code.value)).scaledFont(20, relativeTo: .title3)
                 .accessibilityLabel(code.map { CoreStrings.t("compare.weather.\($0)") } ?? "–")
             HStack(spacing: 3) {
-                Text("\(round(day.high.value))°").font(.system(size: 15, weight: .semibold))
-                Text("/ \(round(day.low.value))°").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("\(round(day.high.value))°").scaledFont(15, weight: .semibold, relativeTo: .subheadline)
+                Text("/ \(round(day.low.value))°").scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                 if day.high.stdDev >= 0.5 {
-                    Text("±\(round(day.high.stdDev, 1))").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    Text("±\(round(day.high.stdDev, 1))").scaledFont(11, relativeTo: .caption2).foregroundStyle(.tertiary)
                 }
             }
             .monospacedDigit()
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 0) {
-                Text("\(round(day.precip.value, 1)) mm").font(.system(size: 13)).monospacedDigit()
+                Text("\(round(day.precip.value, 1)) mm").scaledFont(13, relativeTo: .footnote).monospacedDigit()
                 if day.probability.value != nil {
-                    Text("\(round(day.probability.value))%").font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
+                    Text("\(round(day.probability.value))%").scaledFont(12, relativeTo: .caption).foregroundStyle(.secondary).monospacedDigit()
                 }
             }
             Text(CoreStrings.t("compare.tier.\(tier.rawValue)"))
-                .font(.system(size: 11, weight: .semibold))
+                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .foregroundStyle(tierInk(tier))
@@ -569,7 +569,7 @@ struct ModelCompareView: View {
                     Text("\(round(lows[id]))°").frame(width: 40, alignment: .trailing).foregroundStyle(.secondary)
                     Text("\(round(precip[id], 1)) mm").frame(width: 64, alignment: .trailing)
                 }
-                .font(.system(size: 12).monospacedDigit())
+                .scaledFont(12, relativeTo: .caption, digits: true)
             }
         }
         .padding(.bottom, 10)
@@ -585,7 +585,7 @@ struct ModelCompareView: View {
         let markdown = "\(method) \(CoreStrings.t("compare.footer.registry")) [meteocompare](https://github.com/Flowm/meteocompare); "
             + "\(CoreStrings.t("compare.footer.data")) [Open-Meteo.com](https://open-meteo.com/) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))."
         return Text((try? AttributedString(markdown: markdown)) ?? AttributedString(markdown))
-            .font(.system(size: 12))
+            .scaledFont(12, relativeTo: .caption)
             .foregroundStyle(.secondary)
             .padding(.top, 16)
     }
