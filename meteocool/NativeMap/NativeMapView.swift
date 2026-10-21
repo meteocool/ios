@@ -92,7 +92,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // `--environment-variables` on a phone).
         if let search = ProcessInfo.processInfo.environment["MC_NATIVE_MAP_LINK"] { open(search: search) }
         #endif
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG
         // And a position of the user's own (`MC_USER_LOCATION='48.14,11.58'`),
         // held whatever Core Location says: UI tests of what is shown for it.
         if let pair = ProcessInfo.processInfo.environment["MC_USER_LOCATION"]?.split(separator: ","), pair.count == 2,

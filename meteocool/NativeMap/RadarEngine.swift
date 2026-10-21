@@ -210,7 +210,7 @@ final class RadarEngine {
         request.timeoutInterval = 15
         seriesTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             let status = (response as? HTTPURLResponse)?.statusCode
-            let series = status == 200 ? data.flatMap { try? RadarSeries.decode($0) } : nil
+            let series = Self.forTests(status == 200 ? data.flatMap { try? RadarSeries.decode($0) } : nil)
             let cancelled = (error as? URLError)?.code == .cancelled
             Task { @MainActor in
                 guard let self, !cancelled else { return }
@@ -236,6 +236,19 @@ final class RadarEngine {
             }
         }
         seriesTask?.resume()
+    }
+
+    /// The series as UI tests want it: without the networks' nowcasts
+    /// (`MC_NO_NOWCAST`), as a run that has not come in would leave it.
+    nonisolated private static func forTests(_ series: RadarSeries?) -> RadarSeries? {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MC_NO_NOWCAST"] != nil, let all = series {
+            return RadarSeries(frames: all.frames, networks: all.networks,
+                               products: all.products?.filter { !$0.key.hasPrefix("nowcast_") },
+                               serverTime: all.serverTime, replay: all.replay)
+        }
+        #endif
+        return series
     }
 
     private func compose() {

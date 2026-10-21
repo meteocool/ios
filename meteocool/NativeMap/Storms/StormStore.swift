@@ -289,7 +289,7 @@ final class StormStore: ObservableObject {
     /// A cell from a link (`cell=`): fetched, then resolved to its storm.
     func openCell(code: String, details: Bool) {
         guard let map else { return }
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG
         // UI tests open a cell of their own (`MC_CELL_FIXTURE`, a track
         // feature as `/cells/tracks/{code}` sends it): the demo's cells come
         // and go with its replay.

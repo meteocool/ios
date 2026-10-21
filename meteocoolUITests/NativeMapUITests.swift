@@ -147,6 +147,10 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.product.merged").waitForExistence(timeout: 5))
         XCTAssertTrue(element("nativeMap.product.merged").isSelected)
         screenshot("EU composite")
+        // What the pictures are, a tap away.
+        element("nativeMap.productHelp").tap()
+        XCTAssertTrue(element("nativeMap.explainer").waitForExistence(timeout: 5))
+        screenshot("radar explainer")
     }
 
     func testStatusPillOpensConnectionDetails() {
@@ -157,6 +161,37 @@ final class NativeMapUITests: XCTestCase {
         screenshot("connection details")
         element("nativeMap.connectionDetails").buttons["Close"].firstMatch.tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForNonExistence(timeout: 5))
+    }
+
+    func testNoForecastStripWhereNoRunHasComeIn() {
+        // France without its nowcast, as when a run has not come in: past
+        // now, the forecast ground there is empty.
+        app.launchEnvironment["MC_NO_NOWCAST"] = "1"
+        launch(link: "?latLonZ=46.6,2.4,9")
+        waitForSeries()
+        let middle = timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        middle.press(forDuration: 0.05, thenDragTo: timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.4)))
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("+") }, "Into the forecast: \(timeline.value ?? "")")
+        let strip = element("nativeMap.strip.noForecast")
+        XCTAssertTrue(strip.waitForExistence(timeout: 15), "No forecast here")
+        screenshot("no forecast here")
+        strip.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
+    }
+
+    func testSharedLinkSaysHowOld() {
+        // Shared twenty minutes ago: the map says so.
+        let utc = DateFormatter()
+        utc.locale = Locale(identifier: "en_US_POSIX")
+        utc.timeZone = TimeZone(identifier: "UTC")
+        utc.dateFormat = "yyyyMMdd'T'HHmm'Z'"
+        let shared = utc.string(from: Date().addingTimeInterval(-20 * 60))
+        launch(link: "?latLonZ=48.14,11.58,8&shared=\(shared)")
+        let toast = element("nativeMap.toast")
+        XCTAssertTrue(toast.waitForExistence(timeout: 15), "The link's age")
+        let said = toast.descendants(matching: .staticText).matching(NSPredicate(format: "label CONTAINS '20 minutes ago'")).firstMatch
+        XCTAssertTrue(said.waitForExistence(timeout: 5), "Twenty minutes ago")
+        screenshot("shared link age")
     }
 
     func testNoRadarStripOverTheAtlantic() {
@@ -205,6 +240,22 @@ final class NativeMapUITests: XCTestCase {
         }
     }
 
+    func testShowForMyLocationAfterInspectingAPoint() {
+        app.launchEnvironment["MC_USER_LOCATION"] = "48.14,11.58"
+        launch(link: "?latLonZ=48.14,11.58,8")
+        waitForSeries()
+        hold(0.5, 0.3)
+        element("nativeMap.point.radar").tap()
+        XCTAssertTrue(element("nativeMap.point.ring").waitForExistence(timeout: 5))
+        // The bars are for the point now; one tap gives them back to the reader.
+        let mine = element("nativeMap.showForMyLocation")
+        XCTAssertTrue(mine.waitForExistence(timeout: 5))
+        screenshot("bars for a point")
+        mine.tap()
+        XCTAssertTrue(element("nativeMap.point.ring").waitForNonExistence(timeout: 5))
+        XCTAssertFalse(mine.exists)
+    }
+
     func testForecastOpensTheModelComparison() {
         launch(link: "?latLonZ=48.14,11.58,8")
         waitForSeries()
@@ -217,7 +268,17 @@ final class NativeMapUITests: XCTestCase {
         let deadline = Date().addingTimeInterval(60)
         while Date() < deadline, !days.exists, !failed.exists { RunLoop.current.run(until: Date().addingTimeInterval(0.5)) }
         XCTAssertTrue(days.exists || failed.exists, "The models answered or said they could not")
-        if days.exists { element("nativeMap.compare.range").buttons["7 days"].tap() }
+        if days.exists {
+            element("nativeMap.compare.range").buttons["7 days"].tap()
+            // The spread, of temperature instead of rainfall.
+            let variable = element("nativeMap.compare.variable")
+            for _ in 0 ..< 4 where !variable.isHittable { element("nativeMap.compare").swipeUp() }
+            variable.buttons["Temperature"].tap()
+            XCTAssertTrue(variable.buttons["Temperature"].isSelected)
+            screenshot("model comparison, temperature")
+            variable.buttons["Rainfall"].tap()
+            XCTAssertTrue(variable.buttons["Rainfall"].isSelected)
+        }
         screenshot("model comparison")
         element("nativeMap.compare.close").tap()
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
@@ -354,6 +415,9 @@ final class NativeMapUITests: XCTestCase {
         // own until taken hold of.
         let dial = element("nativeMap.storm.dial")
         XCTAssertTrue(dial.waitForExistence(timeout: 10), "The slice dial")
+        // The map draws the core cut open where it stands.
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(waitForValue(canvas, timeout: 40) { $0.hasSuffix(",cut") }, "Cut open: \(canvas.value ?? "")")
         let first = dial.value as? String ?? ""
         // Once the map has found the core among its storms.
         XCTAssertTrue(waitForValue(dial, timeout: 40) { $0 != first }, "The slice swings")
@@ -467,6 +531,40 @@ final class NativeMapUITests: XCTestCase {
         """
     }
 
+    func testStormPanelOpensARWhereThereIsAR() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        let details = element("nativeMap.storm.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
+        let ar = element("nativeMap.storm.ar")
+        #if targetEnvironment(simulator)
+        // No camera to look through: not offered.
+        for _ in 0 ..< 3 { details.swipeUp() }
+        XCTAssertFalse(ar.exists, "No AR without ARKit")
+        #else
+        for _ in 0 ..< 4 where !ar.isHittable { details.swipeUp() }
+        // The camera and the position, asked the first time.
+        addUIInterruptionMonitor(withDescription: "AR permissions") { alert in
+            for label in ["Allow While Using App", "OK", "Allow"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+        ar.tap()
+        let view = element("ar.view")
+        for _ in 0 ..< 10 where !view.exists {
+            app.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+        }
+        XCTAssertTrue(view.waitForExistence(timeout: 15), "The AR view, at the storm")
+        screenshot("AR from the storm panel")
+        element("ar.close").tap()
+        XCTAssertTrue(view.waitForNonExistence(timeout: 10))
+        #endif
+    }
+
     func testCellPanelShowsItsMeasuredStructure() {
         let code = "2026102012009999999999"
         app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
@@ -484,6 +582,28 @@ final class NativeMapUITests: XCTestCase {
     private func openLayers() {
         app.buttons["map.layers"].tap()
         XCTAssertTrue(element("nativeMap.layers").waitForExistence(timeout: 5))
+    }
+
+    func testLoopFromTwoHoursBackIsKept() {
+        launch()
+        waitForSeries()
+        openLayers()
+        let loop = app.switches["nativeMap.layers.fromStart"].firstMatch
+        XCTAssertTrue(loop.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !loop.isHittable { element("nativeMap.layers").swipeUp() }
+        let before = loop.value as? String
+        loop.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(loop) { $0 != before }, "Switched")
+        let after = loop.value as? String
+        // Put away and opened again: as left.
+        element("nativeMap.layers.close").tap()
+        openLayers()
+        let again = app.switches["nativeMap.layers.fromStart"].firstMatch
+        XCTAssertTrue(again.waitForExistence(timeout: 5))
+        XCTAssertEqual(again.value as? String, after)
+        for _ in 0 ..< 4 where !again.isHittable { element("nativeMap.layers").swipeUp() }
+        again.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(again) { $0 == before }, "Back as it was")
     }
 
     func testLayerSwitcherTurnsLightningOff() {
@@ -662,7 +782,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.3d.north").exists)
         // Tilted and turned as the link says.
         let canvas = element("nativeMap.3d.canvas")
-        XCTAssertTrue(waitForValue(canvas) { $0 == "30,-135" }, "The link's camera: \(canvas.value as? String ?? "")")
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("30,-135") }, "The link's camera: \(canvas.value as? String ?? "")")
     }
 
     func testStormAndPointShareTheirLinks() {
@@ -694,8 +814,11 @@ final class NativeMapUITests: XCTestCase {
         // Berlin, held whatever the simulator's own position is.
         app.resetAuthorizationStatus(for: .location)
         app.launchEnvironment["MC_USER_LOCATION"] = "52.520,13.405"
-        // And the simulator's own, so Core Location has a fix to deliver.
+        // And the simulator's own, so Core Location has a fix to deliver; a
+        // phone has a real one, and the held position stands in for it.
+        #if targetEnvironment(simulator)
         XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 52.520, longitude: 13.405))
+        #endif
         // The system's question, answered when it comes up.
         addUIInterruptionMonitor(withDescription: "Location") { alert in
             for label in ["Allow While Using App", "Allow Once", "Allow"] where alert.buttons[label].exists {
