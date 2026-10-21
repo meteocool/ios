@@ -185,6 +185,26 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.point.ring").waitForNonExistence(timeout: 5))
     }
 
+    func testPointMenuStaysOnScreenNearTheEdges() {
+        launch(link: "?latLonZ=48.14,11.58,8")
+        waitForSeries()
+        let window = app.windows.firstMatch.frame
+        // Clear of the status bar and Dynamic Island (59 pt on these phones,
+        // 24 on an iPad) and of the home indicator.
+        let top: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 24 : 54
+        let menu = element("nativeMap.point.menu")
+        for spot: CGFloat in [0.2, 0.3, 0.6] {
+            hold(0.5, spot)
+            XCTAssertTrue(menu.waitForExistence(timeout: 5), "A menu for the hold at \(spot)")
+            XCTAssertGreaterThanOrEqual(menu.frame.minY, top, "Under the status bar for the hold at \(spot)")
+            XCTAssertLessThanOrEqual(menu.frame.maxY, window.maxY - 20, "Off the bottom for the hold at \(spot)")
+            if spot == 0.2 { screenshot("point menu near the top") }
+            // Put away by a tap beside it.
+            app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.06, dy: 0.5)).tap()
+            XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+        }
+    }
+
     func testForecastOpensTheModelComparison() {
         launch(link: "?latLonZ=48.14,11.58,8")
         waitForSeries()

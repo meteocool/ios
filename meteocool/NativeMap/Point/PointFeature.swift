@@ -76,7 +76,18 @@ final class PointFeature: NativeMapFeature {
         // A storm's selection and a point's menu do not stand together.
         map.model.selectedStorm = nil
         let point = map.mapView.convert(coordinate, toPointTo: map.view)
-        let placement = PointMenuLayout.placement(x: point.x, y: point.y, width: map.view.bounds.width, shareAvailable: true)
+        // Laid out once in a throwaway host for its height at this text size.
+        let probe = UIHostingController(rootView: PointMenuView(menu: PointMenuModel(
+            placement: .init(below: false, side: .center, lean: 0), shareAvailable: true,
+            onRadar: {}, onForecast: {}, onShare: {})).chromeTypeSize())
+        probe.view.frame = map.view.bounds
+        map.view.addSubview(probe.view)
+        let menuHeight = probe.sizeThatFits(in: CGSize(width: PointMenuLayout.maxWidth, height: map.view.bounds.height)).height
+        probe.view.removeFromSuperview()
+        let safe = map.view.safeAreaInsets
+        let placement = PointMenuLayout.placement(x: point.x, y: point.y, width: map.view.bounds.width, shareAvailable: true,
+                                                  menuHeight: menuHeight, safeTop: safe.top,
+                                                  bottom: map.view.bounds.height - safe.bottom)
         let menu = PointMenuModel(placement: placement, shareAvailable: true,
                                   onRadar: { [weak self] in self?.inspect(coordinate) },
                                   onForecast: { [weak self] in

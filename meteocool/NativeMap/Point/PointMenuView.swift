@@ -231,9 +231,17 @@ final class PointMenuOverlay: UIView {
         addSubview(card)
         let dot = CGFloat(PointMenuLayout.dotHalf)
         let lean = CGFloat(placement.lean)
-        var constraints = [placement.below
+        let anchor = placement.below
             ? card.topAnchor.constraint(equalTo: topAnchor, constant: point.y - dot)
-            : card.bottomAnchor.constraint(equalTo: topAnchor, constant: point.y + dot)]
+            : card.bottomAnchor.constraint(equalTo: topAnchor, constant: point.y + dot)
+        // On the point unless that would put it past the safe area: a menu
+        // with very large text slides in rather than going under the bars.
+        anchor.priority = .defaultHigh
+        var constraints = [
+            anchor,
+            card.topAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.topAnchor, constant: 8),
+            card.bottomAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.bottomAnchor, constant: -8),
+        ]
         switch placement.side {
         case .left: constraints.append(card.leadingAnchor.constraint(equalTo: leadingAnchor, constant: point.x - lean))
         case .center: constraints.append(card.centerXAnchor.constraint(equalTo: leadingAnchor, constant: point.x))

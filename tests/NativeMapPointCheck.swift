@@ -48,6 +48,17 @@ struct NativeMapPointCheck {
         precondition(PointMenuLayout.placement(x: 390, y: 400, width: width, shareAvailable: true)
             == .init(below: false, side: .right, lean: 4))
         precondition(PointMenuLayout.placement(x: 120, y: 400, width: width, shareAvailable: true).side == .center)
+        // Measured: a 250 pt menu needs 265 pt over the point, inside the
+        // safe area; under the status bar is not room.
+        let tall = { (y: Double) in
+            PointMenuLayout.placement(x: 200, y: y, width: width, shareAvailable: true, menuHeight: 250, safeTop: 62, bottom: 840).below
+        }
+        precondition(tall(262) && tall(326) && !tall(327) && !tall(600))
+        // Too tall for either side: the side with more room.
+        let huge = { (y: Double) in
+            PointMenuLayout.placement(x: 200, y: y, width: width, shareAvailable: true, menuHeight: 600, safeTop: 62, bottom: 840).below
+        }
+        precondition(huge(300) && !huge(500))
         precondition(LongPress.duration == 0.45 && LongPress.slop == 10)
     }
 

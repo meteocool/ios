@@ -48,8 +48,16 @@ enum PointMenuLayout {
     }
 
     /// `x`, `y`: the point in the map view; `width`: the map view's.
-    static func placement(x: Double, y: Double, width: Double, shareAvailable: Bool) -> Placement {
-        let below = y < needsAbove + (shareAvailable ? shareEntry : 0)
+    /// `menuHeight`: the menu as laid out, which grows with the text size
+    /// (core's fixed room when unknown). `safeTop`, `bottom`: where the map
+    /// view's safe area starts and ends, so the menu never goes under the
+    /// status bar or the home indicator. Over the point while it fits there,
+    /// else under it where there is more room.
+    static func placement(x: Double, y: Double, width: Double, shareAvailable: Bool,
+                          menuHeight: Double? = nil, safeTop: Double = 0, bottom: Double = .infinity) -> Placement {
+        let needed = menuHeight.map { $0 + dotHalf + 8 } ?? needsAbove + (shareAvailable ? shareEntry : 0)
+        let above = y - safeTop
+        let below = above < needed && bottom - y > above
         let side: Side = x < needsSide ? .left : (x > width - needsSide ? .right : .center)
         let room = side == .left ? x - 8 : width - x - 8
         return Placement(below: below, side: side, lean: side == .center ? 0 : max(0, min(lean, room)))
