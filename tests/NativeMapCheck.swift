@@ -170,7 +170,7 @@ struct NativeMapCheck {
         let fellBack = RadarTimeline(series: late, clock: now + 120, product: .colmax)
         precondition(fellBack.drawn == .hx && fellBack.fellBack && fellBack.layers[now]!.last!.tileId == "v-c")
         precondition(RadarProduct(setting: "nonsense") == .hx && RadarProduct.dmax.timeseriesProducts == ["dmax", "colmax"])
-        precondition(!RadarTimeline.nowcastNetworks.contains("ie"))
+        precondition(RadarTimeline.nowcastNetworks.contains("ie") && RadarTimeline.nowcastNetworks.count == RadarTimeline.networks.count)
 
         // Links: core's spelling both ways, junk refused.
         let link = NativeMapLink(search: "?layer=radar&latLonZ=48.13710,11.57540,9.50&t=20260924T1945Z&shared=20260924T1950Z")

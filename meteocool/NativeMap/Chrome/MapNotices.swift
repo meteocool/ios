@@ -231,7 +231,9 @@ struct MapToast: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
+            // Decoration: the text says it all.
             Image(systemName: symbol).scaledFont(18, relativeTo: .body).foregroundStyle(theme.accent)
+                .accessibilityHidden(true)
             Text(text).scaledFont(13, relativeTo: .footnote).lineSpacing(3).foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -244,6 +246,8 @@ struct MapToast: View {
         .frame(maxWidth: 448)
         .chromeGlass(theme, in: RoundedRectangle(cornerRadius: 18, style: .continuous), strong: true)
         .environment(\.colorScheme, theme.colorScheme)
+        // One toast, its words and its close button inside.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.toast")
     }
 }

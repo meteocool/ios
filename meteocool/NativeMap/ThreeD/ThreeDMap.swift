@@ -951,7 +951,9 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         updateOverlays(pose: pose)
         if abs(state.bearing - camera.bearing) > 0.5 { state.bearing = camera.bearing }
         #if DEBUG
+        // The camera's tilt and turn, and whether a storm is drawn cut open.
         let tilt = "\(Int(camera.pitch.rounded())),\(Int(CutAngle.normalise(camera.bearing.rounded())))"
+            + (scene.openCut != nil ? ",cut" : "")
         if view.accessibilityValue != tilt { view.accessibilityValue = tilt }
         #endif
     }
