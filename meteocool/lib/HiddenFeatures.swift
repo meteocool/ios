@@ -19,8 +19,13 @@ enum HiddenFeatures {
     /// observe it and show or hide their controls.
     static let didChange = Notification.Name("HiddenFeaturesChanged")
 
-    /// Whether the hidden features are shown.
+    /// Whether the hidden features are shown. UI tests start with them
+    /// shown (`--hidden-features`, debug builds only).
+    #if DEBUG
+    private(set) static var unlocked = ProcessInfo.processInfo.arguments.contains("--hidden-features")
+    #else
     private(set) static var unlocked = false
+    #endif
 
     /// Taps in a row that toggle `unlocked`.
     static let taps = 5
