@@ -244,3 +244,6 @@
 "native_map_3d_pinch" = "Nipistä";
 "native_map_3d_two_fingers" = "Kaksi sormea";
 "native_map_3d_tap" = "Napauta";
+
+/* The reader's position on the 3D map, for VoiceOver. */
+"my_location" = "Oma sijainti";

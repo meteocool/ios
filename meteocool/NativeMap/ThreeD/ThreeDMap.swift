@@ -311,6 +311,10 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     private weak var map: NativeMapContext?
     private let metalView = MTKView()
     private let labels = StormLabelLayer()
+    /// The reader's position on the ground (core's `showLocation`), as the
+    /// flat map's blue dot.
+    private let locationDot = LocationDot()
+    private var userLocation: CLLocationCoordinate2D?
     private let state = ThreeDState()
     private let feed = StormFeed()
     private let ground = ThreeDGround()
@@ -354,6 +358,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         labels.onSelect = { [weak self] key in self?.select(key, toggle: true) }
         labels.onOpen = { [weak self] key in self?.openOnMap(key) }
         labels.rightClearance = ChromeTheme.controlColumn
+        addSubview(locationDot)
         addSubview(labels)
         let host = UIHostingController(rootView: ThreeDHUD(state: state, model: map.model).chromeTypeSize())
         host.view.backgroundColor = .clear
@@ -385,6 +390,9 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             self.open(key)
         }
         feed.onChange = { [weak self] in self?.feedChanged() }
+        locationChanged = map.model.$userLocation.sink { [weak self] location in
+            DispatchQueue.main.async { self?.userLocation = location?.coordinate }
+        }
         // The storm closed (its panel, the layer switcher): its highlight goes too.
         stormClosed = map.model.$stormOpen.dropFirst().filter { !$0 }.sink { [weak self] _ in
             DispatchQueue.main.async { self?.select(nil, toggle: false) }
@@ -397,6 +405,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
 
     private var stormClosed: AnyCancellable?
     private var openedChanged: AnyCancellable?
+    private var locationChanged: AnyCancellable?
 
     /// Full rate while a finger moves the map and a moment after; half when
     /// it is only looked at, where the storms' own motion reads the same and
@@ -573,6 +582,28 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         if let pitch = link.pitch { camera.pitch = min(max(pitch, OrbitCamera.pitches.lowerBound), OrbitCamera.pitches.upperBound) }
         if let bearing = link.bearing { camera.bearing = bearing }
         touched()
+        cameraSettled()
+    }
+
+    /// The app's location button (core's `lookAt`): the camera over the
+    /// reader, as tilted and turned as it was; nearer when `zoom` is given.
+    func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) {
+        guard let map else { return }
+        if framePending {
+            let view = NativeMapLink(latitude: coordinate.latitude, longitude: coordinate.longitude, zoom: zoom ?? map.zoomLevel)
+            pendingLink = LinkCamera(view: view, pitch: nil, bearing: nil)
+            return
+        }
+        let pitch = camera.pitch
+        if let zoom {
+            camera = OrbitCamera.from(center: coordinate, zoom: zoom, heading: camera.bearing, height: Double(map.mapView.bounds.height))
+            camera.pitch = pitch
+        } else {
+            camera.latitude = coordinate.latitude
+            camera.longitude = coordinate.longitude
+        }
+        touched()
+        cameraSettled()
     }
 
     func hide() {
@@ -953,7 +984,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         #if DEBUG
         // The camera's tilt and turn, and whether a storm is drawn cut open.
         let tilt = "\(Int(camera.pitch.rounded())),\(Int(CutAngle.normalise(camera.bearing.rounded())))"
-            + (scene.openCut != nil ? ",cut" : "")
+            + String(format: ",%.2f,%.2f", camera.latitude, camera.longitude) + (scene.openCut != nil ? ",cut" : "")
         if view.accessibilityValue != tilt { view.accessibilityValue = tilt }
         #endif
     }
@@ -1021,6 +1052,13 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             refreshStatus()
         }
         labels.layout(groups.compactMap { group in labelModels[group.key].map { ($0, project(group.anchor)) } })
+        if let userLocation, let at = project(scene.world(latitude: userLocation.latitude, longitude: userLocation.longitude, altitude: 0)),
+           bounds.insetBy(dx: -20, dy: -20).contains(at) {
+            locationDot.center = at
+            locationDot.isHidden = false
+        } else {
+            locationDot.isHidden = true
+        }
         let selected = groups.first { $0.key == scene.selectedKey }
         labels.layoutTicks(selected.map { group in
             scene.heightTicks(for: group, pose: pose).map { tick in
@@ -1309,6 +1347,12 @@ final class ThreeDMap: NativeMapFeature {
                 "bearing": String(Int(CutAngle.normalise(view.camera.bearing.rounded())))]
     }
 
+    func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) -> Bool {
+        guard let view, map?.model.capability == .cells3d else { return false }
+        view.lookAt(coordinate, zoom: zoom)
+        return true
+    }
+
     func linkView() -> NativeMapLink? {
         guard let view, let map, map.model.capability == .cells3d else { return nil }
         let camera = view.camera
@@ -1321,4 +1365,30 @@ final class ThreeDMap: NativeMapFeature {
     }
 
     func stop() { view?.hide() }
+}
+
+/// The reader on the 3D map: MapKit's blue dot, white-rimmed, over the
+/// ground where they are.
+final class LocationDot: UIView {
+    init() {
+        super.init(frame: CGRect(x: 0, y: 0, width: 22, height: 22))
+        isUserInteractionEnabled = false
+        isHidden = true
+        backgroundColor = .white
+        layer.cornerRadius = 11
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 3
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        let core = UIView(frame: bounds.insetBy(dx: 4, dy: 4))
+        core.backgroundColor = .systemBlue
+        core.layer.cornerRadius = 7
+        addSubview(core)
+        isAccessibilityElement = true
+        accessibilityLabel = NSLocalizedString("my_location", comment: "")
+        accessibilityIdentifier = "nativeMap.3d.location"
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
 }

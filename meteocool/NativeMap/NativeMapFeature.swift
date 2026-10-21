@@ -90,6 +90,9 @@ protocol NativeMapFeature: AnyObject {
     /// A link's query (core's `lib/deepLink.ts`: `storm`, `cell`, `cloud`,
     /// `point`, …), every part in turn; true when this part took it.
     func open(_ link: [String: String]) -> Bool
+    /// The app's location button: this part's own camera to the reader,
+    /// where it draws the map instead of the flat one; false otherwise.
+    func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) -> Bool
     /// What this part adds to a link to the map on screen.
     func linkParameters() -> [String: String]
     /// Where a link to the map on screen looks, where this part draws the
@@ -115,6 +118,7 @@ extension NativeMapFeature {
     func capabilityDidChange(_ capability: NativeMapModel.Capability) {}
     func open(_ link: [String: String]) -> Bool { false }
     func linkParameters() -> [String: String] { [:] }
+    func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) -> Bool { false }
     func linkView() -> NativeMapLink? { nil }
 }
 
