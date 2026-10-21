@@ -252,10 +252,13 @@ final class PointMenuOverlay: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if let card, card.frame.contains(point) { return super.hitTest(point, with: event) }
-        if event?.type == .touches {
-            DispatchQueue.main.async { [weak self] in self?.onClose?() }
-        }
-        return nil
+        // Outside the menu a touch puts it away and goes no further, as a
+        // system menu's does: not a tap on a storm or a 3D tag under it too.
+        return event?.type == .touches ? self : nil
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        onClose?()
     }
 
     override var canBecomeFirstResponder: Bool { true }
