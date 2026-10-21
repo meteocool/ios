@@ -199,8 +199,10 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=48.14,11.58,8&shared=\(shared)")
         let toast = element("nativeMap.toast")
         XCTAssertTrue(toast.waitForExistence(timeout: 15), "The link's age")
-        let said = toast.descendants(matching: .staticText).matching(NSPredicate(format: "label CONTAINS '20 minutes ago'")).firstMatch
-        XCTAssertTrue(said.waitForExistence(timeout: 5), "Twenty minutes ago")
+        // A link's time is to the minute, so twenty minutes can read one either side.
+        let said = toast.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label MATCHES '.*(19|20|21) minutes ago.*'")).firstMatch
+        XCTAssertTrue(said.waitForExistence(timeout: 5), "About twenty minutes ago")
         screenshot("shared link age")
     }
 
