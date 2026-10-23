@@ -23,7 +23,7 @@ EXCLUDED_SOURCE_FILE_NAMES = $(APP_ICON_UNUSED)
 
 // ---- Versioning -----------------------------------------------------------
 
-MARKETING_VERSION = 4.0.0
+MARKETING_VERSION = 4.1
 CURRENT_PROJECT_VERSION = 31
 
 // ---- Local overrides (never committed) ------------------------------------
