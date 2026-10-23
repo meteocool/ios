@@ -22,8 +22,9 @@ struct RainForecast: Codable, Hashable, Sendable {
     /// "now" is the end of the last observed step.
     var observed: Int
     /// The dBZ the user asked to be alerted for (the Intensity Threshold
-    /// setting). Rain starts at it and ends below `min(threshold, 14)`,
-    /// as in the server's rain alerts.
+    /// setting). Rain starts at it, goes on down to `min(threshold, 14)` and
+    /// ends at two steps in a row below `min(threshold, 10)`, as in the
+    /// server's rain alerts.
     var threshold: Double
     /// The radar image to show, a PNG. The activity cannot download it itself:
     /// the app does whenever it runs, and the view shows the last one it saved.
@@ -58,9 +59,16 @@ struct RainForecast: Codable, Hashable, Sendable {
         var text: String
     }
 
-    /// Below this, rain that has started counts as over (as in the rain alerts).
+    /// Rain that has started is rain down to `min(threshold, rainDBZ)`: the
+    /// rain alerts' floor.
     static let rainDBZ = 14.0
-    /// Steps in a row below `rainDBZ` that end a spell.
+    /// Below `min(threshold, dryDBZ)` a step is dry enough to end a rain:
+    /// mist, about half drizzle's rain rate. Drizzle hovers either side of
+    /// `rainDBZ`, and two bars at 13 among unbroken bars are not the end of
+    /// it. A step between the two keeps the rain going and is not rain in it.
+    static let dryDBZ = 10.0
+    /// Steps in a row below `dryDBZ` that end a spell: one dry step inside a
+    /// shower is a gap in one pixel's forecast; two end it.
     static let dryStepsToEnd = 2
     /// The Intensity Threshold setting's values, in dBZ (drizzle to heavy rain).
     static let thresholds: [Double] = [14, 20, 26, 36, 41]
@@ -95,7 +103,8 @@ struct RainForecast: Codable, Hashable, Sendable {
 
     /// The rain `phase` is about: the one falling now, or else the next at or
     /// above the threshold. It runs from `arrival` (now while it rains) up to
-    /// `end`, its first dry step, or to the end of the forecast when `end` is nil.
+    /// `end`, the step after its last at drizzle, or to the end of the forecast
+    /// when `end` is nil.
     private var spell: (raining: Bool, arrival: Int, end: Int?)? {
         let endBelow = min(threshold, Self.rainDBZ)
         let from = nowIndex
@@ -103,12 +112,16 @@ struct RainForecast: Codable, Hashable, Sendable {
         let raining = value(at: from) >= endBelow && (value(at: from) >= threshold || spellBegan(before: from))
         let arrival = raining ? from : (from..<dbz.count).first { value(at: $0) >= threshold }
         guard let arrival else { return nil }
-        var dry = 0
+        let dryBelow = min(threshold, Self.dryDBZ)
+        var lastWet = arrival, dry = 0
         for index in arrival..<dbz.count {
-            dry = value(at: index) < endBelow ? dry + 1 : 0
-            if dry == Self.dryStepsToEnd { return (raining, arrival, index - 1) }
+            if value(at: index) >= endBelow { lastWet = index }
+            dry = value(at: index) < dryBelow ? dry + 1 : 0
+            if dry == Self.dryStepsToEnd { return (raining, arrival, lastWet + 1) }
         }
-        return (raining, arrival, nil)
+        // Mist between bars keeps a rain going; mist to the chart's end does not.
+        let ended = dbz.count - 1 - lastWet >= Self.dryStepsToEnd
+        return (raining, arrival, ended ? lastWet + 1 : nil)
     }
 
     /// The backend's headline for now: the one for this step, else the pushed one.
@@ -141,7 +154,7 @@ struct RainForecast: Codable, Hashable, Sendable {
         var dry = 0
         for step in stride(from: index, through: 0, by: -1) {
             if value(at: step) >= threshold { return true }
-            dry = value(at: step) < min(threshold, Self.rainDBZ) ? dry + 1 : 0
+            dry = value(at: step) < min(threshold, Self.dryDBZ) ? dry + 1 : 0
             if dry == Self.dryStepsToEnd { return false }
         }
         return false
