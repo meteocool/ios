@@ -3,7 +3,7 @@ import Foundation
 /// Checks the Live Activity's reading of the bar chart: decoding
 /// `/v3/radar/timeseries` and the backend's `content-state`, and when rain
 /// starts and ends (the rain alerts' rule: from the threshold, until two steps in a row
-/// below min(threshold, 14 dBZ)).
+/// below min(threshold, 10 dBZ), and then after its last step at min(threshold, 14 dBZ)).
 @main
 struct RainForecastCheck {
     static func forecast(_ dbz: [Double?], observed: Int, threshold: Double = 20) -> RainForecast {
@@ -28,6 +28,22 @@ struct RainForecastCheck {
         let downpour = forecast([0, 28, 28, 30, 33, 45, 38, 20, 0, 0], observed: 2)
         precondition(downpour.headlineDBZ == 28 && downpour.spellPeak?.dbz == 45 && downpour.spellPeak?.at == downpour.date(at: 5))
         precondition(approaching.headlineDBZ == 25 && approaching.spellPeak?.dbz == 30)
+        // Drizzle hovering at the 14 dBZ floor, dipping to 13 and 10 between
+        // bars (a point on staging, 21 Oct 2026), is one rain to its last bar
+        // at drizzle.
+        let hovering: [Double?] = [0, 0, 14, 16, 16, 13, 13, 14, 13, 14, 10, 10, 10, 12, 12, 14, 15, 14, 0, 0]
+        let coming = forecast(hovering, observed: 2, threshold: 14)
+        precondition(coming.phase == .approaching(arrival: coming.date(at: 2), end: coming.date(at: 18)), "\(coming.phase)")
+        precondition(coming.date(at: 18).timeIntervalSince(coming.date(at: 2)) == 80 * 60)
+        precondition(coming.spellPeak?.dbz == 16 && coming.spellPeak?.at == coming.date(at: 3))
+        let falling = forecast(hovering, observed: 8, threshold: 14)
+        precondition(falling.phase == .raining(end: falling.date(at: 18)), "\(falling.phase)")
+        // Two steps of mist still end it.
+        let gap = forecast([0, 0, 14, 16, 16, 8, 5, 14, 16, 0, 0], observed: 2, threshold: 14)
+        precondition(gap.phase == .approaching(arrival: gap.date(at: 2), end: gap.date(at: 5)), "\(gap.phase)")
+        // Drizzle fading into mist to the chart's end ends where the drizzle does.
+        let fading = forecast([0, 16, 16, 12, 12, 12], observed: 1, threshold: 14)
+        precondition(fading.phase == .approaching(arrival: fading.date(at: 1), end: fading.date(at: 3)), "\(fading.phase)")
         // Light rain that never reached the threshold is not rain to the user.
         precondition(forecast([16, 16, 16, 16], observed: 2).phase == .dry)
         // Trimming keeps the latest observation and moves the start.
