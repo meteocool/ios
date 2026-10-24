@@ -14,6 +14,8 @@ import UIKit
 final class PointMenuModel: ObservableObject {
     /// The place's name once known; "At This Location" until then or without one.
     @Published var place: String?
+    /// What the open radar's sweep holds here (site mode).
+    var siteReading: ReadingParts?
     let placement: PointMenuLayout.Placement
     let shareAvailable: Bool
     let onRadar: () -> Void
@@ -114,6 +116,20 @@ struct PointMenuView: View {
                 .truncationMode(.tail)
                 .padding(EdgeInsets(top: 5, leading: 10, bottom: 7, trailing: 10))
                 .accessibilityAddTraits(.isHeader)
+            if let reading = menu.siteReading {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(reading.value)
+                        .scaledFont(15, weight: .semibold, relativeTo: .subheadline, digits: true)
+                        .foregroundStyle(PointStyle.text)
+                    Text(reading.where)
+                        .scaledFont(12, relativeTo: .caption, digits: true)
+                        .foregroundStyle(PointStyle.text2)
+                }
+                .lineLimit(1)
+                .padding(EdgeInsets(top: 0, leading: 10, bottom: 8, trailing: 10))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("nativeMap.point.siteReading")
+            }
             VStack(spacing: 2) {
                 row("drop.fill", "point_menu_precipitation", "point_menu_precipitation_sub", id: "radar", action: menu.onRadar)
                 row("chart.xyaxis.line", "point_menu_forecast", "point_menu_forecast_sub", id: "forecast", action: menu.onForecast)

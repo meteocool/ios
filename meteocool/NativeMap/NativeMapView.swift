@@ -112,6 +112,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.$covers
             .sink { [weak self] covers in self?.host?.mapCovered(!covers.isEmpty, by: "nativeMap") }
             .store(in: &observers)
+        model.site.$view
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.updateCredits() } }
+            .store(in: &observers)
     }
 
     @available(*, unavailable)
@@ -119,8 +122,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// The parts of the map, bottom to top.
     private static func makeFeatures() -> [NativeMapFeature] {
-        [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StormMarks(), CloudHints(), PointFeature(), RadarWash(),
-         ThreeDMap()]
+        let storms = StormMarks()
+        // Before the storms: a tap past an open radar's reach closes it, and
+        // only it, unless it lands on a storm.
+        let sites = SiteSweeps(motion: { [weak storms] in
+            storms?.store.selection.flatMap(StormSelect.motionOf).map { StormMotion(speedMs: $0.speedMs, headingDeg: $0.headingDeg) }
+        }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
+        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), sites, storms, CloudHints(), PointFeature(),
+                RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -198,7 +207,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         // Above whichever bars are up, as core counts the open strips and hints.
         let backHost = WeakView()
-        let back = addChrome(BackToNowPill(player: player, model: model) { backHost.view?.invalidateIntrinsicContentSize() })
+        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site) { backHost.view?.invalidateIntrinsicContentSize() })
         backHost.view = back
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -550,6 +559,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// Who the data on screen is from, as core credits each visible layer.
     func updateCredits() {
         var names = model.capability == .radar ? radar.credits(in: mapView.visibleMapRect) : []
+        // The open radar's own sweep, credited as its network is.
+        if model.capability == .radar, model.site.view?.status == .shown, let network = model.site.view?.site.network,
+           let credit = RadarEngine.credit(network: network), !names.contains(credit) {
+            names.append(credit)
+        }
         if isOn(.lightning) || model.capability == .lightning { names.append("Blitzortung.org") }
         model.credits = names.isEmpty ? "" : "© " + names.joined(separator: ", © ")
     }
