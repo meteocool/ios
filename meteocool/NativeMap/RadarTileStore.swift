@@ -46,8 +46,11 @@ struct RadarTileKey: Hashable, Sendable {
 
     /// The zoom whose 512 px tiles come closest to one tile pixel per point
     /// at `zoomScale` (points per map point), as OpenLayers picks it.
+    /// A scale of zero or less, or none at all, is zoom 0, not a trap.
     static func zoom(forScale zoomScale: Double) -> Int {
-        Int(log2(MKMapSize.world.width * zoomScale / 512).rounded())
+        let zoom = log2(MKMapSize.world.width * zoomScale / 512)
+        guard zoom.isFinite else { return 0 }
+        return Int(zoom.rounded())
     }
 }
 
