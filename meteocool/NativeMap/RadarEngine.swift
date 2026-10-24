@@ -374,9 +374,10 @@ final class RadarEngine {
         RadarFrameRef(layers: player.timeline.layers[step] ?? [], coverage: coverage)
     }
 
-    /// The tile zoom the map is drawn at.
+    /// The tile zoom the map is drawn at. A map launched in the background
+    /// is not laid out yet: no width, no scale.
     private var drawZoom: Int {
-        guard let mapView, mapView.visibleMapRect.width > 0 else { return 6 }
+        guard let mapView, mapView.visibleMapRect.width > 0, mapView.bounds.width > 0 else { return 6 }
         return scene.zoom ?? RadarTileKey.zoom(forScale: Double(mapView.bounds.width) / mapView.visibleMapRect.width)
     }
 
