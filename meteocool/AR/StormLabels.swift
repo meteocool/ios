@@ -24,6 +24,10 @@ final class StormLabelView: UIControl {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: StormLabelView, _: UITraitCollection) in
+            view.fittedSize = nil
+            view.invalidateIntrinsicContentSize()
+        }
         blur.isUserInteractionEnabled = false
         blur.layer.cornerRadius = 12
         blur.layer.cornerCurve = .continuous
@@ -94,17 +98,25 @@ final class StormLabelView: UIControl {
         blur.layer.borderWidth = model.selected ? 2 : 0
         blur.layer.borderColor = UIColor.white.withAlphaComponent(0.9).cgColor
         accessibilityIdentifier = "ar.storm.\(model.code)"
+        fittedSize = nil
         setNeedsLayout()
         invalidateIntrinsicContentSize()
     }
 
+    /// Measured once per model: the labels are placed every frame, and
+    /// fitting the stack each time was a frame's worth of Auto Layout.
+    private var fittedSize: CGSize?
+
     static let maxTextWidth: CGFloat = 250
 
     override var intrinsicContentSize: CGSize {
+        if let fittedSize { return fittedSize }
         let fitted = stack.systemLayoutSizeFitting(CGSize(width: Self.maxTextWidth, height: UIView.layoutFittingCompressedSize.height),
                                                     withHorizontalFittingPriority: .fittingSizeLevel,
                                                     verticalFittingPriority: .fittingSizeLevel)
-        return CGSize(width: min(fitted.width, Self.maxTextWidth) + 20, height: fitted.height + 14)
+        let size = CGSize(width: min(fitted.width, Self.maxTextWidth) + 20, height: fitted.height + 14)
+        fittedSize = size
+        return size
     }
 
     override func layoutSubviews() {
@@ -143,6 +155,9 @@ final class StormLabelLayer: UIView {
     var onSelect: ((String) -> Void)?
     /// Height of the HUD's top bar and compass, which tags stay below.
     static let topClearance: CGFloat = 112
+    /// Kept clear on the right, where the host has a column of buttons
+    /// (the native 3D map's: its own discs and their margin).
+    var rightClearance: CGFloat = 0
     var onOpen: ((String) -> Void)?
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -172,12 +187,16 @@ final class StormLabelLayer: UIView {
             }
             // Never up under the close button, status and compass.
             rect.origin.y = max(rect.origin.y, safeAreaInsets.top + Self.topClearance)
+            if rightClearance > 0 {
+                rect.origin.x = min(rect.origin.x, bounds.width - safeAreaInsets.right - rightClearance - rect.width)
+            }
             if placed.contains(where: { $0.intersects(rect) }) && !model.selected {
                 view.isHidden = true
                 continue
             }
             view.isHidden = false
-            view.frame = rect.integral
+            let frame = rect.integral
+            if view.frame != frame { view.frame = frame }
             placed.append(rect)
             if model.selected { bringSubviewToFront(view) }
         }
@@ -200,14 +219,22 @@ final class StormLabelLayer: UIView {
             sendSubviewToBack(label)
             ticks.append(label)
         }
+        // From far away the heights run together: a tick only where it
+        // clears the last one shown by a line of text.
+        var lastShown: CGFloat?
         for (index, label) in ticks.enumerated() {
-            guard index < items.count, let point = items[index].point else {
+            guard index < items.count, let point = items[index].point,
+                  lastShown.map({ abs($0 - point.y) >= 14 }) ?? true else {
                 label.isHidden = true
                 continue
             }
+            lastShown = point.y
             label.isHidden = false
-            label.text = "\(items[index].km) km"
-            label.sizeToFit()
+            let text = "\(items[index].km) km"
+            if label.text != text {
+                label.text = text
+                label.sizeToFit()
+            }
             label.center = CGPoint(x: point.x + label.bounds.width / 2, y: point.y)
         }
     }

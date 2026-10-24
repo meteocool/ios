@@ -1,0 +1,249 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Velkommen til meteocool";
+"Continue" = "Fortsæt";
+"Not Now" = "Ikke nu";
+"onboarding_feature_radar_title" = "Live-radar";
+"onboarding_feature_radar_text" = "Regn og tordenvejr, mens det sker, opdateret hvert par minutter.";
+"Nowcasting" = "Korttidsprognose";
+"onboarding_feature_nowcast_text" = "Følg, hvor regnen er på vej hen. Vores erfaring er, at de første 45 minutter rammer ret præcist.";
+"Rain Alerts" = "Regnvarsler";
+"onboarding_feature_alerts_text" = "Et varsel, før regnen når dig. Det forsvinder igen, når regnen holder op.";
+"onboarding_feature_free_title" = "Gratis og open source";
+"onboarding_feature_free_text" = "Udviklet og drevet af frivillige i deres fritid.";
+
+/* Location Page Onboarding */
+"Location Access" = "Adgang til placering";
+"onboarding_location_permission" = "For at vise din aktuelle placering på kortet skal vi have din tilladelse.\n\nVi deler eller gemmer aldrig dine placeringsdata.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Få besked kort før det begynder at regne, hvor du er, også når meteocool er lukket.\n\nDerfor beder din enhed også om adgang til din placering i baggrunden. Bare rolig, det dræner ikke dit batteri.";
+"tell_me_before_it_rains" = "Sig til, før det regner!";
+"onboarding_settings_footnote" = "Du kan altid ændre det i Indstillinger.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Pushnotifikationer";
+"Use Without Notifications" = "Brug uden notifikationer";
+"Enable Push Notifications" = "Slå pushnotifikationer til";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "Så tier vi stille.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Hej igen!";
+
+/* Later */
+"Later" = "Senere";
+
+/* Next */
+"Next" = "Næste";
+
+/* Done */
+"Done" = "Færdig";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Indstillinger";
+
+/*header*/
+"Map View" = "Kort";
+"notifications" = "Pushnotifikationer";
+"About" = "Om";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Kortrotation med to fingre:\nDrej kortet med to fingre. Når det er slået fra, peger nord altid opad.\n\nAuto-zoom ved start:\nZoomer ind på din placering, hver gang appen åbnes eller kommer tilbage i forgrunden. Kræver adgang til placering.";
+"notifications_explanation" = "Hvis du vil, kan vi advare dig om nedbør, der er på vej mod din aktuelle placering. Til det sender appen din placering til vores servere i baggrunden.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Slå notifikationer til";
+"Show Meteorological Details" = "Vis meteorologiske detaljer";
+"Intensity Threshold" = "Intensitetsgrænse";
+"Notification Timeframe" = "Varslingstid";
+"notification_style_header" = "Låseskærm og notifikationer";
+"notification_style_footer" = "Live-aktivitet under regn:\nMens regnen er på vej eller falder, vises radarbilledet og regngrafen for din placering på låseskærmen og i Dynamic Island.\n\nVis meteorologiske detaljer:\nFøjer radarreflektiviteten (dBZ) til regnnotifikationerne.";
+"live_activity_preview_caption" = "Live-aktiviteter opdateres automatisk med hver ny prognose, så snart den er udgivet. Stryg en væk ligesom en notifikation, så kommer den ikke igen, før regnen er holdt op og begynder igen. Intensitetsgrænse og varslingstid ovenfor styrer, hvornår de vises.";
+"location_permission_downgraded_title" = "Regnvarsler kan ikke følge dig";
+"location_permission_downgraded_body" = "meteocool må kun bruge din placering, mens appen er åben, så regnvarsler gælder for det sted, hvor du sidst åbnede den. Hvis du vil have varsler, uanset hvor du er, skal du sætte Lokalitet til Altid i Indstillinger.";
+"live_activity" = "Live-aktivitet under regn";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Kortrotation med to fingre";
+"Auto-Zoom After Start" = "Auto-zoom ved start";
+"Base Map Layer" = "Baggrundskort";
+"Radar Color Map" = "Radarfarveskala";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (cykling)";
+"osm" = "OpenStreetMap";
+"dark" = "Mørkt";
+"system" = "Følg systemet";
+"system_detail" = "Lige nu %@";
+"light" = "Lyst";
+
+/*radarColorMapping*/
+"classic" = "Klassisk";
+"nws" = "NWS Reflectivity";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (farvesynsdefekt)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Bruger Lyst eller Mørkt, så det passer til din iPhones udseende. Slå det fra for selv at vælge et kort.";
+"basemap_explanation" = "Alle kort holdes i dæmpede farver, så radaren er nem at aflæse.\n\nLyst og Mørkt:\nLand, vand, motorveje og grænser, ikke meget andet.\n\nOpenStreetMap:\nSom det klassiske OpenStreetMap, med arealanvendelse, alle veje, bygninger og regionale grænser.\n\nCyclOSM (cykling):\nTil udendørs brug: skove og parker i farver, markveje og stier tegnet ind, motorveje tonet ned.";
+"colormap_explanation" = "Ændrer farveskalaen for nedbøren på kortet. Hver bjælke går fra støvregn til venstre til hagl til højre.\n\nKlassisk:\nmeteocools egen. Støvregn toner frem, derefter blå, grøn, gul og rød, og hvid til lilla for hagl.\n\nNWS Reflectivity:\nFarverne fra den amerikanske vejrtjeneste (National Weather Service). Tæt på Klassisk, men støvregn tegnes i fuld farve i stedet for at tone frem.\n\nPyArt StepSeq:\nFra radarværktøjet Py-ART. Brune, grønne, blå og lilla bånd, hver fra lys til mørk, så små ændringer i intensiteten træder frem.\n\nHomeyer (farvesynsdefekt):\nFra grøn over gul og orange til mørkerød, lavet til at være læselig med farvesynsdefekt.\n\nLang:\nFra lyseblå over gul til brun, også læselig med farvesynsdefekt.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Bidrag på GitHub";
+"Feedback and Support" = "Feedback og support";
+"imprint_privacy" = "Kolofon og privatlivspolitik";
+"Enable Experimental Features" = "Slå eksperimentelle funktioner til";
+
+/*intensity*/
+"Drizzle" = "Støvregn";
+"Light rain" = "Let regn";
+"Rain" = "Regn";
+"Intense Rain" = "Ret kraftig regn";
+"Heavy Rain" = "Kraftig regn";
+
+/*selection Footer*/
+"meteorological_details_help" = "Intensitetsgrænse:\nGiv kun besked om nedbør, der forventes at være mindst så kraftig.\n\nVarslingstid:\nHvor lang tid før nedbøren du vil have besked.";
+
+/*mail*/
+"feedback_text_1" = "Tag venligst følgende oplysninger med, når du rapporterer et problem: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Adgang til placering kræves";
+"notifications_not_working" = "Notifikationer virker ikke";
+"location_permission_general" = "For at bruge placeringsknappen eller auto-zoom skal du give adgang til Lokalitet i enhedens Indstillinger. Vi gemmer eller deler aldrig oplysninger om din placering.\n";
+"Change in Settings" = "Skift i Indstillinger";
+"Allow in Settings" = "Tillad i Indstillinger";
+"Disable Auto-Zoom" = "Slå auto-zoom fra";
+"disable_notifications" = "Slå notifikationer fra";
+"Dismiss" = "Forstået";
+"notifications_disabled" = "Notifikationer slået fra";
+"notifications_disabled_text" = "Hvis du skifter mening, kan du slå notifikationer om regn og sne til igen under ⚙️ Indstillinger øverst til højre i appen.";
+
+"version_label" = "Version:";
+
+"notification_permissions_title" = "Tjek tilladelser";
+"notification_permissions_help" = "Regnvarsler kræver notifikationer og adgang til placering. Hvis du vil have varsler, mens du er på farten og appen er lukket, skal du sætte Lokalitet til Altid i Indstillinger. Du kan stadig bruge kortet uden disse tilladelser.";
+"notification_sync_failed" = "Ændringerne af notifikationer kunne ikke nå serveren. Varslerne bruger måske stadig dine tidligere indstillinger. Tjek din forbindelse, og åbn appen igen for at prøve igen.";
+"feedback_body" = "Beskriv dit problem eller forslag her:\n";
+
+"map_layers" = "Kortlag";
+"map_load_failed" = "Kortet kunne ikke indlæses. Prøver igen…";
+"show_radar_hint" = "Viser radarkortet.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Datakilder og licenser";
+"data_sources_footer" = "Udbyderne står ikke inde for meteocool og giver ingen garanti. Tryk på en kilde for at se dens licens.";
+"source_dwd" = "Radar Tyskland, uvejrsceller, vejrkort · CC BY 4.0, bearbejdet";
+"source_meteoswiss" = "Radar Schweiz · CC BY 4.0, bearbejdet";
+"source_meteofrance" = "Radar Frankrig · Licence Ouverte 2.0 (Etalab), bearbejdet";
+"source_chmi" = "Radar Tjekkiet · CC BY 4.0, bearbejdet";
+"source_imgw" = "Radar Polen · CC BY 4.0. Datakilden er Instituttet for Meteorologi og Vandforvaltning – Nationalt Forskningsinstitut (IMGW-PIB). Data fra IMGW-PIB er behandlet af meteocool.";
+"source_noaa" = "Radar USA · offentligt domæne";
+"source_blitzortung" = "Lyn";
+"source_openmeteo" = "Modelsammenligning · CC BY 4.0";
+"source_osm" = "Data til baggrundskort · ODbL";
+"source_protomaps" = "Fliser til baggrundskort";
+"source_eumetnet" = "Radar Schweiz, Frankrig, Tjekkiet og Polen, leveret herigennem";
+"source_mapterhorn" = "Terræn i 3D-kortet · åbne højdedata, for det meste CC BY 4.0. Tryk for at se alle kilder.";
+"source_freepik" = "Artwork designed by Freepik from Flaticon";
+"source_gorbachev" = "Ikoner i signaturforklaringen";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Open source-licenser";
+"open_source_footer" = "Licenserne for meteocool og den software, det bygger på. Tryk på en for at læse den.";
+"Py-ART Colour Maps" = "Py-ART-farveskalaer";
+"Web Map Libraries" = "Biblioteker til webkortet";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Tilstand";
+"mode_production" = "Produktion";
+"mode_production_detail" = "Aktuelt vejr. Anbefales.";
+"Experimental Features" = "Eksperimentelle funktioner";
+"mode_experimental_detail" = "Aktuelt vejr med funktioner, der stadig er under udvikling. Kan opføre sig uventet. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Et optaget uvejr, afspillet som om det skete nu. Ikke aktuelt vejr.";
+"mode_footer" = "Træder i kraft med det samme: kortet genindlæses, og regnvarsler kommer fra den valgte tilstand.";
+"demo_notice_title" = "Dette er ikke et rigtigt uvejr";
+"demo_notice_message" = "Demotilstand er slået til: kortet afspiller et optaget uvejr, som om det skete nu. Intet af det, der vises, er aktuelt vejr.";
+"demo_notice_disable" = "Slå demotilstand fra";
+"demo_notice_continue" = "Fortsæt til demo";
+
+/* AR storm view */
+"map_ar" = "AR-uvejrsvisning";
+"map_share" = "Del";
+"ar_mode_live" = "Live";
+"ar_mode_peel" = "Skræl";
+"ar_mode_slice" = "Snit";
+"ar_mode_turn" = "Drej snit";
+"ar_mode_track" = "Langs banen";
+"ar_mode_floor" = "Gulv (CAPPI)";
+"ar_mode_shells" = "Skaller";
+"ar_mode_shaft" = "Regnsøjle";
+"ar_mode_tops" = "Toppe";
+"ar_label_top" = "top %.1f km";
+"ar_label_lightning" = "%ld lyn/5 min";
+"ar_label_age" = "scan for %ld min siden";
+"ar_label_extrapolated" = "flyttet %ld min frem";
+"ar_label_poorly_seen" = "dårligt set af radaren";
+"ar_compass_points" = "N NNØ NØ ØNØ Ø ØSØ SØ SSØ S SSV SV VSV V VNV NV NNV";
+"ar_open_on_map" = "Åbn på kortet";
+"ar_close" = "Luk";
+"ar_menu" = "Valgmuligheder";
+"ar_menu_lightning" = "Lyn";
+"ar_menu_extrapolate" = "Flyt uvejr frem til nu";
+"ar_menu_sun_fix" = "Justér efter solen";
+"ar_menu_reset_alignment" = "Nulstil til kompas";
+"ar_sun_fix_instructions" = "Tryk på solen. Kig ikke direkte ind i den.";
+"ar_sun_fix_done" = "Justeret efter solen (%+.0f°).";
+"ar_sun_fix_night" = "Solen er under horisonten.";
+"ar_sun_fix_missed" = "Det ligner ikke solen. Prøv igen.";
+"ar_finding_location" = "Finder din placering…";
+"ar_location_denied" = "AR-visningen skal bruge din placering for at placere uvejrene.";
+"ar_open_settings" = "Indstillinger";
+"ar_camera_denied" = "AR-visningen skal bruge kameraet.";
+"ar_tracking_starting" = "Peg telefonen mod himlen, og hold den stille.";
+"ar_tracking_motion" = "Bevæg telefonen langsommere.";
+"ar_tracking_features" = "Få lidt jord eller nogle bygninger med i billedet et øjeblik.";
+"ar_feed_failed" = "Kunne ikke indlæse uvejrene. Prøver igen.";
+"ar_no_storms" = "Ingen uvejr inden for 180 km.";
+"ar_preview_placed" = "Forhåndsvisning, 28 km fra det kraftigste uvejr";
+"ar_no_metal" = "Denne enhed kan ikke tegne uvejrene.";
+"ar_status_loading" = "Indlæser uvejr…";
+"ar_status_failed" = "Uvejr ikke tilgængelige";
+"ar_status_storms" = "Uvejr i nærheden: %ld";
+"ar_alignment_preview" = "Forhåndsvisning uden kamera";
+"ar_alignment_compass" = "Nord fra kompasset (%@)";
+"ar_alignment_manual" = "Nord justeret manuelt (%@)";
+"ar_alignment_sun" = "Nord fra solen (%@)";
+"ar_alignment_geo" = "Nord fra geo-tracking";
+"ar_turn_left" = "Drej %.0f° til venstre";
+"ar_turn_right" = "Drej %.0f° til højre";
+
+/* Native MapKit map */
+"native_map_setting" = "Indbygget kort (beta)";
+"native_map_now" = "Nu";
+"native_map_play" = "Afspil";
+"native_map_pause" = "Pause";
+"native_map_timeline" = "Radartid";
+"native_map_mesocyclone" = "Mesocyklon, styrke %ld";
+"native_map_storm" = "Uvejr";
+"native_map_storm_near" = "Uvejr ved %@";
+"native_map_hail" = "Hagl";
+"native_map_layer_lightning" = "Lyn";
+"native_map_layer_mesocyclones" = "Mesocykloner";
+"native_map_layer_storms" = "Uvejr";
+"native_map_layer_nowcast" = "Radar-korttidsprognose";
+"native_map_inspected_point" = "Valgt punkt";
+"native_map_3d_pinch" = "Knib";
+"native_map_3d_two_fingers" = "To fingre";
+"native_map_3d_tap" = "Tryk";
+
+/* The reader's position on the 3D map, for VoiceOver. */
+"my_location" = "Min placering";

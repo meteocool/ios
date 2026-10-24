@@ -1,0 +1,249 @@
+/*Onbording*/
+
+/* Welcome Page Onboarding */
+"onboarding_welcome_title" = "Dobro došli u meteocool";
+"Continue" = "Nastavi";
+"Not Now" = "Ne sada";
+"onboarding_feature_radar_title" = "Radar uživo";
+"onboarding_feature_radar_text" = "Kiša i grmljavina u stvarnom vremenu, osvježeno svakih nekoliko minuta.";
+"Nowcasting" = "Kratkoročna prognoza";
+"onboarding_feature_nowcast_text" = "Prati kamo se kiša kreće. Prema našem iskustvu, prvih 45 minuta prilično je točno.";
+"Rain Alerts" = "Upozorenja na kišu";
+"onboarding_feature_alerts_text" = "Upozorenje prije nego što kiša stigne do tebe. Nestaje čim kiša prestane.";
+"onboarding_feature_free_title" = "Besplatno i otvorenog koda";
+"onboarding_feature_free_text" = "Razvijaju ga i održavaju volonteri u slobodno vrijeme.";
+
+/* Location Page Onboarding */
+"Location Access" = "Pristup lokaciji";
+"onboarding_location_permission" = "Da bismo prikazali tvoju trenutačnu lokaciju na karti, trebamo tvoje dopuštenje.\n\nTvoje podatke o lokaciji nikada nećemo dijeliti ni pohranjivati.";
+
+/* Notifications Page Onboarding */
+"onboarding_notification_text" = "Primi obavijest malo prije nego što počne kišiti ondje gdje jesi, čak i kad je meteocool zatvoren.\n\nZa to će tvoj uređaj zatražiti i pristup lokaciji u pozadini. Bez brige, to ti neće isprazniti bateriju.";
+"tell_me_before_it_rains" = "Javi mi prije kiše!";
+"onboarding_settings_footnote" = "To uvijek možeš promijeniti u Postavkama.";
+
+/* Location Nag Onbording*/
+"Push Notifications" = "Obavijesti";
+"Use Without Notifications" = "Nastavi bez obavijesti";
+"Enable Push Notifications" = "Uključi obavijesti";
+
+/* Location Nag Sorry */
+"We'll shut up now." = "Dobro, nećemo više gnjaviti.";
+
+/* Welcome Update Onbording" */
+"Hello again!" = "Opet smo tu!";
+
+/* Later */
+"Later" = "Kasnije";
+
+/* Next */
+"Next" = "Dalje";
+
+/* Done */
+"Done" = "Gotovo";
+
+/*-----------------------------------------------------*/
+/*Settings Page*/
+
+"Settings" = "Postavke";
+
+/*header*/
+"Map View" = "Karta";
+"notifications" = "Obavijesti";
+"About" = "O aplikaciji";
+
+/*footer*/
+"footer_map_appearance_explanation" = "Okretanje karte s dva prsta:\nOkreći kartu s dva prsta. Kad je isključeno, sjever je uvijek gore.\n\nAutomatsko zumiranje pri pokretanju:\nZumira na tvoju lokaciju svaki put kad se aplikacija otvori ili vrati u prvi plan. Potreban je pristup lokaciji.";
+"notifications_explanation" = "Ako želiš, možemo te upozoriti na oborinu koja se približava tvojoj trenutačnoj lokaciji. Za to aplikacija u pozadini šalje tvoju lokaciju našim poslužiteljima.";
+
+/*dataPushNotification*/
+"Enable Notifications" = "Uključi obavijesti";
+"Show Meteorological Details" = "Prikaži meteorološke detalje";
+"Intensity Threshold" = "Prag jačine";
+"Notification Timeframe" = "Obavijest unaprijed";
+"notification_style_header" = "Zaključani zaslon i obavijesti";
+"notification_style_footer" = "Aktivnost uživo tijekom kiše:\nDok kiša dolazi ili pada, radarska slika i grafikon kiše za tvoju lokaciju ostaju na zaključanom zaslonu i u Dynamic Islandu.\n\nPrikaži meteorološke detalje:\nObavijestima o kiši dodaje radarsku reflektivnost (dBZ).";
+"live_activity_preview_caption" = "Aktivnosti uživo automatski se osvježavaju sa svakom novom prognozom čim se objavi. Ako jednu odbaciš potezom kao obavijest, neće se vratiti dok kiša ne prestane i ponovno ne počne. Kada se pojavljuju, određuju postavke Prag jačine i Obavijest unaprijed iznad.";
+"location_permission_downgraded_title" = "Upozorenja na kišu ne mogu te pratiti";
+"location_permission_downgraded_body" = "meteocool smije koristiti tvoju lokaciju samo dok je otvoren, pa upozorenja na kišu vrijede za mjesto na kojem je zadnji put bio otvoren. Za upozorenja na bilo kojem mjestu u Postavkama postavi Lokaciju na Uvijek.";
+"live_activity" = "Aktivnost uživo tijekom kiše";
+
+/*dataMapView*/
+"Two-Finger Map Rotation" = "Okretanje karte s dva prsta";
+"Auto-Zoom After Start" = "Automatsko zumiranje pri pokretanju";
+"Base Map Layer" = "Podloga karte";
+"Radar Color Map" = "Paleta boja radara";
+
+/*baseLayer*/
+"cyclosm" = "CyclOSM (biciklizam)";
+"osm" = "OpenStreetMap";
+"dark" = "Tamna";
+"system" = "Prema sustavu";
+"system_detail" = "Trenutačno %@";
+"light" = "Svijetla";
+
+/*radarColorMapping*/
+"classic" = "Klasična";
+"nws" = "NWS reflektivnost";
+"pyart_stepseq" = "PyArt StepSeq";
+"homeyer" = "Homeyer (za poremećaj raspoznavanja boja)";
+"lang" = "Lang";
+"basemap_system_explanation" = "Koristi Svijetlu ili Tamnu kartu, ovisno o izgledu tvog iPhonea. Isključi ovo ako kartu želiš odabrati ručno.";
+"basemap_explanation" = "Sve su karte prigušene kako bi radar ostao čitljiv.\n\nSvijetla i Tamna:\nKopno, voda, autoceste i granice, i gotovo ništa drugo.\n\nOpenStreetMap:\nKao klasični OpenStreetMap, s namjenom zemljišta, svim cestama, zgradama i regionalnim granicama.\n\nCyclOSM (biciklizam):\nZa boravak u prirodi: šume i parkovi u boji, ucrtani putovi i staze, autoceste u pozadini.";
+"colormap_explanation" = "Mijenja paletu boja oborine na karti. Svaka traka ide od rosulje lijevo do tuče desno.\n\nKlasična:\nmeteocoolova vlastita. Rosulja se postupno pojavljuje, zatim plava, zelena, žuta i crvena te bijela do ljubičaste za tuču.\n\nNWS reflektivnost:\nBoje američke Nacionalne meteorološke službe (NWS). Slična Klasičnoj, ali rosulja je odmah puno obojena umjesto da se postupno pojavljuje.\n\nPyArt StepSeq:\nIz radarskog alata Py-ART. Smeđi, zeleni, plavi i ljubičasti pojasevi, svaki od svijetlog prema tamnom, pa se male promjene jačine ističu.\n\nHomeyer (za poremećaj raspoznavanja boja):\nOd zelene preko žute i narančaste do tamnocrvene, izrađena tako da ostane čitljiva i uz poremećaj raspoznavanja boja.\n\nLang:\nOd svijetloplave preko žute do smeđe, također čitljiva uz poremećaj raspoznavanja boja.";
+
+/*dataLayers*/
+
+/*dataAboutLable*/
+"Contribute on GitHub" = "Doprinesi na GitHubu";
+"Feedback and Support" = "Povratne informacije i podrška";
+"imprint_privacy" = "Impresum i pravila privatnosti";
+"Enable Experimental Features" = "Uključi eksperimentalne značajke";
+
+/*intensity*/
+"Drizzle" = "Rosulja";
+"Light rain" = "Slaba kiša";
+"Rain" = "Kiša";
+"Intense Rain" = "Jača kiša";
+"Heavy Rain" = "Jaka kiša";
+
+/*selection Footer*/
+"meteorological_details_help" = "Prag jačine:\nObavijesti samo o oborini za koju se očekuje da će biti barem ovoliko jaka.\n\nObavijest unaprijed:\nKoliko prije oborine želiš dobiti obavijest.";
+
+/*mail*/
+"feedback_text_1" = "Kad prijavljuješ problem, molimo te da priložiš sljedeće podatke: ";
+
+/*-----------------------------------------------------*/
+/* Alerts */
+"location_permission_required" = "Potreban je pristup lokaciji";
+"notifications_not_working" = "Obavijesti ne rade";
+"location_permission_general" = "Za gumb lokacije ili automatsko zumiranje moraš dopustiti pristup lokaciji u Postavkama uređaja. Nikakve podatke o lokaciji nećemo pohranjivati ni dijeliti.\n";
+"Change in Settings" = "Promijeni u Postavkama";
+"Allow in Settings" = "Dopusti u Postavkama";
+"Disable Auto-Zoom" = "Isključi automatsko zumiranje";
+"disable_notifications" = "Isključi obavijesti";
+"Dismiss" = "U redu";
+"notifications_disabled" = "Obavijesti su isključene";
+"notifications_disabled_text" = "Ako se predomisliš, obavijesti o kiši i snijegu možeš ponovno uključiti u ⚙️ Postavkama aplikacije gore desno.";
+
+"version_label" = "Verzija:";
+
+"notification_permissions_title" = "Provjeri dopuštenja";
+"notification_permissions_help" = "Upozorenja na kišu trebaju obavijesti i pristup lokaciji. Za upozorenja dok se krećeš, a aplikacija je zatvorena, u Postavkama postavi Lokaciju na Uvijek. Kartu možeš pregledavati i bez tih dopuštenja.";
+"notification_sync_failed" = "Promjene obavijesti nisu stigle do poslužitelja. Upozorenja možda još koriste tvoje prethodne postavke. Provjeri vezu i ponovno otvori aplikaciju da pokušaš opet.";
+"feedback_body" = "Ovdje opiši svoj problem ili prijedlog:\n";
+
+"map_layers" = "Slojevi karte";
+"map_load_failed" = "Karta se nije mogla učitati. Pokušavam ponovno…";
+"show_radar_hint" = "Prikazuje radarsku kartu.";
+
+/* Data sources and licences (SettingsViewController.dataSources) */
+"data_sources_header" = "Izvori podataka i licence";
+"data_sources_footer" = "Pružatelji podataka ne podržavaju službeno meteocool i ne daju nikakva jamstva. Dodirni izvor za njegovu licencu.";
+"source_dwd" = "Radar Njemačka, olujne ćelije, vremenske karte · CC BY 4.0, izmijenjeno";
+"source_meteoswiss" = "Radar Švicarska · CC BY 4.0, izmijenjeno";
+"source_meteofrance" = "Radar Francuska · Licence Ouverte 2.0 (Etalab), izmijenjeno";
+"source_chmi" = "Radar Češka · CC BY 4.0, izmijenjeno";
+"source_imgw" = "Radar Poljska · CC BY 4.0. Izvor podataka je Institut za meteorologiju i vodno gospodarstvo – Nacionalni istraživački institut (IMGW-PIB). Podatke IMGW-PIB-a obradio je meteocool.";
+"source_noaa" = "Radar SAD · javno dobro";
+"source_blitzortung" = "Munje";
+"source_openmeteo" = "Usporedba modela · CC BY 4.0";
+"source_osm" = "Podaci podloge karte · ODbL";
+"source_protomaps" = "Pločice podloge karte";
+"source_eumetnet" = "Radar Švicarska, Francuska, Češka i Poljska, dostavljeno putem ove usluge";
+"source_mapterhorn" = "Teren na 3D karti · otvoreni visinski podaci, uglavnom CC BY 4.0. Dodirni za sve izvore.";
+"source_freepik" = "Artwork designed by Freepik from Flaticon";
+"source_gorbachev" = "Ikone legende";
+
+/* Open-source licences (Licences.json, LicenceViewController) */
+"open_source_header" = "Licence otvorenog koda";
+"open_source_footer" = "Licence meteocoola i softvera na kojem je izgrađen. Dodirni jednu da je pročitaš.";
+"Py-ART Colour Maps" = "Py-ART palete boja";
+"Web Map Libraries" = "Biblioteke web karte";
+
+/* Mode (EnvironmentPickerViewController, MeteocoolEnvironment) and the demo notice */
+"Mode" = "Način rada";
+"mode_production" = "Standardni";
+"mode_production_detail" = "Trenutačno vrijeme. Preporučeno.";
+"Experimental Features" = "Eksperimentalne značajke";
+"mode_experimental_detail" = "Trenutačno vrijeme, sa značajkama koje su još u razvoju. Moguće je neočekivano ponašanje. 🐛";
+"mode_demo" = "Demo";
+"mode_demo_detail" = "Snimljena oluja, reproducirana kao da se događa sada. Nije trenutačno vrijeme.";
+"mode_footer" = "Primjenjuje se odmah: karta se ponovno učitava, a upozorenja na kišu dolaze iz odabranog načina rada.";
+"demo_notice_title" = "Ovo nije stvarna oluja";
+"demo_notice_message" = "Uključen je demo način: karta reproducira snimljenu oluju kao da se događa sada. Ništa od prikazanog nije trenutačno vrijeme.";
+"demo_notice_disable" = "Isključi demo način";
+"demo_notice_continue" = "Nastavi na demo";
+
+/* AR storm view */
+"map_ar" = "AR prikaz oluja";
+"map_share" = "Podijeli";
+"ar_mode_live" = "Uživo";
+"ar_mode_peel" = "Ljuštenje";
+"ar_mode_slice" = "Presjek";
+"ar_mode_turn" = "Okreni presjek";
+"ar_mode_track" = "Duž putanje";
+"ar_mode_floor" = "Vodoravni presjek (CAPPI)";
+"ar_mode_shells" = "Ljuske";
+"ar_mode_shaft" = "Kišni zastor";
+"ar_mode_tops" = "Vrhovi";
+"ar_label_top" = "vrh %.1f km";
+"ar_label_lightning" = "munje: %ld/5 min";
+"ar_label_age" = "sken prije %ld min";
+"ar_label_extrapolated" = "pomaknuto %ld min unaprijed";
+"ar_label_poorly_seen" = "radar je slabo vidi";
+"ar_compass_points" = "S SSI SI ISI I IJI JI JJI J JJZ JZ ZJZ Z ZSZ SZ SSZ";
+"ar_open_on_map" = "Otvori na karti";
+"ar_close" = "Zatvori";
+"ar_menu" = "Opcije";
+"ar_menu_lightning" = "Munje";
+"ar_menu_extrapolate" = "Pomakni oluje na sada";
+"ar_menu_sun_fix" = "Poravnaj prema suncu";
+"ar_menu_reset_alignment" = "Vrati na kompas";
+"ar_sun_fix_instructions" = "Dodirni sunce. Ne gledaj izravno u njega.";
+"ar_sun_fix_done" = "Poravnato prema suncu (%+.0f°).";
+"ar_sun_fix_night" = "Sunce je ispod obzora.";
+"ar_sun_fix_missed" = "To ne izgleda kao sunce. Pokušaj ponovno.";
+"ar_finding_location" = "Tražim tvoju lokaciju…";
+"ar_location_denied" = "AR prikaz treba tvoju lokaciju da bi smjestio oluje.";
+"ar_open_settings" = "Postavke";
+"ar_camera_denied" = "AR prikaz treba kameru.";
+"ar_tracking_starting" = "Usmjeri mobitel prema nebu i drži ga mirno.";
+"ar_tracking_motion" = "Pomiči mobitel sporije.";
+"ar_tracking_features" = "Na trenutak uhvati u kadar malo tla ili zgrada.";
+"ar_feed_failed" = "Oluje se nisu mogle učitati. Pokušavam ponovno.";
+"ar_no_storms" = "Nema oluja u krugu od 180 km.";
+"ar_preview_placed" = "Pregled, 28 km od najjače oluje";
+"ar_no_metal" = "Ovaj uređaj ne može prikazati oluje.";
+"ar_status_loading" = "Učitavam oluje…";
+"ar_status_failed" = "Oluje nisu dostupne";
+"ar_status_storms" = "Oluje u blizini: %ld";
+"ar_alignment_preview" = "Pregled bez kamere";
+"ar_alignment_compass" = "Sjever prema kompasu (%@)";
+"ar_alignment_manual" = "Sjever ručno podešen (%@)";
+"ar_alignment_sun" = "Sjever prema suncu (%@)";
+"ar_alignment_geo" = "Sjever prema geopraćenju";
+"ar_turn_left" = "Okreni se ulijevo za %.0f°";
+"ar_turn_right" = "Okreni se udesno za %.0f°";
+
+/* Native MapKit map */
+"native_map_setting" = "Izvorna karta (beta)";
+"native_map_now" = "Sada";
+"native_map_play" = "Reproduciraj";
+"native_map_pause" = "Pauza";
+"native_map_timeline" = "Vrijeme radara";
+"native_map_mesocyclone" = "Mezociklona, jačina %ld";
+"native_map_storm" = "Oluja";
+"native_map_storm_near" = "Oluja kod %@";
+"native_map_hail" = "Tuča";
+"native_map_layer_lightning" = "Munje";
+"native_map_layer_mesocyclones" = "Mezociklone";
+"native_map_layer_storms" = "Oluje";
+"native_map_layer_nowcast" = "Radarska kratkoročna prognoza";
+"native_map_inspected_point" = "Odabrana točka";
+"native_map_3d_pinch" = "Stisni";
+"native_map_3d_two_fingers" = "Dva prsta";
+"native_map_3d_tap" = "Dodirni";
+
+/* The reader's position on the 3D map, for VoiceOver. */
+"my_location" = "Moja lokacija";

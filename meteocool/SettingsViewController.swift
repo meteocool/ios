@@ -200,7 +200,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Two-Finger Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto-Zoom After Start", comment: "dataMapView"),
         NSLocalizedString("Base Map Layer", comment: "dataMapView"),
-        NSLocalizedString("Radar Color Map", comment: "dataMapView")
+        NSLocalizedString("Radar Color Map", comment: "dataMapView"),
+        NSLocalizedString("native_map_setting", comment: "dataMapView")
     ]
     private var dataAboutLabel = [
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
@@ -397,6 +398,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
                 linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "radarColorMapping"))!, comment: "radarColorMapping")
                 return linkCell
+            case 4: //Native Map
+                switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataMapView[indexPath.row]
+                switcherCell.switcher.setOn(userDefaults?.bool(forKey: NativeMapView.settingKey) ?? false, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+                return switcherCell
             default:
                 print("This should not happen...")
                 return textCell
@@ -538,6 +546,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switch sender.tag {
         case 20:
             userDefaults?.set(sender.isOn, forKey: "mapRotation")
+            NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
+        case 24:
+            userDefaults?.set(sender.isOn, forKey: NativeMapView.settingKey)
             NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
         case 21:
             userDefaults?.set(sender.isOn, forKey: "autoZoom")

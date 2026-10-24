@@ -11,6 +11,12 @@ features and interactions are maintained in the
 [meteocool/core](https://github.com/meteocool/core) repository
 (ES6/Svelte).
 
+A native port of core's flat radar map, drawn with MapKit, lives in
+[`meteocool/NativeMap`](meteocool/NativeMap) and replaces the web map while
+Settings → Map View → Native Map (Beta) is on. In simulator debug builds,
+`MC_NATIVE_MAP_LINK='?latLonZ=45.8,4.6,7'` opens it at a view, to compare it
+with the web map.
+
 <a href="https://itunes.apple.com/de/app/meteocool-rain-radar/id1438364623"><img src="https://raw.githubusercontent.com/v4lli/meteocool/master/frontend/assets/download-on-appstore.png" style="width: 49%; float: left;" alt="Download on Apple Appstore"></a>
 
 ## Building

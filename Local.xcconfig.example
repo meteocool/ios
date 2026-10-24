@@ -10,6 +10,11 @@ DEVELOPMENT_TEAM = YOURTEAMID
 // because org.frcy.app.* is registered to the meteocool team.
 BUNDLE_PREFIX = com.example
 
+// A local build's icon, with a radar-coloured sash so it is not mistaken for
+// the App Store's on the same home screen.
+// APP_ICON = AppIconNative
+// APP_ICON_UNUSED = AppIcon.icon
+
 // NOTE: the App Group id (group.org.frcy.app.meteocool) is hardcoded in
 // the .entitlements files and in Swift. Building against your own team
 // additionally requires changing it in both places, or dropping the

@@ -10,6 +10,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if ProcessInfo.processInfo.arguments.contains("--ui-test-reset") {
             userDefaults?.removePersistentDomain(forName: "group.org.frcy.app.meteocool")
         }
+        // UI tests of the native map start on it, past onboarding.
+        if ProcessInfo.processInfo.arguments.contains("--native-map") {
+            userDefaults?.set(true, forKey: NativeMapView.settingKey)
+            userDefaults?.set(true, forKey: "onboardingDone")
+        }
+        #endif
+        #if NATIVE_MAP_DEFAULT
+        // A local build made to try the native map (passed on the command
+        // line) opens on it until switched off in Settings.
+        if userDefaults?.object(forKey: NativeMapView.settingKey) == nil {
+            userDefaults?.set(true, forKey: NativeMapView.settingKey)
+        }
         #endif
         // Override point for customization after application launch.
 

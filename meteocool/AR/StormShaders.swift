@@ -364,6 +364,85 @@ vertex LineOut line_vertex(uint vid [[vertex_id]], const device LineVertex *vert
 fragment float4 line_fragment(LineOut in [[stage_in]]) {
     return in.colour;
 }
+
+// MARK: - Cell solids (the 3D map)
+
+struct SolidVertex {
+    float4 position;                // world metres, w = 1
+    float4 normal;                  // xyz
+    float4 colour;                  // straight RGBA
+};
+
+struct SolidUniforms {
+    float4x4 viewProjection;
+    float4 light;                   // xyz: towards the light
+};
+
+struct SolidOut {
+    float4 position [[position]];
+    float3 normal;
+    float4 colour;
+};
+
+vertex SolidOut solid_vertex(uint vid [[vertex_id]], const device SolidVertex *vertices [[buffer(0)]],
+                             constant SolidUniforms &u [[buffer(1)]]) {
+    SolidOut out;
+    out.position = u.viewProjection * vertices[vid].position;
+    out.normal = vertices[vid].normal.xyz;
+    out.colour = vertices[vid].colour;
+    return out;
+}
+
+/// Lit from the sun's side and the sky, so a column's walls read as walls.
+fragment float4 solid_fragment(SolidOut in [[stage_in]], constant SolidUniforms &u [[buffer(1)]]) {
+    float3 n = normalize(in.normal);
+    float shade = 0.62 + 0.38 * saturate(dot(n, normalize(u.light.xyz)));
+    float3 rgb = in.colour.rgb * shade;
+    return float4(rgb * in.colour.a, in.colour.a);
+}
+
+// MARK: - Map ground (the 3D map)
+
+struct GroundVertex {
+    float4 position;                // world metres, w = 1
+    float2 uv;                      // into the ground's picture
+    float2 padding;
+};
+
+struct GroundUniforms {
+    float4x4 viewProjection;
+    float4 camera;
+    float4 haze;                    // rgb: the distance's colour, a: where the ground has faded into it
+};
+
+struct GroundOut {
+    float4 position [[position]];
+    float2 uv;
+    float distance;
+};
+
+vertex GroundOut ground_vertex(uint vid [[vertex_id]], const device GroundVertex *vertices [[buffer(0)]],
+                               constant GroundUniforms &u [[buffer(1)]]) {
+    GroundOut out;
+    float4 p = vertices[vid].position;
+    out.position = u.viewProjection * p;
+    out.uv = vertices[vid].uv;
+    out.distance = length(p.xyz - u.camera.xyz);
+    return out;
+}
+
+/// The map's picture on the ground, fading into the haze towards its edge
+/// so the end of what was fetched is not a hard line.
+fragment float4 ground_fragment(GroundOut in [[stage_in]], constant GroundUniforms &u [[buffer(1)]],
+                                texture2d<float> map [[texture(0)]]) {
+    constexpr sampler s(address::clamp_to_edge, filter::linear, mip_filter::linear);
+    float3 colour = map.sample(s, in.uv).rgb;
+    float2 edge = min(in.uv, 1.0 - in.uv);
+    float rim = 1.0 - smoothstep(0.0, 0.08, min(edge.x, edge.y));
+    float fog = saturate(in.distance / u.haze.a);
+    float fade = max(rim, fog * fog * 0.8);
+    return float4(mix(colour, u.haze.rgb, fade), 1.0);
+}
 """
 }
 
@@ -416,4 +495,31 @@ struct SkyUniforms {
 struct LineVertex {
     var position: SIMD4<Float>
     var colour: SIMD4<Float>
+}
+
+/// Mirrors `GroundVertex` in `StormShaders.source`.
+struct GroundVertex {
+    var position: SIMD4<Float>
+    var uv: SIMD2<Float>
+    var padding = SIMD2<Float>()
+}
+
+/// Mirrors `GroundUniforms` in `StormShaders.source`.
+struct GroundUniforms {
+    var viewProjection: simd_float4x4
+    var camera: SIMD4<Float>
+    var haze: SIMD4<Float>
+}
+
+/// Mirrors `SolidVertex` in `StormShaders.source`.
+struct SolidVertex {
+    var position: SIMD4<Float>
+    var normal: SIMD4<Float>
+    var colour: SIMD4<Float>
+}
+
+/// Mirrors `SolidUniforms` in `StormShaders.source`.
+struct SolidUniforms {
+    var viewProjection: simd_float4x4
+    var light: SIMD4<Float>
 }

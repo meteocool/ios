@@ -22,6 +22,7 @@ enum ARCheck {
         links()
         try placementAndPicking()
         try shaders()
+        try scanHistory()
         print("AR checks passed")
     }
 
@@ -234,7 +235,7 @@ enum ARCheck {
         let r = 6_378_137.0, lat = 48.1351, lon = 11.581
         let back = Geo.lonLat(mercatorX: lon * .pi / 180 * r, y: r * log(tan(.pi / 4 + lat * .pi / 360)))
         precondition(abs(back.lon - lon) < 1e-9 && abs(back.lat - lat) < 1e-9, "mercator \(back)")
-        precondition(Geo.compassPoint(247, german: false) == "WSW" && Geo.compassPoint(80, german: true) == "O")
+        precondition(Geo.compassPoint(247, points: Geo.englishCompassPoints) == "WSW" && Geo.compassPoint(80, points: Geo.englishCompassPoints) == "E")
         precondition(abs(Geo.angleDifference(10, 350) - 20) < 1e-9 && abs(Geo.angleDifference(350, 10) + 20) < 1e-9)
         precondition(abs(GeoFrame.horizonDip(eyeAboveGround: 100) - 0.321) < 0.005)
 
@@ -567,5 +568,63 @@ extension JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
+    }
+}
+
+extension ARCheck {
+    /// core's `scripts/tests/scans` and `cloudHistory`: earlier scans found in the bucket.
+    static func scanHistory() throws {
+        typealias H = ScanHistory
+        let newest = 1_759_702_200 // 2025-10-05 22:10:00Z
+        precondition(H.earlierScans(newest: newest).count == 24)
+        precondition(H.earlierScans(newest: newest).first == newest - 300 && H.earlierScans(newest: newest).last == newest - 7200)
+        // A network on its own clock: France's runs land at :29 and :34.
+        precondition(H.scanOnClock(known: newest - 60, picked: newest - 900) == newest - 960)
+        precondition(H.stamp(newest) == "20251005T221000")
+        precondition(H.scan(ofPath: "meteoradar/volumes/20251005T221000/de-T100053300344.mcvx") == newest)
+        precondition(H.pathAt("meteoradar/volumes/20251005T221000/de-T100053300344.mcvx", scan: newest - 300, network: "fr",
+                              code: H.tileCode(9, 268, 175)) == "meteoradar/volumes/20251005T220500/fr-T090026800175.mcvx")
+        precondition(H.pathAt("not/a/volume.json", scan: newest, network: "de", code: "T00") == nil)
+        precondition(H.tileCode(10, 533, 344) == "T100053300344")
+        precondition(H.coarseOf([11, 1067, 689])! == (266, 172))
+        precondition(H.coarseOf([8, 1, 1]) == nil)
+        precondition(H.around([H.Place(network: "de", x: 5, y: 5), H.Place(network: "de", x: 6, y: 5)]).count == 12)
+        // A quarter: nothing below two seeded columns; a core's as its four zoom-11 tiles.
+        precondition(H.tilesToAsk(H.Quarter(tile: [10, 4, 6], peak: 40, columns: 1)).first.isEmpty)
+        let plain = H.tilesToAsk(H.Quarter(tile: [10, 4, 6], peak: 40, columns: 5))
+        precondition(plain.first == [[10, 4, 6]] && plain.second.count == 4)
+        let core = H.tilesToAsk(H.Quarter(tile: [10, 4, 6], peak: 55, columns: 5))
+        precondition(core.first == [[11, 8, 12], [11, 9, 12], [11, 8, 13], [11, 9, 13]] && core.second.isEmpty)
+
+        // A coarse tile with echo only in its north-western quarter.
+        let header: [String: Any] = [
+            "code": "T0900268000175", "reference_time": "2025-10-05T22:10:00+00:00", "lon": 8.6, "lat": 50.1,
+            "nx": 8, "ny": 8, "nz": 2, "step_m": [1000.0, 1000.0, 500.0], "origin_m": [-4000.0, -4000.0, 0.0],
+            "dbz_floor": -32.0, "dbz_scale": 2.0, "network": "de", "tier": 2, "tile": [9, 268, 175], "apron": [0, 0, 0],
+        ]
+        let json = try JSONSerialization.data(withJSONObject: header)
+        var data = Data("MCVX".utf8)
+        for value in [UInt32(1), UInt32(json.count)] { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        data.append(json)
+        var voxels = [UInt8](repeating: 0, count: 8 * 8 * 2 * 2)
+        for z in 0 ..< 2 {
+            for y in 0 ..< 8 {
+                for x in 0 ..< 8 {
+                    let i = ((z * 8 + y) * 8 + x) * 2
+                    let dbz = y >= 4 && x < 4 ? 42.0 : 5.0
+                    voxels[i] = UInt8((dbz + 32) * 2)
+                    voxels[i + 1] = 255
+                }
+            }
+        }
+        data.append(contentsOf: voxels)
+        let volume = try StormVolume.decode(data)
+        let quarters = H.quarters(volume)
+        precondition(quarters.count == 4)
+        precondition(quarters[0].tile == [10, 536, 350] && quarters[0].columns == 16 && abs(quarters[0].peak - 42) < 0.01)
+        precondition(quarters[1...].allSatisfy { $0.columns == 0 })
+        precondition(H.peakDbz(volume) == 42)
+        let entry = H.entry(path: "meteoradar/volumes/20251005T221000/de-T0900268000175.mcvx", volume: volume, network: "de")
+        precondition(entry.coarse == true && entry.tile == [9, 268, 175] && entry.peakDbz == 42)
     }
 }

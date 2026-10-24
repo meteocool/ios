@@ -144,12 +144,21 @@ enum Geo {
         return d > 180 ? d - 360 : d
     }
 
-    /// A bearing as one of sixteen compass points, in the given language.
-    static func compassPoint(_ bearing: Double, german: Bool) -> String {
-        let english = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-        let deutsch = ["N", "NNO", "NO", "ONO", "O", "OSO", "SO", "SSO", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    /// The sixteen compass points from north clockwise, in English.
+    static let englishCompassPoints = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+    /// The sixteen compass points in the app's language: `ar_compass_points`,
+    /// space-separated. English when a translation does not hold sixteen.
+    static var compassPoints: [String] {
+        let points = NSLocalizedString("ar_compass_points", comment: "Sixteen compass point abbreviations from north clockwise, space-separated")
+            .split(separator: " ").map(String.init)
+        return points.count == 16 ? points : englishCompassPoints
+    }
+
+    /// A bearing as one of sixteen compass points.
+    static func compassPoint(_ bearing: Double, points: [String] = compassPoints) -> String {
         let index = Int((normalise(bearing) / 22.5).rounded()) % 16
-        return german ? deutsch[index] : english[index]
+        return points[index]
     }
 }
 

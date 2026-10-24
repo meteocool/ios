@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Soovisid teavitust enne, kui sinu praeguses asukohas vihma hakkab sadama. Vali „Always Allow” (luba alati), kui soovid, et teavitused töötaksid.";
+"NSLocationAlwaysUsageDescription" = "Soovisid teavitust enne, kui sinu praeguses asukohas vihma hakkab sadama. Vali „Always Allow” (luba alati), kui soovid, et teavitused töötaksid.";
+"NSLocationWhenInUseUsageDescription" = "Näitab sinu asukohta ilmakaardil.";
+"NSCameraUsageDescription" = "AR-äikesevaade näitab radari 3D-äikesi kaamerapildi peal, et sa näeksid, millist äikest parajasti vaatad.";

@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Du har bedt om at få besked, før det regner, hvor du er. Vælg »Tillad altid«, hvis notifikationerne skal virke.";
+"NSLocationAlwaysUsageDescription" = "Du har bedt om at få besked, før det regner, hvor du er. Vælg »Tillad altid«, hvis notifikationerne skal virke.";
+"NSLocationWhenInUseUsageDescription" = "Viser din placering på vejrkortet.";
+"NSCameraUsageDescription" = "AR-uvejrsvisningen lægger radarens 3D-uvejr oven på kamerabilledet, så du kan se, hvilket uvejr du kigger på.";
