@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Duggregn";
+"Light rain" = "Lätt regn";
+"Rain" = "Regn";
+"Intense Rain" = "Intensivt regn";
+"Heavy Rain" = "Kraftigt regn";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ fram till %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ fortsätter";
+"rain_stale" = "Väntar på nya radardata";
+"rain_stale_short" = "Väntar på radardata";
+"rain_lasting %lld" = "Varar cirka %lld min";
+"rain_open_ended" = "Inget slut i sikte än";
+"rain_peak_dbz %lld" = "Max %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Duggregn";
+"band_light" = "Lätt regn";
+"band_rain" = "Regn";
+"band_intense" = "Intensivt regn";
+"band_heavy" = "Kraftigt regn";
+"band_extreme" = "Extremt regn";
+"band_hail" = "Hagel";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ kl. %2$@";
+/* Chart axis */
+"rain_now" = "Nu";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Regn där du är";
+
+/* Widgets */
+"widget_no_precipitation" = "Ingen nederbörd väntas";
+"widget_ends %@" = "till %@";
+"widget_until_rain" = "min till regn";
+"widget_min" = "min";
+"widget_dry" = "Uppehåll";
+"widget_no_location" = "Öppna meteocool en gång så att widgetarna vet var du är.";
+"widget_no_location_short" = "Okänd plats";
+"widget_no_data" = "Inga radardata just nu";
+"widget_places_title" = "Regn på dina platser";
+"widget_peak" = "Kraftigast";
+"widget_none" = "Inget";
+"widget_rain_minutes" = "Regn framöver";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Radarkarta";
+"Rain Forecast" = "Regnprognos";
+"Rain Clock" = "Regnklocka";
+"Places" = "Platser";
+"Refresh Rain" = "Uppdatera regn";
+"The rain radar around you or any place, and when rain comes next." = "Regnradarn runt dig eller valfri plats, och när det regnar härnäst.";
+"The rain radar around a place, and when rain comes next." = "Regnradarn runt en plats, och när det regnar härnäst.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "När regnet kommer och hur kraftigt det blir, som i kartans diagram.";
+"The rain chart from the map, for one place." = "Regndiagrammet från kartan, för en plats.";
+"The next hour on a dial, coloured where it will rain." = "Nästa timme på en urtavla, färgad där det kommer att regna.";
+"The next one or two hours on a dial, coloured where it will rain." = "Nästa en eller två timmar på en urtavla, färgad där det kommer att regna.";
+"The rain at up to six places, side by side." = "Regnet på upp till sex platser, sida vid sida.";
+"The rain at several places at once." = "Regnet på flera platser samtidigt.";
+"Location" = "Plats";
+"Current Location" = "Nuvarande plats";
+"Place" = "Plats";
+"Map Area" = "Kartutsnitt";
+"Local" = "Lokalt";
+"About 40 km across" = "Cirka 40 km brett";
+"Regional" = "Regionalt";
+"About 150 km across" = "Cirka 150 km brett";
+"Wide" = "Vidsträckt";
+"About 400 km across" = "Cirka 400 km brett";
+"Country" = "Land";
+"About 1,200 km across" = "Cirka 1 200 km brett";
+"Forecast" = "Prognos";
+"Map only" = "Bara karta";
+"Next rain" = "Nästa regn";
+"One line, such as \"Rain in 12 min\"" = "En rad, t.ex. ”Regn om 12 min”";
+"Next rain and chart" = "Nästa regn och diagram";
+"The line plus bars for the next hour" = "Raden plus staplar för nästa timme";
+"Intensity" = "Intensitet";
+"As in the app" = "Som i appen";
+"The Intensity Threshold setting" = "Inställningen Intensitetströskel";
+"Time Range" = "Tidsintervall";
+"Next hour" = "Nästa timme";
+"Next 2 hours" = "Nästa 2 timmar";
+"Last half hour and next 90 minutes" = "Senaste halvtimmen och nästa 90 minuter";
+"Last 2 hours and next 2 hours" = "Senaste 2 och nästa 2 timmarna";
+"Show Radar Map" = "Visa radarkarta";
+"On the medium and large widget." = "På den medelstora och den stora widgeten.";
+"Dial" = "Urtavla";
+"One hour" = "En timme";
+"One turn of the minute hand" = "Ett varv med minutvisaren";
+"Two hours" = "Två timmar";
+"The whole forecast" = "Hela prognosen";

@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Uduvihm";
+"Light rain" = "Nõrk vihm";
+"Rain" = "Vihm";
+"Intense Rain" = "Üsna tugev vihm";
+"Heavy Rain" = "Tugev vihm";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ kuni %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ jätkub";
+"rain_stale" = "Ootan uusi radariandmeid";
+"rain_stale_short" = "Ootan radariandmeid";
+"rain_lasting %lld" = "Kestab umbes %lld min";
+"rain_open_ended" = "Lõppu veel ei paista";
+"rain_peak_dbz %lld" = "Tipp %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Uduvihm";
+"band_light" = "Nõrk vihm";
+"band_rain" = "Vihm";
+"band_intense" = "Üsna tugev vihm";
+"band_heavy" = "Tugev vihm";
+"band_extreme" = "Väga tugev vihm";
+"band_hail" = "Rahe";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ kell %2$@";
+/* Chart axis */
+"rain_now" = "Praegu";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Vihm sinu asukohas";
+
+/* Widgets */
+"widget_no_precipitation" = "Sademeid pole oodata";
+"widget_ends %@" = "kuni %@";
+"widget_until_rain" = "min vihmani";
+"widget_min" = "min";
+"widget_dry" = "Kuiv";
+"widget_no_location" = "Ava meteocool üks kord, et vidinad sinu asukohta teaksid.";
+"widget_no_location_short" = "Asukoht teadmata";
+"widget_no_data" = "Praegu radariandmeid pole";
+"widget_places_title" = "Vihm sinu kohtades";
+"widget_peak" = "Tugevaim";
+"widget_none" = "Puudub";
+"widget_rain_minutes" = "Vihma tulemas";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Vihmaradar";
+"Rain Forecast" = "Vihmaprognoos";
+"Rain Clock" = "Vihmakell";
+"Places" = "Kohad";
+"Refresh Rain" = "Värskenda vihmaandmeid";
+"The rain radar around you or any place, and when rain comes next." = "Vihmaradar sinu ümber või mis tahes kohas ning millal järgmine vihm tuleb.";
+"The rain radar around a place, and when rain comes next." = "Vihmaradar ühe koha ümber ning millal järgmine vihm tuleb.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Millal vihm saabub ja kui tugevaks see läheb, nagu kaardi graafikul.";
+"The rain chart from the map, for one place." = "Kaardi vihmagraafik ühe koha jaoks.";
+"The next hour on a dial, coloured where it will rain." = "Järgmine tund sihverplaadil, värvitud seal, kus hakkab sadama.";
+"The next one or two hours on a dial, coloured where it will rain." = "Järgmised üks või kaks tundi sihverplaadil, värvitud seal, kus hakkab sadama.";
+"The rain at up to six places, side by side." = "Vihm kuni kuues kohas kõrvuti.";
+"The rain at several places at once." = "Vihm mitmes kohas korraga.";
+"Location" = "Asukoht";
+"Current Location" = "Praegune asukoht";
+"Place" = "Koht";
+"Map Area" = "Kaardiala";
+"Local" = "Kohalik";
+"About 40 km across" = "Umbes 40 km lai";
+"Regional" = "Piirkondlik";
+"About 150 km across" = "Umbes 150 km lai";
+"Wide" = "Lai";
+"About 400 km across" = "Umbes 400 km lai";
+"Country" = "Riik";
+"About 1,200 km across" = "Umbes 1200 km lai";
+"Forecast" = "Prognoos";
+"Map only" = "Ainult kaart";
+"Next rain" = "Järgmine vihm";
+"One line, such as \"Rain in 12 min\"" = "Üks rida, näiteks „Vihm 12 min pärast”";
+"Next rain and chart" = "Järgmine vihm ja graafik";
+"The line plus bars for the next hour" = "Rida ja järgmise tunni tulbad";
+"Intensity" = "Tugevus";
+"As in the app" = "Nagu rakenduses";
+"The Intensity Threshold setting" = "Seade „Tugevuse lävi”";
+"Time Range" = "Ajavahemik";
+"Next hour" = "Järgmine tund";
+"Next 2 hours" = "Järgmised 2 tundi";
+"Last half hour and next 90 minutes" = "Viimane pool tundi ja järgmised 90 minutit";
+"Last 2 hours and next 2 hours" = "Viimased 2 ja järgmised 2 tundi";
+"Show Radar Map" = "Näita radarikaarti";
+"On the medium and large widget." = "Keskmisel ja suurel vidinal.";
+"Dial" = "Sihverplaat";
+"One hour" = "Üks tund";
+"One turn of the minute hand" = "Minutiosuti üks ring";
+"Two hours" = "Kaks tundi";
+"The whole forecast" = "Kogu prognoos";

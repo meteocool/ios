@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Je hebt gevraagd om een melding voordat het regent op je huidige locatie. Kies \"Altijd toestaan\" als je wilt dat de meldingen werken.";
+"NSLocationAlwaysUsageDescription" = "Je hebt gevraagd om een melding voordat het regent op je huidige locatie. Kies \"Altijd toestaan\" als je wilt dat de meldingen werken.";
+"NSLocationWhenInUseUsageDescription" = "Toont je locatie op de weerkaart.";
+"NSCameraUsageDescription" = "Het AR-aanzicht toont de 3D-buien van de radar over het camerabeeld, zodat je ziet naar welke bui je kijkt.";

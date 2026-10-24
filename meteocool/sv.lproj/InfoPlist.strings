@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Du har bett om att få en notis innan det börjar regna där du är. Välj ”Tillåt alltid” om du vill att notiserna ska fungera.";
+"NSLocationAlwaysUsageDescription" = "Du har bett om att få en notis innan det börjar regna där du är. Välj ”Tillåt alltid” om du vill att notiserna ska fungera.";
+"NSLocationWhenInUseUsageDescription" = "Visar var du är på väderkartan.";
+"NSCameraUsageDescription" = "AR-vyn för åskväder visar radarns 3D-åskväder ovanpå kamerabilden, så att du kan se vilket åskväder du tittar på.";

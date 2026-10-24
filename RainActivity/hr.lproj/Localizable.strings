@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Rosulja";
+"Light rain" = "Slaba kiša";
+"Rain" = "Kiša";
+"Intense Rain" = "Jača kiša";
+"Heavy Rain" = "Jaka kiša";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ do %2$@";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ se nastavlja";
+"rain_stale" = "Čekam nove radarske podatke";
+"rain_stale_short" = "Čekam radarske podatke";
+"rain_lasting %lld" = "Traje oko %lld min";
+"rain_open_ended" = "Kraj još nije na vidiku";
+"rain_peak_dbz %lld" = "Maksimum %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Rosulja";
+"band_light" = "Slaba kiša";
+"band_rain" = "Kiša";
+"band_intense" = "Jača kiša";
+"band_heavy" = "Jaka kiša";
+"band_extreme" = "Iznimno jaka kiša";
+"band_hail" = "Tuča";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ u %2$@";
+/* Chart axis */
+"rain_now" = "Sada";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Kiša na tvojoj lokaciji";
+
+/* Widgets */
+"widget_no_precipitation" = "Ne očekuje se oborina";
+"widget_ends %@" = "do %@";
+"widget_until_rain" = "min do kiše";
+"widget_min" = "min";
+"widget_dry" = "Suho";
+"widget_no_location" = "Jednom otvori meteocool kako bi widgeti znali tvoju lokaciju.";
+"widget_no_location_short" = "Lokacija nepoznata";
+"widget_no_data" = "Trenutačno nema radarskih podataka";
+"widget_places_title" = "Kiša na tvojim mjestima";
+"widget_peak" = "Najjača";
+"widget_none" = "Nema";
+"widget_rain_minutes" = "Kiša ukupno";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Radarska karta";
+"Rain Forecast" = "Prognoza kiše";
+"Rain Clock" = "Kišni sat";
+"Places" = "Mjesta";
+"Refresh Rain" = "Osvježi kišu";
+"The rain radar around you or any place, and when rain comes next." = "Radar kiše oko tebe ili bilo kojeg mjesta i kada sljedeći put dolazi kiša.";
+"The rain radar around a place, and when rain comes next." = "Radar kiše oko jednog mjesta i kada sljedeći put dolazi kiša.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Kada stiže kiša i koliko će biti jaka, kao na grafikonu na karti.";
+"The rain chart from the map, for one place." = "Grafikon kiše s karte, za jedno mjesto.";
+"The next hour on a dial, coloured where it will rain." = "Sljedeći sat na brojčaniku, obojen ondje gdje će kišiti.";
+"The next one or two hours on a dial, coloured where it will rain." = "Sljedećih sat ili dva na brojčaniku, obojeno ondje gdje će kišiti.";
+"The rain at up to six places, side by side." = "Kiša na najviše šest mjesta, jedno uz drugo.";
+"The rain at several places at once." = "Kiša na više mjesta odjednom.";
+"Location" = "Lokacija";
+"Current Location" = "Trenutačna lokacija";
+"Place" = "Mjesto";
+"Map Area" = "Područje karte";
+"Local" = "Lokalno";
+"About 40 km across" = "Širina oko 40 km";
+"Regional" = "Regionalno";
+"About 150 km across" = "Širina oko 150 km";
+"Wide" = "Široko";
+"About 400 km across" = "Širina oko 400 km";
+"Country" = "Zemlja";
+"About 1,200 km across" = "Širina oko 1200 km";
+"Forecast" = "Prognoza";
+"Map only" = "Samo karta";
+"Next rain" = "Sljedeća kiša";
+"One line, such as \"Rain in 12 min\"" = "Jedan redak, npr. „Kiša za 12 min”";
+"Next rain and chart" = "Sljedeća kiša i grafikon";
+"The line plus bars for the next hour" = "Redak i stupci za sljedeći sat";
+"Intensity" = "Jačina";
+"As in the app" = "Kao u aplikaciji";
+"The Intensity Threshold setting" = "Postavka Prag jačine";
+"Time Range" = "Vremenski raspon";
+"Next hour" = "Sljedeći sat";
+"Next 2 hours" = "Sljedeća 2 sata";
+"Last half hour and next 90 minutes" = "Zadnjih pola sata i sljedećih 90 minuta";
+"Last 2 hours and next 2 hours" = "Zadnja 2 sata i sljedeća 2 sata";
+"Show Radar Map" = "Prikaži radarsku kartu";
+"On the medium and large widget." = "Na srednjem i velikom widgetu.";
+"Dial" = "Brojčanik";
+"One hour" = "Jedan sat";
+"One turn of the minute hand" = "Jedan krug minutne kazaljke";
+"Two hours" = "Dva sata";
+"The whole forecast" = "Cijela prognoza";

@@ -1,0 +1,93 @@
+/* The intensity names, as the Intensity Threshold setting calls them. */
+"Drizzle" = "Tihku";
+"Light rain" = "Heikko sade";
+"Rain" = "Sade";
+"Intense Rain" = "Voimakas sade";
+"Heavy Rain" = "Rankkasade";
+
+/* Headline while it rains: intensity, then the time it stops. */
+"rain_until %@ %@" = "%1$@ klo %2$@ asti";
+/* Headline while it rains and the forecast shows no end. */
+"rain_continues %@" = "%@ jatkuu";
+"rain_stale" = "Odotetaan uusia tutkatietoja";
+"rain_stale_short" = "Odotetaan tutkatietoja";
+"rain_lasting %lld" = "Kestää noin %lld min";
+"rain_open_ended" = "Loppua ei vielä näkyvissä";
+"rain_peak_dbz %lld" = "Huippu %lld dBZ";
+/* What the rain is called, by intensity, in headlines ("Rain until 14:20"). */
+"band_drizzle" = "Tihku";
+"band_light" = "Heikko sade";
+"band_rain" = "Sade";
+"band_intense" = "Voimakas sade";
+"band_heavy" = "Rankkasade";
+"band_extreme" = "Äärimmäinen sade";
+"band_hail" = "Rakeet";
+/* The heaviest the rain gets, and when: "Heavy rain at 16:10". */
+"rain_peak_at %@ %@" = "%1$@ klo %2$@";
+/* Chart axis */
+"rain_now" = "Nyt";
+"rain_hours %lld" = "+%lld h";
+"rain_chart" = "Sade sijainnissasi";
+
+/* Widgets */
+"widget_no_precipitation" = "Sadetta ei odoteta";
+"widget_ends %@" = "klo %@ asti";
+"widget_until_rain" = "min sateeseen";
+"widget_min" = "min";
+"widget_dry" = "Poutaa";
+"widget_no_location" = "Avaa meteocool kerran, jotta widgetit saavat sijaintisi.";
+"widget_no_location_short" = "Sijainti tuntematon";
+"widget_no_data" = "Ei tutkatietoja juuri nyt";
+"widget_places_title" = "Sade paikoissasi";
+"widget_peak" = "Voimakkain";
+"widget_none" = "Ei sadetta";
+"widget_rain_minutes" = "Sadetta yhteensä";
+"widget_minutes %lld" = "%lld min";
+
+/* Widget names, descriptions and settings */
+"Radar Map" = "Sadetutka";
+"Rain Forecast" = "Sade-ennuste";
+"Rain Clock" = "Sadekello";
+"Places" = "Paikat";
+"Refresh Rain" = "Päivitä sade";
+"The rain radar around you or any place, and when rain comes next." = "Sadetutka ympärilläsi tai missä tahansa paikassa sekä tieto siitä, milloin sataa seuraavaksi.";
+"The rain radar around a place, and when rain comes next." = "Sadetutka paikan ympärillä sekä tieto siitä, milloin sataa seuraavaksi.";
+"When rain arrives and how heavy it gets, as in the map's chart." = "Milloin sade alkaa ja kuinka voimakkaaksi se yltyy, kuten kartan kaaviossa.";
+"The rain chart from the map, for one place." = "Kartan sadekaavio yhdelle paikalle.";
+"The next hour on a dial, coloured where it will rain." = "Seuraava tunti kellotaululla, väritettynä sateen kohdalta.";
+"The next one or two hours on a dial, coloured where it will rain." = "Seuraava tunti tai kaksi kellotaululla, väritettynä sateen kohdalta.";
+"The rain at up to six places, side by side." = "Sade enintään kuudessa paikassa rinnakkain.";
+"The rain at several places at once." = "Sade useassa paikassa kerralla.";
+"Location" = "Sijainti";
+"Current Location" = "Nykyinen sijainti";
+"Place" = "Paikka";
+"Map Area" = "Kartta-alue";
+"Local" = "Paikallinen";
+"About 40 km across" = "Noin 40 km leveä";
+"Regional" = "Alueellinen";
+"About 150 km across" = "Noin 150 km leveä";
+"Wide" = "Laaja";
+"About 400 km across" = "Noin 400 km leveä";
+"Country" = "Maa";
+"About 1,200 km across" = "Noin 1 200 km leveä";
+"Forecast" = "Ennuste";
+"Map only" = "Vain kartta";
+"Next rain" = "Seuraava sade";
+"One line, such as \"Rain in 12 min\"" = "Yksi rivi, esimerkiksi ”Sadetta 12 min päästä”";
+"Next rain and chart" = "Seuraava sade ja kaavio";
+"The line plus bars for the next hour" = "Rivi sekä seuraavan tunnin pylväät";
+"Intensity" = "Voimakkuus";
+"As in the app" = "Kuten apissa";
+"The Intensity Threshold setting" = "Voimakkuuden kynnys -asetus";
+"Time Range" = "Aikaväli";
+"Next hour" = "Seuraava tunti";
+"Next 2 hours" = "Seuraavat 2 tuntia";
+"Last half hour and next 90 minutes" = "Edellinen puoli tuntia ja seuraavat 90 minuuttia";
+"Last 2 hours and next 2 hours" = "Edelliset 2 tuntia ja seuraavat 2 tuntia";
+"Show Radar Map" = "Näytä tutkakartta";
+"On the medium and large widget." = "Keskikokoisessa ja suuressa widgetissä.";
+"Dial" = "Kellotaulu";
+"One hour" = "Yksi tunti";
+"One turn of the minute hand" = "Minuuttiosoittimen yksi kierros";
+"Two hours" = "Kaksi tuntia";
+"The whole forecast" = "Koko ennuste";
