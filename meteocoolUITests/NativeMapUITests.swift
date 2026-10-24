@@ -143,7 +143,9 @@ final class NativeMapUITests: XCTestCase {
             }
             return label.contains(where: \.isNumber) ? sign * total : nil
         }
-        let left = minutes(live) ?? 0
+        // Labels count from the clock: one that ticks past a five-minute
+        // cadence before the next scan lands calls the same live step -5m.
+        let left = (minutes(live) ?? 0) - 5
         XCTAssertTrue(waitForValue(timeline) { (minutes($0) ?? .min) >= left }, "Back to \(live) or later, at \(timeline.value ?? "")")
     }
 
