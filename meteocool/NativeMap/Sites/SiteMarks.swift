@@ -28,8 +28,9 @@ final class RadarSiteAnnotation: NSObject, MKAnnotation {
 }
 
 /// A small disc with a radar's dish drawn in it, unlike anything else on
-/// the map; the open radar's filled. Decluttered among the marks, the open
-/// one never giving way.
+/// the map; the open radar's filled. Never given way to a storm's or a
+/// cloud's tag: a radar is a fixed place, and its mark opens it before
+/// anything under it.
 final class RadarSiteMarkView: MKAnnotationView {
     static let reuse = "radarSite"
     private static let disc: CGFloat = 22
@@ -38,7 +39,8 @@ final class RadarSiteMarkView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         frame = CGRect(x: 0, y: 0, width: Self.disc + 6, height: Self.disc + 6)
-        collisionMode = .circle
+        displayPriority = .required
+        collisionMode = .none
         canShowCallout = false
         // Over the storms and the tags (850): a radar is a fixed place.
         zPriority = MKAnnotationViewZPriority(rawValue: 900)
@@ -60,7 +62,6 @@ final class RadarSiteMarkView: MKAnnotationView {
 
     func update() {
         guard let mark = annotation as? RadarSiteAnnotation else { return }
-        displayPriority = mark.open ? .required : .defaultHigh
         image = Self.picture(open: mark.open, dark: dark)
         accessibilityLabel = CoreStrings.t("site.title", ["name": RadarSiteAnnotation.name(mark.site.site)])
         accessibilityIdentifier = "nativeMap.site.\(mark.site.site)"

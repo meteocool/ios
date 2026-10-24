@@ -995,6 +995,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(mark.waitForExistence(timeout: 20), "\(name)'s mark", file: file, line: line)
         mark.tap()
         let tray = element("nativeMap.site")
+        if !tray.waitForExistence(timeout: 5) { screenshot("\(code) did not open") }
         XCTAssertTrue(tray.waitForExistence(timeout: 5), "The radar's tray", file: file, line: line)
         XCTAssertEqual(tray.label, "\(name) radar", file: file, line: line)
         let status = element("nativeMap.site.status")
