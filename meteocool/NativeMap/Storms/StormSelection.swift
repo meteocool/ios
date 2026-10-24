@@ -192,6 +192,15 @@ enum StormSelect {
         return nil
     }
 
+    /// How fast and which way the storm is going, in metres per second: its
+    /// newest step's, else the storm's own (core's `motionOf`).
+    static func motionOf(_ selection: StormSelection) -> (speedMs: Double, headingDeg: Double)? {
+        let last = selection.cell?.series.last
+        guard let speed = last?.speedKmh ?? selection.summary?.properties.speedKmh,
+              let heading = last?.headingDeg ?? selection.summary?.properties.headingDeg else { return nil }
+        return (speed / 3.6, heading)
+    }
+
     /// Which way the storm is going: the KONRAD3D track's newest heading,
     /// else the storm's own.
     static func headingOf(_ selection: StormSelection) -> Double? {

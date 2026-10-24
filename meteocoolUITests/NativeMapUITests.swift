@@ -61,6 +61,12 @@ final class NativeMapUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+        // Also onto the Mac's disk, to look at without the result bundle
+        // (`TEST_RUNNER_SHOT_DIR`).
+        if let dir = ProcessInfo.processInfo.environment["SHOT_DIR"] {
+            let file = name.replacingOccurrences(of: " ", with: "-") + ".png"
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent(file))
+        }
     }
 
     /// Holds the map at a point given as fractions of its size, or the
@@ -965,5 +971,151 @@ final class NativeMapUITests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(map.exists)
+    }
+
+    // MARK: - Site mode
+
+    /// Turns the radars' marks on, as the layers panel does; they are off
+    /// until then (`layerSites`).
+    private func turnOnRadarSites() {
+        openLayers()
+        let sites = app.switches["nativeMap.layers.sites"].firstMatch
+        XCTAssertTrue(sites.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !sites.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertEqual(sites.value as? String, "0", "Off until turned on")
+        sites.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(sites) { $0 == "1" }, "Switched on")
+        element("nativeMap.layers.close").tap()
+    }
+
+    /// Opens a radar from its mark, and waits for its sweep to be drawn.
+    @discardableResult
+    private func openSite(_ code: String, name: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        let mark = element("nativeMap.site.\(code)")
+        XCTAssertTrue(mark.waitForExistence(timeout: 20), "\(name)'s mark", file: file, line: line)
+        mark.tap()
+        let tray = element("nativeMap.site")
+        XCTAssertTrue(tray.waitForExistence(timeout: 5), "The radar's tray", file: file, line: line)
+        XCTAssertEqual(tray.label, "\(name) radar", file: file, line: line)
+        let status = element("nativeMap.site.status")
+        XCTAssertTrue(status.waitForExistence(timeout: 20), file: file, line: line)
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline, !status.label.hasPrefix("Scanned") { RunLoop.current.run(until: Date().addingTimeInterval(0.3)) }
+        XCTAssertTrue(status.label.range(of: #"^Scanned \d\d?:\d\d:\d\d"#, options: .regularExpression) != nil,
+                      "Says when it was scanned: \(status.label)", file: file, line: line)
+        return tray
+    }
+
+    func testRadarMarksAreOffUntilTurnedOn() {
+        launch(link: "?latLonZ=50.2,9.2,7.4")
+        waitForSeries()
+        XCTAssertFalse(element("nativeMap.site.deoft").waitForExistence(timeout: 6))
+    }
+
+    func testRadarMarkOpensItsSweepWithItsTiltsAndClosesBackToTheTimeline() {
+        launch(link: "?latLonZ=50.2,9.2,7.4")
+        waitForSeries()
+        turnOnRadarSites()
+        let tray = openSite("deoft", name: "Offenthal")
+        // The timeline gives way to the radar: nothing to play, nothing to go back to.
+        XCTAssertTrue(timeline.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(playButton.exists)
+        XCTAssertFalse(element("nativeMap.backToNow").exists)
+        XCTAssertTrue(element("nativeMap.site.deoft").isSelected, "The open radar's mark")
+        // Its tilts, each with how high its beam is 100 km out.
+        let tilt = element("nativeMap.site.tilt")
+        XCTAssertTrue(tilt.waitForExistence(timeout: 5))
+        XCTAssertTrue((tilt.value as? String ?? "").hasPrefix("0.5° · "), "The lowest tilt: \(tilt.value ?? "")")
+        screenshot("site reflectivity")
+
+        // Velocity is offered, the site publishing it, with its own legend.
+        let velocity = tray.buttons["Velocity"].firstMatch
+        XCTAssertTrue(velocity.waitForExistence(timeout: 5))
+        velocity.tap()
+        XCTAssertTrue(velocity.isSelected)
+        XCTAssertTrue(element("nativeMap.site.legend").waitForExistence(timeout: 10))
+        XCTAssertFalse(element("nativeMap.legend").exists)
+        // DWD's velocity is not dealiased by the server: the tray says so.
+        let note = element("nativeMap.site.note")
+        XCTAssertTrue(note.waitForExistence(timeout: 15))
+        screenshot("site velocity")
+        // Another tilt, kept across the change of quantity.
+        tilt.tap()
+        let tilts = app.buttons.matching(NSPredicate(format: "label MATCHES %@", #"^\d+\.\d° · \d+\.\d km$"#))
+        XCTAssertTrue(tilts.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(tilts.count, 5, "DWD scans a volume of tilts")
+        tilts.element(boundBy: 1).tap()
+        XCTAssertTrue(waitForValue(tilt) { !$0.hasPrefix("0.5° ") }, "Another tilt")
+        // Storm-relative needs a storm to take the motion of.
+        tray.buttons["Storm-relative"].firstMatch.tap()
+        XCTAssertTrue(waitForLabel(note) { $0.hasPrefix("Select a storm") })
+
+        element("nativeMap.site.close").tap()
+        XCTAssertTrue(tray.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(timeline.waitForExistence(timeout: 5))
+        XCTAssertTrue(element("nativeMap.legend").exists)
+    }
+
+    func testHoldInsideAnOpenRadarReadsItsBin() {
+        launch(link: "?latLonZ=50.0,8.71,8.6")
+        waitForSeries()
+        turnOnRadarSites()
+        openSite("deoft", name: "Offenthal")
+        hold(0.72, 0.42)
+        XCTAssertTrue(element("nativeMap.point.menu").waitForExistence(timeout: 5))
+        let reading = element("nativeMap.point.siteReading")
+        XCTAssertTrue(reading.waitForExistence(timeout: 5), "The menu reads the bin")
+        XCTAssertTrue(reading.label.range(of: #"° · \d+\.\d km · beam \d+\.\d km$"#, options: .regularExpression) != nil,
+                      "Where the bin is: \(reading.label)")
+        screenshot("site reading")
+    }
+
+    /// Borkum's sweep reaches 180 km; out at sea 400 km north of it there is
+    /// no other radar and seldom a storm.
+    func testTapPastAnOpenRadarsReachClosesIt() {
+        launch(link: "?latLonZ=53.56413,6.74832,6.4")
+        waitForSeries()
+        turnOnRadarSites()
+        let tray = openSite("deasb", name: "Borkum")
+        // In points from the radar's mark, the same distances on every
+        // screen: at zoom 6.4 about 0.9 pt a kilometre.
+        let mark = element("nativeMap.site.deasb")
+        let radar = mark.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // Inside its reach, some 65 km east: still open, even where the tap
+        // lands on a live storm and its panel puts the tray away.
+        radar.withOffset(CGVector(dx: 60, dy: 0)).tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertTrue(mark.isSelected, "Still open")
+        let closeStorm = app.buttons["nativeMap.storm.close"].firstMatch
+        if !tray.exists, closeStorm.exists { closeStorm.tap() }
+        // Some 330 km north, at sea.
+        radar.withOffset(CGVector(dx: -60, dy: -300)).tap()
+        XCTAssertTrue(tray.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(mark.isSelected)
+        XCTAssertTrue(timeline.waitForExistence(timeout: 5))
+    }
+
+    func testTurningRadarSitesOffClosesTheOpenRadar() {
+        launch(link: "?latLonZ=50.2,9.2,7.4")
+        waitForSeries()
+        turnOnRadarSites()
+        let tray = openSite("deoft", name: "Offenthal")
+        openLayers()
+        let sites = app.switches["nativeMap.layers.sites"].firstMatch
+        for _ in 0 ..< 4 where !sites.isHittable { element("nativeMap.layers").swipeUp() }
+        sites.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(sites) { $0 == "0" })
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(tray.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element("nativeMap.site.deoft").exists)
+    }
+
+    private func waitForLabel(_ element: XCUIElement, timeout: TimeInterval = 10, _ matches: (String) -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.exists, matches(element.label) { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        return false
     }
 }

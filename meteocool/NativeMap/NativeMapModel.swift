@@ -78,6 +78,8 @@ final class NativeMapModel: ObservableObject {
     @Published var toast: String?
     /// The open storm's slice, turned in its panel, cut on the 3D map.
     let cut = StormCut()
+    /// The radar open on the flat map in its own sweep (site mode).
+    let site = SiteSweepState()
     /// The storm open, as the 3D map finds and cuts it; nil without one.
     @Published var opened: OpenedStorm?
 }
