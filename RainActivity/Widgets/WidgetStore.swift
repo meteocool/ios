@@ -96,15 +96,15 @@ enum WidgetStore {
     }
 
     /// What the backend words a forecast for: the rain that counts, the
-    /// language (de or en, as the rain alerts) and the dBZ details switch.
+    /// language (the rain alerts', `AlertLanguage`) and the dBZ details switch.
     struct Wording {
         let threshold: Double
         let language: String
         let details: Bool
 
         static func current(threshold: Double) -> Wording {
-            let language = Locale.preferredLanguages.first?.split(separator: "-").first == "de" ? "de" : "en"
-            return Wording(threshold: threshold, language: language, details: defaults?.bool(forKey: "withDBZ") ?? false)
+            Wording(threshold: threshold, language: AlertLanguage.current,
+                    details: defaults?.bool(forKey: "withDBZ") ?? false)
         }
 
         var queryItems: [URLQueryItem] {

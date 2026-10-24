@@ -280,15 +280,8 @@ import CoreLocation
               location.horizontalAccuracy >= 0,
               abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
 
-        // Clamp `lang` to de or en: the backend accepts only those two values.
-        // Any other value (for example French) fails validation.
-        // The legacy endpoint then answers `success: false` and drops both the
-        // push registration and the barometric reading, without an error.
-        let preferredLanguage = Locale.preferredLanguages.first?.split(separator: "-").first.map(String.init)
-        let lang = preferredLanguage == "de" ? "de" : "en"
-        /*if let bundle_lang = Bundle.main.preferredLocalizations.first {
-            lang = bundle_lang
-        }*/
+        // Only a language the backend words alerts in: see AlertLanguage.
+        let lang = AlertLanguage.current
         
         let intensityDbzValues = [14,20,26,36,41]
 
