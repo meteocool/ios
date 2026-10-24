@@ -69,6 +69,21 @@ final class NativeMapUITests: XCTestCase {
         }
     }
 
+    /// The storms' discs and the "3D" tags on screen, from one snapshot:
+    /// queried one by one, a live list reorders under the query.
+    private func markFrames() -> (storms: [CGRect], tags: [CGRect]) {
+        var storms: [CGRect] = [], tags: [CGRect] = []
+        func collect(_ node: XCUIElementSnapshot) {
+            let id = node.identifier
+            if id == "nativeMap.cloudHint" { tags.append(node.frame) }
+            // A storm's disc, by its id (a ULID); not its panel's parts.
+            if id.hasPrefix("nativeMap.storm.01") { storms.append(node.frame) }
+            node.children.forEach(collect)
+        }
+        if let snapshot = try? app.snapshot() { collect(snapshot) }
+        return (storms, tags)
+    }
+
     /// Holds the map at a point given as fractions of its size, or the
     /// nearest spot clear of the marks live data puts there (a core's 3D tag,
     /// a storm's disc), which a hold would open instead.
@@ -372,18 +387,19 @@ final class NativeMapUITests: XCTestCase {
         let storms = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
         XCTAssertTrue(storms.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
         // One on screen, clear of the controls (MapKit lists marks off the
-        // edge too) and of the "3D" tags, which stand over the discs.
+        // edge too), of the "3D" tags, which stand over the discs, and of the
+        // other storms: from one snapshot, as a live list reorders under
+        // queries made one by one.
         let screen = app.windows.firstMatch.frame
-        let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
-        let tagFrames = (0 ..< tags.count).map { tags.element(boundBy: $0).frame.insetBy(dx: -6, dy: -6) }
-        let onScreen = (0 ..< storms.count).map { storms.element(boundBy: $0) }.first { storm in
-            let frame = storm.frame
-            return frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.8
+        let marks = markFrames()
+        let onScreen = marks.storms.first { frame in
+            frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.8
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
-                && !tagFrames.contains { $0.intersects(frame) }
+                && !marks.tags.contains { $0.insetBy(dx: -6, dy: -6).intersects(frame) }
+                && !marks.storms.contains { $0 != frame && $0.insetBy(dx: -4, dy: -4).intersects(frame) }
         }
-        XCTAssertNotNil(onScreen, "A storm in view")
-        onScreen?.tap()
+        let target = try XCTUnwrap(onScreen, "A storm in view")
+        app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.midX, dy: target.midY)).tap()
         if UIDevice.current.userInterfaceIdiom == .pad {
             // A wide screen opens the panel at once, beside the map.
             XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10))
@@ -475,32 +491,29 @@ final class NativeMapUITests: XCTestCase {
         // The tags as one snapshot, once the map has come to rest and the
         // list stops changing: queried one by one, a live list reorders
         // under the query, and a tag still sliding is elsewhere by the tap.
-        func tagFrames() -> [CGRect] {
-            var frames: [CGRect] = []
-            func collect(_ node: XCUIElementSnapshot) {
-                if node.identifier == "nativeMap.cloudHint" { frames.append(node.frame) }
-                node.children.forEach(collect)
-            }
-            if let snapshot = try? app.snapshot() { collect(snapshot) }
-            return frames
-        }
-        var frames = tagFrames()
+        var marks = markFrames()
         for _ in 0 ..< 20 {
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-            let now = tagFrames()
-            if now == frames, !now.isEmpty { break }
-            frames = now
+            let now = markFrames()
+            if now.tags == marks.tags, !now.tags.isEmpty { marks = now; break }
+            marks = now
         }
         // One in the open middle of the screen, clear of the controls and a
-        // wide screen's panel.
+        // wide screen's panel, tapped where no storm's disc covers it: a tag
+        // stands beside its disc and the two can touch.
         let screen = app.windows.firstMatch.frame
-        let target = try XCTUnwrap(frames.first { frame in
+        func spot(on frame: CGRect) -> CGPoint? {
+            [0.5, 0.8, 0.2].flatMap { x in [0.5, 0.25, 0.75].map { y in
+                CGPoint(x: frame.minX + frame.width * x, y: frame.minY + frame.height * y)
+            } }.first { point in !marks.storms.contains { $0.insetBy(dx: -3, dy: -3).contains(point) } }
+        }
+        let target = try XCTUnwrap(marks.tags.lazy.filter { frame in
             frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.75
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
-        }, "A tag in view")
+        }.compactMap(spot).first, "A tag in view, clear of the storms")
         screenshot("3D tags")
         let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
-        origin.withOffset(CGVector(dx: target.midX, dy: target.midY)).tap()
+        origin.withOffset(CGVector(dx: target.x, dy: target.y)).tap()
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
