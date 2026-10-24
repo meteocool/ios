@@ -225,3 +225,25 @@
 "ar_alignment_geo" = "Sjever prema geopraćenju";
 "ar_turn_left" = "Okreni se ulijevo za %.0f°";
 "ar_turn_right" = "Okreni se udesno za %.0f°";
+
+/* Native MapKit map */
+"native_map_setting" = "Izvorna karta (beta)";
+"native_map_now" = "Sada";
+"native_map_play" = "Reproduciraj";
+"native_map_pause" = "Pauza";
+"native_map_timeline" = "Vrijeme radara";
+"native_map_mesocyclone" = "Mezociklona, jačina %ld";
+"native_map_storm" = "Oluja";
+"native_map_storm_near" = "Oluja kod %@";
+"native_map_hail" = "Tuča";
+"native_map_layer_lightning" = "Munje";
+"native_map_layer_mesocyclones" = "Mezociklone";
+"native_map_layer_storms" = "Oluje";
+"native_map_layer_nowcast" = "Radarska kratkoročna prognoza";
+"native_map_inspected_point" = "Odabrana točka";
+"native_map_3d_pinch" = "Stisni";
+"native_map_3d_two_fingers" = "Dva prsta";
+"native_map_3d_tap" = "Dodirni";
+
+/* The reader's position on the 3D map, for VoiceOver. */
+"my_location" = "Moja lokacija";
