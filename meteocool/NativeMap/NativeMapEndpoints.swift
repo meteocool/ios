@@ -50,6 +50,18 @@ struct NativeMapEndpoints: Equatable, Sendable {
         return components.url!
     }
 
+    /// Every radar in a box that has published sweeps lately, or one radar
+    /// alone, with each tilt's newest sweeps (site mode). A sweep itself is
+    /// fetched from `tiles` by its `path`.
+    func sweeps(bbox: String) -> URL { sweeps(["bbox": bbox]) }
+    func sweeps(site: String) -> URL { sweeps(["site": site]) }
+
+    private func sweeps(_ query: [String: String]) -> URL {
+        var components = URLComponents(url: data.appendingPathComponent("sweeps"), resolvingAgainstBaseURL: false)!
+        components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        return components.url!
+    }
+
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }
     var snow: URL { api.appendingPathComponent("v3/radar/snow") }
     var lightning: URL { data.appendingPathComponent("lightning_cache") }

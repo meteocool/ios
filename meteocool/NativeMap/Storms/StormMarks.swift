@@ -611,6 +611,12 @@ final class StormMarks: NativeMapFeature {
 
     // MARK: - Hit testing
 
+    /// Whether a tap lands on a storm the map draws.
+    func hits(_ point: CGPoint) -> Bool {
+        guard visible, let mapView = map?.mapView else { return false }
+        return hit(point, in: mapView) != nil
+    }
+
     /// The storm under a tap: lines and shapes within 6 pt of their stroke,
     /// forecast dots within 6 pt, topmost first.
     private func hit(_ point: CGPoint, in mapView: MKMapView) -> String? {

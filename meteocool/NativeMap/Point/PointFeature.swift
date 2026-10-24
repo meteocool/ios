@@ -77,9 +77,11 @@ final class PointFeature: NativeMapFeature {
         map.model.selectedStorm = nil
         let point = map.mapView.convert(coordinate, toPointTo: map.view)
         // Laid out once in a throwaway host for its height at this text size.
-        let probe = UIHostingController(rootView: PointMenuView(menu: PointMenuModel(
-            placement: .init(below: false, side: .center, lean: 0), shareAvailable: true,
-            onRadar: {}, onForecast: {}, onShare: {})).chromeTypeSize())
+        let reading = map.model.site.read(coordinate)
+        let probeMenu = PointMenuModel(placement: .init(below: false, side: .center, lean: 0), shareAvailable: true,
+                                       onRadar: {}, onForecast: {}, onShare: {})
+        probeMenu.siteReading = reading
+        let probe = UIHostingController(rootView: PointMenuView(menu: probeMenu).chromeTypeSize())
         probe.view.frame = map.view.bounds
         map.view.addSubview(probe.view)
         let menuHeight = probe.sizeThatFits(in: CGSize(width: PointMenuLayout.maxWidth, height: map.view.bounds.height)).height
@@ -95,6 +97,7 @@ final class PointFeature: NativeMapFeature {
                                       self?.openCompare(at: coordinate, hours: 24)
                                   },
                                   onShare: { [weak self] in self?.sharePoint(coordinate) })
+        menu.siteReading = reading
         let overlay = PointMenuOverlay(frame: map.view.bounds)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.onClose = { [weak self] in self?.closeMenu() }

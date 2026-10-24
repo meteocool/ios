@@ -18,18 +18,41 @@ struct TrayActions {
 struct PlayerTray: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
+    /// Site mode: one radar's own sweep, its controls where the timeline was.
+    @ObservedObject var site: SiteSweepState
     let actions: TrayActions
+
+    init(player: RadarPlayer, model: NativeMapModel, actions: TrayActions) {
+        self.player = player
+        self.model = model
+        site = model.site
+        self.actions = actions
+    }
 
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            head
-            TimelineStrip(player: player, theme: theme)
-            HStack(spacing: 6) {
-                PlayButton(player: player, theme: theme)
-                RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
-                    .padding(.horizontal, 4)
+            if let mode = site.mode {
+                // Site mode has no timeline, so nothing to play.
+                SiteSweepTray(state: site, escapes: model.selectedStorm == nil && model.covers.isEmpty, theme: theme)
+                Spacer(minLength: 0)
+                Group {
+                    if mode.quantity == .reflectivity {
+                        RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
+                    } else {
+                        VelocityLegend(nyquist: site.view?.nyquist, relative: mode.quantity == .srv, theme: theme)
+                    }
+                }
+                .padding(.horizontal, 4)
+            } else {
+                head
+                TimelineStrip(player: player, theme: theme)
+                HStack(spacing: 6) {
+                    PlayButton(player: player, theme: theme)
+                    RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
+                        .padding(.horizontal, 4)
+                }
             }
         }
         .padding(.top, 6)

@@ -13,6 +13,8 @@ import SwiftUI
 struct BackToNowPill: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
+    /// Site mode has no timeline to go back along.
+    @ObservedObject var site: SiteSweepState
     /// Its host measured again: grown from the empty placeholder it was
     /// laid out at, or the pill is squeezed to its icon and out of reach.
     var resized: () -> Void = {}
@@ -21,6 +23,7 @@ struct BackToNowPill: View {
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
     private var wanted: Bool {
         !player.timeline.steps.isEmpty && (player.playing || !player.isLive) && !player.grabbed && !model.stale
+            && site.mode == nil
     }
 
     var body: some View {

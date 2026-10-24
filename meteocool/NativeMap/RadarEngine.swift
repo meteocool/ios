@@ -27,6 +27,8 @@ final class RadarEngine {
     var stale = false { didSet { updateOpacity() } }
     /// A storm is selected: the radar steps back (`INSPECT_OPACITY`).
     var dimmed = false { didSet { updateOpacity() } }
+    /// A radar is open in its own sweep: the composites step back under it.
+    var siteDimmed = false { didSet { updateOpacity() } }
     /// The newest observation's build time and the learned cadence, for the
     /// pill's "publish cadence" rule.
     private(set) var processedTimes: (newest: Int?, cadence: Int?) = (nil, nil)
@@ -479,7 +481,7 @@ final class RadarEngine {
         guard visible || underlay else { return 0 }
         // Under the lightning map's strikes (`RAIN_UNDERLAY_OPACITY`).
         if !visible { return 0.3 }
-        return 0.75 * (stale ? 0.45 : 1) * (dimmed ? 0.55 : 1)
+        return 0.75 * (stale ? 0.45 : 1) * (dimmed ? 0.55 : 1) * (siteDimmed ? SiteSweeps.compositeDim : 1)
     }
 
     private func updateOpacity() {
@@ -501,6 +503,11 @@ final class RadarEngine {
         "lt": "LHMT", "ee": "Keskkonnaagentuur", "ie": "Met Éireann (CC BY 4.0)", "hr": "DHMZ", "dk": "DMI",
         "nl": "KNMI", "fi": "FMI", "se": "SMHI", "no": "MET Norway",
     ]
+
+    /// Who a network's radar is from.
+    static func credit(network: String) -> String? {
+        network == "de" ? "DWD" : networkCredits[network]
+    }
 
     /// Who the radar on screen is from, as core credits each visible layer.
     func credits(in visible: MKMapRect) -> [String] {
