@@ -225,3 +225,25 @@
 "ar_alignment_geo" = "Pohjoinen geoseurannasta";
 "ar_turn_left" = "Käänny %.0f° vasemmalle";
 "ar_turn_right" = "Käänny %.0f° oikealle";
+
+/* Native MapKit map */
+"native_map_setting" = "Natiivikartta (beta)";
+"native_map_now" = "Nyt";
+"native_map_play" = "Toista";
+"native_map_pause" = "Tauko";
+"native_map_timeline" = "Tutka-aika";
+"native_map_mesocyclone" = "Mesosykloni, voimakkuus %ld";
+"native_map_storm" = "Ukkonen";
+"native_map_storm_near" = "Ukkonen lähellä: %@";
+"native_map_hail" = "Rakeet";
+"native_map_layer_lightning" = "Salamat";
+"native_map_layer_mesocyclones" = "Mesosyklonit";
+"native_map_layer_storms" = "Ukkoset";
+"native_map_layer_nowcast" = "Tutkan lähiennuste";
+"native_map_inspected_point" = "Valittu kohta";
+"native_map_3d_pinch" = "Nipistä";
+"native_map_3d_two_fingers" = "Kaksi sormea";
+"native_map_3d_tap" = "Napauta";
+
+/* The reader's position on the 3D map, for VoiceOver. */
+"my_location" = "Oma sijainti";

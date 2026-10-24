@@ -58,7 +58,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool
         INFOPLIST_FILE: meteocool/Info.plist
         CODE_SIGN_ENTITLEMENTS: meteocool/meteocool.entitlements
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: $(APP_ICON)
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/Frameworks"
@@ -86,6 +86,9 @@ targets:
       - sdk: ActivityKit.framework
       # Reloads the widgets when the location or a setting they show changes.
       - sdk: WidgetKit.framework
+      # The native radar map (NativeMap/), shown instead of the web map
+      # while "Native Map" is on in Settings.
+      - sdk: MapKit.framework
       - target: NotificationService
       - target: RainActivity
     scheme:

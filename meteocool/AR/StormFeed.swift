@@ -114,6 +114,10 @@ struct TrackedCell: Decodable, Sendable {
     let forecast: [ForecastPoint]?
     /// The box this cell's centroid stands in, if one was built.
     let volume: VolumeRef?
+    /// Its outline, `[lon, lat]`, and each threshold's area, top and volume:
+    /// what the 3D map's cell solids are built from (`CellVolume`).
+    let polygon: [[Double]]?
+    let structure: [CellThreshold]?
 }
 
 struct CellIndex: Decodable, Sendable {
@@ -227,16 +231,25 @@ final class StormFeed {
     /// does not refetch what was just dropped.
     static let spareBytes = 8 * 1024 * 1024
 
+    /// Bumped whenever what the storms are placed and drawn from changes:
+    /// the boxes, their volumes and cells, or where they are seen from.
+    private(set) var revision = 0
     private(set) var status: Status = .loading
     /// The storms' fine tiles, or their boxes from before tiles.
-    private(set) var entries: [StormEntry] = []
+    private(set) var entries: [StormEntry] = [] { didSet { if entries != oldValue { revision &+= 1 } } }
     /// Coarse zoom-9 tiles, by `tile`: about 1 km a voxel, drawn in place of
     /// the fine tiles inside them for storms far away (see `drawUnit`).
-    private(set) var coarse: [[Int]: StormEntry] = [:]
-    private(set) var volumes: [String: StormVolume] = [:]
-    private(set) var cellsByPath: [String: TrackedCell] = [:]
+    private(set) var coarse: [[Int]: StormEntry] = [:] { didSet { if coarse != oldValue { revision &+= 1 } } }
+    private(set) var volumes: [String: StormVolume] = [:] {
+        didSet { if volumes.count != oldValue.count || volumes.keys.contains(where: { oldValue[$0] == nil }) { revision &+= 1 } }
+    }
+    private(set) var cellsByPath: [String: TrackedCell] = [:] {
+        didSet { if cellsByPath.mapValues({ $0.code + ($0.t ?? "") }) != oldValue.mapValues({ $0.code + ($0.t ?? "") }) { revision &+= 1 } }
+    }
     /// The cells as last read, linked to boxes by `linkCells`.
-    private(set) var cells: [TrackedCell] = []
+    private(set) var cells: [TrackedCell] = [] {
+        didSet { if cells.map({ $0.code + ($0.t ?? "") }) != oldValue.map({ $0.code + ($0.t ?? "") }) { revision &+= 1 } }
+    }
     private(set) var tracks: [String: CellTrack] = [:]
     private(set) var strikes: [LightningStrike] = []
     private(set) var mesocyclones: [Mesocyclone] = []
@@ -249,6 +262,7 @@ final class StormFeed {
     /// Where the viewer stands. Storms are filtered and ranked from here.
     var viewer: (lat: Double, lon: Double)? {
         didSet {
+            revision &+= 1
             reconcile()
             // Tracks are asked for around the viewer; the poll's first round
             // may have gone by before there was one.
@@ -262,6 +276,18 @@ final class StormFeed {
 
     private var inflight: Set<String> = []
     private var retryAfter: [String: Date] = [:]
+    /// A newer scan's list, held back until the volumes replacing the ones
+    /// drawn have loaded, so a new scan replaces the storms on screen at once
+    /// instead of their vanishing until it has loaded; `swapAfter` at most.
+    private var incoming: VolumeIndex?
+    private var incomingSince = Date.distantPast
+    static let swapAfter: TimeInterval = 25
+    /// An earlier scan shown in place of the newest (the 3D map's picker),
+    /// and the newest list, kept for when it goes back.
+    private(set) var pinnedScan: Int?
+    private var latestIndex: VolumeIndex? {
+        didSet { newestScan = (latestIndex?.volumes ?? []).compactMap { ScanHistory.scan(ofPath: $0.path) }.max() }
+    }
     private var polls: [Task<Void, Never>] = []
     private let session: URLSession
     private let decoder: JSONDecoder = {
@@ -360,10 +386,93 @@ final class StormFeed {
             if listedAt == nil { status = .failed; onChange?() }
             return
         }
-        ingest(index)
+        latestIndex = index
+        if pinnedScan != nil {
+            // An earlier scan is on show; the newest waits for "Latest".
+            listedAt = Date()
+            status = .ready
+            onChange?()
+            return
+        }
+        let listed = Set(entries.map(\.path) + coarse.values.map(\.path))
+        if volumes.isEmpty || Set((index.volumes ?? []).map(\.path)) == listed {
+            ingest(index)
+            incoming = nil
+        } else {
+            if incoming == nil { incomingSince = Date() }
+            incoming = index
+        }
         listedAt = Date()
         status = .ready
         reconcile()
+        onChange?()
+    }
+
+    // MARK: Earlier scans
+
+    /// The newest scan listed, unix seconds.
+    /// Kept as the list arrives: read by the 3D map's tray several times a
+    /// second, and parsing every path's scan each time stalled its frames.
+    private(set) var newestScan: Int?
+
+    /// Asks the bucket for `scan`'s storms around where they are now, and
+    /// shows them in place of the newest; false when it found none.
+    func showScan(_ scan: Int, progress: @escaping @MainActor (Double) -> Void) async -> (found: Bool, failed: Bool) {
+        let listed = latestIndex?.volumes ?? (entries + Array(coarse.values))
+        let template = listed.first?.path ?? ScanHistory.fallbackTemplate
+        var known: [String: Int] = [:]
+        for entry in listed {
+            if let network = entry.network, known[network] == nil, let at = ScanHistory.scan(ofPath: entry.path) { known[network] = at }
+        }
+        let session = session
+        let result = await ScanHistory.find(scan: scan, places: ScanHistory.places(from: listed, viewer: viewer), template: template,
+                                            knownScans: known, fetch: { path in
+                                                guard let url = URL(string: path, relativeTo: NetworkHelper.assetURL) else { return nil }
+                                                var request = URLRequest(url: url)
+                                                request.timeoutInterval = 30
+                                                let (data, response) = try await session.data(for: request)
+                                                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                                                if status == 403 || status == 404 { return nil }
+                                                guard (200 ..< 300).contains(status) else { throw URLError(.badServerResponse) }
+                                                return try StormVolume.decode(data)
+                                            }, progress: progress)
+        guard !result.entries.isEmpty else { return (false, result.failed > 0) }
+        pinnedScan = scan
+        incoming = nil
+        entries = result.entries.filter { $0.coarse != true }
+        coarse = Dictionary(result.entries.compactMap { entry in entry.coarse == true ? entry.tile.map { ($0, entry) } : nil },
+                            uniquingKeysWith: { first, _ in first })
+        for (path, volume) in result.volumes { volumes[path] = volume }
+        linkCells()
+        reconcile()
+        onChange?()
+        return (true, false)
+    }
+
+    /// Back to the newest scan.
+    func showLatest() {
+        guard pinnedScan != nil else { return }
+        pinnedScan = nil
+        if let latestIndex { ingest(latestIndex) }
+        reconcile()
+        onChange?()
+    }
+
+    /// The incoming list's entries that take over from volumes now drawn: the
+    /// same map tile in the newer scan.
+    private func replacements(in index: VolumeIndex) -> [StormEntry] {
+        let shown = Set((entries + Array(coarse.values)).compactMap { volumes[$0.path] != nil ? $0.tile : nil })
+        return (index.volumes ?? []).filter { entry in entry.tile.map(shown.contains) ?? false }
+    }
+
+    /// Swaps the incoming list in once its replacements are here (or have
+    /// failed, or it has waited long enough).
+    private func swapIfReady() {
+        guard let incoming else { return }
+        let waiting = replacements(in: incoming).contains { volumes[$0.path] == nil && retryAfter[$0.path] == nil }
+        guard !waiting || Date().timeIntervalSince(incomingSince) > Self.swapAfter else { return }
+        self.incoming = nil
+        ingest(incoming)
         onChange?()
     }
 
@@ -453,6 +562,10 @@ final class StormFeed {
     /// Storms in front of the camera rank first, then by distance: a storm
     /// behind the viewer can wait until they turn round.
     func reconcile() {
+        swapIfReady()
+        // The newer scan's tiles for the ones drawn, first: they are what
+        // is shown next.
+        let next = incoming.map(replacements(in:)) ?? []
         // Whole storms, in front of the camera first, then nearest, until the
         // budget is spent: half a storm's tiles draws a storm with holes.
         var wanted: [StormEntry] = []
@@ -469,7 +582,7 @@ final class StormFeed {
             bytes += cost
             wanted.append(entry)
         }
-        let wantedPaths = Set(wanted.map(\.path))
+        let wantedPaths = Set(wanted.map(\.path) + next.map(\.path))
         var held = volumes.values.reduce(0) { $0 + $1.textureBytes }
         if held > Self.residentBytes + Self.spareBytes {
             for path in volumes.keys where !wantedPaths.contains(path) {
@@ -479,11 +592,11 @@ final class StormFeed {
             }
         }
         // A new scan replaces every path; drop volumes no longer listed at all.
-        let listed = Set(entries.map(\.path) + coarse.values.map(\.path))
+        let listed = Set(entries.map(\.path) + coarse.values.map(\.path) + next.map(\.path))
         for path in volumes.keys where !listed.contains(path) { volumes[path] = nil }
 
         let now = Date()
-        for entry in wanted where volumes[entry.path] == nil && !inflight.contains(entry.path) {
+        for entry in next + wanted where volumes[entry.path] == nil && !inflight.contains(entry.path) {
             if let after = retryAfter[entry.path], after > now { continue }
             // Four at a time, as core's VOLUME_FETCHES.
             guard inflight.count < 4 else { break }
