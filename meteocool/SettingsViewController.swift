@@ -200,13 +200,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("Two-Finger Map Rotation", comment: "dataMapView"),
         NSLocalizedString("Auto-Zoom After Start", comment: "dataMapView"),
         NSLocalizedString("Base Map Layer", comment: "dataMapView"),
-        NSLocalizedString("Radar Color Map", comment: "dataMapView"),
-        NSLocalizedString("native_map_setting", comment: "dataMapView")
+        NSLocalizedString("Radar Color Map", comment: "dataMapView")
     ]
     private var dataAboutLabel = [
         NSLocalizedString("Contribute on GitHub", comment: "dataAboutLabel"),
         NSLocalizedString("Feedback and Support", comment: "dataAboutLabel"),
         NSLocalizedString("imprint_privacy", comment: "dataAboutLabel"),
+        NSLocalizedString("native_map_setting", comment: "dataAboutLabel"),
         NSLocalizedString("Mode", comment: "dataAboutLabel")
     ]
     private var intensity = [
@@ -398,13 +398,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
                 linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "radarColorMapping"))!, comment: "radarColorMapping")
                 return linkCell
-            case 4: //Native Map
-                switcherCell.switcherInfoLabel.text = dataMapView[indexPath.row]
-                switcherCell.switcher.accessibilityLabel = dataMapView[indexPath.row]
-                switcherCell.switcher.setOn(userDefaults?.bool(forKey: NativeMapView.settingKey) ?? false, animated: false)
-                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
-                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-                return switcherCell
             default:
                 print("This should not happen...")
                 return textCell
@@ -420,7 +413,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return switcherCell
         case 3: //About
             switch indexPath.row {
-            case 3: // Mode: the deployment (`MeteocoolEnvironment`)
+            case 3: //Native Map, next to the deployment switch below
+                switcherCell.switcherInfoLabel.text = dataAboutLabel[indexPath.row]
+                switcherCell.switcher.accessibilityLabel = dataAboutLabel[indexPath.row]
+                switcherCell.switcher.setOn(userDefaults?.bool(forKey: NativeMapView.settingKey) ?? false, animated: false)
+                switcherCell.switcher.tag = Int(String(indexPath.section)+String(indexPath.row))!
+                switcherCell.switcher.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+                return switcherCell
+            case 4: // Mode: the deployment (`MeteocoolEnvironment`)
                 linkCell.linkInfoLable.text = dataAboutLabel[indexPath.row]
                 linkCell.linkValueLable.text = EnvironmentPickerViewController.title(of: MeteocoolEnvironment.current)
                 return linkCell
@@ -516,7 +516,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 UIApplication.shared.open(url)
             }
         }
-        if (indexPath.section == 3 && indexPath.row == 3){ // Mode
+        if (indexPath.section == 3 && indexPath.row == 4){ // Mode
             present(UINavigationController(rootViewController: EnvironmentPickerViewController()), animated: true)
         }
         if indexPath.section == 4, let url = URL(string: dataSources[indexPath.row].url) {
@@ -547,7 +547,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 20:
             userDefaults?.set(sender.isOn, forKey: "mapRotation")
             NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
-        case 24:
+        case 33:
             userDefaults?.set(sender.isOn, forKey: NativeMapView.settingKey)
             NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
         case 21:
