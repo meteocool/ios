@@ -94,6 +94,7 @@ final class RadarTileStore: @unchecked Sendable {
             .appendingPathComponent("NativeRadarTiles")
         configuration.urlCache = URLCache(memoryCapacity: 8 << 20, diskCapacity: 128 << 20, directory: cacheDirectory)
         configuration.timeoutIntervalForRequest = 20
+        configuration.httpAdditionalHeaders = ["User-Agent": UserAgent.value]
         session = URLSession(configuration: configuration)
         pngs.totalCostLimit = 48 << 20
         // Only on their way into a step's picture (`RadarCompositor`).

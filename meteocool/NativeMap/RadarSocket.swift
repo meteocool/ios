@@ -61,7 +61,7 @@ final class RadarSocket {
         components.scheme = host.scheme == "http" ? "ws" : "wss"
         components.queryItems = [URLQueryItem(name: "EIO", value: "4"), URLQueryItem(name: "transport", value: "websocket")]
         guard let url = components.url else { return }
-        let task = URLSession.shared.webSocketTask(with: url)
+        let task = URLSession.meteocool.webSocketTask(with: url)
         self.task = task
         task.resume()
         receive(on: task)

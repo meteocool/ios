@@ -43,7 +43,7 @@ final class ClassTileOverlay: MKTileOverlay, @unchecked Sendable {
             return (base, tilesId)
         }) else { return result(nil, nil) }
         let url = base.appendingPathComponent(PrecipTypes.tilePath(id, z: path.z, x: path.x, y: path.y))
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.meteocool.dataTask(with: url) { data, response, error in
             guard (response as? HTTPURLResponse)?.statusCode == 200, let data, let grey = GreyPNG.decode(data),
                   let image = PrecipTypes.colour(width: grey.width, height: grey.height, pixels: grey.pixels) else {
                 // Nothing in it, or not there: nothing to draw.
@@ -116,7 +116,7 @@ final class NOAATileOverlay: MKTileOverlay, @unchecked Sendable {
     override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
         guard LightningRules.noaaCovers(z: path.z, x: path.x, y: path.y), let url = LightningRules.noaaURL(z: path.z, x: path.x, y: path.y)
         else { return result(nil, nil) }
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.meteocool.dataTask(with: url) { data, response, error in
             result((response as? HTTPURLResponse)?.statusCode == 200 ? data : nil, error)
         }.resume()
     }

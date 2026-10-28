@@ -90,7 +90,7 @@ enum WidgetStore {
         guard let url = components?.url else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
+        guard let (data, response) = try? await URLSession.meteocool.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return RainForecast.fromTimeseries(data, threshold: wording.threshold)
     }
@@ -156,7 +156,7 @@ enum WidgetStore {
         var request = URLRequest(url: url)
         // A cold render takes up to 20 s; past that the last map will do.
         request.timeoutInterval = 20
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
+        guard let (data, response) = try? await URLSession.meteocool.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return data
     }

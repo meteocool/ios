@@ -330,7 +330,7 @@ import CoreLocation
                   abs(location.timestamp.timeIntervalSinceNow) < 300 else { return }
             SharedNotificationManager.registrationWillBegin(origin: origin)
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.meteocool.data(for: request)
                 let success = NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil
                 if !success { self.lastPostedLocation = nil }
                 SharedNotificationManager.registrationFinished(success: success, origin: origin)

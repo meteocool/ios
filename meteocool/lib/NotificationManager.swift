@@ -131,7 +131,7 @@ import UserNotifications
                 }
             }
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.meteocool.data(for: request)
                 // A "not registered" answer counts as a successful removal.
                 let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 let absent = (response as? HTTPURLResponse)?.statusCode == 200 && body?["message"] as? String == "not registered"
