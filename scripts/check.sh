@@ -11,6 +11,8 @@ xcrun swiftc NotificationService/NotificationService.swift Shared/UserAgent.swif
 "$scratch/check-notification"
 xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch/check-share"
 "$scratch/check-share"
+xcrun swiftc meteocool/StormLog/StormLogRules.swift tests/StormLogCheck.swift -o "$scratch/check-storm-log"
+"$scratch/check-storm-log"
 xcrun swiftc Shared/AlertLanguage.swift tests/AlertLanguageCheck.swift -o "$scratch/check-language"
 "$scratch/check-language"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainForecastCheck.swift -o "$scratch/check-rain"

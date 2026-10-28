@@ -281,14 +281,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     //Number of Rows
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section{
-        case 0: //Notification
-            let pushNotification = userDefaults?.bool(forKey: "pushNotification")
-            if pushNotification!{
-                return dataPushNotification.count
-            }
-            else {
-                return 1
-            }
+        case 0: //Notification, then the storm log, which their registration feeds
+            return stormLogRow + 1
         case 1: //Notification style, only with notifications on
             return notificationStyleShown ? 1 + dataNotificationStyle.count : 0
         case 2: //Map View
@@ -308,6 +302,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         if section == 1 && !notificationStyleShown { return nil }
         return header[section]
+    }
+
+    /// The storm log's row: last in the notifications section, under however many rows it shows.
+    private var stormLogRow: Int {
+        userDefaults?.bool(forKey: "pushNotification") == true ? dataPushNotification.count : 1
     }
 
     private var notificationStyleShown: Bool {
@@ -346,11 +345,18 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as? SwitcherTableViewCell
         textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as? TextTableViewCell
         linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as? LinkTableViewCell
-        // Only the licences row has a disclosure arrow; a reused cell must not keep it.
+        // Only the licences and storm log rows have a disclosure arrow; a reused cell must not keep it.
         linkCell?.accessoryType = .none
+        linkCell?.accessibilityIdentifier = nil
         
         //returnCell = (textCell)!
         switch indexPath.section{
+        case 0 where indexPath.row == stormLogRow: // The storm log, on its own page
+            linkCell.linkInfoLable.text = NSLocalizedString("storm_log_title", value: "Storm Log", comment: "settings")
+            linkCell.linkValueLable.text = ""
+            linkCell.accessoryType = .disclosureIndicator
+            linkCell.accessibilityIdentifier = "settings.stormLog"
+            return linkCell
         case 0: //Push Notification
             switch indexPath.row {
             case 0: //Notificatino On/Off
@@ -514,6 +520,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
         
+        if indexPath.section == 0 && indexPath.row == stormLogRow {
+            present(UINavigationController(rootViewController: StormLogViewController()), animated: true)
+        }
         if (indexPath.section == 2 && indexPath.row == 2){ // Base Layer
             performSegue(withIdentifier: "baseLayerMappingView", sender: self)
         }

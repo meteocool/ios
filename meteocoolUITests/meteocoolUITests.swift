@@ -868,6 +868,66 @@ final class meteocoolUITests: XCTestCase {
         screenshot("Share sheet")
     }
 
+    /// The storm log from Settings, against the recorder's made-up log: the
+    /// list, an entry on its map with what the storm brought, the share sheet,
+    /// and wiping it.
+    @MainActor
+    func testStormLogListsOpensSharesAndDeletes() async throws {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        var reset = URLRequest(url: server.appendingPathComponent("requests"))
+        reset.httpMethod = "DELETE"
+        _ = try await URLSession.shared.data(for: reset)
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        tap("map.settings")
+
+        let row = app.cells["settings.stormLog"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Settings offers the storm log")
+        row.tap()
+        let list = app.tables["stormLog"]
+        XCTAssertTrue(list.cells.element(boundBy: 2).waitForExistence(timeout: 10), "The log lists its entries")
+        XCTAssertTrue(list.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cabin · '")).firstMatch.exists,
+                      "A place's entry names the place")
+        XCTAssertTrue(list.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Still near'")).firstMatch.exists,
+                      "An entry whose storm is still near says so")
+        screenshot("Storm log")
+
+        list.cells.element(boundBy: 1).tap()
+        let detail = app.tables["stormLog.detail"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(detail.staticTexts["Overhead"].exists)
+        XCTAssertTrue(detail.staticTexts["11.3 km"].exists, "The echo top")
+        XCTAssertTrue(detail.staticTexts["27"].exists, "The strikes")
+        XCTAssertTrue(app.maps.firstMatch.exists, "The track is drawn on a map")
+        screenshot("Storm log entry")
+
+        app.navigationBars.buttons["Share"].tap()
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The share sheet never appeared")
+        screenshot("Storm log share sheet")
+        // Above the half-height sheet: a tap outside it closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
+        XCTAssertTrue(waitUntil(timeout: 5) { !sheet.exists })
+        app.navigationBars["Strong storm"].buttons.element(boundBy: 0).tap() // back to the list
+
+        let delete = list.cells.staticTexts["Delete Log"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
+        let confirm = app.sheets.buttons["Delete Log"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Deleting asks first")
+        confirm.tap()
+        let empty = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'No storms yet'")).firstMatch
+        XCTAssertTrue(empty.waitForExistence(timeout: 10), "An empty log says how storms are logged")
+        screenshot("Storm log, empty")
+        let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("requests"))
+        let recorded = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["requests"] as? [[String: Any]] ?? []
+        XCTAssertTrue(recorded.contains { $0["path"] as? String == "/v4/storm-log" && $0["method"] as? String == "DELETE" })
+    }
+
     private func waitUntil(timeout: TimeInterval = 5, _ condition: @escaping () -> Bool) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {

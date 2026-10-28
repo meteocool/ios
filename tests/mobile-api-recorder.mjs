@@ -46,6 +46,39 @@ const TILES = [PEAK, { x: PEAK.x + 1, y: PEAK.y }].map(({ x, y }, index) => ({
 }));
 const VOLUME_PATH = TILES[0].path;
 
+// The storm log (ng's /v4/storm-log), made up here: the storm above passing
+// over Munich an hour ago, and a weaker one still near a saved place. Only
+// for the synthetic token, and empty again once it is wiped.
+let stormLogWiped = false;
+function stormLog() {
+  if (stormLogWiped) return { entries: [] };
+  const minutes = (ago) => new Date(Math.floor(Date.now() / 300000) * 300000 - ago * 60000);
+  const iso = (date) => date.toISOString().replace('.000Z', 'Z');
+  const frame = (date) => iso(date).slice(0, 16).replace(/[-:]/g, '') + 'Z';
+  const path = (from, to, steps) => Array.from({ length: steps }, (_, i) =>
+    [from.lon + (to.lon - from.lon) * i / (steps - 1), from.lat + (to.lat - from.lat) * i / (steps - 1)]);
+  const passage = (id, place, name, point, from, to, start, end, extra) => {
+    const coordinates = path(from, to, 9);
+    const closest = coordinates[4];
+    const step = (start - (end ?? 0)) / 8;
+    return {
+      id, storm: '01JBX7Q6ZK4V9T3M2N8P5R0W1C', predecessors: [], place, place_name: name, lat: point.lat, lon: point.lon,
+      started_at: iso(minutes(start)), ended_at: end === null ? null : iso(minutes(end)), closest_at: iso(minutes(start - 4 * step)),
+      track: { type: 'LineString', coordinates, times: coordinates.map((_, i) => Math.floor(minutes(start - i * step) / 1000)) },
+      share_url: `https://meteocool.com/?layer=radar&latLonZ=${closest[1].toFixed(5)},${closest[0].toFixed(5)},9.00&overlays=cells,lightning&t=${frame(minutes(start - 4 * step))}&shared=${frame(minutes(start - 4 * step))}`,
+      ...extra,
+    };
+  };
+  return { entries: [
+    passage('fixture/-/1', null, null, { lat: 48.137, lon: 11.575 }, { lat: 47.95, lon: 11.25 }, { lat: 48.3, lon: 11.9 }, 15, null,
+      { over: false, closest_km: 2.4, peak_dbz: 47, top_km: null, vil_kg_m2: null, severity: 0, hail: false, meso: false, strikes: 3 }),
+    passage('fixture/-/0', null, null, { lat: 48.137, lon: 11.575 }, { lat: 47.9, lon: 11.3 }, { lat: 48.35, lon: 11.85 }, 120, 75,
+      { over: true, closest_km: 0, peak_dbz: 61.5, top_km: 11.3, vil_kg_m2: 38, severity: 2, hail: true, meso: false, strikes: 27 }),
+    passage('fixture/cabin/0', 'cabin', 'Cabin', { lat: 47.6, lon: 12.0 }, { lat: 47.5, lon: 11.8 }, { lat: 47.75, lon: 12.25 }, 2880, 2840,
+      { over: false, closest_km: 6.8, peak_dbz: 55, top_km: 9.4, vil_kg_m2: 22, severity: 1, hail: false, meso: true, strikes: 0 }),
+  ] };
+}
+
 /** One tile of the storm: a leaning column of echo, 52 dBZ at its core in the peak's tile. */
 function syntheticVolume(tile) {
   const nx = ACROSS + 2 * APRON, ny = nx, nz = 32;
@@ -195,6 +228,20 @@ http.createServer(async (request, response) => {
     response.end(radarPreview());
     return;
   }
+  if (path === '/v4/storm-log' && ['GET', 'DELETE'].includes(request.method)) {
+    if (request.headers['x-push-token'] !== 'a'.repeat(64)) {
+      response.writeHead(request.method === 'GET' ? 200 : 400).end(request.method === 'GET' ? '{"entries":[]}' : '{"success":false}');
+      return;
+    }
+    requests.push({ path, method: request.method });
+    if (request.method === 'DELETE') {
+      stormLogWiped = true;
+      response.end('{"success":true,"message":"3 entries deleted"}');
+    } else {
+      response.end(JSON.stringify(stormLog()));
+    }
+    return;
+  }
   const storms = request.method === 'GET' ? stormData(path) : null;
   if (storms) {
     response.end(JSON.stringify(storms));
@@ -273,6 +320,7 @@ http.createServer(async (request, response) => {
   if (request.method === 'DELETE' && request.url === '/requests') {
     requests.length = 0;
     registered = false;
+    stormLogWiped = false;
     response.end('{"success":true}');
     return;
   }
