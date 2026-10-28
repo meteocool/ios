@@ -19,6 +19,11 @@ let trackerProduct = "meteocool/tracker"
 /// The selected storm (core's `StormSelection`). A tap usually lands on
 /// something smaller than a storm (a cell from a link, a relative in the
 /// family chart): a seed, with no `id` until its storm is found.
+/// Whose tracking a storm is: DWD's KONRAD3D, or meteocool's own tracker.
+enum StormSource: String, Sendable {
+    case dwd, meteocool
+}
+
 struct StormSelection: Equatable, Sendable {
     /// The storm; nil while a seed is being resolved, or when none claims it.
     var id: String?
@@ -190,6 +195,33 @@ enum StormSelect {
         if let last = selection.cell?.series.last { return LonLat(last.lon, last.lat) }
         if let volume = selection.volume { return LonLat(volume.lon, volume.lat) }
         return nil
+    }
+
+    /// KONRAD3D's product name, as a track claims it.
+    static let konrad3d = "dwd/konrad3d"
+
+    /// Whose tracking a product is.
+    static func source(ofProduct product: String?) -> StormSource {
+        product == konrad3d ? .dwd : .meteocool
+    }
+
+    /// A storm's source, by its primary track: the one whose attributes it shows.
+    static func source(_ storm: Storm) -> StormSource {
+        source(ofProduct: storm.properties.primaryProduct)
+    }
+
+    /// Every source behind the selection, the one its readings are from
+    /// first (core's `sourcesOf`). A storm both track names both; a
+    /// meteocool storm with a KONRAD3D track shows that track's readings, so
+    /// DWD leads there. A seed cell is DWD's alone, a box of sky meteocool's.
+    static func sourcesOf(_ selection: StormSelection) -> [StormSource] {
+        let tracks = selection.detail?.storm.properties.tracks ?? selection.summary?.properties.tracks ?? []
+        var named = Set(tracks.map { source(ofProduct: $0.product) })
+        if let summary = selection.summary { named.insert(source(summary)) }
+        if selection.cell != nil { named.insert(.dwd) }
+        if named.isEmpty && selection.volume != nil { named.insert(.meteocool) }
+        let lead: StormSource? = selection.cell != nil ? .dwd : selection.summary.map(source)
+        return named.sorted { a, b in a == lead ? b != lead : (b == lead ? false : a.rawValue < b.rawValue) }
     }
 
     /// How fast and which way the storm is going, in metres per second: its

@@ -269,6 +269,22 @@ struct NativeMapStormsCheck {
             storm(id) { $0.tracks = [StormTrackClaim(product: "dwd/konrad3d", domain: "de", track: code)] }
         }
         typealias S = StormSelect
+        test("a storm tracked by both says so, the one its readings are from first") {
+            let tracks = [StormTrackClaim(product: "meteocool/tracker", domain: "eu", track: "t1"),
+                          StormTrackClaim(product: "dwd/konrad3d", domain: "de", track: "K1")]
+            let ours = StormSelect.fromStorm(storm("A") { $0.primaryProduct = "meteocool/tracker"; $0.tracks = tracks })
+            precondition(StormSelect.sourcesOf(ours) == [.meteocool, .dwd])
+            // Its KONRAD3D track's readings are what the panel shows, so DWD leads.
+            var withTrack = ours
+            withTrack.cell = cell("K1")
+            precondition(StormSelect.sourcesOf(withTrack) == [.dwd, .meteocool])
+            let dwd = StormSelect.fromStorm(storm("A") { $0.primaryProduct = "dwd/konrad3d"; $0.tracks = [tracks[1]] })
+            precondition(StormSelect.sourcesOf(dwd) == [.dwd])
+        }
+        test("a seed cell is DWD's, a box of sky meteocool's") {
+            precondition(StormSelect.sourcesOf(StormSelect.withCell(nil, cell("K1"))) == [.dwd])
+            precondition(StormSelect.sourcesOf(StormSelect.withVolume(nil, volume("v1"))) == [.meteocool])
+        }
 
         test("a storm tapped on the map is selected by its id, with nothing else known yet") {
             let s = S.fromStorm(storm(A))

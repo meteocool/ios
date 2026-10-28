@@ -339,10 +339,16 @@ struct StormHintBar: View {
             HStack(spacing: 10) {
                 Circle().fill(ended ? theme.text3 : colour).frame(width: 10, height: 10)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(StormDetailsView.capitalised(title))
-                        .scaledFont(13, weight: .bold, relativeTo: .footnote)
-                        .lineLimit(1)
-                        .foregroundStyle(theme.text)
+                    HStack(spacing: 6) {
+                        Text(StormDetailsView.capitalised(title))
+                            .scaledFont(13, weight: .bold, relativeTo: .footnote)
+                            .lineLimit(1)
+                            .foregroundStyle(theme.text)
+                        // Whose tracking it is, the one its readings are from.
+                        if let source = store.selection.flatMap({ StormSelect.sourcesOf($0).first }) {
+                            SourceBadge(source: source)
+                        }
+                    }
                     Text(life).scaledFont(12, relativeTo: .caption).foregroundStyle(theme.text2).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

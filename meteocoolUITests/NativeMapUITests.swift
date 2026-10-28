@@ -458,7 +458,10 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 30))
         // Its slice at a height, and the radars that saw it.
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+        XCTAssertTrue(element("nativeMap.storm.cappi.caption").exists, "What the slice shows, under it")
         XCTAssertTrue(element("nativeMap.storm.radars").waitForExistence(timeout: 10))
+        // A box of sky is meteocool's own.
+        XCTAssertTrue(element("nativeMap.storm.source.meteocool").exists)
         screenshot("storm core on the 3D map")
         // The map draws it cut; the dial turns the cut, which swings on its
         // own until taken hold of.
@@ -634,6 +637,37 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(view.waitForNonExistence(timeout: 10))
         // Back on the map it was opened from.
         XCTAssertTrue(element("nativeMap.view").waitForExistence(timeout: 5))
+    }
+
+    /// A KONRAD3D cell's panel: DWD's badge and source, a volume that did not
+    /// arrive offered again, and its radar opened in its own sweeps.
+    func testCellPanelSaysItsSourceRetriesItsVolumeAndOpensItsRadar() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code, volume: "meteoradar/volumes/none/missing.mcvol")
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        let details = element("nativeMap.storm.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
+        XCTAssertTrue(element("nativeMap.storm.source.dwd").waitForExistence(timeout: 5), "DWD's badge")
+        // Not there: said so, and offered again.
+        let retry = element("nativeMap.storm.volume.retry")
+        for _ in 0 ..< 4 where !retry.exists { details.swipeUp() }
+        XCTAssertTrue(retry.waitForExistence(timeout: 30), "Retry")
+        retry.tap()
+        XCTAssertTrue(retry.waitForExistence(timeout: 30), "Still not there, still offered")
+        // The radar it was built from, with its flag, opens its sweeps.
+        let open = element("nativeMap.storm.radar.open.deisn")
+        for _ in 0 ..< 4 where !open.isHittable { details.swipeUp() }
+        XCTAssertTrue(open.waitForExistence(timeout: 20), "Isen publishes its sweeps")
+        let source = element("nativeMap.storm.fact.source")
+        for _ in 0 ..< 4 where !source.exists { details.swipeUp() }
+        XCTAssertTrue(source.waitForExistence(timeout: 5))
+        XCTAssertTrue(source.label.contains("KONRAD3D"), source.label)
+        screenshot("cell radars and source")
+        for _ in 0 ..< 4 where !open.isHittable { details.swipeDown() }
+        open.tap()
+        let tray = element("nativeMap.site")
+        XCTAssertTrue(tray.waitForExistence(timeout: 10), "The radar's own sweeps")
+        XCTAssertEqual(tray.label, "Isen radar")
     }
 
     func testCellPanelShowsItsMeasuredStructure() {

@@ -150,6 +150,23 @@ enum RadarSites {
         return all[lower] ?? all["de" + lower]
     }
 
+    /// A node code as the sweeps name its site: DWD's volumes write theirs
+    /// without the country (core's `siteCode`).
+    static func siteCode(_ code: String) -> String {
+        let lower = code.lowercased()
+        return all[lower] != nil || all["de" + lower] == nil ? lower : "de" + lower
+    }
+
+    /// The radar's country, ISO 3166 alpha-2 in lower case.
+    static func countryOf(_ code: String) -> String {
+        String(siteCode(code).prefix(2))
+    }
+
+    /// The country's flag, as the system draws it.
+    static func flag(_ country: String) -> String {
+        String(String.UnicodeScalarView(country.uppercased().unicodeScalars.compactMap { Unicode.Scalar(0x1F1A5 + $0.value) }))
+    }
+
     static let earthRadiusKm = 6371.0
     /// The 4/3 earth refraction bends a beam over.
     static let effectiveRadiusKm = 4.0 / 3.0 * earthRadiusKm

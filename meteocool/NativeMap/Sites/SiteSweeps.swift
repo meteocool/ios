@@ -36,6 +36,12 @@ final class SiteSweepState: ObservableObject {
     @Published var mode: SiteMode?
     @Published fileprivate(set) var view: SiteSweepView?
     fileprivate var reader: ((CLLocationCoordinate2D) -> ReadingParts?)?
+    fileprivate var opener: ((String) -> Void)?
+
+    /// Opens a radar's own sweeps on the flat map, as its mark does.
+    func open(_ code: String) {
+        opener?(code)
+    }
 
     /// What the open sweep holds at a point, for the long press; nil
     /// outside it or with none open.
@@ -99,6 +105,11 @@ final class SiteSweeps: NativeMapFeature {
         map.mapView.register(RadarSiteMarkView.self, forAnnotationViewWithReuseIdentifier: RadarSiteMarkView.reuse)
         map.mapView.register(BeamRingLabelView.self, forAnnotationViewWithReuseIdentifier: BeamRingLabelView.reuse)
         map.model.site.reader = { [weak self] coordinate in self?.readAt(coordinate) }
+        map.model.site.opener = { [weak self] code in
+            // Site mode is the flat radar map's.
+            if self?.map?.model.capability != .radar { self?.map?.setCapability(.radar) }
+            self?.open(code)
+        }
         map.model.site.$mode
             .removeDuplicates()
             .sink { [weak self] mode in DispatchQueue.main.async { self?.modeChanged(mode) } }
