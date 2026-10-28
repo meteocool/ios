@@ -80,6 +80,20 @@ final class NativeMapModel: ObservableObject {
     let cut = StormCut()
     /// The radar open on the flat map in its own sweep (site mode).
     let site = SiteSweepState()
+    /// The layer switches that are on, for the chrome that follows them.
+    @Published var layersOn = Set<NativeMapLayer>()
+    /// What the storm key turned off (core's `hiddenStormMarks`), kept.
+    @Published var hiddenStormMarks: Set<StormMarkToggle> = NativeMapModel.storedHiddenMarks() {
+        didSet {
+            NativeMapModel.defaults?.set(hiddenStormMarks.map(\.rawValue).sorted(), forKey: NativeMapModel.hiddenMarksKey)
+        }
+    }
+
+    private static let hiddenMarksKey = "nativeMap.hiddenStormMarks"
+    private static let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
+    private static func storedHiddenMarks() -> Set<StormMarkToggle> {
+        Set((defaults?.stringArray(forKey: hiddenMarksKey) ?? []).compactMap(StormMarkToggle.init))
+    }
     /// The storm open, as the 3D map finds and cuts it; nil without one.
     @Published var opened: OpenedStorm?
 }

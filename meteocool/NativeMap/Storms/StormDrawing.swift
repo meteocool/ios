@@ -43,6 +43,14 @@ struct StormMark: Equatable, Sendable {
     var forecastAt: Double?
     var leadMinutes: Double?
     var tip: LonLat?
+    /// Whose tracking it is: a DWD storm's position is a diamond, meteocool's a circle.
+    var source: StormSource = .meteocool
+}
+
+/// What the map key can turn off of the storm marks (core's
+/// `StormMarkToggle`): a tracker's storms, a strength's, or one kind of mark.
+enum StormMarkToggle: String, CaseIterable, Sendable {
+    case dwd, meteocool, weak, moderate, strong, extreme, live, path, join, hail, rotation, forecast, volume
 }
 
 /// Where a live ring goes, and how long its storm has been tracked.
@@ -143,9 +151,18 @@ enum StormDrawing {
         return selection.cell.map { "cell:\($0.code)" }
     }
 
+    /// Whether the map key hides a storm: its tracker's or its strength's
+    /// storms are turned off. The selected one is always drawn.
+    static func isHidden(_ storm: Storm, _ hidden: Set<StormMarkToggle>, selected: String?) -> Bool {
+        if hidden.isEmpty || storm.properties.id == selected { return false }
+        let band = StormMarkToggle(rawValue: StormRules.bandNames[clampSeverity(storm.properties.severity)])
+        return hidden.contains(StormMarkToggle(rawValue: StormSelect.source(storm).rawValue)!) || band.map(hidden.contains) == true
+    }
+
     /// Every mark for these storms. `now` is the moment drawn (ms), `at` an
-    /// earlier frame or nil for the present.
-    static func drawStorms(_ storms: [Storm], now: Double, reference: Double, selection: StormSelection?, at: Double?) -> StormDrawingResult {
+    /// earlier frame or nil for the present; `hidden` what the key turned off.
+    static func drawStorms(_ storms: [Storm], now: Double, reference: Double, selection: StormSelection?, at: Double?,
+                           hidden: Set<StormMarkToggle> = []) -> StormDrawingResult {
         let selected = selection?.id
         func asOf(_ storm: Storm) -> Storm? { at.map { stormAsOf(storm, $0) } ?? storm }
         var drawing = storms.compactMap(asOf).filter { !pathOf($0).isEmpty }
@@ -154,7 +171,7 @@ enum StormDrawing {
            let pinned = asOf(summary), !pathOf(pinned).isEmpty {
             drawing.append(pinned)
         }
-        drawing = drawing.filter { isDrawn($0, reference: reference, selected: selected) }
+        drawing = drawing.filter { isDrawn($0, reference: reference, selected: selected) && !isHidden($0, hidden, selected: selected) }
 
         var byId: [String: Storm] = [:]
         for storm in drawing { byId[storm.properties.id] = storm }
@@ -171,15 +188,16 @@ enum StormDrawing {
             let live = liveOf(storm)
             let severity = clampSeverity(p.severity)
             let age = ageMinutes(p.lastSeen, now)
+            let source = StormSelect.source(storm)
             func mark(_ kind: StormMark.Kind, _ id: String, _ geometry: StormMark.Geometry) -> StormMark {
-                StormMark(kind: kind, id: id, storm: p.id, geometry: geometry, severity: severity, hail: p.hail,
-                          meso: p.meso, ageMinutes: age, live: live)
+                StormMark(kind: kind, id: id, storm: p.id, geometry: geometry, severity: severity, hail: p.hail && !hidden.contains(.hail),
+                          meso: p.meso && !hidden.contains(.rotation), ageMinutes: age, live: live, source: source)
             }
             let path = pathOf(storm)
-            if path.count > 1 { result.marks.append(mark(.path, "\(p.id):path", .line(path))) }
+            if path.count > 1 && !hidden.contains(.path) { result.marks.append(mark(.path, "\(p.id):path", .line(path))) }
             if !taken {
                 result.marks.append(mark(.position, p.id, .point(storm.geometry)))
-                if live {
+                if live && !hidden.contains(.live) {
                     let history = max(0, (StormTime.ms(p.lastSeen) - StormTime.ms(p.bornAt)) / 60_000)
                     result.pings.append(StormPing(storm: p.id, severity: severity, coordinates: storm.geometry, historyMinutes: history))
                 }
@@ -188,16 +206,17 @@ enum StormDrawing {
                     result.marks.append(mark(.outline, "\(p.id):outline", .polygon(outline)))
                 }
             }
-            if let target {
+            if let target, !hidden.contains(.join) {
                 let start = path[path.count - 1]
                 let t = target.properties
                 result.links.append(StormMark(kind: .link, id: "\(p.id)>\(t.id)", storm: t.id, fromStorm: p.id,
                                               geometry: .line([start, nearestOn(pathOf(target), start)]),
                                               severity: clampSeverity(t.severity), hail: false, meso: false,
-                                              ageMinutes: ageMinutes(t.lastSeen, now), live: liveOf(target)))
+                                              ageMinutes: ageMinutes(t.lastSeen, now), live: liveOf(target),
+                                              source: StormSelect.source(target)))
             }
             // A branch of a split, joined to where its parent was then.
-            if let parent = p.splitFrom.flatMap({ byId[$0] }) {
+            if let parent = p.splitFrom.flatMap({ byId[$0] }), !hidden.contains(.join) {
                 let start = path[0]
                 let then = stormAsOf(parent, StormTime.ms(p.bornAt)) ?? parent
                 var link = mark(.link, "\(parent.properties.id)>\(p.id)", .line([nearestOn(pathOf(then), start), start]))
@@ -209,7 +228,7 @@ enum StormDrawing {
         }
 
         // The forecast, for the selected storm alone and only in the present.
-        let cell = at == nil ? forecastCell(selection) : nil
+        let cell = at == nil && !hidden.contains(.forecast) ? forecastCell(selection) : nil
         let storm = selected.flatMap { byId[$0] }
         if let cell, let owner = selectedMark(selection) {
             let last = cell.series.last
@@ -219,12 +238,12 @@ enum StormDrawing {
             for (index, point) in cell.forecast.enumerated() {
                 result.marks.append(StormMark(kind: .forecast, id: "\(owner):fc:\(index)", storm: owner,
                                               geometry: .point(LonLat(point.lon, point.lat)), severity: severity,
-                                              hail: false, meso: false, ageMinutes: age, live: true))
+                                              hail: false, meso: false, ageMinutes: age, live: true, source: .dwd))
                 guard let major = point.majorKm, major != 0 else { continue }
                 let ring = ellipseRing4326(point.lon, point.lat, major, point.minorKm ?? major, point.angleDeg ?? 0)
                 let t = StormTime.ms(point.t)
                 var ellipse = StormMark(kind: .ellipse, id: "\(owner):el:\(index)", storm: owner, geometry: .polygon(ring),
-                                        severity: severity, hail: false, meso: false, ageMinutes: age, live: true)
+                                        severity: severity, hail: false, meso: false, ageMinutes: age, live: true, source: .dwd)
                 ellipse.forecastAt = t
                 ellipse.leadMinutes = jsRound((t - seen) / 60_000)
                 ellipse.tip = leadingTip(ring, LonLat(last?.lon ?? point.lon, last?.lat ?? point.lat))

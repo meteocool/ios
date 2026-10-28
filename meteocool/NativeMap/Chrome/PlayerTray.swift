@@ -12,6 +12,7 @@ import SwiftUI
 struct TrayActions {
     var showForMyLocation: () -> Void = {}
     var openProducts: () -> Void = {}
+    var openStormKey: () -> Void = {}
 }
 
 /// The tray at the bottom of the radar map.
@@ -92,6 +93,11 @@ struct PlayerTray: View {
                 .accessibilityIdentifier("nativeMap.showForMyLocation")
             }
             Spacer(minLength: 0)
+            // What the storm marks are, while they are drawn.
+            if model.layersOn.contains(.storms) {
+                StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
+                             theme: theme, open: actions.openStormKey)
+            }
             ProductPill(player: player, theme: theme, open: actions.openProducts)
             if model.point != nil, model.userLocation == nil {
                 Button(action: actions.showForMyLocation) {

@@ -670,6 +670,52 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(tray.label, "Isen radar")
     }
 
+    /// The storm key: what the marks mean, each switched off the map, kept.
+    func testStormKeySwitchesMarksOffAndKeepsIt() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),8", demo: true)
+        waitForSeries()
+        let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "Storms on the map")
+        let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
+        let pill = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 5))
+        XCTAssertEqual(pill.value as? String ?? "", "", "Nothing turned off yet")
+        pill.tap()
+        XCTAssertTrue(element("nativeMap.stormKey").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("nativeMap.storm.source.meteocool").exists, "meteocool's badge in its row")
+        screenshot("storm key")
+        // Every strength off: no storm left on the map.
+        for band in ["weak", "moderate", "strong", "extreme"] {
+            let chip = element("nativeMap.stormKey.band.\(band)")
+            XCTAssertTrue(chip.waitForExistence(timeout: 5), band)
+            chip.tap()
+        }
+        let volume = app.switches["nativeMap.stormKey.volume"].firstMatch
+        for _ in 0 ..< 3 where !volume.isHittable { element("nativeMap.stormKey").swipeUp() }
+        volume.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(volume) { $0 == "0" })
+        element("nativeMap.stormKey.close").tap()
+        XCTAssertTrue(element("nativeMap.stormKey").waitForNonExistence(timeout: 5))
+        XCTAssertTrue(discs.firstMatch.waitForNonExistence(timeout: 10), "Every strength turned off")
+        XCTAssertTrue(tags.firstMatch.waitForNonExistence(timeout: 10), "The 3D tags turned off")
+        XCTAssertNotEqual(pill.value as? String ?? "", "", "The pill says something is off")
+        // Kept: the next launch, with no reset, opens as it was left.
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        waitForSeries()
+        XCTAssertNotEqual(element("nativeMap.stormKey.pill").value as? String ?? "", "")
+        XCTAssertFalse(discs.firstMatch.exists)
+        // And back on.
+        element("nativeMap.stormKey.pill").tap()
+        for band in ["weak", "moderate", "strong", "extreme"] { element("nativeMap.stormKey.band.\(band)").tap() }
+        for _ in 0 ..< 3 where !volume.isHittable { element("nativeMap.stormKey").swipeUp() }
+        volume.switches.firstMatch.tap()
+        element("nativeMap.stormKey.close").tap()
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 20), "Storms back")
+    }
+
     func testCellPanelShowsItsMeasuredStructure() {
         let code = "2026102012009999999999"
         app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)

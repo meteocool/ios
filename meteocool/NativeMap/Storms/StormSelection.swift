@@ -197,12 +197,9 @@ enum StormSelect {
         return nil
     }
 
-    /// KONRAD3D's product name, as a track claims it.
-    static let konrad3d = "dwd/konrad3d"
-
     /// Whose tracking a product is.
     static func source(ofProduct product: String?) -> StormSource {
-        product == konrad3d ? .dwd : .meteocool
+        product == konrad3dProduct ? .dwd : .meteocool
     }
 
     /// A storm's source, by its primary track: the one whose attributes it shows.

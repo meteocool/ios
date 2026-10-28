@@ -167,7 +167,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// and toasts under it.
     private func configureChrome() {
         let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
-                                  openProducts: { [weak self] in self?.openProducts() })
+                                  openProducts: { [weak self] in self?.openProducts() },
+                                  openStormKey: { [weak self] in self?.openStormKey() })
         let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
         // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
         let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
@@ -268,6 +269,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         } else {
             model.trayTitle = nil
         }
+    }
+
+    /// What the storm marks mean, each switchable (core's `StormKey`).
+    func openStormKey() {
+        let mesocyclones = Binding(get: { [weak self] in self?.isOn(.mesocyclones) ?? true },
+                                   set: { [weak self] on in self?.setOn(.mesocyclones, on) })
+        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones,
+                                                             close: { [weak self] in self?.dismissSheet() }))
+        presentSheet(key, detents: [.medium(), .large()])
     }
 
     func openProducts() {
@@ -536,6 +546,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
+        let on = Set(NativeMapLayer.allCases.filter(isOn))
+        if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }
         updateCredits()
     }

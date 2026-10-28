@@ -138,6 +138,8 @@ final class StormAnnotation: NSObject, MKAnnotation {
         var opacity: Double
         var live: Bool
         var dark: Bool
+        /// DWD's storm: a diamond, where meteocool's is a circle.
+        var dwd = false
     }
 
     let id: String
@@ -155,8 +157,9 @@ final class StormAnnotation: NSObject, MKAnnotation {
     }
 }
 
-/// The disc: radius by severity, outlined red for hail, a ↻ or ✦ badge, and
-/// for a live storm the stepping dashed ring under it.
+/// The disc: radius by severity, a diamond for DWD's storms (core's
+/// `DIAMOND_REACH`), outlined red for hail, a ↻ or ✦ badge, and for a live
+/// storm the stepping dashed ring under it.
 final class StormDiscView: MKAnnotationView {
     static let reuse = "storm"
     let ring = CAShapeLayer()
@@ -186,14 +189,26 @@ final class StormDiscView: MKAnnotationView {
         let s = CGFloat(max(0, min(look.severity, 3)))
         let radius = (look.picked ? 8 : 6) + 2 * s
         let badge = look.meso ? "↻" : look.hail ? "✦" : nil
-        let side = max(radius * 2 + 8, CGFloat(StormPulse.ringRadius * 2 + StormPulse.ringWidth) + 4)
+        let side = max(radius * (look.dwd ? 2.6 : 2) + 8, CGFloat(StormPulse.ringRadius * 2 + StormPulse.ringWidth) + 4)
         let height = side + (badge == nil ? 0 : 36)
         let size = CGSize(width: side, height: height)
         let colour = StormStyle.colour(look.severity)
         let o = CGFloat(look.opacity)
         image = UIGraphicsImageRenderer(size: size).image { _ in
             let centre = CGPoint(x: size.width / 2, y: size.height - side / 2)
-            let disc = UIBezierPath(arcCenter: centre, radius: radius, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
+            let disc: UIBezierPath
+            if look.dwd {
+                let reach = radius * 1.3
+                disc = UIBezierPath()
+                disc.move(to: CGPoint(x: centre.x, y: centre.y - reach))
+                disc.addLine(to: CGPoint(x: centre.x + reach, y: centre.y))
+                disc.addLine(to: CGPoint(x: centre.x, y: centre.y + reach))
+                disc.addLine(to: CGPoint(x: centre.x - reach, y: centre.y))
+                disc.close()
+                disc.lineJoinStyle = .round
+            } else {
+                disc = UIBezierPath(arcCenter: centre, radius: radius, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
+            }
             colour.withAlphaComponent((look.picked ? 1 : 0.75) * o).setFill()
             disc.fill()
             (look.hail ? StormStyle.hail : UIColor.white).withAlphaComponent(o).setStroke()
@@ -349,6 +364,12 @@ final class StormMarks: NativeMapFeature {
             DispatchQueue.main.async { self?.store.offerVolumes(volumes) }
         }
         observers = [a, b, c] + (d.map { [$0] } ?? []) + (e.map { [$0] } ?? []) + (f.map { [$0] } ?? [])
+        // What the map key turned off.
+        if let hidden = map?.model.$hiddenStormMarks.dropFirst().sink(receiveValue: { [weak self] _ in
+            DispatchQueue.main.async { self?.redraw() }
+        }) {
+            observers.append(hidden)
+        }
     }
 
     /// A storm opened on the 3D map from the flat one, closed: back to the
@@ -527,7 +548,8 @@ final class StormMarks: NativeMapFeature {
         }
         let now = Date().timeIntervalSince1970 * 1000
         let reference = store.at ?? now
-        drawn = StormDrawing.drawStorms(store.held, now: reference, reference: reference, selection: store.selection, at: store.at)
+        drawn = StormDrawing.drawStorms(store.held, now: reference, reference: reference, selection: store.selection, at: store.at,
+                                        hidden: map.model.hiddenStormMarks)
         let picked = StormDrawing.selectedMark(store.selection)
         let resolution = self.resolution
         let showsEnded = StormPulse.showsEnded(resolution)
@@ -554,7 +576,7 @@ final class StormMarks: NativeMapFeature {
             guard case .point(let at) = mark.geometry else { continue }
             let look = StormAnnotation.Look(severity: mark.severity, hail: mark.hail, meso: mark.meso, picked: mark.storm == picked,
                                             opacity: mark.storm == picked ? 1 : StormDrawing.ageOpacity(mark.ageMinutes),
-                                            live: live.contains(mark.storm), dark: dark)
+                                            live: live.contains(mark.storm), dark: dark, dwd: mark.source == .dwd)
             let coordinate = CLLocationCoordinate2D(latitude: at.lat, longitude: at.lon)
             if let old = discs[mark.storm], old.look == look, old.coordinate.latitude == at.lat, old.coordinate.longitude == at.lon {
                 wanted[mark.storm] = old

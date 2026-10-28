@@ -11,6 +11,7 @@
 //  gives way to a current one where two are too close.
 //
 
+import Combine
 import MapKit
 import UIKit
 
@@ -110,10 +111,13 @@ final class CloudHints: NativeMapFeature {
     private var drawnKey = ""
     private var live = true
     private var loading = false
+    private var keyChanged: AnyCancellable?
 
     func attach(to map: NativeMapContext) {
         self.map = map
         map.mapView.register(CloudHintView.self, forAnnotationViewWithReuseIdentifier: CloudHintView.reuse)
+        // The storm key's "3D tags" row.
+        keyChanged = map.model.$hiddenStormMarks.dropFirst().sink { [weak self] _ in DispatchQueue.main.async { self?.redraw() } }
     }
 
     func wake() { load() }
@@ -184,6 +188,7 @@ final class CloudHints: NativeMapFeature {
         guard let map else { return }
         let zoom = map.zoomLevel
         let shown = map.model.capability == .radar && live && zoom > CloudHintRules.minZoom && !clouds.isEmpty
+            && !map.model.hiddenStormMarks.contains(.volume)
         let scans = map.player.timeline.liveScans
         let tags = shown ? CloudHintRules.onePerStorm(clouds).map {
             CloudHintRules.Tag(cloud: $0, stale: CloudHintRules.isBehind($0, liveScans: scans))
