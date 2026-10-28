@@ -23,7 +23,7 @@ struct BackToNowPill: View {
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
     private var wanted: Bool {
         !player.timeline.steps.isEmpty && (player.playing || !player.isLive) && !player.grabbed && !model.stale
-            && site.mode == nil
+            && site.mode == nil && model.capability == .radar
     }
 
     var body: some View {

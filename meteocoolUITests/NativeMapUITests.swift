@@ -758,8 +758,11 @@ final class NativeMapUITests: XCTestCase {
         }
         screenshot("3D floor")
         app.scrollViews.containing(.button, identifier: "nativeMap.3d.mode.live").firstMatch.swipeRight()
-        // North up, then a storm picked by its label and its details opened.
+        // North up and looking straight down, then a storm picked by its
+        // label and its details opened.
         element("nativeMap.3d.north").tap()
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("0,0,") }, "North up, straight down: \(canvas.value as? String ?? "")")
         let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
         XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
         let screen = app.windows.firstMatch.frame
@@ -824,6 +827,9 @@ final class NativeMapUITests: XCTestCase {
         element("nativeMap.3d.guideButton").tap()
         XCTAssertTrue(element("nativeMap.3d.guide").waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Storm clouds"].exists)
+        XCTAssertTrue(app.staticTexts["Cut open"].exists)
+        // KONRAD3D's cells are off until turned on: nothing of theirs to explain.
+        XCTAssertFalse(element("nativeMap.3d.guide.cells").exists)
         element("nativeMap.3d.guide.close").tap()
         XCTAssertTrue(element("nativeMap.3d.guide").waitForNonExistence(timeout: 5))
         // An earlier scan: shown with its time, or a note that it has nothing.
@@ -831,8 +837,11 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 30))
         XCTAssertEqual(picker.label, "Storms: latest scan")
         picker.tap()
-        let earlier = app.buttons.matching(NSPredicate(format: "label MATCHES '^[0-9]{2}:[0-9]{2}$'")).element(boundBy: 2)
+        // "Latest" with the newest scan's time, each earlier one with how far behind it is.
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label MATCHES '^Latest.*[0-9]{2}:[0-9]{2}'")).firstMatch.waitForExistence(timeout: 5))
+        let earlier = app.buttons.matching(NSPredicate(format: "label MATCHES '^[0-9]{2}:[0-9]{2}.*-[0-9]+[hm].*'")).element(boundBy: 2)
         XCTAssertTrue(earlier.waitForExistence(timeout: 5))
+        let picked = String(earlier.label.prefix(5))
         earlier.tap()
         let note = element("nativeMap.3d.scanNote")
         let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -840,11 +849,42 @@ final class NativeMapUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 60), .completed)
         screenshot("3D earlier scan")
-        // Back to the newest.
+        // The flat map's way back to now is not the 3D map's.
+        XCTAssertFalse(element("nativeMap.backToNow").exists)
+        // Back to the newest; the one shown is checked in the menu.
         picker.tap()
-        app.buttons["Latest"].firstMatch.tap()
+        screenshot("3D scan menu")
+        if picker.label.hasSuffix("not live") {
+            let shown = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picked)).firstMatch
+            XCTAssertTrue(shown.waitForExistence(timeout: 5))
+            let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: shown)
+            XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 5), .completed, "The scan on the map is checked")
+        }
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Latest'")).firstMatch.tap()
         expectation(for: NSPredicate(format: "label == 'Storms: latest scan'"), evaluatedWith: picker)
         waitForExpectations(timeout: 10)
+    }
+
+    /// A tap on a storm in 3D opens its panel at once, as a click does in core.
+    func testThreeDTapOnAStormOpensIt() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),9&layer=cells3d&pitch=0", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Storms drawn")
+        // Looking straight down on the strongest core: it is under the middle
+        // of the screen, a little beside its label.
+        let details = element("nativeMap.storm.details")
+        let spots = [CGVector(dx: 0.5, dy: 0.42), CGVector(dx: 0.5, dy: 0.48), CGVector(dx: 0.45, dy: 0.45), CGVector(dx: 0.55, dy: 0.45)]
+        for spot in spots where !details.exists {
+            canvas.coordinate(withNormalizedOffset: spot).tap()
+            _ = details.waitForExistence(timeout: 6)
+        }
+        XCTAssertTrue(details.exists, "The storm's panel")
+        screenshot("3D storm tapped")
+        element("nativeMap.storm.close").tap()
+        XCTAssertTrue(details.waitForNonExistence(timeout: 5))
     }
 
     func testThreeDLinkOpensTheThreeDMap() {
