@@ -160,7 +160,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         Task {
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.meteocool.data(for: request)
                 completion(NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil)
             } catch {
                 completion(false)

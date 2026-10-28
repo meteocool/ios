@@ -270,7 +270,7 @@ final class StormStore: ObservableObject {
             }
             Task { @MainActor [weak self] in
                 guard let url = URL(string: path, relativeTo: NetworkHelper.assetURL),
-                      let (body, response) = try? await URLSession.shared.data(from: url),
+                      let (body, response) = try? await URLSession.meteocool.data(from: url),
                       (response as? HTTPURLResponse)?.statusCode == 200,
                       let volume = try? await Task.detached(priority: .userInitiated, operation: { try StormVolume.decode(body) }).value
                 else {

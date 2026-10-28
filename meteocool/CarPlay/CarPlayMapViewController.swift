@@ -38,6 +38,7 @@ final class CarPlayMapViewController: UIViewController, WKScriptMessageHandler, 
     override func loadView() {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
+        configuration.applicationNameForUserAgent = UserAgent.value
         configuration.userContentController.add(self, name: "scriptHandler")
         // `scriptHandler` above is required. Without it the page's
         // `postMessage("requestSettings")` throws on a missing handler, and

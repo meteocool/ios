@@ -575,7 +575,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     func fetch(_ url: URL, _ handler: @escaping @MainActor (Data?, Int?) -> Void) {
         let started = Date()
         NetworkLog.shared.started()
-        URLSession.shared.dataTask(with: url) { data, response, _ in
+        URLSession.meteocool.dataTask(with: url) { data, response, _ in
             let status = (response as? HTTPURLResponse)?.statusCode
             NetworkLog.shared.finished(RequestRecord(service: NetworkLog.service(of: url), endpoint: url.path, time: Date(),
                                                      status: status, duration: Date().timeIntervalSince(started),

@@ -163,7 +163,7 @@ import UIKit
                     sync(force: force)
                 }
             }
-            let result = try? await URLSession.shared.data(for: request)
+            let result = try? await URLSession.meteocool.data(for: request)
             let status = (result?.1 as? HTTPURLResponse)?.statusCode
             guard let status, (200..<300).contains(status) else {
                 // A previous success may belong to a registration that was recreated.
@@ -225,7 +225,7 @@ import UIKit
         var request = URLRequest(url: url)
         // A cold render takes up to 20 s; a background run has about 30.
         request.timeoutInterval = 20
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
+        guard let (data, response) = try? await URLSession.meteocool.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return RadarImageStore.save(data)
     }

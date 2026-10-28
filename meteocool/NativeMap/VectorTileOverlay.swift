@@ -105,7 +105,7 @@ final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
         }
         guard let url else { return }
         let source = lock.withLock { template }
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, _ in
+        URLSession.meteocool.dataTask(with: url) { [weak self] data, response, _ in
             guard let self else { return }
             let status = (response as? HTTPURLResponse)?.statusCode
             let decoded = status == 200 ? data.flatMap { try? VectorTile(data: $0) } : nil

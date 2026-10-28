@@ -34,7 +34,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // `timeoutInterval` only limits the time between packets, so the
         // deadline below caps the whole download.
         request.timeoutInterval = Self.previewDeadline
-        let task = URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
+        let task = URLSession.meteocool.downloadTask(with: request) { [weak self] file, response, error in
             var attachment: UNNotificationAttachment?
             if error == nil, let file, let response = response as? HTTPURLResponse,
                response.statusCode == 200, response.url?.scheme == "https",

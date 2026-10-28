@@ -30,7 +30,7 @@ final class VolumeLoader: ObservableObject {
             var request = URLRequest(url: url)
             request.timeoutInterval = 30
             let decoded: StormVolume? = await {
-                guard let (data, response) = try? await URLSession.shared.data(for: request),
+                guard let (data, response) = try? await URLSession.meteocool.data(for: request),
                       (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
                 return await Task.detached(priority: .userInitiated) { try? StormVolume.decode(data) }.value
             }()
