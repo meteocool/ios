@@ -259,3 +259,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Oma sijainti";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Salamasta jyrinään";
+"native_map_flash_bang_flash" = "Salama";
+"native_map_flash_bang_flash_hint" = "Napauta, kun näet salaman";
+"native_map_flash_bang_thunder" = "Jyrisee?";
+"native_map_flash_bang_thunder_hint" = "Napauta, kun kuulet jyrinän";
+"native_map_flash_bang_about" = "Noin %@ km päässä";
+"native_map_flash_bang_counted" = "Laskettu %@ s";
+"native_map_flash_bang_counted_about" = "Laskettu %1$@ s: noin %2$@ km";
+"native_map_flash_bang_searching" = "Etsitään iskua reaaliaikaisesta datasta …";
+"native_map_flash_bang_matched" = "Isku klo %1$@, %2$@";
+"native_map_flash_bang_close" = "tarkka osuma";
+"native_map_flash_bang_fair" = "hyvä osuma";
+"native_map_flash_bang_loose" = "karkea osuma";
+"native_map_flash_bang_no_match" = "Mikään datan isku ei täsmää: verkko ei havaitse kaikkia.";
+"native_map_flash_bang_too_far" = "Ei jyrinää minuutin sisällä: liian kaukana kuuluakseen.";
+"native_map_flash_bang_shelter" = "Salama voi osua sinuun täällä: mene heti sisälle.";
+"native_map_flash_bang_no_location" = "Tarvitsee sijaintisi: kytke sijaintipainike päälle.";
+"native_map_flash_bang_show" = "Näytä kartalla";
+"native_map_flash_bang_strike" = "Löydetty isku";

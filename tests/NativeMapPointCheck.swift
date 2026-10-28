@@ -5,8 +5,9 @@ import CoreGraphics
 /// placement, links with a point and a layer, the dryness verdict, place
 /// names, the model comparison's consensus and outlook (core's
 /// `scripts/tests/outlook.test.ts`, `dryness.test.ts`), the lightning
-/// palette, strikes and histogram (`lightningChart.test.ts`), and the
-/// precipitation classes (`hgClasses.test.ts`).
+/// palette, strikes and histogram (`lightningChart.test.ts`), the
+/// precipitation classes (`hgClasses.test.ts`), and flash to bang's count
+/// and its match in the strikes.
 @main
 struct NativeMapPointCheck {
     static func near(_ a: Double?, _ b: Double, _ tolerance: Double = 1e-9) -> Bool {
@@ -25,6 +26,7 @@ struct NativeMapPointCheck {
         axes()
         lightning()
         precipTypes()
+        flashToBang()
         print("NativeMapPointCheck: all checks passed")
     }
 
@@ -412,5 +414,88 @@ struct NativeMapPointCheck {
         precondition(PrecipTypes.freshness(age: 0) == 100 && PrecipTypes.freshness(age: 150) == 50 && PrecipTypes.freshness(age: 900) == 0)
         precondition(PrecipTypes.lastUpdated("3 minutes ago", prefix: "Last updated") == "Last updated 3 minutes ago")
         precondition(PrecipTypes.lastUpdated("about 22 hours ago, ok", prefix: "Last updated") == "about 22 hours ago, ok")
+    }
+
+    // MARK: Flash to bang
+
+    /// A strike `metres` from `place` towards `bearing`, at `time`.
+    static func strike(_ place: FlashToBangRules.Place, _ metres: Double, _ bearing: Double, _ time: Double) -> FlashToBangRules.Strike {
+        let point = FlashToBangRules.destination(from: place, metres: metres, bearing: bearing)
+        return .init(latitude: point.latitude, longitude: point.longitude, time: time)
+    }
+
+    static func flashToBang() {
+        typealias F = FlashToBangRules
+        // 343 m/s: three seconds is about a kilometre.
+        precondition(F.distance(seconds: 3) == 1029 && F.distance(seconds: -1) == 0)
+        let here = F.Place(latitude: 48.0, longitude: 11.0)
+        let degree = F.metres(from: F.Place(latitude: 0, longitude: 0), to: .init(latitude: 1, longitude: 0, time: 0))
+        precondition(near(degree, 111_195, 1), "\(degree)")
+        precondition(near(F.bearing(from: F.Place(latitude: 0, longitude: 0), to: .init(latitude: 0, longitude: 1, time: 0)), 90, 1e-6))
+        precondition(near(F.bearing(from: here, to: strike(here, 4_000, 270, 0)), 270, 0.1))
+        precondition(near(F.metres(from: here, to: strike(here, 4_200, 123, 0)), 4_200, 0.01))
+        precondition(F.compass8(0) == "N" && F.compass8(22) == "N" && F.compass8(23) == "NE" && F.compass8(268) == "W")
+        precondition(F.compass8(337) == "NW" && F.compass8(338) == "N" && F.compass8(359.9) == "N" && F.compass8(180) == "S")
+        // 500 m or 15 %, plus the fix's accuracy up to a kilometre; half as much again below.
+        precondition(F.tolerance(estimate: 2_000, accuracy: 0) == (750, 500))
+        precondition(F.tolerance(estimate: 10_000, accuracy: 5_000) == (3_750, 2_500))
+
+        // A flash tapped at 1000 s, thunder 12 s later: 4116 m.
+        let flash = 1_000.0, estimate = F.distance(seconds: 12)
+        let west = strike(here, 4_200, 270, flash - 0.6)
+        let early = strike(here, 4_100, 90, flash - 5)      // before the window
+        let late = strike(here, 4_100, 90, flash + 0.8)     // after it
+        let far = strike(here, 8_000, 0, flash - 0.5)       // the wrong distance
+        let near5 = strike(here, 3_000, 0, flash - 0.5)     // too near, even below
+        let match = F.match(flash: flash, estimate: estimate, place: here, strikes: [early, late, far, near5, west])!
+        precondition(match.strike == west && match.candidates == 1 && match.quality == .close, "\(match)")
+        precondition(near(match.distance, 4_200, 0.01) && near(match.bearing, 270, 0.1) && near(match.offset, -0.6, 1e-9))
+        precondition(F.match(flash: flash, estimate: estimate, place: here, strikes: [early, late, far, near5]) == nil)
+        // The better of two; a close second elsewhere makes it less sure.
+        let worse = strike(here, 4_700, 0, flash - 2.2)
+        precondition(F.match(flash: flash, estimate: estimate, place: here, strikes: [worse, west])?.quality == .close)
+        precondition(F.match(flash: flash, estimate: estimate, place: here, strikes: [worse, west])?.strike == west)
+        let rival = strike(here, 4_150, 0, flash - 0.5)
+        let unsure = F.match(flash: flash, estimate: estimate, place: here, strikes: [west, rival])!
+        precondition(unsure.strike == rival && unsure.quality == .fair && unsure.candidates == 2, "\(unsure)")
+        // At the edge of both tolerances: loose.
+        let edge = strike(here, estimate + 600, 0, flash - 2.4)
+        precondition(F.match(flash: flash, estimate: estimate, place: here, strikes: [edge])?.quality == .loose)
+        // A fix that is unsure widens the distance allowed.
+        let wide = F.Place(latitude: 48.0, longitude: 11.0, accuracy: 800)
+        precondition(F.match(flash: flash, estimate: estimate, place: here, strikes: [strike(here, 5_000, 0, flash)]) == nil)
+        precondition(F.match(flash: flash, estimate: estimate, place: wide, strikes: [strike(here, 5_000, 0, flash)]) != nil)
+
+        // The count: flash, a bounce, thunder; the search, its strike, its end.
+        var session = F.Session()
+        precondition(session.tap(now: flash, place: here) == .flash && session.phase == .counting(flash: flash))
+        precondition(session.tap(now: flash + 0.1, place: here) == .ignored)
+        precondition(!session.update(now: flash + 5, strikes: []))
+        precondition(session.tap(now: flash + 12, place: here) == .bang)
+        precondition(session.measurement?.gap == 12 && session.measurement?.estimate == estimate)
+        precondition(session.measurement?.searching == true && session.measurement?.match == nil)
+        precondition(!session.update(now: flash + 13, strikes: [far]))
+        precondition(session.update(now: flash + 16, strikes: [far, west]) && session.measurement?.match?.strike == west)
+        precondition(session.measurement?.withinStrikingRange == true && session.measurement?.best == match.distance)
+        // A strike pruned from the list keeps its match.
+        precondition(!session.update(now: flash + 20, strikes: []) && session.measurement?.match?.strike == west)
+        precondition(session.update(now: flash + 12 + F.searchFor, strikes: [west]) && session.measurement?.searching == false)
+        precondition(!session.update(now: flash + 40, strikes: [rival]) && session.measurement?.match?.strike == west)
+        // A tap after a result starts over.
+        precondition(session.tap(now: 2_000, place: here) == .flash)
+        // No thunder within a minute: too far to hear; or a late tap is a new flash.
+        precondition(!session.update(now: 2_060, strikes: []) && session.update(now: 2_060.5, strikes: []) && session.phase == .tooFar)
+        precondition(session.tap(now: 3_000, place: here) == .flash && session.tap(now: 3_061, place: here) == .flash)
+        precondition(session.phase == .counting(flash: 3_061))
+        // Without a match, the count's own distance; past 5 km, out of range.
+        var counted = F.Session()
+        counted.tap(now: 0, place: here)
+        counted.tap(now: 20, place: here)
+        precondition(counted.measurement?.best == F.distance(seconds: 20) && counted.measurement?.withinStrikingRange == false)
+        counted.reset()
+        precondition(counted.phase == .idle)
+
+        precondition(F.kilometres(4_160, language: "de") == "4,2" && F.kilometres(4_160, language: "en") == "4.2")
+        precondition(F.decimal(12.25, language: "en") == "12.2" || F.decimal(12.25, language: "en") == "12.3")
     }
 }

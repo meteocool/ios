@@ -259,3 +259,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mano vieta";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Nuo žaibo iki griaustinio";
+"native_map_flash_bang_flash" = "Žaibas";
+"native_map_flash_bang_flash_hint" = "Bakstelėk, kai pamatysi žaibą";
+"native_map_flash_bang_thunder" = "Griaustinis?";
+"native_map_flash_bang_thunder_hint" = "Bakstelėk, kai išgirsi griaustinį";
+"native_map_flash_bang_about" = "Apie %@ km nuo tavęs";
+"native_map_flash_bang_counted" = "Suskaičiuota %@ s";
+"native_map_flash_bang_counted_about" = "Suskaičiuota %1$@ s: apie %2$@ km";
+"native_map_flash_bang_searching" = "Ieškomas išlydis tiesioginiuose duomenyse…";
+"native_map_flash_bang_matched" = "Išlydis %1$@, %2$@";
+"native_map_flash_bang_close" = "tikslus atitikmuo";
+"native_map_flash_bang_fair" = "geras atitikmuo";
+"native_map_flash_bang_loose" = "apytikslis atitikmuo";
+"native_map_flash_bang_no_match" = "Joks išlydis duomenyse netinka: tinklas užfiksuoja ne visus.";
+"native_map_flash_bang_too_far" = "Per minutę negriaudėjo: per toli, kad girdėtųsi.";
+"native_map_flash_bang_shelter" = "Žaibas čia gali tave pasiekti: tuoj pat eik į vidų.";
+"native_map_flash_bang_no_location" = "Reikia tavo vietos: įjunk vietos mygtuką.";
+"native_map_flash_bang_show" = "Rodyti žemėlapyje";
+"native_map_flash_bang_strike" = "Rastas išlydis";

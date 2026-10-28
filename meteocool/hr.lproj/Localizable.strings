@@ -259,3 +259,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Moja lokacija";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Od munje do groma";
+"native_map_flash_bang_flash" = "Munja";
+"native_map_flash_bang_flash_hint" = "Dodirni kad vidiš munju";
+"native_map_flash_bang_thunder" = "Grom?";
+"native_map_flash_bang_thunder_hint" = "Dodirni kad čuješ grom";
+"native_map_flash_bang_about" = "Oko %@ km daleko";
+"native_map_flash_bang_counted" = "Izbrojeno %@ s";
+"native_map_flash_bang_counted_about" = "Izbrojeno %1$@ s: oko %2$@ km";
+"native_map_flash_bang_searching" = "Tražim udar u podacima uživo …";
+"native_map_flash_bang_matched" = "Udar u %1$@, %2$@";
+"native_map_flash_bang_close" = "točno podudaranje";
+"native_map_flash_bang_fair" = "dobro podudaranje";
+"native_map_flash_bang_loose" = "grubo podudaranje";
+"native_map_flash_bang_no_match" = "Nijedan udar u podacima ne odgovara: mreža ne bilježi svaki.";
+"native_map_flash_bang_too_far" = "Nema groma unutar minute: predaleko da se čuje.";
+"native_map_flash_bang_shelter" = "Munja te ovdje može pogoditi: odmah uđi unutra.";
+"native_map_flash_bang_no_location" = "Potrebna je tvoja lokacija: uključi gumb za lokaciju.";
+"native_map_flash_bang_show" = "Prikaži na karti";
+"native_map_flash_bang_strike" = "Pronađeni udar";
