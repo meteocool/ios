@@ -345,8 +345,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as? SwitcherTableViewCell
         textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as? TextTableViewCell
         linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as? LinkTableViewCell
-        // Only the licences and storm log rows have a disclosure arrow; a reused cell must not keep it.
-        linkCell?.accessoryType = .none
+        // The link cell draws its own chevron; a reused cell must not keep another row's identifier.
         linkCell?.accessibilityIdentifier = nil
         
         //returnCell = (textCell)!
@@ -354,7 +353,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 0 where indexPath.row == stormLogRow: // The storm log, on its own page
             linkCell.linkInfoLable.text = NSLocalizedString("storm_log_title", value: "Storm Log", comment: "settings")
             linkCell.linkValueLable.text = ""
-            linkCell.accessoryType = .disclosureIndicator
             linkCell.accessibilityIdentifier = "settings.stormLog"
             return linkCell
         case 0: //Push Notification
@@ -467,7 +465,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 5: //Open-source licences, on their own page
             linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
             linkCell.linkValueLable.text = ""
-            linkCell.accessoryType = .disclosureIndicator
             return linkCell
         default:
             print("This should not happen...")
