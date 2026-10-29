@@ -322,6 +322,8 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let strip = element("nativeMap.strip.noRadar")
         XCTAssertTrue(strip.waitForExistence(timeout: 15))
+        // Nothing to play out here.
+        XCTAssertFalse(playButton.isEnabled)
         screenshot("no radar here")
         strip.buttons["Close"].firstMatch.tap()
         XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
@@ -337,6 +339,10 @@ final class NativeMapUITests: XCTestCase {
         screenshot("point menu")
         element("nativeMap.point.radar").tap()
         XCTAssertTrue(element("nativeMap.point.ring").waitForExistence(timeout: 5))
+        // The tray takes the place's name once it is known.
+        let title = element("nativeMap.title")
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForLabel(title, timeout: 20) { $0.contains("Munich") || $0.contains("München") }, "Named: \(title.label)")
         let clear = element("nativeMap.clearPoint")
         XCTAssertTrue(clear.waitForExistence(timeout: 5))
         clear.tap()
@@ -410,6 +416,27 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
     }
 
+    func testModelComparisonRetriesWhatFailed() {
+        // Open-Meteo turns the first two asks away: the days and the spread.
+        app.launchEnvironment["MC_OPEN_METEO_FAILS"] = "2"
+        launch(link: "?latLonZ=48.14,11.58,8")
+        waitForSeries()
+        hold(0.5, 0.4)
+        element("nativeMap.point.forecast").tap()
+        let failed = element("nativeMap.compare.error")
+        XCTAssertTrue(failed.waitForExistence(timeout: 20))
+        XCTAssertTrue(element("nativeMap.compare.title").exists)
+        screenshot("model comparison failed")
+        failed.buttons["Retry"].tap()
+        XCTAssertTrue(failed.waitForNonExistence(timeout: 30), "The days, asked again")
+        let spread = element("nativeMap.compare.spreadError")
+        XCTAssertTrue(spread.waitForExistence(timeout: 10))
+        for _ in 0 ..< 4 where !spread.buttons["Retry"].isHittable { element("nativeMap.compare").swipeUp() }
+        spread.buttons["Retry"].tap()
+        XCTAssertTrue(spread.waitForNonExistence(timeout: 30), "The spread, asked again")
+        XCTAssertTrue(element("nativeMap.compare.variable").exists)
+    }
+
     /// A German city the radar has no rain for over the last two hours,
     /// asked of the deployment the app opens on.
     private func dryCity() -> (lat: Double, lon: Double)? {
@@ -446,26 +473,31 @@ final class NativeMapUITests: XCTestCase {
 
     // MARK: - Storms
 
-    /// Where the demo's newest storm is now: its replay moves on.
-    /// The demo's newest storm's id, for a link to it.
-    private func demoStormId() -> String? {
+    /// The demo's storm for a test: of those seen last, the strongest within
+    /// the tests' view of southern France (44° N, 3.5° E at zoom 7), else
+    /// anywhere. Its replay moves on, and a tie on the newest picked a storm
+    /// off Ireland.
+    private func demoStormFeature() -> [String: Any]? {
         let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
         guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
               let storms = answer["features"] as? [[String: Any]] else { return nil }
-        let newest = storms.max { a, b in
-            ((a["properties"] as? [String: Any])?["last_seen"] as? String ?? "") < ((b["properties"] as? [String: Any])?["last_seen"] as? String ?? "")
-        }
-        return (newest?["properties"] as? [String: Any])?["id"] as? String ?? newest?["id"] as? String
+        func properties(_ storm: [String: Any]) -> [String: Any] { storm["properties"] as? [String: Any] ?? [:] }
+        func point(_ storm: [String: Any]) -> [Double] { (storm["geometry"] as? [String: Any])?["coordinates"] as? [Double] ?? [] }
+        let newest = storms.compactMap { properties($0)["last_seen"] as? String }.max()
+        let latest = storms.filter { properties($0)["last_seen"] as? String == newest && point($0).count >= 2 }
+        let near = latest.filter { abs(point($0)[1] - 44) < 1.5 && abs(point($0)[0] - 3.5) < 2 }
+        return (near.isEmpty ? latest : near).max { (properties($0)["peak_dbz"] as? Double ?? 0) < (properties($1)["peak_dbz"] as? Double ?? 0) }
     }
 
+    /// The demo's storm's id, for a link to it.
+    private func demoStormId() -> String? {
+        guard let storm = demoStormFeature() else { return nil }
+        return (storm["properties"] as? [String: Any])?["id"] as? String ?? storm["id"] as? String
+    }
+
+    /// Where the demo's storm is now.
     private func demoStorm() -> (lat: Double, lon: Double)? {
-        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
-        guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
-              let storms = answer["features"] as? [[String: Any]] else { return nil }
-        let newest = storms.max { a, b in
-            ((a["properties"] as? [String: Any])?["last_seen"] as? String ?? "") < ((b["properties"] as? [String: Any])?["last_seen"] as? String ?? "")
-        }
-        guard let point = (newest?["geometry"] as? [String: Any])?["coordinates"] as? [Double], point.count >= 2 else { return nil }
+        guard let point = (demoStormFeature()?["geometry"] as? [String: Any])?["coordinates"] as? [Double], point.count >= 2 else { return nil }
         return (point[1], point[0])
     }
 
@@ -982,6 +1014,7 @@ final class NativeMapUITests: XCTestCase {
         launch()
         waitForSeries()
         openLayers()
+        screenshot("layer switcher")
         let lightning = app.switches["nativeMap.layers.lightning"].firstMatch
         XCTAssertTrue(lightning.waitForExistence(timeout: 5))
         XCTAssertEqual(lightning.value as? String, "1")
@@ -1001,6 +1034,20 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.lightningChart").waitForExistence(timeout: 10))
         XCTAssertFalse(playButton.isHittable)
         screenshot("lightning map")
+    }
+
+    func testLightningHistogramHidesAndATapBringsItBack() {
+        launch(link: "?latLonZ=44,3.5,6", demo: true)
+        waitForSeries()
+        openLayers()
+        element("nativeMap.layers.map.lightning").tap()
+        let chart = element("nativeMap.lightningChart")
+        XCTAssertTrue(chart.waitForExistence(timeout: 10))
+        chart.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(chart.waitForNonExistence(timeout: 5))
+        // A tap on the map, as in core.
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)).tap()
+        XCTAssertTrue(chart.waitForExistence(timeout: 5))
     }
 
     func testPrecipitationTypesMapSaysHowOld() {
@@ -1186,6 +1233,57 @@ final class NativeMapUITests: XCTestCase {
         screenshot("3D storm tapped")
         element("nativeMap.storm.close").tap()
         XCTAssertTrue(details.waitForNonExistence(timeout: 5))
+    }
+
+    func testThreeDMapPansAndTurnsUnderTheFinger() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=40&bearing=0", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,0,") })
+        func centre() -> (Double, Double) {
+            let parts = (canvas.value as? String ?? "").split(separator: ",").compactMap { Double($0) }
+            return parts.count >= 4 ? (parts[2], parts[3]) : (0, 0)
+        }
+        // A drag to the left moves the ground with it: the view goes east.
+        let before = centre()
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)))
+        XCTAssertTrue(waitForValue(canvas) { _ in centre().1 > before.1 + 0.05 }, "Panned east: \(canvas.value ?? "")")
+        // Two fingers turn it.
+        canvas.rotate(0.8, withVelocity: 1)
+        XCTAssertTrue(waitForValue(canvas) { !$0.hasPrefix("40,0,") }, "Turned: \(canvas.value ?? "")")
+    }
+
+    func testThreeDMapSaysWhenItHasNoStorms() {
+        // The data service out of reach: the 3D map says so instead of
+        // showing an empty sky.
+        app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:9"
+        launch(link: "?latLonZ=48.14,11.58,8&layer=cells3d")
+        XCTAssertTrue(element("nativeMap.3d.canvas").waitForExistence(timeout: 20))
+        let status = element("nativeMap.3d.status")
+        XCTAssertTrue(status.waitForExistence(timeout: 30))
+        XCTAssertTrue(waitForLabel(status, timeout: 30) { $0.contains("Storms unavailable") }, "Said: \(status.label)")
+        screenshot("3D storms unavailable")
+    }
+
+    /// Not a check: the layer switcher's pictures (the `LayerPreview` images
+    /// in the asset catalogue), the demo's strongest storm on each map. On
+    /// request, on the iPad: `TEST_RUNNER_CAPTURE_LAYER_PREVIEWS=1` (or a
+    /// list of layers) `TEST_RUNNER_SHOT_DIR=…`.
+    func testCaptureLayerPreviews() throws {
+        guard let wanted = ProcessInfo.processInfo.environment["CAPTURE_LAYER_PREVIEWS"] else { throw XCTSkip("Captured on request") }
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        let here = "\(core.lat),\(core.lon)"
+        // The demo replays a storm; the types of precipitation are live
+        // only, over central Europe.
+        let maps = [("radar", "?latLonZ=\(here),8", true), ("cells3d", "?latLonZ=\(here),8&pitch=55&bearing=-25", true),
+                    ("precipTypes", "?latLonZ=54.9,11.2,7.5", false), ("lightning", "?latLonZ=\(here),8.5", true)]
+        for (layer, link, demo) in maps where wanted == "1" || wanted.split(separator: ",").contains(Substring(layer)) {
+            launch(link: link + "&layer=\(layer)", demo: demo)
+            RunLoop.current.run(until: Date().addingTimeInterval(15))
+            screenshot("layer \(layer)")
+            app.terminate()
+        }
     }
 
     /// The ground under the storms, close in and tilted, for a look at how sharp it is.
