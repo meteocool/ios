@@ -26,9 +26,12 @@ struct StormPassage: Decodable, Equatable {
     /// A saved place's id and name; nil for the phone's own location.
     let place: String?
     let placeName: String?
-    /// The point it passed.
+    /// Roughly where the point it passed was: the centre of the grid cell,
+    /// `cellDeg` a side, it fell in. The backend never keeps the point itself.
     let lat: Double
     let lon: Double
+    /// That cell's side, degrees of latitude and of longitude; nil where the answer leaves it out.
+    var cellDeg: Double? = nil
     let startedAt: Date
     /// Nil while the storm is still near.
     let endedAt: Date?
@@ -154,11 +157,29 @@ enum StormLogRules {
         }
     }
 
-    /// The box the detail map shows: the track and the point, with a margin
-    /// of a fifth on every side and at least `minimumDegrees` across.
+    /// The cell the backend keeps a point on, when an answer does not say: 0.1° a side.
+    static let defaultCellDegrees = 0.1
+    static let metresPerDegree = 111_195.0
+
+    /// How far from the entry's position its point may have been, metres:
+    /// half the cell's diagonal, so a circle this wide holds the whole cell.
+    /// The map draws that area, never a pin, as the position is approximate.
+    static func approximateRadius(_ passage: StormPassage) -> Double {
+        let side = passage.cellDeg.flatMap { $0 > 0 && $0 <= 1 ? $0 : nil } ?? defaultCellDegrees
+        let north = side / 2 * metresPerDegree
+        let east = north * cos(passage.lat * .pi / 180)
+        return (north * north + east * east).squareRoot()
+    }
+
+    /// The box the detail map shows: the track and the area round the point,
+    /// with a margin of a fifth on every side and at least `minimumDegrees` across.
     static func region(_ passage: StormPassage, minimumDegrees: Double = 0.08)
         -> (centerLat: Double, centerLon: Double, spanLat: Double, spanLon: Double) {
-        let points = trackPoints(passage.track) + [(passage.lat, passage.lon)]
+        let radius = approximateRadius(passage)
+        let dLat = radius / metresPerDegree
+        let dLon = radius / (metresPerDegree * max(cos(passage.lat * .pi / 180), 0.01))
+        let area = [(passage.lat - dLat, passage.lon - dLon), (passage.lat + dLat, passage.lon + dLon)]
+        let points = trackPoints(passage.track) + area
         let lats = points.map(\.lat), lons = points.map(\.lon)
         let south = lats.min()!, north = lats.max()!, west = lons.min()!, east = lons.max()!
         return ((south + north) / 2, (west + east) / 2,

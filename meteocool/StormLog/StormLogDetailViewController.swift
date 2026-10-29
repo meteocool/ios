@@ -4,6 +4,8 @@
 //
 //  One storm of the storm log: its way past the point on a small map, what
 //  it brought, and a share link that opens the map where it came closest.
+//  The point is drawn as the area it was in, never a pin: the backend keeps
+//  only a coarse position.
 //
 
 import MapKit
@@ -12,8 +14,11 @@ import UIKit
 final class StormLogDetailViewController: UITableViewController, MKMapViewDelegate {
     private let passage: StormPassage
     private let map = MKMapView()
-    /// The point it passed, told apart from the storm's head on the map.
-    private let point = MKPointAnnotation()
+    /// Where the point it passed was, roughly: a circle round the coarse
+    /// position, and a label in it.
+    private lazy var area = MKCircle(center: CLLocationCoordinate2D(latitude: passage.lat, longitude: passage.lon),
+                                     radius: StormLogRules.approximateRadius(passage))
+    private let nearHere = MKPointAnnotation()
     private lazy var rows: [(String, String)] = Self.rows(passage)
 
     init(passage: StormPassage) {
@@ -77,9 +82,10 @@ final class StormLogDetailViewController: UITableViewController, MKMapViewDelega
             head.title = StormLogViewController.severityName(passage.severity)
             map.addAnnotation(head)
         }
-        point.coordinate = CLLocationCoordinate2D(latitude: passage.lat, longitude: passage.lon)
-        point.title = StormLogViewController.where(passage)
-        map.addAnnotation(point)
+        map.addOverlay(area, level: .aboveRoads)
+        nearHere.coordinate = area.coordinate
+        nearHere.title = StormLogViewController.text("storm_log_near_here", "Near here")
+        map.addAnnotation(nearHere)
 
         let box = StormLogRules.region(passage)
         map.setRegion(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: box.centerLat, longitude: box.centerLon),
@@ -88,6 +94,14 @@ final class StormLogDetailViewController: UITableViewController, MKMapViewDelega
     }
 
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        if let circle = overlay as? MKCircle {
+            let renderer = MKCircleRenderer(circle: circle)
+            renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)
+            renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.6)
+            renderer.lineWidth = 1.5
+            renderer.lineDashPattern = [4, 4]
+            return renderer
+        }
         guard let line = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
         let renderer = MKPolylineRenderer(polyline: line)
         renderer.strokeColor = StormLogViewController.color(passage.severity)
@@ -98,10 +112,12 @@ final class StormLogDetailViewController: UITableViewController, MKMapViewDelega
     }
 
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation === nearHere {
+            return NearHereView(annotation: annotation, place: StormLogViewController.where(passage))
+        }
         let marker = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: nil)
-        let isPoint = annotation === point
-        marker.markerTintColor = isPoint ? .systemBlue : StormLogViewController.color(passage.severity)
-        marker.glyphImage = UIImage(systemName: isPoint ? (passage.place == nil ? "location.fill" : "mappin") : "cloud.bolt.fill")
+        marker.markerTintColor = StormLogViewController.color(passage.severity)
+        marker.glyphImage = UIImage(systemName: "cloud.bolt.fill")
         marker.displayPriority = .required
         return marker
     }
@@ -158,5 +174,43 @@ final class StormLogDetailViewController: UITableViewController, MKMapViewDelega
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         sheet.popoverPresentationController?.barButtonItem = navigationItem.rightBarButtonItem
         present(sheet, animated: true)
+    }
+}
+
+/// The label in the area round the point: a caption, not a pin, since the
+/// position is only the centre of the area the point was in.
+private final class NearHereView: MKAnnotationView {
+    init(annotation: MKAnnotation, place: String) {
+        super.init(annotation: annotation, reuseIdentifier: nil)
+        let label = UILabel()
+        label.text = annotation.title ?? nil
+        label.font = UIFont.preferredFont(forTextStyle: .caption1)
+        label.adjustsFontForContentSizeCategory = true
+        label.textColor = .label
+        label.translatesAutoresizingMaskIntoConstraints = false
+        let capsule = UIView()
+        capsule.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
+        capsule.layer.cornerCurve = .continuous
+        capsule.isUserInteractionEnabled = false
+        capsule.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: capsule.topAnchor, constant: 3),
+            label.bottomAnchor.constraint(equalTo: capsule.bottomAnchor, constant: -3),
+            label.leadingAnchor.constraint(equalTo: capsule.leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: capsule.trailingAnchor, constant: -8),
+        ])
+        let size = capsule.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        capsule.frame = CGRect(origin: .zero, size: size)
+        capsule.layer.cornerRadius = size.height / 2
+        addSubview(capsule)
+        frame = capsule.frame
+        canShowCallout = false
+        displayPriority = .required
+        isAccessibilityElement = true
+        accessibilityLabel = "\(place), \(label.text ?? "")"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
     }
 }

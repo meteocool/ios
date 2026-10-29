@@ -48,7 +48,8 @@ const VOLUME_PATH = TILES[0].path;
 
 // The storm log (ng's /v4/storm-log), made up here: the storm above passing
 // over Munich an hour ago, and a weaker one still near a saved place. Only
-// for the synthetic token, and empty again once it is wiped.
+// for the synthetic token, and empty again once it is wiped. The points are
+// what ng keeps of them: the centre of the 0.1° cell they fell in.
 let stormLogWiped = false;
 function stormLog() {
   if (stormLogWiped) return { entries: [] };
@@ -62,7 +63,7 @@ function stormLog() {
     const closest = coordinates[4];
     const step = (start - (end ?? 0)) / 8;
     return {
-      id, storm: '01JBX7Q6ZK4V9T3M2N8P5R0W1C', predecessors: [], place, place_name: name, lat: point.lat, lon: point.lon,
+      id, storm: '01JBX7Q6ZK4V9T3M2N8P5R0W1C', predecessors: [], place, place_name: name, lat: point.lat, lon: point.lon, cell_deg: 0.1,
       started_at: iso(minutes(start)), ended_at: end === null ? null : iso(minutes(end)), closest_at: iso(minutes(start - 4 * step)),
       track: { type: 'LineString', coordinates, times: coordinates.map((_, i) => Math.floor(minutes(start - i * step) / 1000)) },
       share_url: `https://meteocool.com/?layer=radar&latLonZ=${closest[1].toFixed(5)},${closest[0].toFixed(5)},9.00&overlays=cells,lightning&t=${frame(minutes(start - 4 * step))}&shared=${frame(minutes(start - 4 * step))}`,
@@ -70,11 +71,11 @@ function stormLog() {
     };
   };
   return { entries: [
-    passage('fixture/-/1', null, null, { lat: 48.137, lon: 11.575 }, { lat: 47.95, lon: 11.25 }, { lat: 48.3, lon: 11.9 }, 15, null,
+    passage('fixture/-/1', null, null, { lat: 48.15, lon: 11.55 }, { lat: 47.95, lon: 11.25 }, { lat: 48.3, lon: 11.9 }, 15, null,
       { over: false, closest_km: 2.4, peak_dbz: 47, top_km: null, vil_kg_m2: null, severity: 0, hail: false, meso: false, strikes: 3 }),
-    passage('fixture/-/0', null, null, { lat: 48.137, lon: 11.575 }, { lat: 47.9, lon: 11.3 }, { lat: 48.35, lon: 11.85 }, 120, 75,
+    passage('fixture/-/0', null, null, { lat: 48.15, lon: 11.55 }, { lat: 47.9, lon: 11.3 }, { lat: 48.35, lon: 11.85 }, 120, 75,
       { over: true, closest_km: 0, peak_dbz: 61.5, top_km: 11.3, vil_kg_m2: 38, severity: 2, hail: true, meso: false, strikes: 27 }),
-    passage('fixture/cabin/0', 'cabin', 'Cabin', { lat: 47.6, lon: 12.0 }, { lat: 47.5, lon: 11.8 }, { lat: 47.75, lon: 12.25 }, 2880, 2840,
+    passage('fixture/cabin/0', 'cabin', 'Cabin', { lat: 47.65, lon: 12.05 }, { lat: 47.5, lon: 11.8 }, { lat: 47.75, lon: 12.25 }, 2880, 2840,
       { over: false, closest_km: 6.8, peak_dbz: 55, top_km: 9.4, vil_kg_m2: 22, severity: 1, hail: false, meso: true, strikes: 0 }),
   ] };
 }

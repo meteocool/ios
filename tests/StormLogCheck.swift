@@ -16,14 +16,14 @@ enum StormLogCheck {
         let answer = """
         {"entries": [
           {"id": "t/-/S2/20261028T142000Z", "storm": "01JBX7Q6ZK4V9T3M2N8P5R0W1C", "predecessors": ["01JBX7Q6ZK4V9T3M2N8P5R0W1D"],
-           "place": null, "place_name": null, "lat": 48.137, "lon": 11.575,
+           "place": null, "place_name": null, "lat": 48.15, "lon": 11.55, "cell_deg": 0.1,
            "started_at": "2026-10-28T14:20:00Z", "ended_at": "2026-10-28T14:55:00Z", "over": true, "closest_km": 0.0,
            "closest_at": "2026-10-28T14:35:00Z", "peak_dbz": 58.5, "top_km": 11.25, "vil_kg_m2": 31.0, "severity": 2,
            "hail": true, "meso": false, "strikes": 14,
            "track": {"type": "LineString", "coordinates": [[11.4, 48.1], [11.5, 48.12], [11.6, 48.14]], "times": [1793197200, 1793197500, 1793197800]},
            "share_url": "https://meteocool.com/?layer=radar&latLonZ=48.12000,11.50000,9.00&overlays=cells,lightning&t=20261028T1435Z&shared=20261028T1435Z"},
           {"id": "t/cabin/S1/20261027T100000Z", "storm": "S1", "predecessors": [], "place": "cabin", "place_name": "Cabin",
-           "lat": 47.6, "lon": 12.0, "started_at": "2026-10-27T10:00:00.123456Z", "ended_at": null, "over": false,
+           "lat": 47.65, "lon": 12.05, "started_at": "2026-10-27T10:00:00.123456Z", "ended_at": null, "over": false,
            "closest_km": 6.42, "closest_at": "2026-10-27T10:05:00Z", "peak_dbz": null, "top_km": null, "vil_kg_m2": null,
            "severity": 0, "hail": false, "meso": false, "strikes": 0,
            "track": {"type": "LineString", "coordinates": [[12.1, 47.6], [12.1, 47.6]], "times": [1793095200, 1793095200]},
@@ -72,14 +72,27 @@ enum StormLogCheck {
         let ongoing = StormLogRules.when(second, timeZone: berlin, locale: english)
         check(ongoing.contains("11:00") && !ongoing.contains("–"), "an ongoing one: \(ongoing)")
 
-        // The map: positions as latitude first, and a box round the track and the point.
+        // The point is a coarse cell's centre, drawn as a circle that holds the whole cell.
+        check(first.lat == 48.15 && first.cellDeg == 0.1 && second.cellDeg == nil, "the cell")
+        let radius = StormLogRules.approximateRadius(first)
+        check(abs(radius - 6_700) < 150, "half the cell's diagonal at 48° N: \(radius)")
+        check(StormLogRules.approximateRadius(second) > 6_000, "an answer without the cell's size falls back to 0.1°")
+
+        // The map: positions as latitude first, and a box round the track and the point's area.
         let points = StormLogRules.trackPoints(first.track)
         check(points.count == 3 && points[0].lat == 48.1 && points[0].lon == 11.4, "track points")
         check(StormLogRules.trackPoints(StormTrack(coordinates: [[1], [200, 1], [11, 48]], times: [0, 0, 0])).count == 1, "malformed positions dropped")
         let box = StormLogRules.region(second)
         check(box.spanLat >= 0.08 && box.spanLon >= 0.08, "a box at least the minimum across")
+        let areaLat = StormLogRules.approximateRadius(second) / StormLogRules.metresPerDegree, areaLon = areaLat / cos(47.65 * .pi / 180)
+        check(box.centerLat - box.spanLat / 2 <= 47.65 - areaLat && box.centerLat + box.spanLat / 2 >= 47.65 + areaLat
+              && box.centerLon - box.spanLon / 2 <= 12.05 - areaLon && box.centerLon + box.spanLon / 2 >= 12.05 + areaLon,
+              "the box holds the point's whole area")
         let wide = StormLogRules.region(first)
-        check(abs(wide.centerLon - 11.5) < 0.01 && wide.spanLon >= 0.2 * 1.4 - 1e-9, "a box round the track")
+        // The track runs 11.4 to 11.6 east; the area round 11.55 reaches past its eastern end.
+        let areaEast = 11.55 + radius / (StormLogRules.metresPerDegree * cos(48.15 * .pi / 180))
+        check(areaEast > 11.6 && abs(wide.centerLon - (11.4 + areaEast) / 2) < 1e-9
+              && abs(wide.spanLon - (areaEast - 11.4) * 1.4) < 1e-9, "a box round the track and the area: \(wide)")
 
         // The share link: the backend's query, on the app's own map host.
         let shared = StormLogRules.shareURL(first, mapURL: URL(string: "https://app.meteocool.com")!)

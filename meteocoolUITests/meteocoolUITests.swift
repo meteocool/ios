@@ -913,14 +913,18 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(detail.staticTexts["11.3 km"].exists, "The echo top")
         XCTAssertTrue(detail.staticTexts["27"].exists, "The strikes")
         XCTAssertTrue(app.maps.firstMatch.exists, "The track is drawn on a map")
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Near here'")).firstMatch
+            .waitForExistence(timeout: 5), "The point is an area near here, not a pin")
         screenshot("Storm log entry")
 
         app.navigationBars.buttons["Share"].tap()
         let sheet = app.otherElements["ActivityListView"]
         XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The share sheet never appeared")
         screenshot("Storm log share sheet")
-        // Above the half-height sheet: a tap outside it closes it.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
+        // Outside the sheet a tap closes it: above a half-height sheet, below
+        // one that opens from the share button at the top.
+        let sheetAtTop = sheet.frame.midY < app.windows.firstMatch.frame.midY
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: sheetAtTop ? 0.85 : 0.3)).tap()
         XCTAssertTrue(waitUntil(timeout: 5) { !sheet.exists })
         app.navigationBars["Strong storm"].buttons.element(boundBy: 0).tap() // back to the list
 
