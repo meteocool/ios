@@ -99,7 +99,9 @@ final class ThreeDGround {
     private var builtFor: String?
     private var token = 0
 
-    static let pixels = 2048
+    /// The ground picture's side: four times the pixels where the memory
+    /// allows (the picture and its mipmaps are some 90 MB at 4096).
+    static let pixels = ProcessInfo.processInfo.physicalMemory >= 6 << 30 ? 4096 : 2048
     static let grid = 64
 
     /// Whether `camera` needs another ground: a first one, moved too far, or

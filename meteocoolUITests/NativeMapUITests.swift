@@ -1188,6 +1188,16 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(details.waitForNonExistence(timeout: 5))
     }
 
+    /// The ground under the storms, close in and tilted, for a look at how sharp it is.
+    func testThreeDGroundCloseIn() {
+        launch(link: "?latLonZ=43.6,3.9,9&layer=cells3d&pitch=60&bearing=20", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("60,20") })
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        screenshot("3D ground")
+    }
+
     func testThreeDLinkOpensTheThreeDMap() {
         launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=30&bearing=-135", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))

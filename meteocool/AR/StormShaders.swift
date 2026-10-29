@@ -435,7 +435,9 @@ vertex GroundOut ground_vertex(uint vid [[vertex_id]], const device GroundVertex
 /// so the end of what was fetched is not a hard line.
 fragment float4 ground_fragment(GroundOut in [[stage_in]], constant GroundUniforms &u [[buffer(1)]],
                                 texture2d<float> map [[texture(0)]]) {
-    constexpr sampler s(address::clamp_to_edge, filter::linear, mip_filter::linear);
+    // Anisotropic: the tilted ground is seen at a slant, which trilinear
+    // filtering alone blurs to the coarsest level the slant needs.
+    constexpr sampler s(address::clamp_to_edge, filter::linear, mip_filter::linear, max_anisotropy(16));
     float3 colour = map.sample(s, in.uv).rgb;
     float2 edge = min(in.uv, 1.0 - in.uv);
     float rim = 1.0 - smoothstep(0.0, 0.08, min(edge.x, edge.y));
