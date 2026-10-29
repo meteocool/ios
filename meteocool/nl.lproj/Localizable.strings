@@ -259,3 +259,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mijn locatie";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Flits tot donder";
+"native_map_flash_bang_flash" = "Flits";
+"native_map_flash_bang_flash_hint" = "Tik zodra je de bliksem ziet";
+"native_map_flash_bang_thunder" = "Donder?";
+"native_map_flash_bang_thunder_hint" = "Tik zodra je de donder hoort";
+"native_map_flash_bang_about" = "Ongeveer %@ km weg";
+"native_map_flash_bang_counted" = "%@ s geteld";
+"native_map_flash_bang_counted_about" = "%1$@ s geteld: ongeveer %2$@ km";
+"native_map_flash_bang_searching" = "Inslag zoeken in de live-gegevens …";
+"native_map_flash_bang_matched" = "Inslag om %1$@, %2$@";
+"native_map_flash_bang_close" = "nauwe match";
+"native_map_flash_bang_fair" = "redelijke match";
+"native_map_flash_bang_loose" = "ruwe match";
+"native_map_flash_bang_no_match" = "Geen inslag in de gegevens past: het netwerk vangt ze niet allemaal.";
+"native_map_flash_bang_too_far" = "Geen donder binnen een minuut: te ver weg om te horen.";
+"native_map_flash_bang_shelter" = "De bliksem kan je hier raken: ga nu naar binnen.";
+"native_map_flash_bang_no_location" = "Je locatie is nodig: zet de locatieknop aan.";
+"native_map_flash_bang_show" = "Toon op kaart";
+"native_map_flash_bang_strike" = "Gevonden inslag";

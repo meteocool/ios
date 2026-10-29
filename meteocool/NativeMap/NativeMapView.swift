@@ -129,7 +129,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             storms?.store.selection.flatMap(StormSelect.motionOf).map { StormMotion(speedMs: $0.speedMs, headingDeg: $0.headingDeg) }
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
         return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), sites, storms, CloudHints(), PointFeature(),
-                RadarWash(), ThreeDMap()]
+                FlashToBang(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
