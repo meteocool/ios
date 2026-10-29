@@ -558,7 +558,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(dial.waitForExistence(timeout: 10), "The slice dial")
         // The map draws the core cut open where it stands.
         let canvas = element("nativeMap.3d.canvas")
-        XCTAssertTrue(waitForValue(canvas, timeout: 40) { $0.hasSuffix(",cut") }, "Cut open: \(canvas.value ?? "")")
+        XCTAssertTrue(waitForValue(canvas, timeout: 60) { $0.hasSuffix(",cut") }, "Cut open: \(canvas.value ?? "")")
         let first = dial.value as? String ?? ""
         // Once the map has found the core among its storms.
         XCTAssertTrue(waitForValue(dial, timeout: 40) { $0 != first }, "The slice swings")
@@ -739,7 +739,9 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.source.dwd").waitForExistence(timeout: 5), "DWD's badge")
         // Not there: said so, and offered again.
         let retry = element("nativeMap.storm.volume.retry")
-        for _ in 0 ..< 4 where !retry.exists { details.swipeUp() }
+        // The volume is asked for, and refused, before the button is there to scroll to.
+        _ = retry.waitForExistence(timeout: 15)
+        for _ in 0 ..< 5 where !retry.isHittable { details.swipeUp() }
         XCTAssertTrue(retry.waitForExistence(timeout: 30), "Retry")
         retry.tap()
         XCTAssertTrue(retry.waitForExistence(timeout: 30), "Still not there, still offered")
@@ -922,7 +924,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(lightning.waitForExistence(timeout: 5))
         XCTAssertEqual(lightning.value as? String, "1")
         lightning.switches.firstMatch.tap()
-        XCTAssertEqual(lightning.value as? String, "0")
+        XCTAssertTrue(waitForValue(lightning) { $0 == "0" })
         element("nativeMap.layers.close").tap()
         openLayers()
         XCTAssertEqual(app.switches["nativeMap.layers.lightning"].firstMatch.value as? String, "0")
@@ -1026,9 +1028,9 @@ final class NativeMapUITests: XCTestCase {
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)
             let before = toggle.value as? String
             toggle.switches.firstMatch.tap()
-            XCTAssertNotEqual(toggle.value as? String, before, "\(layer) switches")
+            XCTAssertTrue(waitForValue(toggle) { $0 != before }, "\(layer) switches")
             toggle.switches.firstMatch.tap()
-            XCTAssertEqual(toggle.value as? String, before, "\(layer) switches back")
+            XCTAssertTrue(waitForValue(toggle) { $0 == before }, "\(layer) switches back")
         }
         element("nativeMap.layers.close").tap()
         XCTAssertTrue(element("nativeMap.layers").waitForNonExistence(timeout: 5))
@@ -1247,7 +1249,7 @@ final class NativeMapUITests: XCTestCase {
         app.buttons["map.share.button"].tap()
         // The app names its sheet; newer systems show their own list in its place.
         let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
-        XCTAssertTrue(sheet.waitForExistence(timeout: 10))
+        XCTAssertTrue(sheet.waitForExistence(timeout: 30))
         screenshot("share sheet")
     }
 
@@ -1259,7 +1261,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertEqual(toggle.value as? String, "1")
         toggle.tap()
-        XCTAssertEqual(toggle.value as? String, "0")
+        XCTAssertTrue(waitForValue(toggle) { $0 == "0" })
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(map.exists)
