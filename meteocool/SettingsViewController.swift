@@ -346,8 +346,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         switcherCell = tableView.dequeueReusableCell(withIdentifier: "switcherCell") as? SwitcherTableViewCell
         textCell = tableView.dequeueReusableCell(withIdentifier: "textCell") as? TextTableViewCell
         linkCell = tableView.dequeueReusableCell(withIdentifier: "linkCell") as? LinkTableViewCell
-        // Only the licences row has a disclosure arrow; a reused cell must not keep it.
-        linkCell?.accessoryType = .none
         
         //returnCell = (textCell)!
         switch indexPath.section{
@@ -461,7 +459,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         case 5: //Open-source licences, on their own page
             linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
             linkCell.linkValueLable.text = ""
-            linkCell.accessoryType = .disclosureIndicator
             return linkCell
         default:
             print("This should not happen...")
