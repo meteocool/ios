@@ -108,11 +108,17 @@ struct OpenedStorm: Equatable {
     var cell: String?
     var volume: String?
     var headingDeg: Double?
+    /// Where a box of sky stands, for its successor once a newer scan has
+    /// replaced it.
+    var latitude: Double?
+    var longitude: Double?
 
     init(_ selection: StormSelection) {
         cell = selection.cell?.code
         volume = selection.cell?.volume?.path ?? selection.volume?.path
         headingDeg = StormSelect.headingOf(selection)
+        latitude = selection.volume?.lat
+        longitude = selection.volume?.lon
     }
 
     /// The same storm, perhaps with a newer heading.

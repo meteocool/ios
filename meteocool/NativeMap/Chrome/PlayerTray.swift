@@ -32,6 +32,10 @@ struct PlayerTray: View {
     }
 
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
+    /// The head's width, for the title's share of it.
+    @State private var headWidth: CGFloat = 0
+    /// The title's font size, scaled: its cap is 16 of these.
+    @ScaledMetric(relativeTo: .footnote) private var em: CGFloat = 13
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -62,16 +66,22 @@ struct PlayerTray: View {
     }
 
     /// The place the bars are for, a way back to your own, and the product.
+    /// The title has its own width up to a cap, whatever the pills do: where
+    /// they are more than the head holds they scroll sideways, rather than
+    /// being cut short or cutting the place name shorter.
     private var head: some View {
         HStack(spacing: 10) {
             if let title = model.trayTitle {
-                Text(title)
-                    .scaledFont(13, weight: .bold, relativeTo: .footnote)
-                    .tracking(-0.13)
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .accessibilityIdentifier("nativeMap.title")
+                CappedWidth(width: min(headWidth * 0.4, 16 * em)) {
+                    Text(title)
+                        .scaledFont(13, weight: .bold, relativeTo: .footnote)
+                        .tracking(-0.13)
+                        .foregroundStyle(theme.text)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .accessibilityIdentifier("nativeMap.title")
+                }
+                .layoutPriority(1)
             }
             if model.point != nil, model.userLocation != nil {
                 Button(action: actions.showForMyLocation) {
@@ -84,17 +94,20 @@ struct PlayerTray: View {
                         .background(theme.accentTint, in: Capsule())
                 }
                 .buttonStyle(PressScale())
+                .fixedSize()
+                .layoutPriority(2)
                 .accessibilityIdentifier("nativeMap.showForMyLocation")
             }
-            Spacer(minLength: 0)
-            // DWD's weather stations, on or off: first, so the pills after it never move it.
-            StationTogglePill(on: model.layersOn.contains(.stations), theme: theme, toggle: actions.toggleStations)
-            // What the storm marks are, while they are drawn.
-            if model.layersOn.contains(.storms) {
-                StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
-                             theme: theme, open: actions.openStormKey)
+            PillScroller {
+                // DWD's weather stations, on or off: first, so the pills after it never move it.
+                StationTogglePill(on: model.layersOn.contains(.stations), theme: theme, toggle: actions.toggleStations)
+                // What the storm marks are, while they are drawn.
+                if model.layersOn.contains(.storms) {
+                    StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
+                                 theme: theme, open: actions.openStormKey)
+                }
+                ProductPill(player: player, theme: theme, site: site.mode.map { _ in site.view }, open: actions.openProducts)
             }
-            ProductPill(player: player, theme: theme, site: site.mode.map { _ in site.view }, open: actions.openProducts)
             if model.point != nil, model.userLocation == nil {
                 Button(action: actions.showForMyLocation) {
                     Image(systemName: "xmark")
@@ -110,6 +123,59 @@ struct PlayerTray: View {
         }
         .padding(.leading, 8)
         .frame(minHeight: 28)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { headWidth = $0 }
+    }
+}
+
+/// Its one view offered no more than `width`, and as wide as it then is
+/// (core's `max-width` on the title, which a frame cannot say: a frame with
+/// a maximum fills it).
+private struct CappedWidth: Layout {
+    let width: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let offered = min(proposal.width ?? .infinity, width)
+        return subviews.first?.sizeThatFits(ProposedViewSize(width: offered, height: proposal.height)) ?? .zero
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
+}
+
+/// The head's pills, whole, scrolling sideways when they are more than the
+/// head holds (core's `.product-pill`); an edge with more beyond it fades
+/// out (`fadeEdges`).
+private struct PillScroller<Content: View>: View {
+    @ViewBuilder let content: Content
+    @State private var more = Edges()
+
+    private struct Edges: Equatable {
+        var leading = false
+        var trailing = false
+    }
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) { content }
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .onScrollGeometryChange(for: Edges.self) { geometry in
+            let x = geometry.contentOffset.x + geometry.contentInsets.leading
+            return Edges(leading: x > 1, trailing: x + geometry.containerSize.width < geometry.contentSize.width - 1)
+        } action: { _, edges in
+            more = edges
+        }
+        .mask {
+            HStack(spacing: 0) {
+                LinearGradient(colors: [more.leading ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 16)
+                Color.black
+                LinearGradient(colors: [.black, more.trailing ? .clear : .black], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 16)
+            }
+        }
     }
 }
 

@@ -574,16 +574,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func presentLayers() {
-        let snapshots = LayerSnapshots()
-        let region = mapView.region
-        snapshots.take(region: region, size: CGSize(width: 360, height: 180), dark: model.isDark)
         let fromStart = Binding<Bool>(
             get: { [weak self] in self?.defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false },
             set: { [weak self] in
                 self?.defaults?.set($0, forKey: "nativeMap.playbackFromStart")
                 self?.applySettings()
             })
-        let view = LayerSwitcherView(model: model, snapshots: snapshots,
+        let view = LayerSwitcherView(model: model,
                                      isOn: { [weak self] in self?.isOn($0) ?? $0.defaultOn },
                                      setOn: { [weak self] in self?.setOn($0, $1) },
                                      fromStart: fromStart,

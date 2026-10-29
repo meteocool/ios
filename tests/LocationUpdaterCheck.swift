@@ -15,6 +15,26 @@ import CoreLocation
     func registrationFinished(success: Bool, origin: URL) { precondition(success) }
 }
 @MainActor let SharedNotificationManager = NotificationState()
+@MainActor final class WidgetsStub {
+    func moved(to location: CLLocation) {}
+}
+@MainActor let SharedWidgets = WidgetsStub()
+@MainActor final class LiveActivitiesStub {
+    @discardableResult func refresh(force: Bool = false) -> Task<Void, Never>? { nil }
+}
+@MainActor let SharedLiveActivities = LiveActivitiesStub()
+@MainActor enum LocationPermissionWarning {
+    static var reported: String { "always" }
+}
+/// The app's session (`Shared/UserAgent.swift`), through this check's
+/// transport: `URLProtocol.registerClass` reaches only `URLSession.shared`.
+extension URLSession {
+    static let meteocool: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.protocolClasses = [DelayedTransport.self] + (configuration.protocolClasses ?? [])
+        return URLSession(configuration: configuration)
+    }()
+}
 
 final class LocationManagerSpy: CLLocationManager {
     var stops = 0
