@@ -868,7 +868,21 @@ final class meteocoolUITests: XCTestCase {
         screenshot("Share sheet")
     }
 
-    /// The storm log from Settings, against the recorder's made-up log: the
+    /// The bell beside the logo opens the past alerts; a fresh simulator has none.
+    @MainActor
+    func testPastAlertsOpenFromTheBell() throws {
+        app.launchEnvironment["MC_TEST_MAP"] = "1"
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        tap("map.alerts")
+        XCTAssertTrue(app.navigationBars["Past Alerts"].waitForExistence(timeout: 10), "The bell opens the past alerts")
+        XCTAssertTrue(app.staticTexts["No Alerts Yet"].exists || app.tables["pastAlerts"].exists, "Empty, or the list")
+        screenshot("Past alerts")
+        app.navigationBars.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["map.alerts"].waitForExistence(timeout: 5), "Back on the map")
+    }
+
+    /// The storm log from the map, against the recorder's made-up log: the
     /// list, an entry on its map with what the storm brought, the share sheet,
     /// and wiping it.
     @MainActor

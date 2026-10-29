@@ -50,6 +50,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     let stormLogButton = UIButton(type: .system)
     /// The pill's glass element (iOS 26) or blur capsule (before), hidden with the logo.
     private var stormLogBackdrop: UIView?
+    /// Opens the past alerts, the rain alerts this phone received: the bell beside the logbook.
+    let alertsButton = UIButton(type: .system)
+    private var alertsBackdrop: UIView?
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
     /// glass column's elements, hidden with the rest of it.
     private var shareButtonBackdrop: UIView?
@@ -165,6 +168,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         configureShareButton()
         configureARButton()
         configureStormLogButton()
+        configureAlertsButton()
         if #available(iOS 26.0, *) {
             applyLiquidGlass()
         } else {
@@ -431,6 +435,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     @objc func didBecomeActive(){
+        refreshAlertsBadge()
         if let nativeMap {
             nativeMap.start()
             return
@@ -767,7 +772,13 @@ extension ViewController {
         pill.contentView.addSubview(stormLogButton)
         stormLogBackdrop = pill
 
-        let row = UIStackView(arrangedSubviews: [glass, pill])
+        let bell = LiquidGlass.element()
+        alertsButton.translatesAutoresizingMaskIntoConstraints = false
+        alertsButton.tintColor = .label
+        bell.contentView.addSubview(alertsButton)
+        alertsBackdrop = bell
+
+        let row = UIStackView(arrangedSubviews: [glass, pill, bell])
         row.axis = .horizontal
         row.spacing = 8
         row.translatesAutoresizingMaskIntoConstraints = false
@@ -778,7 +789,7 @@ extension ViewController {
         NSLayoutConstraint.activate([
             glass.widthAnchor.constraint(equalToConstant: 52),
             glass.heightAnchor.constraint(equalToConstant: 52),
-            pill.widthAnchor.constraint(equalToConstant: 72),
+            pill.widthAnchor.constraint(equalToConstant: 52),
             pill.heightAnchor.constraint(equalToConstant: 52),
             row.topAnchor.constraint(equalTo: container.contentView.topAnchor),
             row.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor),
@@ -794,6 +805,12 @@ extension ViewController {
             stormLogButton.trailingAnchor.constraint(equalTo: pill.contentView.trailingAnchor),
             stormLogButton.topAnchor.constraint(equalTo: pill.contentView.topAnchor),
             stormLogButton.bottomAnchor.constraint(equalTo: pill.contentView.bottomAnchor),
+            bell.widthAnchor.constraint(equalToConstant: 52),
+            bell.heightAnchor.constraint(equalToConstant: 52),
+            alertsButton.leadingAnchor.constraint(equalTo: bell.contentView.leadingAnchor),
+            alertsButton.trailingAnchor.constraint(equalTo: bell.contentView.trailingAnchor),
+            alertsButton.topAnchor.constraint(equalTo: bell.contentView.topAnchor),
+            alertsButton.bottomAnchor.constraint(equalTo: bell.contentView.bottomAnchor),
         ])
     }
 
@@ -841,6 +858,7 @@ extension ViewController {
         logo.isHidden = hidden
         glassLogo?.isHidden = hidden
         stormLogBackdrop?.isHidden = hidden
+        alertsBackdrop?.isHidden = hidden
     }
 
 }
@@ -953,37 +971,81 @@ extension ViewController {
 extension ViewController {
     /// The pill beside the logo: a logbook, opening the storms that passed the phone.
     fileprivate func configureStormLogButton() {
-        stormLogButton.setImage(UIImage(systemName: "book.closed", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
+        stormLogButton.setImage(UIImage(systemName: "book", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
         stormLogButton.accessibilityLabel = NSLocalizedString("storm_log_title", value: "Storm Log", comment: "")
         stormLogButton.accessibilityIdentifier = "map.stormLog"
         stormLogButton.addAction(UIAction { [weak self] _ in self?.openStormLog() }, for: .touchUpInside)
     }
 
-    /// Before iOS 26 the pill is a blurred capsule beside the logo artwork.
+    /// Before iOS 26 the logbook and the bell are blurred discs beside the logo artwork.
     fileprivate func installClassicStormLogButton() {
-        let capsule = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
-        capsule.layer.cornerRadius = 22
-        capsule.clipsToBounds = true
-        capsule.translatesAutoresizingMaskIntoConstraints = false
-        stormLogButton.translatesAutoresizingMaskIntoConstraints = false
-        stormLogButton.tintColor = .label
-        capsule.contentView.addSubview(stormLogButton)
-        view.addSubview(capsule)
-        stormLogBackdrop = capsule
+        stormLogBackdrop = classicDisc(for: stormLogButton, rightOf: logo)
+        alertsBackdrop = classicDisc(for: alertsButton, rightOf: stormLogBackdrop!)
+    }
+
+    private func classicDisc(for button: UIButton, rightOf anchor: UIView) -> UIView {
+        let disc = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+        disc.layer.cornerRadius = 22
+        disc.clipsToBounds = true
+        disc.translatesAutoresizingMaskIntoConstraints = false
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.tintColor = .label
+        disc.contentView.addSubview(button)
+        view.addSubview(disc)
         NSLayoutConstraint.activate([
-            capsule.widthAnchor.constraint(equalToConstant: 64),
-            capsule.heightAnchor.constraint(equalToConstant: 44),
-            capsule.leadingAnchor.constraint(equalTo: logo.trailingAnchor, constant: 8),
-            capsule.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
-            stormLogButton.leadingAnchor.constraint(equalTo: capsule.contentView.leadingAnchor),
-            stormLogButton.trailingAnchor.constraint(equalTo: capsule.contentView.trailingAnchor),
-            stormLogButton.topAnchor.constraint(equalTo: capsule.contentView.topAnchor),
-            stormLogButton.bottomAnchor.constraint(equalTo: capsule.contentView.bottomAnchor),
+            disc.widthAnchor.constraint(equalToConstant: 44),
+            disc.heightAnchor.constraint(equalToConstant: 44),
+            disc.leadingAnchor.constraint(equalTo: anchor.trailingAnchor, constant: 8),
+            disc.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
+            button.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
+            button.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
+            button.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
         ])
+        return disc
     }
 
     func openStormLog() {
         present(UINavigationController(rootViewController: StormLogViewController()), animated: true)
+    }
+
+    /// The bell: a red dot on it for alerts since the list was last opened,
+    /// as Better Rain Alarm's bell shows them.
+    fileprivate func configureAlertsButton() {
+        alertsButton.accessibilityLabel = NSLocalizedString("past_alerts_title", value: "Past Alerts", comment: "")
+        alertsButton.accessibilityIdentifier = "map.alerts"
+        alertsButton.addAction(UIAction { [weak self] _ in self?.openPastAlerts() }, for: .touchUpInside)
+        showAlertsBadge(false)
+    }
+
+    private func showAlertsBadge(_ unseen: Bool) {
+        let large = UIImage.SymbolConfiguration(scale: .large)
+        let image = unseen
+            ? UIImage(systemName: "bell.badge", withConfiguration: large.applying(UIImage.SymbolConfiguration(paletteColors: [.systemRed, .label])))
+            : UIImage(systemName: "bell", withConfiguration: large)
+        alertsButton.setImage(image, for: .normal)
+        alertsButton.accessibilityValue = unseen ? NSLocalizedString("past_alerts_new", value: "New", comment: "") : nil
+    }
+
+    /// Reads the list again, with the delivered alerts, and draws the dot.
+    func refreshAlertsBadge() {
+        Task { [weak self] in
+            let unseen = await PastAlertsViewController.unseen()
+            self?.showAlertsBadge(unseen > 0)
+        }
+    }
+
+    func openPastAlerts() {
+        let list = UINavigationController(rootViewController: PastAlertsViewController())
+        list.presentationController?.delegate = self
+        present(list, animated: true)
+    }
+}
+
+extension ViewController: UIAdaptivePresentationControllerDelegate {
+    /// The list marks the alerts seen; the dot goes once it is put away.
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        refreshAlertsBadge()
     }
 }
 

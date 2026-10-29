@@ -17,6 +17,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     private static let previewDeadline: TimeInterval = 10
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        // Kept for the list of past alerts before the alert is shown (Shared/AlertHistory.swift).
+        AlertHistory.add([ReceivedAlert(request: request, received: Date())])
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else {
             contentHandler(request.content)
             return
