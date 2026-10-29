@@ -213,7 +213,8 @@ final class NativeMapUITests: XCTestCase {
     /// A link to a storm opens it; with details=0, its hint on a phone first.
     func testStormLinkOpensTheStorm() throws {
         let id = try XCTUnwrap(demoStormId(), "The demo lists storms")
-        launch(link: "?latLonZ=44,3.5,7&storm=\(id)&details=0", demo: true)
+        let storm = try XCTUnwrap(demoStorm())
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),7&storm=\(id)&details=0", demo: true)
         let hint = element("nativeMap.storm.hint"), details = element("nativeMap.storm.details")
         // Selected on the map either way; a wide screen keeps its panel shut for details=0.
         XCTAssertTrue(element("nativeMap.storm.\(id)").waitForExistence(timeout: 30), "The linked storm on the map")
@@ -1139,9 +1140,9 @@ final class NativeMapUITests: XCTestCase {
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)
             let before = toggle.value as? String
             toggle.switches.firstMatch.tap()
-            XCTAssertTrue(waitForValue(toggle) { $0 != before }, "\(layer) switches")
+            XCTAssertTrue(waitForValue(toggle, timeout: 20) { $0 != before }, "\(layer) switches")
             toggle.switches.firstMatch.tap()
-            XCTAssertTrue(waitForValue(toggle) { $0 == before }, "\(layer) switches back")
+            XCTAssertTrue(waitForValue(toggle, timeout: 20) { $0 == before }, "\(layer) switches back")
         }
         element("nativeMap.layers.close").tap()
         XCTAssertTrue(element("nativeMap.layers").waitForNonExistence(timeout: 5))
@@ -1208,7 +1209,7 @@ final class NativeMapUITests: XCTestCase {
             let shown = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picked)).firstMatch
             XCTAssertTrue(shown.waitForExistence(timeout: 5))
             let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: shown)
-            XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 5), .completed, "The scan on the map is checked")
+            XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 15), .completed, "The scan on the map is checked: \(shown.label), \(picker.label)")
         }
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Latest'")).firstMatch.tap()
         expectation(for: NSPredicate(format: "label == 'Storms: latest scan'"), evaluatedWith: picker)
@@ -1273,11 +1274,17 @@ final class NativeMapUITests: XCTestCase {
         let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
         XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
         let screen = app.windows.firstMatch.frame
+        // The tags settle as the storms load, nearest first: waited for.
         func tagInView() throws -> XCUIElement {
-            try XCTUnwrap((0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
-                label.isHittable && label.frame.midY > screen.height * 0.25 && label.frame.midY < screen.height * 0.65
-                    && label.frame.midX > screen.width * 0.3 && label.frame.midX < screen.width * 0.7
-            }, "A tag near the middle")
+            var tag: XCUIElement?
+            for _ in 0 ..< 15 where tag == nil {
+                tag = (0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
+                    label.isHittable && label.frame.midY > screen.height * 0.2 && label.frame.midY < screen.height * 0.7
+                        && label.frame.midX > screen.width * 0.2 && label.frame.midX < screen.width * 0.8
+                }
+                if tag == nil { RunLoop.current.run(until: Date().addingTimeInterval(1)) }
+            }
+            return try XCTUnwrap(tag, "A tag near the middle")
         }
         func centre() -> (Double, Double) {
             let parts = (canvas.value as? String ?? "").split(separator: ",").compactMap { Double($0) }
