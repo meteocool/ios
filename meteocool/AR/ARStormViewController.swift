@@ -48,6 +48,12 @@ final class ARStormViewController: UIViewController, LocationObserver {
 
     private let target: StormTarget?
     private var targetResolved = false
+    /// The marked place: from a hold on the map, or a cloud marked here.
+    private var marker: ARMarker?
+    private var markerPlace: String?
+    private var markerLabel: ARMarkerLabelModel?
+    /// The top of the marker's pole this frame, where its arrow points.
+    private var markerTop: SIMD3<Double>?
     private let isPreview: Bool
 
     private let metalView = MTKView()
@@ -81,11 +87,12 @@ final class ARStormViewController: UIViewController, LocationObserver {
     // Written once in viewDidLoad, read once in deinit.
     nonisolated(unsafe) private var thermalObserver: NSObjectProtocol?
 
-    init(target: StormTarget? = nil) {
+    init(target: StormTarget? = nil, marker: ARMarker? = nil) {
         self.target = target
         isPreview = !ARKitCamera.isSupported || ProcessInfo.processInfo.arguments.contains("--ar-preview")
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .fullScreen
+        setMarker(marker)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -121,6 +128,11 @@ final class ARStormViewController: UIViewController, LocationObserver {
         labelLayer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         labelLayer.onSelect = { [weak self] key in self?.select(key, toggle: true) }
         labelLayer.onOpen = { [weak self] key in self?.openOnMap(key) }
+        labelLayer.onOpenMarker = { [weak self] in self?.openMarkerOnMap() }
+        labelLayer.onRemoveMarker = { [weak self] in
+            self?.setMarker(nil)
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
         view.addSubview(labelLayer)
 
         installHUD()
@@ -162,6 +174,7 @@ final class ARStormViewController: UIViewController, LocationObserver {
             arCamera?.run()
         }
         acquireLocation()
+        placePreviewIfNeeded()
         metalView.isPaused = false
         refreshBanner()
     }
@@ -284,7 +297,23 @@ final class ARStormViewController: UIViewController, LocationObserver {
     /// it walks them out to the strongest storm (or the one the map asked
     /// for), 28 km south-south-west of it, looking at it.
     private func placePreviewIfNeeded() {
-        guard isPreview, previewPlacement == nil, feed.status == .ready else { return }
+        guard isPreview, previewPlacement == nil else { return }
+        // A point from the map, out of range from here: stand 20 km from it, looking at it.
+        if target == nil, let marker, marker.source == .map,
+           scene.map({ Geo.distanceBearing(fromLat: $0.frame.latitude, lon: $0.frame.longitude,
+                                           toLat: marker.latitude, lon: marker.longitude).metres > 30_000 }) ?? true {
+            let standing = Geo.destination(lat: marker.latitude, lon: marker.longitude, bearing: 200, metres: 20_000)
+            scene = StormScene(frame: GeoFrame(latitude: standing.lat, longitude: standing.lon, altitude: 500))
+            applySettingsToScene()
+            feed.viewer = standing
+            preview.yaw = 20
+            preview.pitch = 5
+            previewPlacement = NSLocalizedString("ar_preview_marker", comment: "")
+            labelsBuiltAt = .distantPast
+            refreshBanner()
+            return
+        }
+        guard feed.status == .ready else { return }
         if scene != nil, !feed.nearbyEntries.isEmpty { return }
         let targeted = feed.entries.first { entry in
             switch target {
@@ -362,7 +391,15 @@ final class ARStormViewController: UIViewController, LocationObserver {
             self?.scene?.extrapolate = on
             self?.labelsBuiltAt = .distantPast
         }
-        hud.onArmSunFix = { [weak self] in self?.hud.sunFixArmed = true }
+        hud.onArmSunFix = { [weak self] in
+            self?.hud.markArmed = false
+            self?.hud.sunFixArmed = true
+        }
+        hud.onArmMark = { [weak self] in
+            guard let self else { return }
+            self.hud.sunFixArmed = false
+            self.hud.markArmed.toggle()
+        }
         hud.onResetAlignment = { [weak self] in
             self?.alignment.reset()
             self?.refreshBanner()
@@ -508,7 +545,9 @@ final class ARStormViewController: UIViewController, LocationObserver {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
         pan.maximumNumberOfTouches = 1
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:)))
-        [tap, pan, pinch].forEach(metalView.addGestureRecognizer)
+        // A hold on the sky marks what is there.
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
+        [tap, pan, pinch, hold].forEach(metalView.addGestureRecognizer)
     }
 
     @objc private func tapped(_ recognizer: UITapGestureRecognizer) {
@@ -519,7 +558,56 @@ final class ARStormViewController: UIViewController, LocationObserver {
             sunFix(at: point, pose: pose, scene: scene)
             return
         }
+        if hud.markArmed {
+            mark(at: point)
+            return
+        }
         select(scene.pick(point, pose: pose, targets: drawn)?.key, toggle: false)
+    }
+
+    @objc private func held(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began, !hud.sunFixArmed else { return }
+        mark(at: recognizer.location(in: metalView))
+    }
+
+    /// Marks what is under a screen point: the echo the radar sees there, or
+    /// a cloud it does not, at the usual cumulus base, or the ground.
+    private func mark(at point: CGPoint) {
+        hud.markArmed = false
+        guard let pose = lastPose, let scene else { return }
+        guard let marked = scene.mark(point, pose: pose, targets: drawn) else {
+            showTransient(NSLocalizedString("ar_mark_missed", comment: ""))
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            return
+        }
+        setMarker(marked)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func setMarker(_ marker: ARMarker?) {
+        self.marker = marker
+        markerPlace = nil
+        markerLabel = nil
+        markerTop = nil
+        labelsBuiltAt = .distantPast
+        guard let marker else { return }
+        let language = CoreStrings.language
+        Task { [weak self] in
+            let name = await ReverseGeocoder.shared.name(latitude: marker.latitude, longitude: marker.longitude, language: language)
+            guard let self, self.marker == marker else { return }
+            self.markerPlace = name
+            self.labelsBuiltAt = .distantPast
+        }
+    }
+
+    /// Back to the map, on the marked place with its precipitation open.
+    private func openMarkerOnMap() {
+        guard let marker else { return }
+        let onOpen = onOpenOnMap, onClose = onClose
+        dismiss(animated: true) {
+            onClose?()
+            onOpen?(marker.mapSearch)
+        }
     }
 
     private func sunFix(at point: CGPoint, pose: CameraPose, scene: StormScene) {
@@ -639,6 +727,11 @@ final class ARStormViewController: UIViewController, LocationObserver {
                                                system: storm.entry.coarse == true ? storm.entry.path : storm.stormKey)
                 }
             lines = scene.lines(groups: groups, feed: feed, pose: pose)
+            if let marker {
+                let pole = scene.markerPole(marker)
+                lines.over += pole.lines
+                markerTop = pole.top
+            }
         }
         renderer.retain(only: Set(feed.volumes.keys))
         renderer.draw(StormRenderer.Frame(background: background, pose: pose, storms: storms,
@@ -678,11 +771,13 @@ final class ARStormViewController: UIViewController, LocationObserver {
         guard let scene else {
             labelLayer.layout([])
             labelLayer.layoutTicks([])
+            labelLayer.layoutMarker(nil, tip: nil)
             return
         }
         let now = Date()
         if now.timeIntervalSince(labelsBuiltAt) > 0.5 {
             labelModels = Dictionary(uniqueKeysWithValues: groups.map { ($0.key, scene.label(for: $0, feed: feed)) })
+            markerLabel = marker.map { scene.markerLabel($0, place: markerPlace) }
             labelsBuiltAt = now
         }
         // One tag per storm, however many tiles it covers.
@@ -693,6 +788,8 @@ final class ARStormViewController: UIViewController, LocationObserver {
         labelLayer.layoutTicks(selected.map { group in
             scene.heightTicks(for: group, pose: pose).map { ($0.km, pose.project($0.point)) }
         } ?? [])
+        // Over the storms' tags: it is what the reader came to find.
+        labelLayer.layoutMarker(markerLabel, tip: markerTop.flatMap { pose.project(SIMD3<Float>($0)) })
 
         guard now.timeIntervalSince(hudUpdatedAt) > 0.1 else { return }
         hudUpdatedAt = now
@@ -701,13 +798,23 @@ final class ARStormViewController: UIViewController, LocationObserver {
         if now.timeIntervalSince(labelsBuiltAt) < 0.11 { refreshBanner() }
     }
 
-    /// Which way to turn to bring the selected storm into view, while it is not.
+    /// Which way to turn to bring the selected storm into view, while it is
+    /// not; without one, the marker.
     private func guidance(pose: CameraPose, scene: StormScene, selected: StormGroup?) -> ARHUDModel.Guidance? {
-        guard let selected else { return nil }
-        if let point = pose.project(SIMD3<Float>(selected.anchor)), metalView.bounds.insetBy(dx: 20, dy: 20).contains(point) {
+        let anchor: SIMD3<Double>, bearing: Double
+        if let selected {
+            (anchor, bearing) = (selected.anchor, selected.bearing)
+        } else if let marker, let markerTop {
+            anchor = markerTop
+            bearing = Geo.distanceBearing(fromLat: scene.frame.latitude, lon: scene.frame.longitude,
+                                          toLat: marker.latitude, lon: marker.longitude).bearing
+        } else {
             return nil
         }
-        let degrees = Geo.angleDifference(selected.bearing, hud.heading)
+        if let point = pose.project(SIMD3<Float>(anchor)), metalView.bounds.insetBy(dx: 20, dy: 20).contains(point) {
+            return nil
+        }
+        let degrees = Geo.angleDifference(bearing, hud.heading)
         guard abs(degrees) > pose.horizontalFOV / 2 - 5 else { return nil }
         let format = NSLocalizedString(degrees < 0 ? "ar_turn_left" : "ar_turn_right", comment: "")
         return ARHUDModel.Guidance(degrees: degrees, text: String(format: format, abs(degrees)))

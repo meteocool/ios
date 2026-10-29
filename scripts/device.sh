@@ -20,7 +20,10 @@ DEVICE="${1:-}"
 CONFIG="${CONFIGURATION:-Debug}"
 if [ -z "$DEVICE" ]; then
     step "Looking for a connected device"
-    DEVICE="$(xcrun devicectl list devices 2>/dev/null | awk '/connected/ {print $(NF-1); exit}')"
+    # Newer devicectl lists simulators too, and adds a Reality column:
+    # the first physical device that is connected, or paired over Wi-Fi.
+    DEVICE="$(xcrun devicectl list devices 2>/dev/null | grep -v 'simulated' | grep -E 'connected|available' \
+        | grep -oE '[0-9A-F]{8}-[0-9A-F]{16}|[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1)"
     [ -n "$DEVICE" ] || fail "no connected device — run: xcrun devicectl list devices"
 fi
 info "device $DEVICE"
