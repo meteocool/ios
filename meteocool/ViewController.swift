@@ -1006,7 +1006,7 @@ extension ViewController {
     }
 
     func openStormLog() {
-        present(UINavigationController(rootViewController: StormLogViewController()), animated: true)
+        StormLogViewController.open(from: self)
     }
 
     /// The bell: a red dot on it for alerts since the list was last opened,

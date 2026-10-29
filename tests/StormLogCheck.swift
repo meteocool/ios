@@ -1,7 +1,8 @@
 import Foundation
 
 // Checks StormLogRules: decoding ng's /v4/storm-log, the request, the numbers,
-// the severity colours and the share link. Compiled with StormLogRules.swift alone.
+// the severity colours, the share link and the list's orders; and that every
+// language has the storm log's strings. Compiled with StormLogRules.swift alone.
 
 @inline(__always) func check(_ condition: Bool, _ message: String, line: Int = #line) {
     if !condition {
@@ -103,6 +104,62 @@ enum StormLogCheck {
                                 topKm: nil, vilKgM2: nil, severity: 0, hail: false, meso: false, strikes: 0,
                                 track: StormTrack(coordinates: [], times: []), shareUrl: "https://meteocool.com/")
         check(StormLogRules.shareURL(bare, mapURL: URL(string: "https://app.meteocool.com")!) == nil, "a link without a view is no link")
+
+        // How long it stayed near: a finished one in hours and minutes, none while it is near.
+        check(StormLogRules.duration(first) == 35 * 60, "35 minutes near")
+        check(StormLogRules.duration(second, now: second.startedAt.addingTimeInterval(600)) == 600, "an open one runs until now")
+        let length = StormLogRules.durationText(first, locale: english)
+        check(length?.contains("35") == true && length?.contains("min") == true, "a passage's length: \(length ?? "nil")")
+        check(StormLogRules.durationText(second, locale: english) == nil, "no length while it is near")
+
+        // The row's time: the clock today, the day this year, the year before.
+        let sameDay = StormLogRules.shortWhen(first, now: first.startedAt.addingTimeInterval(3600), timeZone: berlin, locale: english)
+        check(sameDay == "15:20", "today, the clock: \(sameDay)")
+        let thisYear = StormLogRules.shortWhen(first, now: first.startedAt.addingTimeInterval(5 * 86400), timeZone: berlin, locale: english)
+        check(thisYear.contains("28") && thisYear.contains("Oct") && !thisYear.contains("2026"), "this year, the day: \(thisYear)")
+        let lastYear = StormLogRules.shortWhen(first, now: first.startedAt.addingTimeInterval(100 * 86400), timeZone: berlin, locale: english)
+        check(lastYear.contains("2026"), "another year names it: \(lastYear)")
+
+        // Sorting: each order, ties and the rest newest first.
+        func passage(_ id: String, start: TimeInterval, minutes: Double?, severity: Int, peak: Double?, over: Bool = false,
+                     km: Double, strikes: Int) -> StormPassage {
+            let started = Date(timeIntervalSince1970: 1_793_000_000 + start)
+            return StormPassage(id: id, storm: id, predecessors: [], place: nil, placeName: nil, lat: 48, lon: 11,
+                                startedAt: started, endedAt: minutes.map { started.addingTimeInterval($0 * 60) }, over: over,
+                                closestKm: km, closestAt: started, peakDbz: peak, topKm: nil, vilKgM2: nil, severity: severity,
+                                hail: false, meso: false, strikes: strikes, track: StormTrack(coordinates: [], times: []),
+                                shareUrl: "https://meteocool.com/")
+        }
+        let log3 = [
+            passage("old-strong", start: 0, minutes: 90, severity: 2, peak: 55, km: 4, strikes: 3),
+            passage("new-weak", start: 7200, minutes: 10, severity: 0, peak: nil, over: true, km: 0, strikes: 0),
+            passage("mid-strong", start: 3600, minutes: 20, severity: 2, peak: 61, km: 8, strikes: 40),
+            passage("near", start: 5400, minutes: nil, severity: 1, peak: 50, km: 0.5, strikes: 3),
+        ]
+        let now = Date(timeIntervalSince1970: 1_793_000_000 + 9000)
+        let order = { (sort: StormLogRules.Sort) in StormLogRules.sorted(log3, by: sort, now: now).map(\.id) }
+        check(order(.recent) == ["new-weak", "near", "mid-strong", "old-strong"], "newest first: \(order(.recent))")
+        check(order(.severity) == ["mid-strong", "old-strong", "near", "new-weak"], "strongest first, then the higher echo: \(order(.severity))")
+        check(order(.closest) == ["new-weak", "near", "old-strong", "mid-strong"], "overhead, then nearest: \(order(.closest))")
+        // The open one has been near for an hour by now.
+        check(order(.duration) == ["old-strong", "near", "mid-strong", "new-weak"], "longest first: \(order(.duration))")
+        check(order(.lightning) == ["mid-strong", "near", "old-strong", "new-weak"], "most strikes, ties newest first: \(order(.lightning))")
+        check(StormLogRules.Sort(rawValue: "severity") == .severity && StormLogRules.Sort(rawValue: "bogus") == nil, "a stored order")
+
+        // Every language words the whole storm log, its opt-in page included.
+        // Run from the repository's root, as scripts/check.sh does.
+        let words = NSDictionary(contentsOfFile: "meteocool/en.lproj/Localizable.strings") as? [String: String] ?? [:]
+        let keys = words.keys.filter { $0.hasPrefix("storm_log_") }
+        check(keys.count > 40 && keys.contains("storm_log_onboarding_server_text"), "English has the storm log's strings")
+        for language in ["de", "da", "et", "fi", "hr", "lt", "nb", "nl", "sv"] {
+            let strings = NSDictionary(contentsOfFile: "meteocool/\(language).lproj/Localizable.strings") as? [String: String] ?? [:]
+            let missing = keys.filter { strings[$0] == nil }.sorted()
+            check(missing.isEmpty, "\(language) lacks \(missing)")
+            for key in keys {
+                let placeholders = { (text: String) in text.filter { $0 == "%" }.count }
+                check(placeholders(strings[key]!) == placeholders(words[key]!), "\(language)'s \(key) keeps its placeholders")
+            }
+        }
 
         print("StormLogCheck passed")
     }

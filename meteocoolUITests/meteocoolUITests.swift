@@ -882,31 +882,46 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(app.buttons["map.alerts"].waitForExistence(timeout: 5), "Back on the map")
     }
 
-    /// The storm log from the map, against the recorder's made-up log: the
-    /// list, an entry on its map with what the storm brought, the share sheet,
-    /// and wiping it.
+    /// The storm log from the map, against the recorder's made-up log: off
+    /// until turned on, which wipes what the server had; then the list in
+    /// the order picked, an entry on its map with what the storm brought, the
+    /// share sheet, and wiping it.
     @MainActor
     func testStormLogListsOpensSharesAndDeletes() async throws {
-        let server = URL(string: "http://127.0.0.1:18765/")!
-        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
-        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
-        var reset = URLRequest(url: server.appendingPathComponent("requests"))
-        reset.httpMethod = "DELETE"
-        _ = try await URLSession.shared.data(for: reset)
-        app.terminate()
-        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
-        app.launch()
-        completeOnboardingWithoutPermissions()
+        let server = try await startStormLogRecorder()
+        tap("map.stormLog")
+        XCTAssertTrue(app.staticTexts["Your Area, Not Your Address"].waitForExistence(timeout: 10), "The first open asks first")
+        screenshot("Storm log onboarding")
+        tap("Turn On")
+        let empty = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'No storms yet'")).firstMatch
+        XCTAssertTrue(empty.waitForExistence(timeout: 10), "Turned on, the log starts empty")
+        let afterTurningOn = try await stormLogRequests(server)
+        XCTAssertEqual(afterTurningOn, ["DELETE"], "Turning it on wipes what was logged before")
+
+        // A storm passes: the recorder's log is back, as after a wipe a storm would be logged again.
+        try await resetRecorder(server)
+        app.navigationBars.buttons["Done"].tap()
         tap("map.stormLog")
         let list = app.tables["stormLog"]
-        XCTAssertTrue(list.cells.element(boundBy: 2).waitForExistence(timeout: 10), "The log lists its entries")
-        XCTAssertTrue(list.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cabin · '")).firstMatch.exists,
-                      "A place's entry names the place")
-        XCTAssertTrue(list.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Still near'")).firstMatch.exists,
-                      "An entry whose storm is still near says so")
+        XCTAssertTrue(list.cells.element(boundBy: 2).waitForExistence(timeout: 10), "Once on, the log opens straight away")
+        let entry = { (text: String) in list.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch }
+        XCTAssertTrue(entry("Cabin · 6.8 km away").exists, "A place's entry names the place and how close")
+        XCTAssertTrue(entry("Still near").exists, "An entry whose storm is still near says so")
+        // A row reads as one element inside its cell: the storm, the place, when and what it brought.
+        let first = { list.cells.element(boundBy: 0).descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS ' storm, '")).firstMatch.label }
+        XCTAssertTrue(first().hasPrefix("Weak storm"), "Newest first: \(first())")
         screenshot("Storm log")
 
-        list.cells.element(boundBy: 1).tap()
+        sortStormLog(by: "Severity")
+        XCTAssertTrue(waitUntil { first().hasPrefix("Strong storm") }, "Strongest first: \(first())")
+        screenshot("Storm log by severity")
+        app.navigationBars.buttons["Done"].tap()
+        tap("map.stormLog")
+        XCTAssertTrue(list.cells.element(boundBy: 2).waitForExistence(timeout: 10))
+        XCTAssertTrue(first().hasPrefix("Strong storm"), "The order is remembered: \(first())")
+
+        list.cells.element(boundBy: 0).tap()
         let detail = app.tables["stormLog.detail"]
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
         XCTAssertTrue(detail.staticTexts["Overhead"].exists)
@@ -934,12 +949,75 @@ final class meteocoolUITests: XCTestCase {
         let confirm = app.sheets.buttons["Delete Log"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Deleting asks first")
         confirm.tap()
-        let empty = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'No storms yet'")).firstMatch
         XCTAssertTrue(empty.waitForExistence(timeout: 10), "An empty log says how storms are logged")
         screenshot("Storm log, empty")
+        let afterDeleting = try await stormLogRequests(server)
+        XCTAssertEqual(afterDeleting.last, "DELETE")
+    }
+
+    /// "Not Now" leaves the log off and asks nothing of the server; turned on
+    /// and off again, it is wiped and asks again next time.
+    @MainActor
+    func testStormLogStaysOffUntilTurnedOnAndTurnsOff() async throws {
+        let server = try await startStormLogRecorder()
+        tap("map.stormLog")
+        tap("Not Now")
+        XCTAssertTrue(app.buttons["map.stormLog"].waitForExistence(timeout: 5), "Back on the map")
+        let whileOff = try await stormLogRequests(server)
+        XCTAssertEqual(whileOff, [], "Off, the log is neither read nor written")
+
+        tap("map.stormLog")
+        tap("Turn On")
+        XCTAssertTrue(app.tables["stormLog"].exists || app.staticTexts["Storm Log"].waitForExistence(timeout: 10))
+        tap("stormLog.more")
+        tap("Turn Off Storm Log")
+        let confirm = app.sheets.buttons["Turn Off"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Turning off asks first")
+        screenshot("Storm log, turning off")
+        confirm.tap()
+        XCTAssertTrue(app.buttons["map.stormLog"].waitForExistence(timeout: 10), "Turned off, the log closes")
+        let afterTurningOff = try await stormLogRequests(server)
+        XCTAssertEqual(afterTurningOff, ["DELETE", "DELETE"], "On wipes, and off wipes again")
+
+        tap("map.stormLog")
+        XCTAssertTrue(app.buttons["Turn On"].waitForExistence(timeout: 10), "Off again, it asks again")
+    }
+
+    /// Relaunches against the loopback recorder, its log full again, past onboarding.
+    @MainActor
+    private func startStormLogRecorder() async throws -> URL {
+        let server = URL(string: "http://127.0.0.1:18765/")!
+        do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
+        catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
+        try await resetRecorder(server)
+        app.terminate()
+        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        return server
+    }
+
+    private func resetRecorder(_ server: URL) async throws {
+        var reset = URLRequest(url: server.appendingPathComponent("requests"))
+        reset.httpMethod = "DELETE"
+        _ = try await URLSession.shared.data(for: reset)
+    }
+
+    /// The methods of the storm log requests the recorder saw, in order.
+    private func stormLogRequests(_ server: URL) async throws -> [String] {
         let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("requests"))
         let recorded = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["requests"] as? [[String: Any]] ?? []
-        XCTAssertTrue(recorded.contains { $0["path"] as? String == "/v4/storm-log" && $0["method"] as? String == "DELETE" })
+        return recorded.filter { $0["path"] as? String == "/v4/storm-log" }.compactMap { $0["method"] as? String }
+    }
+
+    @MainActor
+    private func sortStormLog(by order: String) {
+        tap("stormLog.more")
+        // The submenu reads "Sort By" and the order it is in.
+        let sortBy = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Sort By'")).firstMatch
+        XCTAssertTrue(sortBy.waitForExistence(timeout: 5), "The menu offers the orders")
+        sortBy.tap()
+        tap(order)
     }
 
     private func waitUntil(timeout: TimeInterval = 5, _ condition: @escaping () -> Bool) -> Bool {

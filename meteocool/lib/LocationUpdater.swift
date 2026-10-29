@@ -312,6 +312,10 @@ import CoreLocation
             "token": tokenValue,
             // Only Always follows the phone in the background (LocationPermissionWarning).
             "locationPermission": LocationPermissionWarning.reported,
+            // Whether the user turned the storm log on. ng logs every
+            // registration's storms for now and ignores this, so the app
+            // wipes the log when it is turned on or off (StormLogViewController).
+            "stormLog": userDefaults?.bool(forKey: StormLogRules.enabledKey) ?? false,
             ] as [String: Any]
 
         let origin = NetworkHelper.apiURL
