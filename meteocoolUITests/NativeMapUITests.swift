@@ -410,6 +410,19 @@ final class NativeMapUITests: XCTestCase {
             for _ in 0 ..< 4 where !variable.isHittable { element("nativeMap.compare").swipeUp() }
             variable.buttons["Temperature"].tap()
             XCTAssertTrue(variable.buttons["Temperature"].isSelected)
+            // A finger on the chart picks an hour and a model, and the
+            // tooltip says them (VoiceOver reads it, and swipes up or down
+            // through the hours).
+            let chart = element("nativeMap.compare.chart")
+            for _ in 0 ..< 4 where !chart.isHittable { element("nativeMap.compare").swipeUp() }
+            XCTAssertTrue(chart.waitForExistence(timeout: 5))
+            XCTAssertTrue((chart.value as? String ?? "").hasPrefix("Median:"), "The spread's summary: \(chart.value ?? "")")
+            chart.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            XCTAssertTrue(waitForValue(chart) { $0.contains("median") && $0.contains("spread") }, "The tooltip: \(chart.value ?? "")")
+            screenshot("model comparison, tooltip")
+            let hour = chart.value as? String
+            chart.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+            XCTAssertTrue(waitForValue(chart) { $0 != hour && $0.contains("spread") }, "A later hour: \(chart.value ?? "")")
             screenshot("model comparison, temperature")
             variable.buttons["Rainfall"].tap()
             XCTAssertTrue(variable.buttons["Rainfall"].isSelected)
@@ -1063,6 +1076,28 @@ final class NativeMapUITests: XCTestCase {
         screenshot("precipitation types")
     }
 
+    /// The lightning and precipitation types maps: each with its legend, no
+    /// point menu (core's is the radar's), and the layer switcher goes back
+    /// to the radar and its player.
+    func testOtherMapsKeepTheirLegendAndGoBackToTheRadar() {
+        for (layer, legend) in [("lightning", "Minutes"), ("precipTypes", "Rain")] {
+            launch(link: "?latLonZ=48.14,11.58,7&layer=\(layer)")
+            let tray = element("nativeMap.otherTray")
+            XCTAssertTrue(tray.waitForExistence(timeout: 20), layer)
+            XCTAssertTrue(tray.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", legend)).firstMatch.waitForExistence(timeout: 5),
+                          "\(layer)'s legend")
+            hold(0.5, 0.4)
+            XCTAssertFalse(element("nativeMap.point.menu").waitForExistence(timeout: 3), "\(layer): no point menu")
+            XCTAssertTrue(tray.exists, "\(layer): still its map")
+            openLayers()
+            element("nativeMap.layers.map.radar").tap()
+            if element("nativeMap.layers.close").exists { element("nativeMap.layers.close").tap() }
+            XCTAssertTrue(tray.waitForNonExistence(timeout: 10), "\(layer): back to the radar")
+            XCTAssertTrue(playButton.waitForExistence(timeout: 10))
+            app.terminate()
+        }
+    }
+
     func testThreeDMapAndItsModes() {
         launch(link: "?latLonZ=44,3.5,7", demo: true)
         waitForSeries()
@@ -1309,6 +1344,26 @@ final class NativeMapUITests: XCTestCase {
         // A tap on a tag still picks its storm.
         try tagInView().tap()
         XCTAssertTrue(details.waitForExistence(timeout: 5), "A tap picks the storm")
+    }
+
+    /// Tilting takes two fingers moving together, which a test cannot do;
+    /// the button beside the compass is its onscreen alternative.
+    func testThreeDTiltButtonTiltsAndFlattens() {
+        launch(link: "?latLonZ=47.5,-0.5,7&layer=cells3d&pitch=0&bearing=30", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("0,30,") })
+        let tilt = element("nativeMap.3d.tilt")
+        XCTAssertTrue(tilt.waitForExistence(timeout: 5))
+        XCTAssertEqual(tilt.label, "Tilt")
+        tilt.tap()
+        // Tilted, still facing the same way.
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("55,30,") }, "Tilted: \(canvas.value ?? "")")
+        XCTAssertTrue(waitForLabel(tilt) { $0 == "Look Straight Down" }, tilt.label)
+        screenshot("3D tilted by its button")
+        tilt.tap()
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("0,30,") }, "Straight down: \(canvas.value ?? "")")
+        XCTAssertTrue(waitForLabel(tilt) { $0 == "Tilt" }, tilt.label)
     }
 
     func testThreeDMapSaysWhenItHasNoStorms() {

@@ -256,6 +256,13 @@
 "native_map_3d_pinch" = "Näpista";
 "native_map_3d_two_fingers" = "Kaks sõrme";
 "native_map_3d_tap" = "Puuduta";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Kalluta";
+"native_map_3d_flat" = "Vaata otse alla";
+"native_map_3d_zoom_in" = "Suurenda";
+"native_map_3d_zoom_out" = "Vähenda";
+"native_map_3d_turn_left" = "Pööra vasakule";
+"native_map_3d_turn_right" = "Pööra paremale";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Minu asukoht";

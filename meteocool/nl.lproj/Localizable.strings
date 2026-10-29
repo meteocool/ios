@@ -256,6 +256,13 @@
 "native_map_3d_pinch" = "Knijpen";
 "native_map_3d_two_fingers" = "Twee vingers";
 "native_map_3d_tap" = "Tikken";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Kantelen";
+"native_map_3d_flat" = "Recht naar beneden kijken";
+"native_map_3d_zoom_in" = "Inzoomen";
+"native_map_3d_zoom_out" = "Uitzoomen";
+"native_map_3d_turn_left" = "Naar links draaien";
+"native_map_3d_turn_right" = "Naar rechts draaien";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mijn locatie";

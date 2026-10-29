@@ -291,6 +291,8 @@ final class ThreeDState: ObservableObject {
     @Published var sliderText = ""
     @Published var status: String?
     @Published var bearing: Double = 0
+    /// Looking at the storms from the side rather than straight down.
+    @Published var tilted = false
     @Published var dark = true
     @Published var selected: String?
     /// The scan the storms are from: nil for the newest (`cloudsTime`).
@@ -304,6 +306,7 @@ final class ThreeDState: ObservableObject {
     var setMode: (ARViewMode) -> Void = { _ in }
     var setSlider: (Double) -> Void = { _ in }
     var north: () -> Void = {}
+    var tilt: () -> Void = {}
     var open: () -> Void = {}
 }
 
@@ -392,6 +395,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             self.camera.pitch = OrbitCamera.pitches.lowerBound
             self.cameraSettled()
         }
+        // The tilt's onscreen alternative, as Maps' 2D/3D button: tilted,
+        // straight down, and back.
+        state.tilt = { [weak self] in
+            guard let self else { return }
+            self.touched()
+            self.camera.pitch = self.camera.pitch > Self.flatPitch ? OrbitCamera.pitches.lowerBound : Self.tiltedPitch
+            self.cameraSettled()
+        }
         state.pickScan = { [weak self] in self?.pickScan($0) }
         state.openGuide = { [weak self] in self?.openGuide() }
         state.open = { [weak self] in
@@ -410,7 +421,11 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             DispatchQueue.main.async { self?.openedDidChange(opened) }
         }
         installGestures()
+        installActions()
     }
+
+    static let flatPitch = 5.0
+    static let tiltedPitch = 55.0
 
     private var stormClosed: AnyCancellable?
     private var openedChanged: AnyCancellable?
@@ -894,6 +909,30 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         }
     }
 
+    /// Every gesture's alternative for VoiceOver, Voice Control and Switch
+    /// Control: zoom, turn and tilt in steps.
+    private func installActions() {
+        func action(_ key: String, _ change: @escaping (inout OrbitCamera) -> Void) -> UIAccessibilityCustomAction {
+            UIAccessibilityCustomAction(name: NSLocalizedString(key, comment: "")) { [weak self] _ in
+                guard let self else { return false }
+                self.touched()
+                change(&self.camera)
+                self.map?.model.detour?.camera = nil
+                self.cameraSettled()
+                return true
+            }
+        }
+        let distances = OrbitCamera.distances, pitches = OrbitCamera.pitches
+        metalView.accessibilityCustomActions = [
+            action("native_map_3d_zoom_in") { $0.distance = max(distances.lowerBound, $0.distance / 2) },
+            action("native_map_3d_zoom_out") { $0.distance = min(distances.upperBound, $0.distance * 2) },
+            action("native_map_3d_turn_left") { $0.bearing = Geo.normalise($0.bearing - 45) },
+            action("native_map_3d_turn_right") { $0.bearing = Geo.normalise($0.bearing + 45) },
+            action("native_map_3d_tilt") { $0.pitch = min(pitches.upperBound, $0.pitch + 20) },
+            action("native_map_3d_flat") { $0.pitch = pitches.lowerBound },
+        ]
+    }
+
     @objc private func doubleTapped(_ recognizer: UITapGestureRecognizer) {
         touched()
         camera.distance = max(OrbitCamera.distances.lowerBound, camera.distance / 2)
@@ -1021,6 +1060,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
                       in: view)
         updateOverlays(pose: pose)
         if abs(state.bearing - camera.bearing) > 0.5 { state.bearing = camera.bearing }
+        if state.tilted != (camera.pitch > Self.flatPitch) { state.tilted = camera.pitch > Self.flatPitch }
         #if DEBUG
         // The camera's tilt and turn, and whether a storm is drawn cut open.
         let tilt = "\(Int(camera.pitch.rounded())),\(Int(CutAngle.normalise(camera.bearing.rounded())))"
@@ -1161,6 +1201,17 @@ struct ThreeDHUD: View {
                     .buttonStyle(PressScale())
                     .accessibilityIdentifier("nativeMap.3d.details")
                 }
+                Button(action: state.tilt) {
+                    Text(state.tilted ? "2D" : "3D")
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
+                        .foregroundStyle(theme.text)
+                        .frame(width: 40, height: 40)
+                        .chromeGlass(theme, in: Circle(), interactive: true)
+                        .hitTarget()
+                }
+                .buttonStyle(PressScale())
+                .accessibilityLabel(NSLocalizedString(state.tilted ? "native_map_3d_flat" : "native_map_3d_tilt", comment: ""))
+                .accessibilityIdentifier("nativeMap.3d.tilt")
                 Button(action: state.north) {
                     Image(systemName: "location.north.line.fill")
                         .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
