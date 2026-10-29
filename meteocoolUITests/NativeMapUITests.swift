@@ -1238,8 +1238,8 @@ final class NativeMapUITests: XCTestCase {
     }
 
     func testThreeDMapPansAndTurnsUnderTheFinger() {
-        // Over open ground, north of the demo's storms: a gesture that starts
-        // on a storm's label is a tap on it, which opens the storm.
+        // Over open ground, north of the demo's storms (the tags have their
+        // own test).
         launch(link: "?latLonZ=47.5,-0.5,7&layer=cells3d&pitch=40&bearing=0", demo: true)
         let canvas = element("nativeMap.3d.canvas")
         XCTAssertTrue(canvas.waitForExistence(timeout: 20))
@@ -1260,6 +1260,48 @@ final class NativeMapUITests: XCTestCase {
             _ = waitForValue(canvas, timeout: 3) { !$0.hasPrefix("40,0,") }
         }
         XCTAssertFalse((canvas.value as? String ?? "").hasPrefix("40,0,"), "Turned: \(canvas.value ?? "")")
+    }
+
+    /// A drag or a turn that starts on a storm's tag moves the map; only a
+    /// tap picks the storm.
+    func testThreeDMapMovesUnderAStormTag() throws {
+        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        launch(link: "?latLonZ=\(core.lat),\(core.lon),8&layer=cells3d&pitch=40&bearing=0", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,0,") })
+        let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
+        let screen = app.windows.firstMatch.frame
+        func tagInView() throws -> XCUIElement {
+            try XCTUnwrap((0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
+                label.isHittable && label.frame.midY > screen.height * 0.25 && label.frame.midY < screen.height * 0.65
+                    && label.frame.midX > screen.width * 0.3 && label.frame.midX < screen.width * 0.7
+            }, "A tag near the middle")
+        }
+        func centre() -> (Double, Double) {
+            let parts = (canvas.value as? String ?? "").split(separator: ",").compactMap { Double($0) }
+            return parts.count >= 4 ? (parts[2], parts[3]) : (0, 0)
+        }
+        let details = element("nativeMap.3d.details")
+        // Dragged from the tag to the left: the view goes east, nothing opens.
+        let before = centre()
+        let tag = try tagInView()
+        tag.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: tag.frame.midY / screen.height)))
+        XCTAssertTrue(waitForValue(canvas) { _ in centre().1 > before.1 + 0.05 }, "Panned east: \(canvas.value ?? "")")
+        XCTAssertFalse(details.waitForExistence(timeout: 2), "A drag picks no storm")
+        XCTAssertFalse(element("nativeMap.storm.details").exists)
+        // Two fingers on a tag turn the map.
+        for _ in 0 ..< 3 where (canvas.value as? String ?? "").hasPrefix("40,0,") {
+            try tagInView().rotate(1.4, withVelocity: 0.4)
+            _ = waitForValue(canvas, timeout: 3) { !$0.hasPrefix("40,0,") }
+        }
+        XCTAssertFalse((canvas.value as? String ?? "").hasPrefix("40,0,"), "Turned: \(canvas.value ?? "")")
+        XCTAssertFalse(details.exists, "A turn picks no storm")
+        // A tap on a tag still picks its storm.
+        try tagInView().tap()
+        XCTAssertTrue(details.waitForExistence(timeout: 5), "A tap picks the storm")
     }
 
     func testThreeDMapSaysWhenItHasNoStorms() {

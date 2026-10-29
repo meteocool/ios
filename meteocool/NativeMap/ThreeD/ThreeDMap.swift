@@ -821,8 +821,17 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         tap.require(toFail: double)
         for recognizer in [pan, tilt, pinch, rotate, tap, double] as [UIGestureRecognizer] {
             recognizer.delegate = self
-            metalView.addGestureRecognizer(recognizer)
+            addGestureRecognizer(recognizer)
         }
+    }
+
+    /// The map moves under the finger even where a storm's tag is: a drag,
+    /// pinch or turn that starts on one cancels its tap. A tap on a tag is
+    /// the tag's own, and the HUD keeps its touches.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let view = touch.view else { return true }
+        if let hud, view.isDescendant(of: hud) { return false }
+        return !(gestureRecognizer is UITapGestureRecognizer && view.isDescendant(of: labels))
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
