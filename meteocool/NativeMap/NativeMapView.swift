@@ -57,6 +57,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var pendingView: NativeMapLink?
     private var lastRotation: Bool?
     private var observers = Set<AnyCancellable>()
+    /// The place the title's name was last asked for ("p" a point, "u" your
+    /// own position, then three decimals), and the newest ask.
+    private var placeAsked: String?
+    private var placeToken = 0
 
     init() {
         radar = RadarEngine(mapView: mapView, endpoints: endpoints,
@@ -306,6 +310,32 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.point = nil
         if let location = model.userLocation { radar.point = location.coordinate }
         updateTitle()
+    }
+
+    /// The name of where the bars are about: the inspected point, or else
+    /// your own position (core's `resolvePlace`). A new point starts over;
+    /// a position that moves keeps its old name until the new one is in.
+    private func resolvePlace() {
+        let point = model.point
+        guard let coordinate = point ?? model.userLocation?.coordinate else {
+            placeAsked = nil
+            placeToken += 1
+            model.placeName = nil
+            return
+        }
+        let key = String(format: "%@%.3f,%.3f", point != nil ? "p" : "u", coordinate.latitude, coordinate.longitude)
+        guard key != placeAsked else { return }
+        if point != nil || placeAsked?.hasPrefix("p") == true { model.placeName = nil }
+        placeAsked = key
+        placeToken += 1
+        let token = placeToken
+        let language = CoreStrings.language
+        Task { [weak self] in
+            let place = await ReverseGeocoder.shared.nearPlace(latitude: coordinate.latitude, longitude: coordinate.longitude,
+                                                               language: language, channel: "forecast")
+            guard let self, token == self.placeToken else { return }
+            self.model.placeName = place?.name
+        }
     }
 
     /// The tray's title: the place's name once known, else what the bars
@@ -683,6 +713,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             .store(in: &observers)
         Publishers.CombineLatest3(model.$point, model.$userLocation, model.$placeName)
             .sink { [weak self] _, _, _ in DispatchQueue.main.async { self?.updateTitle() } }
+            .store(in: &observers)
+        Publishers.CombineLatest(model.$point, model.$userLocation)
+            .sink { [weak self] _, _ in DispatchQueue.main.async { self?.resolvePlace() } }
             .store(in: &observers)
         Publishers.CombineLatest(model.$capability, model.$trayHidden)
             .sink { [weak self] _, _ in DispatchQueue.main.async { self?.updateChromeVisibility() } }
