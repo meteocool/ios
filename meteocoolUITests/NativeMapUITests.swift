@@ -164,6 +164,82 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(waitForValue(timeline) { (minutes($0) ?? .min) >= left }, "Back to \(live) or later, at \(timeline.value ?? "")")
     }
 
+    // MARK: - Links and the timeline
+
+    /// A link to a frame opens on it, off live, with the way back.
+    func testFrameLinkOpensOnItsFrame() {
+        let half = Date().addingTimeInterval(-40 * 60)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        var minute = Calendar(identifier: .gregorian).dateComponents(in: TimeZone(identifier: "UTC")!, from: half).minute ?? 0
+        minute -= minute % 5
+        var components = Calendar(identifier: .gregorian).dateComponents(in: TimeZone(identifier: "UTC")!, from: half)
+        components.minute = minute
+        let t = formatter.string(from: Calendar(identifier: .gregorian).date(from: components)!)
+        launch(link: "?latLonZ=48.14,11.58,8&t=\(t)")
+        waitForSeries()
+        XCTAssertTrue(waitForValue(timeline, timeout: 20) { $0.hasPrefix("-") }, "On the linked frame: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5))
+    }
+
+    /// A tap on the strip goes straight to that step.
+    func testTimelineTapGoesToTheStep() {
+        launch()
+        waitForSeries()
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.4)).tap()
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("-1h") }, "Tapped back: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5))
+    }
+
+    /// A link to a point opens with its ring and its readings.
+    func testPointLinkInspectsThePoint() {
+        launch(link: "?latLonZ=48.14,11.58,8&point=48.20000,11.60000")
+        waitForSeries()
+        XCTAssertTrue(element("nativeMap.point.ring").waitForExistence(timeout: 10), "The point's ring")
+        XCTAssertTrue(element("nativeMap.clearPoint").waitForExistence(timeout: 10) || element("nativeMap.showForMyLocation").exists)
+    }
+
+    /// A link names the map to open: lightning, precipitation types.
+    func testLinksOpenTheOtherMaps() {
+        launch(link: "?latLonZ=48.14,11.58,7&layer=lightning")
+        XCTAssertTrue(element("nativeMap.otherTray").waitForExistence(timeout: 20), "The lightning map")
+        XCTAssertFalse(playButton.isHittable)
+        app.terminate()
+        launch(link: "?latLonZ=48.14,11.58,7&layer=precipTypes")
+        XCTAssertTrue(element("nativeMap.otherTray").waitForExistence(timeout: 20), "The precipitation types map")
+    }
+
+    /// A link to a storm opens it; with details=0, its hint on a phone first.
+    func testStormLinkOpensTheStorm() throws {
+        let id = try XCTUnwrap(demoStormId(), "The demo lists storms")
+        launch(link: "?latLonZ=44,3.5,7&storm=\(id)&details=0", demo: true)
+        let hint = element("nativeMap.storm.hint"), details = element("nativeMap.storm.details")
+        // Selected on the map either way; a wide screen keeps its panel shut for details=0.
+        XCTAssertTrue(element("nativeMap.storm.\(id)").waitForExistence(timeout: 30), "The linked storm on the map")
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            XCTAssertTrue(hint.waitForExistence(timeout: 10), "details=0: the hint first")
+            XCTAssertFalse(details.exists)
+            // Swiped away, as a notification is: a long pull past the half.
+            let start = hint.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            start.press(forDuration: 0.05, thenDragTo: hint.coordinate(withNormalizedOffset: CGVector(dx: -0.4, dy: 0.5)))
+            XCTAssertTrue(hint.waitForNonExistence(timeout: 5), "Swiped away")
+        }
+    }
+
+    /// A turned and tilted 3D map, zoomed in, and the compass puts it
+    /// north up and looking straight down.
+    func testThreeDMapTurnsAndTheCompassPutsItBack() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=40&bearing=120", demo: true)
+        let canvas = element("nativeMap.3d.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,120,") }, "As linked: \(canvas.value ?? "")")
+        canvas.pinch(withScale: 2, velocity: 1)
+        canvas.doubleTap()
+        element("nativeMap.3d.north").tap()
+        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("0,0,") }, "Put back: \(canvas.value ?? "")")
+    }
+
     func testLegendSwitchesToDbz() {
         launch()
         waitForSeries()
@@ -194,6 +270,8 @@ final class NativeMapUITests: XCTestCase {
         element("nativeMap.productHelp").tap()
         XCTAssertTrue(element("nativeMap.explainer").waitForExistence(timeout: 5))
         screenshot("radar explainer")
+        element("nativeMap.explainer.close").tap()
+        XCTAssertTrue(element("nativeMap.explainer").waitForNonExistence(timeout: 5))
     }
 
     func testStatusPillOpensConnectionDetails() {
@@ -369,6 +447,17 @@ final class NativeMapUITests: XCTestCase {
     // MARK: - Storms
 
     /// Where the demo's newest storm is now: its replay moves on.
+    /// The demo's newest storm's id, for a link to it.
+    private func demoStormId() -> String? {
+        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
+        guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
+              let storms = answer["features"] as? [[String: Any]] else { return nil }
+        let newest = storms.max { a, b in
+            ((a["properties"] as? [String: Any])?["last_seen"] as? String ?? "") < ((b["properties"] as? [String: Any])?["last_seen"] as? String ?? "")
+        }
+        return (newest?["properties"] as? [String: Any])?["id"] as? String ?? newest?["id"] as? String
+    }
+
     private func demoStorm() -> (lat: Double, lon: Double)? {
         let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
         guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
@@ -854,7 +943,7 @@ final class NativeMapUITests: XCTestCase {
         launch()
         waitForSeries()
         openLayers()
-        element("nativeMap.layers.map.precipitation_types").tap()
+        element("nativeMap.layers.map.precipTypes").tap()
         XCTAssertTrue(element("nativeMap.otherTray").waitForExistence(timeout: 10))
         XCTAssertTrue(element("nativeMap.lastUpdated").waitForExistence(timeout: 20))
         screenshot("precipitation types")

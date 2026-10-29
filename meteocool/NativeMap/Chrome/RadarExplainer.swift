@@ -63,6 +63,7 @@ struct RadarExplainer: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) { Image(systemName: "xmark") }
                         .accessibilityLabel(CoreStrings.t("close"))
+                        .accessibilityIdentifier("nativeMap.explainer.close")
                 }
             }
         }

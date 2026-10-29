@@ -19,7 +19,8 @@ final class NativeMapModel: ObservableObject {
     enum Capability: String, CaseIterable {
         case radar
         case lightning
-        case precipitationTypes = "precipitation_types"
+        /// As core names it in a link (`layer=precipTypes`).
+        case precipitationTypes = "precipTypes"
         case cells3d
     }
 
