@@ -79,6 +79,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         SharedNotificationManager.refreshAuthorization()
         SharedLiveActivities.start()
+        // Follows a rain mute from here on, each time the app comes to the front.
+        SharedAlertMute.follow()
         return true
     }
 

@@ -20,6 +20,23 @@ struct NotificationServiceCheck {
             precondition(deliveries == 1, "Missing or unsafe previews must deliver the original alert exactly once")
         }
         print("Notification fallback and completion checks passed")
+
+        let suite = "NotificationServiceCheck-\(UUID().uuidString)"
+        NotificationService.defaults = UserDefaults(suiteName: suite)
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        for muted in [false, true] {
+            AlertMute.save(muted ? AlertMute.timed(.day, now: Date()) : nil, to: NotificationService.defaults)
+            let content = UNMutableNotificationContent()
+            content.title = "Rain soon"
+            content.sound = .default
+            let service = NotificationService()
+            var delivered: UNNotificationContent?
+            service.didReceive(UNNotificationRequest(identifier: "muted", content: content, trigger: nil)) { delivered = $0 }
+            precondition(delivered?.title == content.title, "A muted alert is still delivered")
+            precondition((delivered?.sound == nil) == muted, "A muted alert comes without a sound")
+            precondition((delivered?.interruptionLevel == .passive) == muted, "A muted alert does not light the screen")
+        }
+        print("Muted notification checks passed")
         if let preview = ProcessInfo.processInfo.environment["MC_PREVIEW_URL"] {
             let content = UNMutableNotificationContent()
             content.title = "Synthetic preview check"

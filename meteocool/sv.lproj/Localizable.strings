@@ -132,6 +132,22 @@
 "notification_permissions_title" = "Kontrollera behörigheter";
 "notification_permissions_help" = "Regnvarningar kräver notiser och platsåtkomst. Om du vill få varningar när du rör dig medan appen är stängd, ställ in Plats på Alltid i Inställningar. Du kan fortfarande titta på kartan utan dessa behörigheter.";
 "notification_sync_failed" = "Ändringarna av notiserna kunde inte nå servern. Varningarna kan fortfarande använda dina tidigare inställningar. Kontrollera anslutningen och öppna appen igen för att försöka på nytt.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Pausa varningar";
+"mute_off" = "Av";
+"mute_on" = "På";
+"mute_day" = "I 1 dag";
+"mute_week" = "I 1 vecka";
+"mute_rain" = "Tills regnet är över";
+"mute_unmute" = "Återuppta varningar";
+"mute_until" = "Pausade till %@";
+"mute_until_rain" = "Pausade tills regnet är över";
+"mute_until_rain_about" = "Pausade tills regnet är över, cirka %@";
+"mute_no_rain_title" = "Inget regn på väg";
+"mute_no_rain" = "Prognosen visar inget regn här, så det finns inget att pausa.";
+"mute_no_forecast_title" = "Det gick inte att pausa varningarna";
+"mute_no_forecast" = "Prognosen för din plats kunde inte läsas in. Försök igen senare.";
+"mute_ok" = "OK";
 "feedback_body" = "Beskriv ditt problem eller förslag här:\n";
 
 "map_layers" = "Kartlager";

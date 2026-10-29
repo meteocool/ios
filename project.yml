@@ -106,6 +106,8 @@ targets:
       - path: Shared/UserAgent.swift
       # The list of past alerts it adds each alert to.
       - path: Shared/AlertHistory.swift
+      # Whether the user muted the alerts, which then arrive quietly.
+      - path: Shared/AlertMute.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.NotificationService

@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Kontrolli lubasid";
 "notification_permissions_help" = "Vihmahoiatused vajavad teavituste ja asukoha luba. Et saada hoiatusi liikumise ajal ka siis, kui rakendus on suletud, määra seadetes asukoha loaks „Always” (alati). Kaarti saad sirvida ka ilma nende lubadeta.";
 "notification_sync_failed" = "Teavituste muudatused ei jõudnud serverisse. Hoiatused võivad veel kasutada sinu varasemaid seadeid. Kontrolli ühendust ja ava rakendus uuesti, et uuesti proovida.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Peata hoiatused";
+"mute_off" = "Väljas";
+"mute_on" = "Sees";
+"mute_day" = "1 päevaks";
+"mute_week" = "1 nädalaks";
+"mute_rain" = "Kuni vihm on läbi";
+"mute_unmute" = "Jätka hoiatusi";
+"mute_until" = "Peatatud kuni %@";
+"mute_until_rain" = "Peatatud, kuni vihm on läbi";
+"mute_until_rain_about" = "Peatatud, kuni vihm on läbi, umbes %@";
+"mute_no_rain_title" = "Vihma pole tulemas";
+"mute_no_rain" = "Prognoos ei näita siin vihma, seega pole midagi peatada.";
+"mute_no_forecast_title" = "Hoiatusi ei saanud peatada";
+"mute_no_forecast" = "Sinu asukoha prognoosi ei õnnestunud laadida. Proovi hiljem uuesti.";
+"mute_ok" = "OK";
 "feedback_body" = "Kirjelda siin oma probleemi või ettepanekut:\n";
 
 "map_layers" = "Kaardikihid";

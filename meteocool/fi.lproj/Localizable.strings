@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Tarkista luvat";
 "notification_permissions_help" = "Sadehälytykset tarvitsevat ilmoitukset ja sijainnin käyttöoikeuden. Jos haluat hälytykset liikkuessasi myös apin ollessa suljettuna, aseta Sijainti-asetukseksi Aina Asetuksissa. Karttaa voit selata ilman näitäkin lupia.";
 "notification_sync_failed" = "Ilmoitusasetusten muutokset eivät menneet perille palvelimelle. Hälytykset saattavat yhä käyttää aiempia asetuksiasi. Tarkista yhteys ja yritä uudelleen avaamalla appi uudestaan.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Keskeytä hälytykset";
+"mute_off" = "Pois";
+"mute_on" = "Päällä";
+"mute_day" = "1 päiväksi";
+"mute_week" = "1 viikoksi";
+"mute_rain" = "Kunnes sade on ohi";
+"mute_unmute" = "Jatka hälytyksiä";
+"mute_until" = "Keskeytetty %@ asti";
+"mute_until_rain" = "Keskeytetty, kunnes sade on ohi";
+"mute_until_rain_about" = "Keskeytetty, kunnes sade on ohi, noin %@";
+"mute_no_rain_title" = "Ei sadetta tulossa";
+"mute_no_rain" = "Ennuste ei näytä täällä sadetta, joten keskeytettävää ei ole.";
+"mute_no_forecast_title" = "Hälytyksiä ei voitu keskeyttää";
+"mute_no_forecast" = "Sijaintisi ennustetta ei voitu ladata. Yritä myöhemmin uudelleen.";
+"mute_ok" = "OK";
 "feedback_body" = "Kuvaile ongelmasi tai ehdotuksesi tähän:\n";
 
 "map_layers" = "Karttatasot";

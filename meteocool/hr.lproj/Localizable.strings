@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Provjeri dopuštenja";
 "notification_permissions_help" = "Upozorenja na kišu trebaju obavijesti i pristup lokaciji. Za upozorenja dok se krećeš, a aplikacija je zatvorena, u Postavkama postavi Lokaciju na Uvijek. Kartu možeš pregledavati i bez tih dopuštenja.";
 "notification_sync_failed" = "Promjene obavijesti nisu stigle do poslužitelja. Upozorenja možda još koriste tvoje prethodne postavke. Provjeri vezu i ponovno otvori aplikaciju da pokušaš opet.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Pauziraj upozorenja";
+"mute_off" = "Isključeno";
+"mute_on" = "Uključeno";
+"mute_day" = "Na 1 dan";
+"mute_week" = "Na 1 tjedan";
+"mute_rain" = "Dok kiša ne prestane";
+"mute_unmute" = "Nastavi upozorenja";
+"mute_until" = "Pauzirano do %@";
+"mute_until_rain" = "Pauzirano dok kiša ne prestane";
+"mute_until_rain_about" = "Pauzirano dok kiša ne prestane, oko %@";
+"mute_no_rain_title" = "Nema kiše na vidiku";
+"mute_no_rain" = "Prognoza ovdje ne pokazuje kišu, pa nema što pauzirati.";
+"mute_no_forecast_title" = "Upozorenja nije moguće pauzirati";
+"mute_no_forecast" = "Prognozu za tvoju lokaciju nije moguće učitati. Pokušaj ponovno kasnije.";
+"mute_ok" = "U redu";
 "feedback_body" = "Ovdje opiši svoj problem ili prijedlog:\n";
 
 "map_layers" = "Slojevi karte";

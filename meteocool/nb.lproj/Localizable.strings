@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Sjekk tillatelsene";
 "notification_permissions_help" = "Regnvarsling krever varslinger og tilgang til posisjon. Hvis du vil ha varslinger mens du er på farten og appen er lukket, setter du Posisjon til Alltid i Innstillinger. Du kan bruke kartet også uten disse tillatelsene.";
 "notification_sync_failed" = "Endringene i varslingene nådde ikke fram til serveren. Varslingene kan fortsatt bruke de forrige innstillingene dine. Sjekk tilkoblingen og åpne appen på nytt for å prøve igjen.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Sett varsler på pause";
+"mute_off" = "Av";
+"mute_on" = "På";
+"mute_day" = "I 1 dag";
+"mute_week" = "I 1 uke";
+"mute_rain" = "Til regnet er over";
+"mute_unmute" = "Gjenoppta varsler";
+"mute_until" = "På pause til %@";
+"mute_until_rain" = "På pause til regnet er over";
+"mute_until_rain_about" = "På pause til regnet er over, ca. %@";
+"mute_no_rain_title" = "Ingen regn i sikte";
+"mute_no_rain" = "Prognosen viser ikke regn her, så det er ingenting å sette på pause.";
+"mute_no_forecast_title" = "Kunne ikke sette varsler på pause";
+"mute_no_forecast" = "Prognosen for posisjonen din kunne ikke lastes inn. Prøv igjen senere.";
+"mute_ok" = "OK";
 "feedback_body" = "Beskriv problemet eller forslaget ditt her:\n";
 
 "map_layers" = "Kartlag";

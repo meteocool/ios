@@ -179,8 +179,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var dataPushNotification = [
         NSLocalizedString("Enable Notifications", comment: "dataPushNotification"),
         NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
-        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
+        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification"),
+        NSLocalizedString("mute_alerts", comment: "dataPushNotification")
     ]
+    /// While "until the rain is over" looks for the rain to mute.
+    private var muting = false
     /// Rows after the Live Activity preview image.
     private var dataNotificationStyle = [
         NSLocalizedString("live_activity", comment: "dataPushNotification"),
@@ -392,6 +395,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     timeSliderLoad = true
                 }
                 return stepperSliderCellTime
+            case 3: //Mute
+                return muteCell()
             default:
                 print("This should not happen...")
                 return textCell
@@ -548,6 +553,85 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
     }
     
+    /// Mute Alerts: whether and until when, and a pull-down menu with the
+    /// mute's lengths and Unmute (AlertMuteManager).
+    private func muteCell() -> UITableViewCell {
+        let cell = UITableViewCell()
+        cell.selectionStyle = .none
+        let mute = SharedAlertMute.current
+        let title = UILabel()
+        title.text = dataPushNotification[3]
+        let detail = UILabel()
+        detail.text = mute.map(Self.describe)
+        detail.isHidden = mute == nil
+
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = NSLocalizedString(mute == nil ? "mute_off" : "mute_on", comment: "settings")
+        configuration.indicator = .popup
+        configuration.showsActivityIndicator = muting
+        configuration.contentInsets.trailing = 0
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = .preferredFont(forTextStyle: .body)
+            return attributes
+        }
+        let button = UIButton(configuration: configuration)
+        button.isEnabled = !muting
+        button.showsMenuAsPrimaryAction = true
+        let lengths: [(AlertMute.Length, String)] = [(.day, "mute_day"), (.week, "mute_week"), (.rain, "mute_rain")]
+        var sections = [UIMenu(options: .displayInline, children: lengths.map { length, key in
+            UIAction(title: NSLocalizedString(key, comment: "settings"), state: mute?.length == length ? .on : .off) { [weak self] _ in
+                self?.mute(length)
+            }
+        })]
+        if mute != nil {
+            sections.append(UIMenu(options: .displayInline, children: [
+                UIAction(title: NSLocalizedString("mute_unmute", comment: "settings")) { _ in SharedAlertMute.unmute() },
+            ]))
+        }
+        button.menu = UIMenu(children: sections)
+        button.accessibilityLabel = title.text
+        button.accessibilityValue = detail.text ?? configuration.title
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        layoutSettingsCell(cell, labels: [title, detail], accessory: button)
+        detail.font = .preferredFont(forTextStyle: .subheadline)
+        detail.textColor = .secondaryLabel
+        return cell
+    }
+
+    /// "Muted until …": when the alerts come back.
+    private static func describe(_ mute: AlertMute) -> String {
+        guard mute.length != .rain else {
+            if mute.openEnded { return NSLocalizedString("mute_until_rain", comment: "settings") }
+            return String(format: NSLocalizedString("mute_until_rain_about", comment: "settings"),
+                          mute.until.formatted(date: .omitted, time: .shortened))
+        }
+        let until = Calendar.current.isDateInToday(mute.until)
+            ? mute.until.formatted(date: .omitted, time: .shortened)
+            : mute.until.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+        return String(format: NSLocalizedString("mute_until", comment: "settings"), until)
+    }
+
+    private func mute(_ length: AlertMute.Length) {
+        muting = true
+        settingsTable.reloadData()
+        Task {
+            let outcome = await SharedAlertMute.mute(length)
+            muting = false
+            settingsTable.reloadData()
+            let keys: (title: String, message: String)
+            switch outcome {
+            case .muted: return
+            case .noRain: keys = ("mute_no_rain_title", "mute_no_rain")
+            case .noForecast: keys = ("mute_no_forecast_title", "mute_no_forecast")
+            }
+            let alert = UIAlertController(title: NSLocalizedString(keys.title, comment: "settings"),
+                                          message: NSLocalizedString(keys.message, comment: "settings"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("mute_ok", comment: "settings"), style: .default))
+            present(alert, animated: true)
+        }
+    }
+
     @objc func willEnterForeground() {
         SharedNotificationManager.refreshAuthorization()
         settingsTable.reloadData()

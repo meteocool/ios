@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Toestemmingen controleren";
 "notification_permissions_help" = "Regenmeldingen hebben meldingen en locatietoegang nodig. Wil je onderweg meldingen terwijl de app gesloten is, zet Locatie dan in Instellingen op Altijd. De kaart kun je ook zonder deze toestemmingen gebruiken.";
 "notification_sync_failed" = "De wijzigingen in je meldingen konden de server niet bereiken. Meldingen gebruiken mogelijk nog je vorige instellingen. Controleer je verbinding en open de app opnieuw om het nog eens te proberen.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Meldingen pauzeren";
+"mute_off" = "Uit";
+"mute_on" = "Aan";
+"mute_day" = "Voor 1 dag";
+"mute_week" = "Voor 1 week";
+"mute_rain" = "Tot de regen voorbij is";
+"mute_unmute" = "Meldingen hervatten";
+"mute_until" = "Gepauzeerd tot %@";
+"mute_until_rain" = "Gepauzeerd tot de regen voorbij is";
+"mute_until_rain_about" = "Gepauzeerd tot de regen voorbij is, rond %@";
+"mute_no_rain_title" = "Geen regen op komst";
+"mute_no_rain" = "De verwachting toont hier geen regen, dus er valt niets te pauzeren.";
+"mute_no_forecast_title" = "Pauzeren van meldingen mislukt";
+"mute_no_forecast" = "De verwachting voor je locatie kon niet worden geladen. Probeer het later opnieuw.";
+"mute_ok" = "OK";
 "feedback_body" = "Beschrijf hier je probleem of suggestie:\n";
 
 "map_layers" = "Kaartlagen";

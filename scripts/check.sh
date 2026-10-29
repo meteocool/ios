@@ -7,7 +7,7 @@ bash scripts/check-ar.sh
 node tests/geolocation-check.mjs
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
-xcrun swiftc NotificationService/NotificationService.swift Shared/UserAgent.swift Shared/AlertHistory.swift tests/NotificationServiceCheck.swift -o "$scratch/check-notification"
+xcrun swiftc NotificationService/NotificationService.swift Shared/UserAgent.swift Shared/AlertHistory.swift Shared/AlertMute.swift tests/NotificationServiceCheck.swift -o "$scratch/check-notification"
 "$scratch/check-notification"
 xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch/check-share"
 "$scratch/check-share"
@@ -15,6 +15,8 @@ xcrun swiftc meteocool/StormLog/StormLogRules.swift tests/StormLogCheck.swift -o
 "$scratch/check-storm-log"
 xcrun swiftc Shared/AlertHistory.swift tests/AlertHistoryCheck.swift -o "$scratch/check-alerts"
 "$scratch/check-alerts"
+xcrun swiftc Shared/AlertMute.swift Shared/AlertMute+Rain.swift Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/AlertMuteCheck.swift -o "$scratch/check-mute"
+"$scratch/check-mute"
 xcrun swiftc Shared/AlertLanguage.swift tests/AlertLanguageCheck.swift -o "$scratch/check-language"
 "$scratch/check-language"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainForecastCheck.swift -o "$scratch/check-rain"
