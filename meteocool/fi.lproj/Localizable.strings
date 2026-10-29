@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Pohjoinen geoseurannasta";
 "ar_turn_left" = "Käänny %.0f° vasemmalle";
 "ar_turn_right" = "Käänny %.0f° oikealle";
+"point_menu_ar" = "Näytä AR:ssä";
+"point_menu_ar_sub" = "Merkki tämän paikan kohdalle taivaalle";
+"ar_marker" = "Merkki";
+"ar_marker_from_map" = "Merkitty kartalle";
+"ar_marker_echo" = "Tutkakaiku %.1f km:n korkeudessa";
+"ar_marker_assumed" = "Ei tutkakaikua · pilven alarajaksi oletettu %.1f km";
+"ar_marker_ground" = "Maassa";
+"ar_marker_remove" = "Poista merkki";
+"ar_mark" = "Merkitse pilvi";
+"ar_mark_cancel" = "Peru merkintä";
+"ar_mark_hint" = "Napauta sitten pilveä löytääksesi sen kartalta. Pitkä painallus taivaalle merkitsee myös.";
+"ar_mark_instructions" = "Napauta pilveä merkitäksesi sen.";
+"ar_mark_missed" = "Liian lähellä horisonttia sijainnin arvioimiseksi.";
+"ar_preview_marker" = "Esikatselu, 20 km merkitystä paikasta";
 
 /* Native MapKit map */
 "native_map_setting" = "Natiivikartta (beta)";

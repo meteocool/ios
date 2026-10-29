@@ -15,11 +15,68 @@ struct NativeMapSitesCheck {
     }
 
     static func main() {
+        srvMotion()
         siteSweeps()
         sweep()
         geometry()
         fixtures(CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : nil)
         print("NativeMapSitesCheck: \(count) checks passed")
+    }
+
+    static func srvMotion() {
+        typealias M = SrvMotionRules
+        test("a finger on the dial points the way it is from the centre, clockwise from north") {
+            precondition(M.headingFromPoint(dx: 0, dy: -40) == 0 && M.headingFromPoint(dx: 40, dy: 0) == 90)
+            precondition(M.headingFromPoint(dx: 0, dy: 40) == 180 && M.headingFromPoint(dx: -40, dy: 0) == 270)
+            precondition(M.headingFromPoint(dx: 30, dy: -30) == 45 && M.headingFromPoint(dx: -30, dy: 30) == 225)
+        }
+        test("the dial snaps to five degrees, and just west of north is north") {
+            precondition(M.headingFromPoint(dx: 10, dy: -100) == 5 && M.headingFromPoint(dx: -1, dy: -100) == 0)
+            precondition(M.snapHeading(357.6) == 0 && M.snapHeading(-92) == 270 && M.snapHeading(722) == 0)
+            precondition(M.headingFromPoint(dx: 0, dy: 0) == nil)
+        }
+        test("a turn goes a click, round past north either way") {
+            precondition(M.turnHeading(355, steps: 1) == 0 && M.turnHeading(0, steps: -1) == 355 && M.turnHeading(45, steps: 9) == 90)
+        }
+        test("the stepper goes in fives, from wherever a typed speed left it, between still and its top") {
+            precondition(M.stepSpeed(0, direction: 1) == 5 && M.stepSpeed(43, direction: 1) == 45 && M.stepSpeed(43, direction: -1) == 40)
+            precondition(M.stepSpeed(45, direction: 1) == 50 && M.stepSpeed(45, direction: -1) == 40)
+            precondition(M.stepSpeed(0, direction: -1) == 0 && M.stepSpeed(M.maxSpeedKmh, direction: 1) == M.maxSpeedKmh)
+            precondition(M.clampSpeed(-3) == 0 && M.clampSpeed(999) == M.maxSpeedKmh && M.clampSpeed(37.6) == 38 && M.clampSpeed(.nan) == 0)
+        }
+        test("the setting keeps a manual motion as heading and km/h, and reads it back") {
+            let motion = ManualMotion(headingDeg: 240, speedKmh: 55)
+            precondition(M.format(motion) == "240,55" && M.parse("240,55") == motion)
+            for value: Any? in ["", "north", "45", "45,", ",30", "a,b", "1,2,3", nil, 7, true] {
+                precondition(M.parse(value) == M.defaultMotion, String(describing: value))
+            }
+            precondition(M.parse("400,-3") == ManualMotion(headingDeg: 40, speedKmh: 0))
+            precondition(M.parse(" 92 , 999 ") == ManualMotion(headingDeg: 90, speedKmh: M.maxSpeedKmh))
+        }
+        test("a manual motion is taken out in m/s; before one is set, nothing is") {
+            precondition(M.motion(of: M.defaultMotion).speedMs == 0)
+            let motion = M.motion(of: ManualMotion(headingDeg: 90, speedKmh: 36))
+            precondition(motion.speedMs == 10 && motion.headingDeg == 90)
+            precondition(abs(SweepGeometryRules.stormRelative(10, azimuthDeg: 90, motion: motion)) < 1e-9)
+            precondition(abs(SweepGeometryRules.stormRelative(10, azimuthDeg: 270, motion: motion) - 20) < 1e-9)
+        }
+        test("SRV takes the selected storm's motion, unless the reader asked for their own") {
+            let storm = StormMotion(speedMs: 12.5, headingDeg: 60)
+            let manual = ManualMotion(headingDeg: 200, speedKmh: 18)
+            precondition(M.resolve(storm: storm, manual: manual, prefersManual: false) == SrvMotion(source: .storm, motion: storm))
+            let own = SrvMotion(source: .manual, motion: StormMotion(speedMs: 5, headingDeg: 200))
+            precondition(M.resolve(storm: storm, manual: manual, prefersManual: true) == own)
+            precondition(M.resolve(storm: nil, manual: manual, prefersManual: false) == own)
+        }
+        test("turning the dial while it shows a storm's motion starts from the storm's") {
+            let manual = ManualMotion(headingDeg: 200, speedKmh: 18)
+            let fromStorm = M.resolve(storm: StormMotion(speedMs: 15.1, headingDeg: 62.3), manual: manual, prefersManual: false)
+            precondition(M.editBase(fromStorm, manual: manual) == ManualMotion(headingDeg: 60, speedKmh: 54))
+            precondition(M.editBase(M.resolve(storm: nil, manual: manual, prefersManual: false), manual: manual) == manual)
+        }
+        test("a heading is worded as the nearest of sixteen points") {
+            precondition([0.0, 11, 12, 45, 60, 180, 350, -90].map(M.compassPoint) == ["N", "N", "NNE", "NE", "ENE", "S", "N", "W"])
+        }
     }
 
     static func iso(_ minute: Int) -> String {
@@ -43,6 +100,15 @@ struct NativeMapSitesCheck {
         test("a step with nothing recent enough shows no sweep rather than old weather") {
             precondition(SiteSweepRules.sweepAt(scans, step: step(15) + SiteSweepRules.maxAgeS + 1, live: false) == nil)
             precondition(SiteSweepRules.sweepAt(scans, step: step(-1), live: false) == nil)
+        }
+        test("an open radar plays the observed steps it has a sweep for, and none after now") {
+            let s = { (minute: Int) in Int(step(minute)) }
+            let scans = [at(0), at(5), at(30)]
+            let steps = [-5, 0, 5, 10, 15, 20, 25, 30, 35, 40].map(s)
+            // 20 and 25: the sweep at 5 is more than two cycles old. 35 and 40: forecast.
+            precondition(SiteSweepRules.stepsWithSweep(scans, steps: steps, latest: s(30)) == [0, 5, 10, 15, 30].map(s))
+            // The live step shows the newest sweep, filed after it.
+            precondition(SiteSweepRules.stepsWithSweep([at(0), at(7)], steps: [0, 5].map(s), latest: s(5)) == [0, 5].map(s))
         }
         test("the live step shows the newest sweep, whatever its stamp") {
             precondition(SiteSweepRules.sweepAt(scans, step: step(10), live: true)?.path == "p15")
@@ -81,6 +147,21 @@ struct NativeMapSitesCheck {
         }
         test("a tilt's label is its elevation and its beam 100 km out") {
             precondition(SiteSweepRules.tiltLabel(0.5, 1.234) == "0.5° · 1.2 km")
+        }
+        test("a radar open round-trips, reflectivity left unsaid") {
+            let srv = SiteMode(site: "frave", quantity: .srv, elevation: 0.39)
+            precondition(SiteSweepRules.toLink(srv) == ["radar": "frave", "sweep": "srv", "tilt": "0.39"])
+            precondition(SiteSweepRules.fromLink(radar: "frave", sweep: "srv", tilt: "0.39") == srv)
+            precondition(SiteSweepRules.toLink(SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0.5)) == ["radar": "deoft", "tilt": "0.5"])
+            precondition(SiteSweepRules.toLink(SiteMode(site: "deoft", quantity: .velocity, elevation: 12)) == ["radar": "deoft", "sweep": "velocity", "tilt": "12"])
+            precondition(SiteSweepRules.fromLink(radar: "DEOFT", sweep: nil, tilt: nil) == SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0))
+        }
+        test("a radar link that does not parse is dropped, and an unknown sweep is reflectivity") {
+            precondition(SiteSweepRules.fromLink(radar: "../tiles", sweep: nil, tilt: nil) == nil)
+            precondition(SiteSweepRules.fromLink(radar: "", sweep: nil, tilt: nil) == nil)
+            precondition(SiteSweepRules.fromLink(radar: "deoft", sweep: "hail", tilt: "-3") == SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0))
+            // A tilt or sweep alone means nothing.
+            precondition(SiteSweepRules.fromLink(radar: nil, sweep: "velocity", tilt: "1.5") == nil)
         }
         test("the listing decodes as /sweeps answers it") {
             let json = """

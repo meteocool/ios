@@ -128,6 +128,29 @@ struct NativeMapStormsCheck {
         func draw(_ storms: [Storm], now: Double = T0, selection: StormSelection? = nil, at: Double? = nil) -> StormDrawingResult {
             StormDrawing.drawStorms(storms, now: now, reference: now, selection: selection, at: at)
         }
+        test("a storm's marks carry its source, so DWD's draw as diamonds and meteocool's as circles") {
+            let marks = draw([storm(A) { $0.primaryProduct = "dwd/konrad3d" }, storm(B) { $0.primaryProduct = "meteocool/tracker" }]).marks
+            precondition(marks.first { $0.storm == A && $0.kind == .position }?.source == .dwd)
+            precondition(marks.first { $0.storm == B && $0.kind == .position }?.source == .meteocool)
+        }
+        test("the map key hides a tracker's or a strength's storms, but never the selected one") {
+            let dwd = storm(A) { $0.primaryProduct = "dwd/konrad3d"; $0.severity = 2 }
+            let ours = storm(B) { $0.primaryProduct = "meteocool/tracker"; $0.severity = 0 }
+            func drawn(_ hidden: Set<StormMarkToggle>, _ selection: StormSelection? = nil) -> [String] {
+                StormDrawing.drawStorms([dwd, ours], now: now, reference: now, selection: selection, at: nil, hidden: hidden)
+                    .marks.filter { $0.kind == .position }.map(\.storm)
+            }
+            precondition(drawn([.dwd]) == [B])
+            precondition(drawn([.weak]) == [A])
+            precondition(drawn([.dwd], StormSelect.fromStorm(dwd)) == [A, B])
+        }
+        test("the map key hides one kind of mark everywhere: paths, rings, hail and rotation badges") {
+            let busy = storm(A) { $0.hail = true; $0.meso = true }
+            let result = StormDrawing.drawStorms([busy], now: now, reference: now, selection: nil, at: nil, hidden: [.path, .live, .hail, .rotation])
+            precondition(kinds(result.marks, A) == ["position"])
+            precondition(result.pings.isEmpty)
+            precondition(!result.marks[0].hail && !result.marks[0].meso)
+        }
         let forecast = [
             ForecastPoint(t: at(15), lon: 10.3, lat: 50.1, majorKm: 5, minorKm: 3, angleDeg: 90),
             ForecastPoint(t: at(30), lon: 10.5, lat: 50.15, majorKm: 8, minorKm: 5, angleDeg: 90),
@@ -269,6 +292,22 @@ struct NativeMapStormsCheck {
             storm(id) { $0.tracks = [StormTrackClaim(product: "dwd/konrad3d", domain: "de", track: code)] }
         }
         typealias S = StormSelect
+        test("a storm tracked by both says so, the one its readings are from first") {
+            let tracks = [StormTrackClaim(product: "meteocool/tracker", domain: "eu", track: "t1"),
+                          StormTrackClaim(product: "dwd/konrad3d", domain: "de", track: "K1")]
+            let ours = StormSelect.fromStorm(storm("A") { $0.primaryProduct = "meteocool/tracker"; $0.tracks = tracks })
+            precondition(StormSelect.sourcesOf(ours) == [.meteocool, .dwd])
+            // Its KONRAD3D track's readings are what the panel shows, so DWD leads.
+            var withTrack = ours
+            withTrack.cell = cell("K1")
+            precondition(StormSelect.sourcesOf(withTrack) == [.dwd, .meteocool])
+            let dwd = StormSelect.fromStorm(storm("A") { $0.primaryProduct = "dwd/konrad3d"; $0.tracks = [tracks[1]] })
+            precondition(StormSelect.sourcesOf(dwd) == [.dwd])
+        }
+        test("a seed cell is DWD's, a box of sky meteocool's") {
+            precondition(StormSelect.sourcesOf(StormSelect.withCell(nil, cell("K1"))) == [.dwd])
+            precondition(StormSelect.sourcesOf(StormSelect.withVolume(nil, volume("v1"))) == [.meteocool])
+        }
 
         test("a storm tapped on the map is selected by its id, with nothing else known yet") {
             let s = S.fromStorm(storm(A))

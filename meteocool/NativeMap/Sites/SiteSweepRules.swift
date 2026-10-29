@@ -122,6 +122,14 @@ enum SiteSweepRules {
         return best
     }
 
+    /// The timeline steps an open radar has a sweep for, oldest first: what
+    /// playback steps through while it is open. Observed steps only: on a
+    /// forecast step a sweep would be the newest scan under a later label.
+    /// `latest` is the live step, judged as `sweepAt` judges it.
+    static func stepsWithSweep(_ scans: [ListedScan], steps: [Int], latest: Int) -> [Int] {
+        steps.filter { $0 <= latest && sweepAt(scans, step: Double($0), live: $0 == latest) != nil }
+    }
+
     /// The sweeps to fetch ahead of the one shown: the next `count` scanned
     /// after it, oldest first; from the oldest again past the newest.
     static func ahead(of scans: [ListedScan], shown: ListedScan?, count: Int = 3) -> [ListedScan] {
@@ -141,6 +149,27 @@ enum SiteSweepRules {
     /// which is what a reader choosing a tilt actually wants to know.
     static func tiltLabel(_ elevationDeg: Double, _ beamKmAt100: Double) -> String {
         "\(fixed1(elevationDeg))° · \(fixed1(beamKmAt100)) km"
+    }
+
+    /// A radar open in site mode, as a link names it (core's `radar=`,
+    /// `sweep=`, `tilt=`): its code, what is drawn of it (reflectivity unless
+    /// said) and the tilt (the lowest unless said, as elevation 0 picks it).
+    /// nil where the code is not a plain word, or absent.
+    static func fromLink(radar: String?, sweep: String?, tilt: String?) -> SiteMode? {
+        guard let site = radar?.lowercased(), site.range(of: "^[a-z0-9]{3,12}$", options: .regularExpression) != nil else { return nil }
+        let quantity = sweep.flatMap(SiteQuantity.init(rawValue:)).flatMap { $0 == .reflectivity ? nil : $0 } ?? .reflectivity
+        let elevation = tilt.flatMap(Double.init).flatMap { $0.isFinite && $0 >= 0 && $0 <= 90 ? $0 : nil } ?? 0
+        return SiteMode(site: site, quantity: quantity, elevation: elevation)
+    }
+
+    /// The link's parameters for an open radar: reflectivity left unsaid, the
+    /// tilt to two decimals (Meteo-France's 0.39) without trailing zeros.
+    static func toLink(_ mode: SiteMode) -> [String: String] {
+        var out = ["radar": mode.site]
+        if mode.quantity != .reflectivity { out["sweep"] = mode.quantity.rawValue }
+        let tilt = (mode.elevation * 100).rounded() / 100
+        out["tilt"] = tilt == tilt.rounded() ? String(Int(tilt)) : String(tilt)
+        return out
     }
 
     /// One decimal, as JavaScript's `toFixed(1)` writes it: a tie rounds away from zero.
@@ -472,4 +501,116 @@ enum VelocityPalette {
         }
         return rgba(stops[stops.count - 1].1, 240)
     }
+}
+
+// MARK: - The motion storm-relative velocity takes out
+
+/// A motion set by hand on the tray's dial: the heading it moves toward,
+/// clockwise from north, and how fast (core's `ManualMotion`). Kept in km/h
+/// and whole degrees, as the storm panel says a storm's speed and heading.
+struct ManualMotion: Equatable, Sendable {
+    var headingDeg: Double
+    var speedKmh: Double
+}
+
+/// The motion SRV takes out, and whose it is: the selected storm's, or the
+/// reader's own (core's `SrvMotion`).
+struct SrvMotion: Equatable, Sendable {
+    enum Source: String, Sendable { case storm, manual }
+    let source: Source
+    let motion: StormMotion
+}
+
+/// Core's `lib/srvMotion.ts`.
+enum SrvMotionRules {
+    /// What the dial snaps to, and a VoiceOver adjust turns it by.
+    static let headingStep = 5.0
+    /// What the stepper adds or takes away.
+    static let speedStep = 5.0
+    /// As fast as the stepper goes: faster than any storm in Europe moves.
+    static let maxSpeedKmh = 150.0
+    /// Before the reader sets one: north-east, the way most storms here go,
+    /// but standing still, so nothing is taken out until they say how fast.
+    static let defaultMotion = ManualMotion(headingDeg: 45, speedKmh: 0)
+
+    /// A heading in [0, 360).
+    static func normalHeading(_ deg: Double) -> Double {
+        (deg.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    /// A heading on the dial's grid, 360 being 0.
+    static func snapHeading(_ deg: Double) -> Double {
+        normalHeading(jsRound(deg / headingStep) * headingStep)
+    }
+
+    /// A speed the stepper can hold: whole km/h, from standing still to the top.
+    static func clampSpeed(_ kmh: Double) -> Double {
+        guard kmh.isFinite else { return 0 }
+        return min(max(jsRound(kmh), 0), maxSpeedKmh)
+    }
+
+    /// The heading a finger at (`dx`, `dy`) from the dial's centre points
+    /// along, in points (y down), snapped; nil on the centre itself.
+    static func headingFromPoint(dx: Double, dy: Double) -> Double? {
+        if dx == 0 && dy == 0 { return nil }
+        return snapHeading(atan2(dx, -dy) * 180 / .pi)
+    }
+
+    /// The heading `steps` clicks round from `deg`, clockwise for positive.
+    static func turnHeading(_ deg: Double, steps: Int) -> Double {
+        snapHeading(deg + Double(steps) * headingStep)
+    }
+
+    /// The stepper's next speed up (+1) or down (-1): the next multiple of
+    /// five that way, so a typed 43 goes to 45 or 40 and then on in fives.
+    static func stepSpeed(_ kmh: Double, direction: Int) -> Double {
+        let on = clampSpeed(kmh)
+        let next = direction > 0 ? (on / speedStep).rounded(.down) * speedStep + speedStep
+            : (on / speedStep).rounded(.up) * speedStep - speedStep
+        return clampSpeed(next)
+    }
+
+    /// The manual motion as the setting keeps it: "heading,km/h".
+    static func format(_ motion: ManualMotion) -> String {
+        "\(Int(snapHeading(motion.headingDeg))),\(Int(clampSpeed(motion.speedKmh)))"
+    }
+
+    /// The setting read back; anything it cannot read is the default.
+    static func parse(_ value: Any?) -> ManualMotion {
+        guard let value = value as? String else { return defaultMotion }
+        let parts = value.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty }), let heading = Double(parts[0]), let speed = Double(parts[1]),
+              heading.isFinite, speed.isFinite else { return defaultMotion }
+        return ManualMotion(headingDeg: snapHeading(heading), speedKmh: clampSpeed(speed))
+    }
+
+    /// A manual motion as SRV takes it: m/s.
+    static func motion(of manual: ManualMotion) -> StormMotion {
+        StormMotion(speedMs: clampSpeed(manual.speedKmh) / 3.6, headingDeg: snapHeading(manual.headingDeg))
+    }
+
+    /// What SRV takes out: the selected storm's motion where it says one and
+    /// the reader has not asked for their own, else theirs.
+    static func resolve(storm: StormMotion?, manual: ManualMotion, prefersManual: Bool) -> SrvMotion {
+        if let storm, !prefersManual { return SrvMotion(source: .storm, motion: storm) }
+        return SrvMotion(source: .manual, motion: motion(of: manual))
+    }
+
+    /// The manual motion an edit starts from: the one SRV is taking out. A
+    /// dial turned while it shows the storm's motion corrects the storm's.
+    static func editBase(_ srv: SrvMotion, manual: ManualMotion) -> ManualMotion {
+        if srv.source == .manual { return manual }
+        return ManualMotion(headingDeg: snapHeading(srv.motion.headingDeg), speedKmh: clampSpeed(srv.motion.speedMs * 3.6))
+    }
+
+    /// The sixteen points a heading is worded in, clockwise from north.
+    static let compassPoints = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+    /// The point of the compass a heading is nearest, as `storm.compass.*` names it.
+    static func compassPoint(_ deg: Double) -> String {
+        compassPoints[Int(jsRound(normalHeading(deg) / 22.5)) % 16]
+    }
+
+    /// JavaScript's `Math.round`: halves up.
+    static func jsRound(_ x: Double) -> Double { (x + 0.5).rounded(.down) }
 }

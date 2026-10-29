@@ -5,12 +5,15 @@
 //  What the 3D map's marks mean and how to move it (core's `Guide3D.svelte`),
 //  opened from its tray's "Legend" pill. The swatches come from the palette
 //  and the constants the map paints with; the controls are a touch screen's.
+//  Core's "Boxes" and "Faint" are left out: this map draws neither.
 //
 
 import SwiftUI
 
 struct ThreeDGuide: View {
     let palette: String
+    /// The KONRAD3D layer is on: its cells are on the map to explain.
+    let cellsShown: Bool
     let close: () -> Void
 
     private func colour(_ dbz: Double) -> Color {
@@ -28,15 +31,8 @@ struct ThreeDGuide: View {
                             .clipShape(Capsule())
                             .accessibilityLabel(CoreStrings.t("guide_3d.scale_aria", ["min": 10, "max": 70]))
                     }
-                    item(CoreStrings.t("guide_3d.cells"), CoreStrings.t("guide_3d.cells_body")) {
-                        HStack(spacing: 3) {
-                            ForEach(0 ..< 4, id: \.self) { band in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .stroke(Color(uiColor: StormStyle.colour(band)), lineWidth: 2)
-                                    .frame(width: 8, height: 14)
-                                    .accessibilityLabel(CoreStrings.t("storm.band.\(StormRules.bandNames[band])"))
-                            }
-                        }
+                    item(CoreStrings.t("guide_3d.cut"), CoreStrings.t("guide_3d.cut_body")) {
+                        CutSwatch(shells: [colour(20), colour(40), colour(55)]).frame(width: 32, height: 24)
                     }
                     item(CoreStrings.t("guide_3d.ground"), CoreStrings.t("guide_3d.ground_body")) {
                         RoundedRectangle(cornerRadius: 3).fill(colour(30).opacity(Double(ThreeDPaint.radarOpacity) * 1.6)).frame(width: 44, height: 14)
@@ -44,6 +40,19 @@ struct ThreeDGuide: View {
                     item(CoreStrings.t("guide_3d.lightning"),
                          CoreStrings.t("guide_3d.lightning_body", ["minutes": Int(ThreeDPaint.strikeMinutes)])) {
                         Image(systemName: "bolt.fill").foregroundStyle(Color(red: 1, green: 0.82, blue: 0.4)).frame(width: 44)
+                    }
+                    if cellsShown {
+                        item(CoreStrings.t("guide_3d.cells"), CoreStrings.t("guide_3d.cells_body")) {
+                            HStack(spacing: 3) {
+                                ForEach(0 ..< 4, id: \.self) { band in
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .stroke(Color(uiColor: StormStyle.colour(band)), lineWidth: 2)
+                                        .frame(width: 8, height: 14)
+                                        .accessibilityLabel(CoreStrings.t("storm.band.\(StormRules.bandNames[band])"))
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("nativeMap.3d.guide.cells")
                     }
                     Text(CoreStrings.t("guide_3d.heights", ["scale": String(ThreeDScale.vertical)]))
                         .scaledFont(13, relativeTo: .footnote)
@@ -90,5 +99,30 @@ struct ThreeDGuide: View {
             Text(does).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A cut storm: the near half gone, the face it leaves standing (core's swatch).
+private struct CutSwatch: View {
+    let shells: [Color]
+
+    var body: some View {
+        Canvas { context, size in
+            let sx = size.width / 32, sy = size.height / 24
+            for (i, (rx, ry, opacity)) in [(12.0, 9.0, 0.55), (7.0, 6.0, 0.85), (3.5, 3.2, 1.0)].enumerated() {
+                let rect = CGRect(x: (16 - rx) * sx, y: (12 - ry) * sy, width: 2 * rx * sx, height: 2 * ry * sy)
+                var path = Path()
+                path.addArc(center: CGPoint(x: rect.midX, y: rect.midY), radius: rect.width / 2, startAngle: .degrees(90),
+                            endAngle: .degrees(270), clockwise: false)
+                path.closeSubpath()
+                let squash = CGAffineTransform(translationX: 0, y: rect.midY).scaledBy(x: 1, y: ry / rx).translatedBy(x: 0, y: -rect.midY)
+                context.fill(path.applying(squash), with: .color(shells[i].opacity(opacity)))
+            }
+            var line = Path()
+            line.move(to: CGPoint(x: 16 * sx, y: 2 * sy))
+            line.addLine(to: CGPoint(x: 16 * sx, y: 22 * sy))
+            context.stroke(line, with: .color(.primary.opacity(0.7)), lineWidth: 1.2)
+        }
+        .accessibilityHidden(true)
     }
 }

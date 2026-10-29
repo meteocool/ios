@@ -21,14 +21,17 @@ final class PointMenuModel: ObservableObject {
     let onRadar: () -> Void
     let onForecast: () -> Void
     let onShare: () -> Void
+    /// The AR view with a marker on the point; nil where AR is not offered.
+    let onAR: (() -> Void)?
 
     init(placement: PointMenuLayout.Placement, shareAvailable: Bool, onRadar: @escaping () -> Void,
-         onForecast: @escaping () -> Void, onShare: @escaping () -> Void) {
+         onForecast: @escaping () -> Void, onShare: @escaping () -> Void, onAR: (() -> Void)? = nil) {
         self.placement = placement
         self.shareAvailable = shareAvailable
         self.onRadar = onRadar
         self.onForecast = onForecast
         self.onShare = onShare
+        self.onAR = onAR
     }
 
     var title: String { place ?? CoreStrings.t("point_menu_title") }
@@ -136,6 +139,11 @@ struct PointMenuView: View {
                 if menu.shareAvailable {
                     row("square.and.arrow.up", "point_menu_share", "point_menu_share_sub", id: "share", action: menu.onShare)
                 }
+                // The app's own, not core's: the AR view is only in the app.
+                if let onAR = menu.onAR {
+                    row("arkit", title: NSLocalizedString("point_menu_ar", comment: ""),
+                        subtitle: NSLocalizedString("point_menu_ar_sub", comment: ""), id: "ar", action: onAR)
+                }
             }
         }
         .padding(6)
@@ -148,7 +156,12 @@ struct PointMenuView: View {
         .accessibilityIdentifier("nativeMap.point.menu")
     }
 
+    /// A row with core's strings, by their keys.
     private func row(_ symbol: String, _ label: String, _ sub: String, id: String, action: @escaping () -> Void) -> some View {
+        row(symbol, title: CoreStrings.t(label), subtitle: CoreStrings.t(sub), id: id, action: action)
+    }
+
+    private func row(_ symbol: String, title: String, subtitle: String, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
@@ -157,11 +170,11 @@ struct PointMenuView: View {
                     .frame(width: 32, height: 32)
                     .background(PointStyle.accentTint, in: Circle())
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(CoreStrings.t(label))
+                    Text(title)
                         .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                         .tracking(-0.15)
                         .foregroundStyle(PointStyle.text)
-                    Text(CoreStrings.t(sub))
+                    Text(subtitle)
                         .scaledFont(12, relativeTo: .caption)
                         .foregroundStyle(PointStyle.text2)
                 }
@@ -169,8 +182,8 @@ struct PointMenuView: View {
             }
         }
         .buttonStyle(PointMenuRowStyle())
-        .accessibilityLabel(CoreStrings.t(label))
-        .accessibilityHint(CoreStrings.t(sub))
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
         .accessibilityIdentifier("nativeMap.point.\(id)")
     }
 }

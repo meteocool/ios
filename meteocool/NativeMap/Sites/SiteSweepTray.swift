@@ -73,6 +73,9 @@ struct SiteSweepTray: View {
                     }
                     Spacer(minLength: 0)
                 }
+                if mode.quantity == .srv, let view = state.view {
+                    MotionRow(state: state, view: view, theme: theme)
+                }
             }
             // A container: its own children keep their identifiers.
             .accessibilityElement(children: .contain)
@@ -135,11 +138,163 @@ struct SiteSweepTray: View {
     /// What the server says of the fold, or that SRV needs a storm.
     private func note(_ mode: SiteMode) -> (text: String, warn: Bool)? {
         guard let view = state.view else { return nil }
-        if mode.quantity == .srv && !view.hasMotion { return (CoreStrings.t("site.srv_hint"), false) }
+        // Storm-relative with nothing to take out: no storm, no motion set.
+        if mode.quantity == .srv && view.srv.source == .manual && view.srv.motion.speedMs == 0 {
+            return (CoreStrings.t("site.srv_hint"), false)
+        }
         guard mode.quantity != .reflectivity else { return nil }
         if view.dealiased == true { return (CoreStrings.t("site.dealiased"), false) }
         if view.dealiased == false { return (CoreStrings.t("site.not_dealiased"), true) }
         return nil
+    }
+}
+
+/// What storm-relative velocity takes out (core's `StormMotion.svelte`): a
+/// row saying whose motion and how fast, which opens a dial for the heading
+/// and a stepper for the speed, and a choice of the storm's or one's own.
+struct MotionRow: View {
+    @ObservedObject var state: SiteSweepState
+    let view: SiteSweepView
+    let theme: ChromeTheme
+    private var open: Bool { state.motionOpen }
+
+    private var shown: ManualMotion { SrvMotionRules.editBase(view.srv, manual: state.manual) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { state.motionOpen.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.north.fill")
+                        .rotationEffect(.degrees(shown.headingDeg))
+                        .foregroundStyle(theme.accent)
+                    Text(line)
+                        .scaledFont(12, weight: .medium, relativeTo: .caption, digits: true)
+                        .foregroundStyle(theme.text)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                        .foregroundStyle(theme.text3)
+                }
+                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 32)
+                .background(theme.tint, in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(PressScale())
+            .accessibilityLabel(CoreStrings.t("site.motion.edit"))
+            .accessibilityValue(line)
+            .accessibilityHint(CoreStrings.t("site.motion.title"))
+            .accessibilityIdentifier("nativeMap.site.motion")
+            if open { editor }
+        }
+    }
+
+    private var line: String {
+        CoreStrings.t("site.motion.line", [
+            "source": view.srv.source == .manual ? CoreStrings.t("site.motion.manual") : view.stormName ?? CoreStrings.t("storm.storm_label.unclassed"),
+            "speed": Int(shown.speedKmh),
+            "direction": CoreStrings.t("storm.compass.\(SrvMotionRules.compassPoint(shown.headingDeg))"),
+        ])
+    }
+
+    private var editor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if view.stormMoves {
+                Picker(CoreStrings.t("site.motion.source"), selection: Binding(get: { view.srv.source },
+                                                                               set: { state.prefersManual = $0 == .manual })) {
+                    Text(CoreStrings.t("site.motion.storm")).tag(SrvMotion.Source.storm)
+                    Text(CoreStrings.t("site.motion.by_hand")).tag(SrvMotion.Source.manual)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("nativeMap.site.motion.source")
+            }
+            HStack(alignment: .center, spacing: 16) {
+                MotionDial(heading: shown.headingDeg, theme: theme) { state.editMotion(heading: $0) }
+                    .frame(width: 96, height: 96)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(CoreStrings.t("site.motion.speed"))
+                        .scaledFont(11, weight: .medium, relativeTo: .caption2)
+                        .foregroundStyle(theme.text2)
+                    Stepper(value: Binding(get: { shown.speedKmh }, set: { next in
+                        state.editMotion(speed: SrvMotionRules.stepSpeed(shown.speedKmh, direction: next > shown.speedKmh ? 1 : -1))
+                    }), in: 0 ... SrvMotionRules.maxSpeedKmh, step: SrvMotionRules.speedStep) {
+                        Text("\(Int(shown.speedKmh)) km/h")
+                            .scaledFont(15, weight: .semibold, relativeTo: .subheadline, digits: true)
+                            .foregroundStyle(theme.text)
+                    }
+                    .accessibilityLabel(CoreStrings.t("site.motion.speed"))
+                    .accessibilityValue("\(Int(shown.speedKmh)) km/h")
+                    .accessibilityIdentifier("nativeMap.site.motion.speed")
+                }
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+}
+
+/// The heading as a compass dial: an arrow from its centre the way the storm
+/// goes, turned by a finger anywhere on it, in five-degree clicks.
+struct MotionDial: View {
+    let heading: Double
+    let theme: ChromeTheme
+    let turn: (Double) -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height)
+            let centre = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            ZStack {
+                Circle().fill(theme.tint)
+                Circle().stroke(theme.edge, lineWidth: 1)
+                ForEach(["N", "E", "S", "W"], id: \.self) { point in
+                    let angle = ["N": 0.0, "E": 90, "S": 180, "W": 270][point]! * .pi / 180
+                    Text(CoreStrings.t("storm.compass.\(point)"))
+                        .scaledFont(9, weight: .semibold, relativeTo: .caption2)
+                        .foregroundStyle(theme.text3)
+                        .position(x: centre.x + sin(angle) * side * 0.38, y: centre.y - cos(angle) * side * 0.38)
+                }
+                Image(systemName: "location.north.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: side * 0.32)
+                    .foregroundStyle(theme.accent)
+                    .rotationEffect(.degrees(heading))
+            }
+            .contentShape(Circle())
+            .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                let dx = Double(value.location.x - centre.x), dy = Double(value.location.y - centre.y)
+                guard let next = SrvMotionRules.headingFromPoint(dx: dx, dy: dy), next != heading else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                turn(next)
+            })
+        }
+        .accessibilityElement()
+        .accessibilityLabel(CoreStrings.t("site.motion.heading"))
+        .accessibilityValue("\(Int(heading))° " + CoreStrings.t("storm.compass.\(SrvMotionRules.compassPoint(heading))"))
+        .accessibilityAdjustableAction { direction in
+            turn(SrvMotionRules.turnHeading(heading, steps: direction == .increment ? 1 : -1))
+        }
+        .accessibilityIdentifier("nativeMap.site.motion.dial")
+    }
+}
+
+/// The open radar's controls as a glass card over the player (core's pill
+/// over it): the player keeps its height and its timeline.
+struct SiteSweepCard: View {
+    @ObservedObject var state: SiteSweepState
+    @ObservedObject var model: NativeMapModel
+
+    var body: some View {
+        let theme = ChromeTheme(dark: model.isDark)
+        SiteSweepTray(state: state, escapes: model.selectedStorm == nil && model.covers.isEmpty, theme: theme)
+            .padding(EdgeInsets(top: 10, leading: 6, bottom: 12, trailing: 10))
+            .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous), strong: true)
+            .environment(\.colorScheme, theme.colorScheme)
+            .padding(.horizontal, ChromeTheme.gutter)
     }
 }
 

@@ -106,19 +106,42 @@ enum GreyPNG {
 /// RGBA pixel (core's `cmap_utils.ts`): 0 and everything below the table's
 /// `leftPad` transparent, everything past its end the last colour.
 struct RadarLUT: Sendable, Equatable {
+    /// What the composites are drawn in under an open radar's own sweep
+    /// (core's `Ink`): grey, so their colours do not mix with the sweep's.
+    /// Black ink on a light map, white on a dark one.
+    enum Ink: String, Sendable {
+        case black, white
+    }
+
     let name: String
+    let ink: Ink?
     /// R, G, B, A in memory order (little-endian `UInt32`).
     let entries: [UInt32]
 
-    init(palette: String) {
+    /// The palette and its ink, as caches key it.
+    var id: String { ink.map { "\(name)~\($0.rawValue)" } ?? name }
+
+    /// The dBZ the grey runs between, from its faintest to full ink (`GREY_FROM_DBZ`, `GREY_TO_DBZ`).
+    static let greyFromDbz = 5.0
+    static let greyToDbz = 50.0
+
+    init(palette: String, ink: Ink? = nil) {
         let table = ColormapTables.tables[palette] ?? ColormapTables.tables["classic"]!
         name = ColormapTables.tables[palette] == nil ? "classic" : palette
+        self.ink = ink
         var entries = [UInt32](repeating: 0, count: 256)
         for value in 1 ..< 256 where value >= table.leftPad && !table.rgba.isEmpty {
             let packed = table.rgba[min(value - table.leftPad, table.rgba.count - 1)]
             let a = packed & 0xFF
-            let r = (packed >> 24) * a / 255, g = ((packed >> 16) & 0xFF) * a / 255, b = ((packed >> 8) & 0xFF) * a / 255
-            entries[value] = r | g << 8 | b << 16 | a << 24
+            var r = packed >> 24, g = (packed >> 16) & 0xFF, b = (packed >> 8) & 0xFF
+            if let ink {
+                // Grey running with dBZ, each class's alpha kept (core's `greyTable`).
+                let t = min(1, max(0, (Double(value) / 2 - 32.5 - Self.greyFromDbz) / (Self.greyToDbz - Self.greyFromDbz)))
+                let (faint, full) = ink == .black ? (160.0, 0.0) : (120.0, 255.0)
+                let grey = UInt32((faint + (full - faint) * t).rounded())
+                (r, g, b) = (grey, grey, grey)
+            }
+            entries[value] = r * a / 255 | (g * a / 255) << 8 | (b * a / 255) << 16 | a << 24
         }
         self.entries = entries
     }

@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Noorden van geotracking";
 "ar_turn_left" = "Draai %.0f° naar links";
 "ar_turn_right" = "Draai %.0f° naar rechts";
+"point_menu_ar" = "Bekijken in AR";
+"point_menu_ar_sub" = "Een markering boven deze plek aan de hemel";
+"ar_marker" = "Markering";
+"ar_marker_from_map" = "Gemarkeerd op de kaart";
+"ar_marker_echo" = "Radarecho op %.1f km";
+"ar_marker_assumed" = "Geen radarecho · wolkenbasis aangenomen op %.1f km";
+"ar_marker_ground" = "Op de grond";
+"ar_marker_remove" = "Markering verwijderen";
+"ar_mark" = "Wolk markeren";
+"ar_mark_cancel" = "Markeren annuleren";
+"ar_mark_hint" = "Tik daarna op een wolk om hem op de kaart te vinden. Lang drukken op de hemel markeert ook.";
+"ar_mark_instructions" = "Tik op een wolk om hem te markeren.";
+"ar_mark_missed" = "Te dicht bij de horizon om te zeggen waar dat is.";
+"ar_preview_marker" = "Voorvertoning, 20 km van de gemarkeerde plek";
 
 /* Native MapKit map */
 "native_map_setting" = "Native kaart (bèta)";

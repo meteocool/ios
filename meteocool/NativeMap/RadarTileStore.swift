@@ -108,12 +108,14 @@ final class RadarTileStore: @unchecked Sendable {
         session.invalidateAndCancel()
     }
 
-    var paletteName: String { lock.withLock { lut.name } }
+    /// The palette and its ink, as the caches key them.
+    var paletteName: String { lock.withLock { lut.id } }
 
-    func setPalette(_ palette: String) {
+    func setPalette(_ palette: String, ink: RadarLUT.Ink? = nil) {
         let changed = lock.withLock { () -> Bool in
-            guard RadarLUT(palette: palette).name != lut.name else { return false }
-            lut = RadarLUT(palette: palette)
+            let next = RadarLUT(palette: palette, ink: ink)
+            guard next.id != lut.id else { return false }
+            lut = next
             return true
         }
         if changed { images.removeAllObjects() }
@@ -201,6 +203,6 @@ final class RadarTileStore: @unchecked Sendable {
     }
 
     private func cacheName(_ key: RadarTileKey, palette: Bool = true) -> NSString {
-        "\(palette ? lut.name : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
+        "\(palette ? lut.id : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
     }
 }

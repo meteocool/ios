@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Nord fra geosporing";
 "ar_turn_left" = "Drei %.0f° til venstre";
 "ar_turn_right" = "Drei %.0f° til høyre";
+"point_menu_ar" = "Vis i AR";
+"point_menu_ar_sub" = "En markør over dette stedet på himmelen";
+"ar_marker" = "Markør";
+"ar_marker_from_map" = "Markert på kartet";
+"ar_marker_echo" = "Radarekko i %.1f km høyde";
+"ar_marker_assumed" = "Ingen radarekko · skybase antatt til %.1f km";
+"ar_marker_ground" = "På bakken";
+"ar_marker_remove" = "Fjern markør";
+"ar_mark" = "Marker en sky";
+"ar_mark_cancel" = "Avbryt markering";
+"ar_mark_hint" = "Trykk så på en sky for å finne den på kartet. Et langt trykk på himmelen markerer også.";
+"ar_mark_instructions" = "Trykk på en sky for å markere den.";
+"ar_mark_missed" = "For nær horisonten til å si hvor det er.";
+"ar_preview_marker" = "Forhåndsvisning, 20 km fra det markerte stedet";
 
 /* Native MapKit map */
 "native_map_setting" = "Innebygd kart (beta)";

@@ -20,6 +20,13 @@ final class VolumeLoader: ObservableObject {
     @Published private(set) var failed = false
     private var path: String?
 
+    /// The same volume once more, after it failed to arrive.
+    func retry() {
+        guard let path else { return }
+        self.path = nil
+        load(path)
+    }
+
     func load(_ path: String) {
         guard path != self.path else { return }
         self.path = path
@@ -289,37 +296,74 @@ struct StormCappi: View {
         return low + (high - low) * (1 - cos(phase * 2 * .pi)) / 2
     }
 
+    /// The ruler beside the slice (`RULER_PX` wide): every 2 km up to just
+    /// above the storm, the storm's span marked, and the slice's height.
+    private func ruler(_ km: Double) -> some View {
+        let (low, high) = range
+        let ceiling = volume.extentM.z / 1000
+        let top = min(ceiling, (high + 1).rounded(.up))
+        let ticks = stride(from: 0.0, through: top, by: 2).map { $0 }
+        return GeometryReader { geometry in
+            let h = geometry.size.height
+            let y = { (value: Double) -> CGFloat in CGFloat(1 - value / max(top, 0.1)) * h }
+            ZStack(alignment: .topLeading) {
+                Capsule().fill(Color.accentColor.opacity(0.25))
+                    .frame(width: 3, height: max(2, y(low) - y(high)))
+                    .offset(x: 4, y: y(high))
+                ForEach(ticks, id: \.self) { tick in
+                    Text("\(Int(tick))")
+                        .scaledFont(10, relativeTo: .caption2, digits: true)
+                        .foregroundStyle(.tertiary)
+                        .position(x: 24, y: y(tick))
+                }
+                Text(String(format: "%.1f", km))
+                    .scaledFont(10, weight: .bold, relativeTo: .caption2, digits: true)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 3)
+                    .background(.thinMaterial, in: Capsule())
+                    .position(x: 24, y: y(km))
+            }
+        }
+        .frame(width: 44)
+        .accessibilityHidden(true)
+    }
+
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24, paused: still)) { context in
             let elapsed = context.date.timeIntervalSince(started)
             let km = height(at: elapsed)
-            ZStack(alignment: .topLeading) {
-                StormVolumeView(volume: volume, palette: palette, cut: .slab(km),
-                                spin: still ? 0.6 : elapsed / Self.turnSeconds * 2 * .pi, tilt: 0.72)
-                Text(String(format: "%.1f km", km))
-                    .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.thinMaterial, in: Capsule())
-                    .padding(8)
-                    .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                // The slice is the slider: dragged, or adjusted by VoiceOver.
+                HStack(spacing: 0) {
+                    StormVolumeView(volume: volume, palette: palette, cut: .slab(km),
+                                    spin: still ? 0.6 : elapsed / Self.turnSeconds * 2 * .pi, tilt: 0.72)
+                    ruler(km)
+                }
+                .contentShape(Rectangle())
+                // Over the panel's scroll: a vertical drag on the slice holds a
+                // height, as core's canvas does, rather than scrolling past it.
+                .highPriorityGesture(DragGesture(minimumDistance: 2)
+                    .onChanged { value in
+                        if dragFrom == nil { dragFrom = held ?? height(at: Date().timeIntervalSince(started)) }
+                        let (low, high) = range
+                        held = min(high, max(low, (dragFrom ?? 0) - value.translation.height * 0.04))
+                    }
+                    .onEnded { _ in dragFrom = nil })
+                .accessibilityElement()
+                .accessibilityLabel(CoreStrings.t("storm.volume.cappi_height"))
+                .accessibilityValue(String(format: "%.1f km", km))
+                .accessibilityAdjustableAction { direction in
+                    let (low, high) = range
+                    held = min(high, max(low, (held ?? height(at: Date().timeIntervalSince(started))) + (direction == .increment ? 0.5 : -0.5)))
+                }
+                .accessibilityIdentifier("nativeMap.storm.cappi")
+                Text(CoreStrings.t("storm.volume.cappi_caption", ["km": String(format: "%.1f", km)]))
+                    .scaledFont(12, relativeTo: .caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("nativeMap.storm.cappi.caption")
             }
-            .accessibilityElement()
-            .accessibilityLabel(CoreStrings.t("storm.volume.cappi_height"))
-            .accessibilityValue(String(format: "%.1f km", km))
         }
-        .gesture(DragGesture(minimumDistance: 2)
-            .onChanged { value in
-                if dragFrom == nil { dragFrom = held ?? height(at: Date().timeIntervalSince(started)) }
-                let (low, high) = range
-                held = min(high, max(low, (dragFrom ?? 0) - value.translation.height * 0.04))
-            }
-            .onEnded { _ in dragFrom = nil })
-        .accessibilityAdjustableAction { direction in
-            let (low, high) = range
-            held = min(high, max(low, (held ?? height(at: Date().timeIntervalSince(started))) + (direction == .increment ? 0.5 : -0.5)))
-        }
-        .accessibilityIdentifier("nativeMap.storm.cappi")
     }
 }
 
@@ -328,6 +372,8 @@ struct RadarMinimap: View {
     let radars: [RadarSites.Contribution]
     let lat: Double
     let lon: Double
+    /// The radar a row is pointing at, picked out.
+    var highlight: String?
 
     /// `MIN_HALF_KM`, `ZOOM_OUT`.
     static let minHalfKm = 80.0
@@ -351,8 +397,12 @@ struct RadarMinimap: View {
             }
             for (radar, _, km) in points {
                 let p = at(km)
-                context.stroke(Path { $0.move(to: middle); $0.addLine(to: p) }, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
-                context.fill(Path(ellipseIn: CGRect(x: p.x - 3.5, y: p.y - 3.5, width: 7, height: 7)), with: .color(.accentColor))
+                let picked = radar.code == highlight
+                let r: CGFloat = picked ? 5 : 3.5
+                context.stroke(Path { $0.move(to: middle); $0.addLine(to: p) },
+                               with: .color(picked ? .accentColor : .secondary.opacity(0.35)), lineWidth: picked ? 2 : 1)
+                context.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)),
+                             with: .color(highlight == nil || picked ? .accentColor : .secondary))
                 context.draw(Text(radar.name).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary),
                              at: CGPoint(x: p.x, y: p.y - 9))
             }

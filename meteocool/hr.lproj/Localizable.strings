@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Sjever prema geopraćenju";
 "ar_turn_left" = "Okreni se ulijevo za %.0f°";
 "ar_turn_right" = "Okreni se udesno za %.0f°";
+"point_menu_ar" = "Prikaži u AR-u";
+"point_menu_ar_sub" = "Oznaka na ovom mjestu na nebu";
+"ar_marker" = "Oznaka";
+"ar_marker_from_map" = "Označeno na karti";
+"ar_marker_echo" = "Radarski odjek na %.1f km";
+"ar_marker_assumed" = "Nema radarskog odjeka · baza oblaka uzeta kao %.1f km";
+"ar_marker_ground" = "Na tlu";
+"ar_marker_remove" = "Ukloni oznaku";
+"ar_mark" = "Označi oblak";
+"ar_mark_cancel" = "Odustani od označavanja";
+"ar_mark_hint" = "Zatim dodirni oblak da ga pronađeš na karti. Dugi pritisak na nebo također označava.";
+"ar_mark_instructions" = "Dodirni oblak da ga označiš.";
+"ar_mark_missed" = "Preblizu horizontu da bi se reklo gdje je to.";
+"ar_preview_marker" = "Pregled, 20 km od označenog mjesta";
 
 /* Native MapKit map */
 "native_map_setting" = "Izvorna karta (beta)";

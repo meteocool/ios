@@ -27,6 +27,10 @@ struct StormDetailsView: View {
 
     @StateObject private var loader = VolumeLoader()
     @State private var scrolled = false
+    /// The radar a row picks out on the minimap.
+    @State private var pickedRadar: String?
+    /// The volume's radars that publish sweeps, to open from their rows.
+    @State private var openableRadars = Set<String>()
 
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -111,6 +115,7 @@ struct StormDetailsView: View {
 
     /// A box of sky with no storm or cell found for it (yet).
     private var coreOnly: Bool { track == nil && storm == nil && selection?.volume != nil }
+    private var sources: [StormSource] { selection.map(StormSelect.sourcesOf) ?? [] }
 
     /// "Strong", or the place, or "Storm".
     var title: String {
@@ -184,12 +189,13 @@ struct StormDetailsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(titleFont).tracking(-0.48).accessibilityIdentifier("nativeMap.storm.title")
                 if let place { Text(place).font(subtitleFont).foregroundStyle(.secondary) }
+                if !sources.isEmpty { SourceBadges(sources: sources).padding(.top, 2) }
             }
             Spacer(minLength: wide ? 76 : 98)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.bottom, 14)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
@@ -216,6 +222,8 @@ struct StormDetailsView: View {
                 }
             }
             .padding(.bottom, 14)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("nativeMap.storm.stats")
         }
     }
 
@@ -253,6 +261,8 @@ struct StormDetailsView: View {
                     }
                 }
                 .padding(.bottom, 4)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.storm.signals")
             }
         }
     }
@@ -336,6 +346,8 @@ struct StormDetailsView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("nativeMap.storm.readings")
         }
     }
 
@@ -408,7 +420,7 @@ struct StormDetailsView: View {
                         .padding(.top, 14)
                 }
                 heading(title: "CAPPI", aside: CoreStrings.t("storm.volume.cappi_aside"))
-                volumeBody(info.path, height: 220) { StormCappi(volume: $0, palette: palette) }
+                volumeBody(info.path, height: 262) { StormCappi(volume: $0, palette: palette) }
             } else {
                 heading("storm.section.inside", aside: CoreStrings.t("storm.section.inside_aside"))
                 volumeBody(info.path, height: 200) { volume in
@@ -440,8 +452,14 @@ struct StormDetailsView: View {
             if let volume = loader.volume {
                 content(volume)
             } else if loader.failed {
-                Text(CoreStrings.t("storm.volume.unavailable")).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 10) {
+                    Text(CoreStrings.t("storm.volume.unavailable")).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
+                    Button(CoreStrings.t("retry")) { loader.retry() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("nativeMap.storm.volume.retry")
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -459,23 +477,78 @@ struct StormDetailsView: View {
         if !radars.isEmpty {
             heading("storm.volume.radars", aside: info.coverage.map { CoreStrings.t("storm.volume.coverage", ["pct": Int(($0 * 100).rounded())]) })
             if let position {
-                RadarMinimap(radars: radars, lat: position.lat, lon: position.lon).frame(height: 170)
+                RadarMinimap(radars: radars, lat: position.lat, lon: position.lon, highlight: pickedRadar).frame(height: 170)
             }
             VStack(spacing: 0) {
                 ForEach(radars) { radar in
-                    HStack {
-                        Text(radar.name)
-                        Spacer()
-                        if let km = radar.distanceKm { Text("\(Int(km.rounded())) km").foregroundStyle(.secondary).monospacedDigit() }
-                    }
-                    .scaledFont(14, relativeTo: .subheadline)
-                    .padding(.vertical, 7)
+                    radarRow(radar)
                     Divider()
                 }
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("nativeMap.storm.radars")
+            // Which of them have sweeps to open: asked once per volume.
+            .task(id: info.sites.joined(separator: ",")) { await listOpenable(info.sites) }
         }
+    }
+
+    /// A radar: its name, a way into its own sweeps where it publishes them,
+    /// how far it stood, and its country's flag. A tap picks it out on the
+    /// minimap above.
+    private func radarRow(_ radar: RadarSites.Contribution) -> some View {
+        let picked = pickedRadar == radar.code
+        return HStack(spacing: 8) {
+            if openableRadars.contains(RadarSites.siteCode(radar.code)) {
+                Button {
+                    openRadar(radar.code)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(radar.name)
+                        Image(systemName: "chevron.right").imageScale(.small).foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(picked ? Color.accentColor : Color.primary)
+                .accessibilityLabel(CoreStrings.t("storm.volume.open_radar", ["radar": radar.name]))
+                .accessibilityIdentifier("nativeMap.storm.radar.open.\(RadarSites.siteCode(radar.code))")
+            } else {
+                Text(radar.name).foregroundStyle(picked ? Color.accentColor : Color.primary)
+            }
+            Spacer()
+            if let km = radar.distanceKm { Text("\(Int(km.rounded())) km").foregroundStyle(.secondary).monospacedDigit() }
+            Text(RadarSites.flag(RadarSites.countryOf(radar.code))).accessibilityHidden(true)
+        }
+        .scaledFont(14, relativeTo: .subheadline)
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+        .onTapGesture { pickedRadar = picked ? nil : radar.code }
+        .accessibilityAddTraits(picked ? .isSelected : [])
+    }
+
+    /// Which of these radars publish sweeps, by one listing of the box they stand in.
+    private func listOpenable(_ codes: [String]) async {
+        openableRadars = []
+        guard let map = store.map else { return }
+        let sites = codes.compactMap { RadarSites.site($0) }
+        guard !sites.isEmpty else { return }
+        let pad = 0.1
+        let box = [sites.map(\.lon).min()! - pad, sites.map(\.lat).min()! - pad, sites.map(\.lon).max()! + pad, sites.map(\.lat).max()! + pad]
+            .map { String(format: "%.3f", $0) }.joined(separator: ",")
+        let served: Set<String> = await withCheckedContinuation { done in
+            map.fetch(map.endpoints.sweeps(bbox: box)) { data, _ in
+                let listing = data.flatMap { try? JSONDecoder().decode(SweepListing.self, from: $0) }
+                done.resume(returning: Set((listing?.sites ?? []).map(\.site)))
+            }
+        }
+        openableRadars = served
+    }
+
+    /// Opens a radar's sweeps on the flat map; a phone's sheet makes way for
+    /// it. The storm stays selected: storm-relative velocity is read against it.
+    private func openRadar(_ code: String) {
+        guard let map = store.map else { return }
+        map.model.site.open(RadarSites.siteCode(code))
+        if !wide { store.details = false }
     }
 
     // MARK: History
@@ -535,6 +608,8 @@ struct StormDetailsView: View {
                         .accessibilityLabel(CoreStrings.t("storm.history.aria", ["title": panel.title, "unit": panel.unit]))
                 }
                 .padding(.bottom, 6)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.storm.history.\(panel.key)")
             }
         }
     }
@@ -670,12 +745,21 @@ struct StormDetailsView: View {
                 Divider()
                 fact(CoreStrings.t("storm.fact.radar"), offset, ink: .orange)
             }
+            if let lead = sources.first {
+                Divider()
+                fact(CoreStrings.t("storm.fact.source"), CoreStrings.t("storm.source.\(lead.rawValue)_long")
+                     + (sources.count > 1 ? "\n" + CoreStrings.t("storm.source.also", ["source": CoreStrings.t("storm.source.\(sources[1].rawValue)_long")]) : ""))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("nativeMap.storm.fact.source")
+            }
             if let last = forecast.last {
                 Divider()
                 fact(CoreStrings.t("storm.fact.forecast"),
                      CoreStrings.t("storm.fact.forecast_value", ["time": clock(last.t), "km": last.majorKm.map { StormRules.toFixed($0, 1) } ?? "–"]))
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("nativeMap.storm.facts")
     }
 
     private func fact(_ label: String, _ value: String, ink: Color = .primary) -> some View {

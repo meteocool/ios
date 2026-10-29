@@ -19,7 +19,8 @@ final class NativeMapModel: ObservableObject {
     enum Capability: String, CaseIterable {
         case radar
         case lightning
-        case precipitationTypes = "precipitation_types"
+        /// As core names it in a link (`layer=precipTypes`).
+        case precipitationTypes = "precipTypes"
         case cells3d
     }
 
@@ -80,6 +81,22 @@ final class NativeMapModel: ObservableObject {
     let cut = StormCut()
     /// The radar open on the flat map in its own sweep (site mode).
     let site = SiteSweepState()
+    /// DWD's weather stations over the radar map.
+    let stations = StationState()
+    /// The layer switches that are on, for the chrome that follows them.
+    @Published var layersOn = Set<NativeMapLayer>()
+    /// What the storm key turned off (core's `hiddenStormMarks`), kept.
+    @Published var hiddenStormMarks: Set<StormMarkToggle> = NativeMapModel.storedHiddenMarks() {
+        didSet {
+            NativeMapModel.defaults?.set(hiddenStormMarks.map(\.rawValue).sorted(), forKey: NativeMapModel.hiddenMarksKey)
+        }
+    }
+
+    private static let hiddenMarksKey = "nativeMap.hiddenStormMarks"
+    private static let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
+    private static func storedHiddenMarks() -> Set<StormMarkToggle> {
+        Set((defaults?.stringArray(forKey: hiddenMarksKey) ?? []).compactMap(StormMarkToggle.init))
+    }
     /// The storm open, as the 3D map finds and cuts it; nil without one.
     @Published var opened: OpenedStorm?
 }
@@ -91,11 +108,17 @@ struct OpenedStorm: Equatable {
     var cell: String?
     var volume: String?
     var headingDeg: Double?
+    /// Where a box of sky stands, for its successor once a newer scan has
+    /// replaced it.
+    var latitude: Double?
+    var longitude: Double?
 
     init(_ selection: StormSelection) {
         cell = selection.cell?.code
         volume = selection.cell?.volume?.path ?? selection.volume?.path
         headingDeg = StormSelect.headingOf(selection)
+        latitude = selection.volume?.lat
+        longitude = selection.volume?.lon
     }
 
     /// The same storm, perhaps with a newer heading.

@@ -127,9 +127,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // only it, unless it lands on a storm.
         let sites = SiteSweeps(motion: { [weak storms] in
             storms?.store.selection.flatMap(StormSelect.motionOf).map { StormMotion(speedMs: $0.speedMs, headingDeg: $0.headingDeg) }
+        }, stormName: { [weak storms] in
+            guard let selection = storms?.store.selection else { return nil }
+            let t: StormTranslate = { CoreStrings.t($0, $1) }
+            if let place = StormRules.placementLabel(selection.cell?.placement ?? selection.summary?.properties.placement, t, style: .short) {
+                return place
+            }
+            guard StormSelect.knowsSeverity(selection) else { return CoreStrings.t("storm.storm_label.unclassed") }
+            return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
-        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), sites, storms, CloudHints(), PointFeature(),
-                FlashToBang(), RadarWash(), ThreeDMap()]
+        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StationMarks(), sites, storms, CloudHints(),
+                PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -167,7 +175,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// and toasts under it.
     private func configureChrome() {
         let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
-                                  openProducts: { [weak self] in self?.openProducts() })
+                                  openProducts: { [weak self] in self?.openProducts() },
+                                  openStormKey: { [weak self] in self?.openStormKey() },
+                                  toggleStations: { [weak self] in
+                                      guard let self else { return }
+                                      self.setOn(.stations, !self.isOn(.stations))
+                                  })
         let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
         // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
         let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
@@ -199,6 +212,43 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         dockOnTray = dock.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter)
         dockOnOther = dock.bottomAnchor.constraint(equalTo: other.topAnchor, constant: -ChromeTheme.gutter)
         dockOnTray?.isActive = true
+        // An open radar's controls, on the tray; the strips stand on them.
+        let siteCard = addToDock(SiteSweepCard(state: model.site, model: model))
+        siteCard.isHidden = true
+        model.site.$mode
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak siteCard] open in
+                DispatchQueue.main.async {
+                    siteCard?.isHidden = !open
+                    siteCard?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
+        // Measured again as it grows or shrinks: the motion's editor, another
+        // quantity's rows. A host keeps the size it was laid out at otherwise,
+        // and what grows past it takes no touches.
+        Publishers.Merge(model.site.$motionOpen.map { _ in () }, model.site.$mode.map { _ in () })
+            .sink { [weak self, weak siteCard] in
+                DispatchQueue.main.async {
+                    siteCard?.invalidateIntrinsicContentSize()
+                    self?.setNeedsLayout()
+                }
+            }
+            .store(in: &observers)
+        // The stations' parameter, over the radar's controls when both are up.
+        let stationCard = addToDock(StationPicker(model: model, state: model.stations))
+        stationCard.isHidden = true
+        model.$layersOn.combineLatest(model.$capability)
+            .map { on, capability in on.contains(.stations) && capability == .radar }
+            .removeDuplicates()
+            .sink { [weak stationCard] shown in
+                DispatchQueue.main.async {
+                    stationCard?.isHidden = !shown
+                    stationCard?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
         let strips = addToDock(NoticeStrips(player: player, model: model, notices: notices))
         stripsChrome = strips
         notices.objectWillChange
@@ -277,6 +327,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         } else {
             model.trayTitle = nil
         }
+    }
+
+    /// What the storm marks mean, each switchable (core's `StormKey`).
+    func openStormKey() {
+        let mesocyclones = Binding(get: { [weak self] in self?.isOn(.mesocyclones) ?? true },
+                                   set: { [weak self] on in self?.setOn(.mesocyclones, on) })
+        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones,
+                                                             close: { [weak self] in self?.dismissSheet() }))
+        presentSheet(key, detents: [.medium(), .large()])
     }
 
     func openProducts() {
@@ -482,11 +541,32 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     // MARK: - Settings
 
     func isOn(_ layer: NativeMapLayer) -> Bool {
-        defaults?.object(forKey: "nativeMap.\(layer.rawValue)") as? Bool ?? layer.defaultOn
+        linkOverrides[layer] ?? defaults?.object(forKey: "nativeMap.\(layer.rawValue)") as? Bool ?? layer.defaultOn
     }
 
     func setOn(_ layer: NativeMapLayer, _ on: Bool) {
+        // The reader's own switch wins over what a link said.
+        linkOverrides[layer] = nil
         defaults?.set(on, forKey: "nativeMap.\(layer.rawValue)")
+        applySettings()
+    }
+
+    /// What a link turned on or off for this visit (core's `settings.override`),
+    /// over the reader's own settings, which it leaves as they were.
+    private var linkOverrides: [NativeMapLayer: Bool] = [:]
+
+    /// The radar map's overlays as links name them.
+    private static let overlayLayers: [String: NativeMapLayer] = ["cells": .storms, "lightning": .lightning, "mesocyclones": .mesocyclones]
+
+    /// A link's overlays (`applyLinkedOverlays`): on the radar map a link that
+    /// names none means all of them; a storm or a cell turns storms on.
+    private func applyLinkedOverlays(_ parameters: [String: String]) {
+        let named = NativeMapLink.overlays(parameters["overlays"])
+        let onRadar = (parameters["layer"].flatMap(NativeMapModel.Capability.init) ?? model.capability) == .radar
+        if let on = named ?? (onRadar ? NativeMapLink.overlayNames : nil) {
+            for (name, layer) in Self.overlayLayers { linkOverrides[layer] = on.contains(name) }
+        }
+        if parameters["storm"] != nil || parameters["cell"] != nil { linkOverrides[.storms] = true }
         applySettings()
     }
 
@@ -503,16 +583,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func presentLayers() {
-        let snapshots = LayerSnapshots()
-        let region = mapView.region
-        snapshots.take(region: region, size: CGSize(width: 360, height: 180), dark: model.isDark)
         let fromStart = Binding<Bool>(
             get: { [weak self] in self?.defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false },
             set: { [weak self] in
                 self?.defaults?.set($0, forKey: "nativeMap.playbackFromStart")
                 self?.applySettings()
             })
-        let view = LayerSwitcherView(model: model, snapshots: snapshots,
+        let view = LayerSwitcherView(model: model,
                                      isOn: { [weak self] in self?.isOn($0) ?? $0.defaultOn },
                                      setOn: { [weak self] in self?.setOn($0, $1) },
                                      fromStart: fromStart,
@@ -545,6 +622,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
+        let on = Set(NativeMapLayer.allCases.filter(isOn))
+        if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }
         updateCredits()
     }
@@ -677,9 +756,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
             setCapability(capability)
         }
+        applyLinkedOverlays(parameters)
         if let link = NativeMapLink(search: search) {
             if placed { place(link, animated: true) } else { pendingView = link }
-            radar.show(time: link.time)
+            // A storm's link opens on now: it is about the storm, not a frame.
+            if parameters["storm"] == nil, parameters["cell"] == nil { radar.show(time: link.time) }
         }
         for feature in features { _ = feature.open(parameters) }
     }
@@ -711,12 +792,21 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // The 3D map's camera where it is the map shown (core's `mapView`).
         let shown = features.lazy.compactMap { $0.linkView() }.first
         let center = center ?? shown.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) } ?? mapView.centerCoordinate
-        let time = player.step != player.timeline.now ? player.step : nil
-        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
         let shared = NativeMapLink.frameLink(Int(Date().timeIntervalSince1970) / 60 * 60)
         var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
         extra.merge(given) { _, new in new }
         for feature in features { extra.merge(feature.linkParameters()) { first, _ in first } }
+        // The overlays, only where they differ from all on: saying all on
+        // would override a reader who turned lightning off for good.
+        if model.capability == .radar {
+            let on = NativeMapLink.overlayNames.filter { Self.overlayLayers[$0].map(isOn) ?? true }
+            if on.count != NativeMapLink.overlayNames.count { extra["overlays"] = NativeMapLink.overlaysValue(on) }
+        }
+        // The frame: not for a storm, which is about now, and not mid-play,
+        // which would park the link on whichever frame it caught.
+        let tracked = extra["storm"] != nil || extra["cell"] != nil
+        let time = player.step != player.timeline.now && !player.playing && !tracked ? player.step : nil
+        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
         var components = URLComponents()
         components.queryItems = extra.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         let more = extra.isEmpty ? "" : "&" + (components.percentEncodedQuery ?? "")

@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Šiaurė pagal geografinį sekimą";
 "ar_turn_left" = "Pasuk į kairę %.0f°";
 "ar_turn_right" = "Pasuk į dešinę %.0f°";
+"point_menu_ar" = "Žiūrėti AR";
+"point_menu_ar_sub" = "Žymeklis virš šios vietos danguje";
+"ar_marker" = "Žymeklis";
+"ar_marker_from_map" = "Pažymėta žemėlapyje";
+"ar_marker_echo" = "Radaro aidas %.1f km aukštyje";
+"ar_marker_assumed" = "Radaro aido nėra · debesų pagrindas laikomas %.1f km";
+"ar_marker_ground" = "Ant žemės";
+"ar_marker_remove" = "Pašalinti žymeklį";
+"ar_mark" = "Pažymėti debesį";
+"ar_mark_cancel" = "Atšaukti žymėjimą";
+"ar_mark_hint" = "Tada bakstelėk debesį, kad rastum jį žemėlapyje. Ilgas paspaudimas danguje taip pat pažymi.";
+"ar_mark_instructions" = "Bakstelėk debesį, kad jį pažymėtum.";
+"ar_mark_missed" = "Per arti horizonto, kad būtų galima pasakyti, kur tai.";
+"ar_preview_marker" = "Peržiūra, 20 km nuo pažymėtos vietos";
 
 /* Native MapKit map */
 "native_map_setting" = "Vietinis žemėlapis (beta)";

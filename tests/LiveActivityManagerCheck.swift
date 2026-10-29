@@ -10,6 +10,16 @@ import UIKit
 }
 @MainActor let SharedNotificationManager = LiveActivityNotificationState()
 
+/// The app's session (`Shared/UserAgent.swift`), through this check's
+/// transport: `URLProtocol.registerClass` reaches only `URLSession.shared`.
+extension URLSession {
+    static let meteocool: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.protocolClasses = [LiveActivityTransport.self] + (configuration.protocolClasses ?? [])
+        return URLSession(configuration: configuration)
+    }()
+}
+
 final class LiveActivityTransport: URLProtocol, @unchecked Sendable {
     static let lock = NSLock()
     nonisolated(unsafe) static var bodies: [Data] = []

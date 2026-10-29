@@ -99,7 +99,9 @@ final class ThreeDGround {
     private var builtFor: String?
     private var token = 0
 
-    static let pixels = 2048
+    /// The ground picture's side: four times the pixels where the memory
+    /// allows (the picture and its mipmaps are some 90 MB at 4096).
+    static let pixels = ProcessInfo.processInfo.physicalMemory >= 6 << 30 ? 4096 : 2048
     static let grid = 64
 
     /// Whether `camera` needs another ground: a first one, moved too far, or
@@ -382,7 +384,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
 
         state.setMode = { [weak self] in self?.setMode($0) }
         state.setSlider = { [weak self] in self?.setSlider($0) }
-        state.north = { [weak self] in self?.camera.bearing = 0 }
+        // North up, looking straight down (`guide_3d.compass_does`).
+        state.north = { [weak self] in
+            guard let self else { return }
+            self.touched()
+            self.camera.bearing = 0
+            self.camera.pitch = OrbitCamera.pitches.lowerBound
+            self.cameraSettled()
+        }
         state.pickScan = { [weak self] in self?.pickScan($0) }
         state.openGuide = { [weak self] in self?.openGuide() }
         state.open = { [weak self] in
@@ -494,7 +503,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
               let group = groups.first(where: { group in
                   (opened.volume != nil && group.tiles.contains { $0.entry.path == opened.volume })
                       || (opened.cell != nil && group.cell?.code == opened.cell)
-              })
+              }) ?? successor(of: opened)
         else { return }
         openedKey = group.key
         select(group.key, toggle: false)
@@ -504,6 +513,20 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         faceCut(group, heading: opened.headingDeg ?? 0)
         map.model.cut.startSweep()
     }
+
+    /// A box of sky's own volume gone from the list, a newer scan in its
+    /// place (an older link, or one made just before the scan): the openable
+    /// storm standing where it stood.
+    private func successor(of opened: OpenedStorm) -> StormGroup? {
+        guard opened.cell == nil, let lat = opened.latitude, let lon = opened.longitude, feed.status == .ready else { return nil }
+        let near = groups.filter(\.openable).map { group in
+            (group, group.tiles.map { RadarSites.distanceKm(lat, lon, $0.entry.lat, $0.entry.lon) }.min() ?? .infinity)
+        }
+        guard let best = near.min(by: { $0.1 < $1.1 }), best.1 < Self.successorKm else { return nil }
+        return best.0
+    }
+
+    static let successorKm = 10.0
 
     /// The half kept is whichever faces the camera: a cut turned half way
     /// round is the same cut. Then, unless a link has just set the camera,
@@ -646,7 +669,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     private func openGuide() {
         guard let map else { return }
         var controller: UIViewController?
-        let guide = ThreeDGuide(palette: scene?.palette ?? "classic") { controller?.dismiss(animated: true) }
+        let guide = ThreeDGuide(palette: scene?.palette ?? "classic", cellsShown: map.isOn(.cells3d)) { controller?.dismiss(animated: true) }
         let host = UIHostingController(rootView: guide)
         controller = host
         host.modalPresentationStyle = .pageSheet
@@ -848,10 +871,18 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         recognizer.rotation = 0
     }
 
+    /// A tap on a storm opens it, as core's click does: its panel at once
+    /// and the storm cut open; a tap on open sky closes the one open.
     @objc private func tapped(_ recognizer: UITapGestureRecognizer) {
         touched()
         guard let pose = lastPose, let scene else { return }
-        select(scene.pick(recognizer.location(in: metalView), pose: pose, targets: drawn)?.key, toggle: false)
+        let key = scene.pick(recognizer.location(in: metalView), pose: pose, targets: drawn)?.key
+        select(key, toggle: false)
+        if let key {
+            open(key)
+        } else if map?.model.selectedStorm != nil {
+            map?.model.selectedStorm = nil
+        }
     }
 
     @objc private func doubleTapped(_ recognizer: UITapGestureRecognizer) {
@@ -1172,6 +1203,32 @@ struct ThreeDHUD: View {
 }
 
 extension ThreeDHUD {
+    /// Newest first; one picked so long ago the newest has moved two hours on
+    /// stays in the list (`ScanPicker.svelte`'s `withShown`).
+    var offeredScans: [Int] {
+        guard let newest = state.newestScan else { return [] }
+        let scans = ScanHistory.earlierScans(newest: newest)
+        guard let shown = state.scanShown, !scans.contains(shown) else { return scans }
+        return scans + [shown]
+    }
+
+    /// "-35m", "-1h", "-1h5m" behind the newest, as the timeline marks its steps.
+    static func behind(_ scan: Int, from newest: Int) -> String {
+        let minutes = Int((Double(newest - scan) / 60).rounded())
+        if minutes % 60 == 0 { return CoreStrings.t("chrome.playback.offset_hours", ["sign": "-", "hours": minutes / 60]) }
+        if minutes < 60 { return CoreStrings.t("chrome.playback.offset_minutes", ["sign": "-", "minutes": minutes]) }
+        return CoreStrings.t("chrome.playback.offset_hours_minutes", ["sign": "-", "hours": minutes / 60, "minutes": minutes % 60])
+    }
+
+    /// A row: the scan's time, how far behind the newest it is, checked
+    /// while it is the one on the map; nil is "Latest".
+    private func scanRow(_ name: String, when: String?, scan: Int?) -> some View {
+        Toggle(isOn: Binding(get: { state.scanShown == scan }, set: { _ in state.pickScan(scan) })) {
+            Text(name)
+            if let when { Text(when) }
+        }
+    }
+
     /// "Latest", or one of the last two hours' scans (`ScanPicker.svelte`):
     /// filled with its time while the map is not live.
     @ViewBuilder
@@ -1179,10 +1236,12 @@ extension ThreeDHUD {
         let theme = ChromeTheme(dark: model.isDark)
         let face = state.scanLoading ?? state.scanShown
         Menu {
-            Button(CoreStrings.t("time_3d.latest")) { state.pickScan(nil) }
-            if let newest = state.newestScan {
-                ForEach(ScanHistory.earlierScans(newest: newest), id: \.self) { scan in
-                    Button(StatusPill.clock(scan)) { state.pickScan(scan) }
+            // Toggles, for the system's check on the scan on the map and a
+            // subtitle under each time.
+            Section(CoreStrings.t("time_3d.title")) {
+                scanRow(CoreStrings.t("time_3d.latest"), when: state.newestScan.map(StatusPill.clock), scan: nil)
+                ForEach(offeredScans, id: \.self) { scan in
+                    scanRow(StatusPill.clock(scan), when: state.newestScan.map { Self.behind(scan, from: $0) }, scan: scan)
                 }
             }
         } label: {

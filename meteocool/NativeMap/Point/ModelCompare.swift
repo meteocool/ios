@@ -37,7 +37,15 @@ final class OpenMeteoClient {
         return series
     }
 
+    /// Answers to turn away before asking for real, for the UI tests' retries
+    /// (`MC_OPEN_METEO_FAILS`).
+    private var failsLeft = Int(ProcessInfo.processInfo.environment["MC_OPEN_METEO_FAILS"] ?? "") ?? 0
+
     private func get(_ url: URL) async throws -> Data {
+        if failsLeft > 0 {
+            failsLeft -= 1
+            throw OpenMeteo.failure(status: 429, body: Data())
+        }
         let (data, response) = try await session.data(from: url)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200 ..< 300).contains(status) else { throw OpenMeteo.failure(status: status, body: data) }
@@ -440,6 +448,8 @@ struct ModelCompareView: View {
                     Text(CoreStrings.t("compare.spread.error") + " " + error).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                     Button(CoreStrings.t("retry"), action: model.loadSpread).buttonStyle(.bordered).controlSize(.small)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.compare.spreadError")
             } else if let series = model.hourly[model.spec.variable] {
                 SpreadChart(series: series, from: Outlook.stepAt(series.times, Date()), steps: model.hours, spec: model.spec,
                             dark: scheme == .dark)

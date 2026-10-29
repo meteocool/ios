@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Põhi geojälgimise järgi";
 "ar_turn_left" = "Pööra vasakule %.0f°";
 "ar_turn_right" = "Pööra paremale %.0f°";
+"point_menu_ar" = "Vaata AR-is";
+"point_menu_ar_sub" = "Märge selle koha kohal taevas";
+"ar_marker" = "Märge";
+"ar_marker_from_map" = "Märgitud kaardil";
+"ar_marker_echo" = "Radarikaja %.1f km kõrgusel";
+"ar_marker_assumed" = "Radarikaja pole · pilve alus eeldatud %.1f km";
+"ar_marker_ground" = "Maapinnal";
+"ar_marker_remove" = "Eemalda märge";
+"ar_mark" = "Märgi pilv";
+"ar_mark_cancel" = "Tühista märkimine";
+"ar_mark_hint" = "Seejärel puuduta pilve, et see kaardil leida. Pikk vajutus taevale märgib samuti.";
+"ar_mark_instructions" = "Puuduta pilve, et see märkida.";
+"ar_mark_missed" = "Liiga horisondi lähedal, et öelda, kus see on.";
+"ar_preview_marker" = "Eelvaade, 20 km märgitud kohast";
 
 /* Native MapKit map */
 "native_map_setting" = "Kohalik kaart (beeta)";

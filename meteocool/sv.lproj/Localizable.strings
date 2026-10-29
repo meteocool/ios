@@ -237,6 +237,20 @@
 "ar_alignment_geo" = "Norr från geospårning";
 "ar_turn_left" = "Vrid %.0f° åt vänster";
 "ar_turn_right" = "Vrid %.0f° åt höger";
+"point_menu_ar" = "Visa i AR";
+"point_menu_ar_sub" = "En markör över den här platsen på himlen";
+"ar_marker" = "Markör";
+"ar_marker_from_map" = "Markerad på kartan";
+"ar_marker_echo" = "Radareko på %.1f km höjd";
+"ar_marker_assumed" = "Inget radareko · molnbas antagen till %.1f km";
+"ar_marker_ground" = "På marken";
+"ar_marker_remove" = "Ta bort markör";
+"ar_mark" = "Markera ett moln";
+"ar_mark_cancel" = "Avbryt markering";
+"ar_mark_hint" = "Tryck sedan på ett moln för att hitta det på kartan. Ett långt tryck på himlen markerar också.";
+"ar_mark_instructions" = "Tryck på ett moln för att markera det.";
+"ar_mark_missed" = "För nära horisonten för att säga var det är.";
+"ar_preview_marker" = "Förhandsvisning, 20 km från den markerade platsen";
 
 /* Native MapKit map */
 "native_map_setting" = "Inbyggd karta (beta)";

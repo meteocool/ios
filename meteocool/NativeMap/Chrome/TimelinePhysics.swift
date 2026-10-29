@@ -29,33 +29,90 @@ enum TimelinePhysics {
     /// The settle's length, ms.
     static let settleDuration = 180.0
 
-    /// A position past the ends, pulled back like a spring (`rubberBand`).
-    static func rubberBand(_ p: Double, last: Double) -> Double {
-        if p < 0 { return -overshoot * (1 - 1 / (1 + -p / overshoot)) }
+    /// Where the needle may rest (core's `Reach`): from `first` to `last`, by
+    /// index, less the steps in `gaps` between them. Without a radar open,
+    /// every step to the last published; with one, its steps with a sweep.
+    struct Reach: Equatable {
+        var first: Int
+        var last: Int
+        var gaps: Set<Int> = []
+
+        static func all(_ last: Int) -> Reach { Reach(first: 0, last: last) }
+    }
+
+    /// The strip's reach (`reachOf`): its steps up to `last`, and with a
+    /// radar open (`only`, step times) its steps with a sweep.
+    static func reach(steps: [Int], last: Int, only: Set<Int>?) -> Reach {
+        guard let only else { return .all(last) }
+        let reachable = steps.indices.map { $0 <= last && only.contains(steps[$0]) }
+        guard let first = reachable.firstIndex(of: true), let end = reachable.lastIndex(of: true) else { return .all(last) }
+        return Reach(first: first, last: end, gaps: Set((first ... end).filter { !reachable[$0] }))
+    }
+
+    /// The runs of steps outside `only`, as index ranges (`sweepGaps`): what
+    /// the strip hatches while a radar is open.
+    static func gaps(steps: [Int], only: Set<Int>?) -> [ClosedRange<Int>] {
+        guard let only else { return [] }
+        var runs: [ClosedRange<Int>] = []
+        for (i, step) in steps.enumerated() where !only.contains(step) {
+            if let run = runs.last, run.upperBound == i - 1 { runs[runs.count - 1] = run.lowerBound ... i } else { runs.append(i ... i) }
+        }
+        return runs
+    }
+
+    /// A position past the ends of the reach, pulled back like a spring (`rubberBand`).
+    static func rubberBand(_ p: Double, reach: Reach) -> Double {
+        let first = Double(reach.first), last = Double(reach.last)
+        if p < first { return first - overshoot * (1 - 1 / (1 + (first - p) / overshoot)) }
         if p > last { return last + overshoot * (1 - 1 / (1 + (p - last) / overshoot)) }
         return p
     }
 
+    static func rubberBand(_ p: Double, last: Double) -> Double {
+        rubberBand(p, reach: .all(Int(last)))
+    }
+
     /// Where a needle at rest belongs (`restingStep`): on now when close to
-    /// it, else on the nearest whole step.
+    /// it, else on the nearest whole step in reach, over a gap to its nearer side.
+    static func restingStep(_ p: Double, reach: Reach, detent: Int?) -> Int {
+        if let detent, abs(p - Double(detent)) <= detentSteps, !reach.gaps.contains(detent) { return detent }
+        let step = max(reach.first, min(reach.last, Int(p.rounded())))
+        guard reach.gaps.contains(step) else { return step }
+        var below = step, above = step
+        while reach.gaps.contains(below) { below -= 1 }
+        while reach.gaps.contains(above) { above += 1 }
+        return p - Double(below) <= Double(above) - p ? below : above
+    }
+
     static func restingStep(_ p: Double, last: Int, detent: Int?) -> Int {
-        if let detent, abs(p - Double(detent)) <= detentSteps { return detent }
-        return max(0, min(last, Int(p.rounded())))
+        restingStep(p, reach: .all(last), detent: detent)
+    }
+
+    /// The step `by` steps on from `index`, in reach, over any gap the way it went (`stepOver`).
+    static func stepOver(_ index: Int, by: Int, reach: Reach) -> Int {
+        var target = max(reach.first, min(reach.last, index + by))
+        let way = by < 0 ? -1 : 1
+        while reach.gaps.contains(target) { target += way }
+        return target
     }
 
     /// One frame of a flick (`glideStep`): position and velocity after `dt`
     /// ms; velocity 0 once it has come to rest or hit an end or the detent.
-    static func glideStep(position p: Double, velocity v: Double, dt: Double, last: Int, detent: Int?) -> (position: Double, velocity: Double) {
+    static func glideStep(position p: Double, velocity v: Double, dt: Double, reach: Reach, detent: Int?) -> (position: Double, velocity: Double) {
         var velocity = v * exp(-friction * dt)
         let position = p + velocity * dt
-        if position <= 0 { return (0, 0) }
-        if position >= Double(last) { return (Double(last), 0) }
+        if position <= Double(reach.first) { return (Double(reach.first), 0) }
+        if position >= Double(reach.last) { return (Double(reach.last), 0) }
         if let detent, abs(velocity) < detentCatch {
             let d = Double(detent)
             if (p - d) * (position - d) <= 0, p != d { return (d, 0) }
         }
         if abs(velocity) < atRest { velocity = 0 }
         return (position, velocity)
+    }
+
+    static func glideStep(position p: Double, velocity v: Double, dt: Double, last: Int, detent: Int?) -> (position: Double, velocity: Double) {
+        glideStep(position: p, velocity: v, dt: dt, reach: .all(last), detent: detent)
     }
 
     /// The settle's easing (ease-out cubic), `k` in 0…1.

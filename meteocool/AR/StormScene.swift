@@ -235,7 +235,7 @@ final class StormScene {
         return SIMD3(w.x, w.y, w.z)
     }
 
-    private func worldDirection(_ enu: SIMD3<Double>) -> SIMD3<Double> {
+    func worldDirection(_ enu: SIMD3<Double>) -> SIMD3<Double> {
         let w = enuToWorld * SIMD4(enu, 0)
         return SIMD3(w.x, w.y, w.z)
     }
@@ -464,6 +464,13 @@ final class StormScene {
     /// for the storm it mostly covers.
     func pick(_ point: CGPoint, pose: CameraPose, targets: [(storm: PlacedStorm, group: StormGroup)]) -> StormGroup? {
         let (origin, direction) = pose.ray(through: point)
+        return firstEcho(origin: origin, direction: direction, targets: targets)?.group
+    }
+
+    /// The storm a world ray first meets where the shader draws cloud, and
+    /// how far along the ray that is, in metres.
+    func firstEcho(origin: SIMD3<Float>, direction: SIMD3<Float>,
+                   targets: [(storm: PlacedStorm, group: StormGroup)]) -> (group: StormGroup, t: Float)? {
         let earth = frame.groundSphere()
         let earthCentre = SIMD3<Float>(worldDirection(earth.centre))
         let limit = Self.rayEarthDistance(origin: origin, direction: direction, centre: earthCentre, radius: Float(earth.radius))
@@ -479,7 +486,7 @@ final class StormScene {
                 best = (group, t)
             }
         }
-        return best?.0
+        return best
     }
 
     /// `pick` over every tile of these storms.

@@ -32,6 +32,16 @@ final class RadarPlayer: ObservableObject {
     @Published var noForecast = false
     /// "Loop From Two Hours Back" (`playbackFromStart`).
     var fromStart = false
+    /// With a radar open, the only steps (unix seconds) it has a sweep for:
+    /// playback and the needle keep to them, the strip hatches the rest
+    /// (core's `only`). nil with none open.
+    @Published var only: Set<Int>? {
+        didSet {
+            guard only != oldValue, let only, !only.isEmpty, let step, !only.contains(step) else { return }
+            // A step outside them opens on the newest it has.
+            if let newest = timeline.steps.lastIndex(where: { only.contains($0) }) { show(newest) }
+        }
+    }
     /// Steps whose pictures are ready to show: the strip's preload fill.
     @Published var preloaded = Set<Int>()
     /// The steps are being fetched for a new point, or not yet at all: the
@@ -55,12 +65,18 @@ final class RadarPlayer: ObservableObject {
     var step: Int? { timeline.steps.indices.contains(index) ? timeline.steps[index] : nil }
     var nowIndex: Int? { timeline.now.flatMap { timeline.steps.firstIndex(of: $0) } }
     var lastIndex: Int { timeline.lastPlayable.flatMap { timeline.steps.firstIndex(of: $0) } ?? max(0, timeline.steps.count - 1) }
+    /// Where the needle may rest: every published step, or an open radar's.
+    var reach: TimelinePhysics.Reach {
+        TimelinePhysics.reach(steps: timeline.steps, last: lastIndex, only: only)
+    }
     /// On the newest observation: what core calls live.
     var isLive: Bool { step != nil && step == timeline.now }
 
     /// Whether play does anything here (`canPlay`): not outside the radar,
     /// and with no forecast only from the past.
     var canPlay: Bool {
+        // With a radar open, anything of its own to move to.
+        if let only { return only.contains { $0 != step } }
         guard !outOfRadar, let now = nowIndex else { return false }
         return !noForecast || index < now
     }
@@ -83,7 +99,8 @@ final class RadarPlayer: ObservableObject {
     /// while playing pauses.
     func scrub(to newIndex: Int) {
         guard !timeline.steps.isEmpty else { return }
-        let clamped = max(0, min(newIndex, lastIndex))
+        let reach = self.reach
+        let clamped = max(reach.first, min(newIndex, reach.last))
         guard clamped != index else { return }
         if playing, !grabbed { pause() }
         show(clamped)
@@ -184,6 +201,13 @@ final class RadarPlayer: ObservableObject {
     /// forecast and round to now (or two hours back), or, with no forecast
     /// on screen, through the past and back to where play was pressed.
     func nextIndex() -> Int {
+        // An open radar's steps alone, round to where play was pressed.
+        if let only, !only.isEmpty {
+            let mine = timeline.steps.indices.filter { only.contains(timeline.steps[$0]) }
+            if let next = mine.first(where: { $0 > index }) { return next }
+            if !fromStart, let loopFrom, mine.contains(loopFrom), loopFrom < mine.last! { return loopFrom }
+            return mine.first!
+        }
         let start = 0
         let gridNow = timeline.steps.firstIndex(of: timeline.gridNow) ?? (nowIndex ?? 0)
         if !noForecast {

@@ -35,6 +35,8 @@ final class ARHUDModel {
     var heading: Double = 0
     var banner: Banner?
     var sunFixArmed = false
+    /// The next tap on the sky marks what is there.
+    var markArmed = false
     var guidance: Guidance?
     /// Whether the selected storm (or any storm) has a track for the Track mode.
     var trackAvailable = false
@@ -45,6 +47,7 @@ final class ARHUDModel {
     var onToggleLightning: (Bool) -> Void = { _ in }
     var onToggleExtrapolate: (Bool) -> Void = { _ in }
     var onArmSunFix: () -> Void = {}
+    var onArmMark: () -> Void = {}
     var onResetAlignment: () -> Void = {}
     var onBannerAction: () -> Void = {}
 }
@@ -86,6 +89,15 @@ struct ARHUDView: View {
                         .hudBackground()
                         .accessibilityIdentifier("ar.sunFix")
                 }
+                if model.markArmed {
+                    Text("ar_mark_instructions")
+                        .font(.callout.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .hudBackground()
+                        .padding(.horizontal, 12)
+                        .accessibilityIdentifier("ar.markInstructions")
+                }
             case .bottom:
                 if let guidance = model.guidance {
                     guidanceView(guidance)
@@ -125,6 +137,17 @@ struct ARHUDView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .hudBackground()
             .accessibilityElement(children: .combine)
+
+            // Mark a cloud to find it on the map; a hold on the sky does the same.
+            Button(action: model.onArmMark) {
+                Image(systemName: model.markArmed ? "mappin.slash" : "mappin.and.ellipse")
+                    .font(.headline)
+                    .frame(width: 44, height: 44)
+            }
+            .hudBackground(circle: true)
+            .accessibilityLabel(Text(model.markArmed ? "ar_mark_cancel" : "ar_mark"))
+            .accessibilityHint(Text("ar_mark_hint"))
+            .accessibilityIdentifier("ar.mark")
 
             Menu {
                 Toggle(isOn: Binding(get: { model.showLightning }, set: { model.onToggleLightning($0) })) {
