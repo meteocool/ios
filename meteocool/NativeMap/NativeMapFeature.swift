@@ -142,6 +142,8 @@ protocol NativeMapHost: AnyObject {
     func mapCovered(_ covered: Bool, by owner: String)
     /// Opens the AR view at a storm, where it is offered.
     func openAR(_ target: StormTarget?)
+    /// Opens the AR view with a marker on a place, where it is offered.
+    func openAR(marking marker: ARMarker)
     /// The share sheet for a link, pointing at `source` on an iPad.
     func shareFromMap(_ share: MapShare, source: UIView?)
     /// Whether the AR view can be offered.

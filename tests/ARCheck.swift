@@ -21,6 +21,7 @@ enum ARCheck {
         palettes()
         links()
         try placementAndPicking()
+        try marking()
         try shaders()
         try scanHistory()
         print("AR checks passed")
@@ -377,6 +378,56 @@ enum ARCheck {
             """.utf8))
         storm = scene.place(entry, volume: volume, cell: cell)
         precondition(abs((storm.extrapolatedMinutes ?? 0) - 6) < 0.01 && abs(storm.centre.x - 6_000) < 50, "moved \(storm.centre)")
+    }
+
+    /// A marker from a ray: on the echo it meets, else the ground below the
+    /// horizon, else the assumed cloud base; and back to the map.
+    @MainActor
+    static func marking() throws {
+        let viewer = GeoFrame(latitude: 48, longitude: 11, altitude: 500)
+        let far = Geo.destination(lat: 48, lon: 11, bearing: 123, metres: 87_000)
+        let enu = viewer.enu(latitude: far.lat, longitude: far.lon, altitude: 3_200)
+        let back = viewer.geodetic(enu: enu)
+        precondition(abs(back.latitude - far.lat) < 1e-7 && abs(back.longitude - far.lon) < 1e-7 && abs(back.altitude - 3_200) < 0.01,
+                     "geodetic \(back)")
+
+        let volume = try StormVolume.decode(syntheticVolume())
+        let at = Geo.destination(lat: 48, lon: 11, bearing: 0, metres: 30_000)
+        let entry = try JSONDecoder.snake.decode(StormEntry.self, from: Data("""
+            {"code":"G1","lon":\(at.lon),"lat":\(at.lat),"path":"meteoradar/volumes/20261004T020500/de-G4800011580.mcvx","tier":2,"scanned_at":"2026-10-04T02:09:00Z"}
+            """.utf8))
+        let scene = StormScene(frame: viewer)
+        let storm = scene.place(entry, volume: volume, cell: nil)
+        let group = scene.groups([storm])[0]
+        let targets = [(storm: storm, group: group)]
+
+        // Through the column 4.5 km up: on its near side, about 27 km north, a little lower.
+        let pose = lookingNorth(pitch: 5)
+        let aim = pose.project(SIMD3<Float>(storm.centre + storm.up * 4_500))!
+        let echo = scene.mark(aim, pose: pose, targets: targets)!
+        let (toEcho, bearing) = Geo.distanceBearing(fromLat: 48, lon: 11, toLat: echo.latitude, lon: echo.longitude)
+        precondition(echo.source == .echo && toEcho > 26_000 && toEcho < 30_000 && abs(Geo.angleDifference(bearing, 0)) < 0.5,
+                     "echo \(echo) at \(toEcho)")
+        precondition((echo.altitude ?? 0) > 3_800 && (echo.altitude ?? 0) < 4_500, "echo height \(echo)")
+
+        // Clear sky 60 degrees up: a cloud 1.5 km over the ground, 866 m out.
+        let up = lookingNorth(pitch: 60)
+        let middle = CGPoint(x: 200, y: 300)
+        let cloud = scene.mark(middle, pose: up, targets: targets)!
+        let toCloud = Geo.distanceBearing(fromLat: 48, lon: 11, toLat: cloud.latitude, lon: cloud.longitude).metres
+        precondition(cloud.source == .assumedBase && abs(toCloud - 866) < 5, "cloud \(cloud) at \(toCloud)")
+        precondition(abs((cloud.altitude ?? 0) - (scene.groundAltitude + ARMarker.assumedBaseM)) < 2, "cloud height \(cloud)")
+
+        // Below the horizon, the ground; just over it, nothing worth marking.
+        precondition(scene.mark(middle, pose: lookingNorth(pitch: -10), targets: [])?.source == .ground)
+        precondition(scene.mark(middle, pose: lookingNorth(pitch: 1), targets: []) == nil)
+
+        let search = cloud.mapSearch
+        precondition(search.hasPrefix("?layer=radar&latLonZ=") && search.contains("&point="), "search \(search)")
+        let view = NativeMapLink(search: search)!
+        precondition(abs(view.latitude - cloud.latitude) < 1e-4 && view.zoom == 10, "view \(view)")
+        let pair = PointLink.parsePair(NativeMapLink.parameters(search)["point"])!
+        precondition(abs(pair.latitude - cloud.latitude) < 1e-4 && abs(pair.longitude - cloud.longitude) < 1e-4)
     }
 
     static func lookingNorth(pitch: Float) -> CameraPose {

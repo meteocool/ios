@@ -76,10 +76,13 @@ final class PointFeature: NativeMapFeature {
         // A storm's selection and a point's menu do not stand together.
         map.model.selectedStorm = nil
         let point = map.mapView.convert(coordinate, toPointTo: map.view)
+        let arAvailable = map.host?.arAvailable == true
         // Laid out once in a throwaway host for its height at this text size.
         let probe = UIHostingController(rootView: PointMenuView(menu: PointMenuModel(
             placement: .init(below: false, side: .center, lean: 0), shareAvailable: true,
-            onRadar: {}, onForecast: {}, onShare: {})).chromeTypeSize())
+            onRadar: {}, onForecast: {}, onShare: {}, onAR: arAvailable ? {} : nil)).chromeTypeSize())
+        // Without the map's safe area, which would otherwise count in its height.
+        probe.safeAreaRegions = []
         probe.view.frame = map.view.bounds
         map.view.addSubview(probe.view)
         let menuHeight = probe.sizeThatFits(in: CGSize(width: PointMenuLayout.maxWidth, height: map.view.bounds.height)).height
@@ -94,7 +97,8 @@ final class PointFeature: NativeMapFeature {
                                       self?.closeMenu()
                                       self?.openCompare(at: coordinate, hours: 24)
                                   },
-                                  onShare: { [weak self] in self?.sharePoint(coordinate) })
+                                  onShare: { [weak self] in self?.sharePoint(coordinate) },
+                                  onAR: arAvailable ? { [weak self] in self?.openAR(at: coordinate) } : nil)
         let overlay = PointMenuOverlay(frame: map.view.bounds)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.onClose = { [weak self] in self?.closeMenu() }
@@ -149,6 +153,13 @@ final class PointFeature: NativeMapFeature {
 
     func view(for annotation: MKAnnotation, in mapView: MKMapView) -> MKAnnotationView? {
         annotation === ring ? mapView.dequeueReusableAnnotationView(withIdentifier: InspectRingView.reuse, for: annotation) : nil
+    }
+
+    /// "View in AR": the AR view, with a marker standing on the point.
+    private func openAR(at coordinate: CLLocationCoordinate2D) {
+        closeMenu()
+        map?.host?.openAR(marking: ARMarker(latitude: coordinate.latitude, longitude: coordinate.longitude,
+                                            altitude: nil, source: .map))
     }
 
     // MARK: - Links

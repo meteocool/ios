@@ -1013,9 +1013,9 @@ extension ViewController {
         return false
     }
 
-    func presentAR(target: StormTarget?) {
+    func presentAR(target: StormTarget?, marker: ARMarker? = nil) {
         guard presentedViewController == nil, HiddenFeatures.unlocked, ARStormViewController.isAvailable else { return }
-        let ar = ARStormViewController(target: target)
+        let ar = ARStormViewController(target: target, marker: marker)
         ar.onOpenOnMap = { [weak self] search in self?.openLink(search: search) }
         ar.onClose = { [weak self] in self?.arDidClose() }
         present(ar, animated: true)
@@ -1206,6 +1206,10 @@ extension ViewController: NativeMapHost {
 
     func openAR(_ target: StormTarget?) {
         presentAR(target: target)
+    }
+
+    func openAR(marking marker: ARMarker) {
+        presentAR(target: nil, marker: marker)
     }
 
     func shareFromMap(_ share: MapShare, source: UIView?) {
