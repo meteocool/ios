@@ -503,7 +503,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
               let group = groups.first(where: { group in
                   (opened.volume != nil && group.tiles.contains { $0.entry.path == opened.volume })
                       || (opened.cell != nil && group.cell?.code == opened.cell)
-              })
+              }) ?? successor(of: opened)
         else { return }
         openedKey = group.key
         select(group.key, toggle: false)
@@ -513,6 +513,20 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         faceCut(group, heading: opened.headingDeg ?? 0)
         map.model.cut.startSweep()
     }
+
+    /// A box of sky's own volume gone from the list, a newer scan in its
+    /// place (an older link, or one made just before the scan): the openable
+    /// storm standing where it stood.
+    private func successor(of opened: OpenedStorm) -> StormGroup? {
+        guard opened.cell == nil, let lat = opened.latitude, let lon = opened.longitude, feed.status == .ready else { return nil }
+        let near = groups.filter(\.openable).map { group in
+            (group, group.tiles.map { RadarSites.distanceKm(lat, lon, $0.entry.lat, $0.entry.lon) }.min() ?? .infinity)
+        }
+        guard let best = near.min(by: { $0.1 < $1.1 }), best.1 < Self.successorKm else { return nil }
+        return best.0
+    }
+
+    static let successorKm = 10.0
 
     /// The half kept is whichever faces the camera: a cut turned half way
     /// round is the same cut. Then, unless a link has just set the camera,
