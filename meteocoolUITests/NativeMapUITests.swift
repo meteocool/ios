@@ -757,6 +757,28 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(waitForValue(again) { $0 == before }, "Back as it was")
     }
 
+    /// A link's overlays hold for that visit, over the reader's own
+    /// settings, which they leave as they were.
+    func testLinkedOverlaysHoldForTheVisitOnly() {
+        launch(link: "?latLonZ=48.14,11.58,8&overlays=cells")
+        waitForSeries()
+        openLayers()
+        func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
+        XCTAssertEqual(value("storms"), "1")
+        XCTAssertEqual(value("lightning"), "0", "Off for the link")
+        XCTAssertEqual(value("mesocyclones"), "0", "Off for the link")
+        element("nativeMap.layers.close").tap()
+        // Opened again without the link, and without the reset: as the reader had it.
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launchEnvironment["MC_NATIVE_MAP_LINK"] = nil
+        app.launch()
+        waitForSeries()
+        openLayers()
+        XCTAssertEqual(value("lightning"), "1", "The reader's own")
+        XCTAssertEqual(value("mesocyclones"), "1", "The reader's own")
+    }
+
     func testLayerSwitcherTurnsLightningOff() {
         launch()
         waitForSeries()

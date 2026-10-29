@@ -38,6 +38,26 @@ struct NativeMapLink: Equatable {
     }
 
     /// Every parameter of a link's search, first value of each.
+    /// The radar map's switchable overlays, in the order a link lists them.
+    static let overlayNames = ["cells", "lightning", "mesocyclones"]
+
+    /// A link's `overlays=`: the ones it names on, the rest off; "none" all
+    /// off; nil where it is absent or names nothing this app has (a typo,
+    /// not "all off").
+    static func overlays(_ text: String?) -> [String]? {
+        guard let text else { return nil }
+        let named = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if named == ["none"] { return [] }
+        let known = overlayNames.filter(named.contains)
+        return known.isEmpty ? nil : known
+    }
+
+    /// The overlays on, as `overlays=` writes them: in order, "none" for none.
+    static func overlaysValue(_ on: [String]) -> String {
+        let known = overlayNames.filter(on.contains)
+        return known.isEmpty ? "none" : known.joined(separator: ",")
+    }
+
     static func parameters(_ search: String) -> [String: String] {
         let query = search.hasPrefix("?") ? String(search.dropFirst()) : search
         var out: [String: String] = [:]

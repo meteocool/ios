@@ -180,6 +180,11 @@ struct NativeMapCheck {
         precondition(NativeMapLink(search: "?latLonZ=91,11,6") == nil && NativeMapLink(search: "?latLonZ=48,11") == nil)
         precondition(NativeMapLink(search: "?t=20260924T1945Z") == nil)
         precondition(NativeMapLink.frameTime("20260231T1200Z") == nil && NativeMapLink.frameTime("20260924T2560Z") == nil)
+        // overlays: a list, none, and a typo (core's deepLink.test.ts).
+        precondition(NativeMapLink.overlays("lightning,cells") == ["cells", "lightning"])
+        precondition(NativeMapLink.overlays("none") == [])
+        precondition(NativeMapLink.overlays("lightnin") == nil && NativeMapLink.overlays(nil) == nil)
+        precondition(NativeMapLink.overlaysValue([]) == "none" && NativeMapLink.overlaysValue(["mesocyclones", "cells"]) == "cells,mesocyclones")
         // A storm core's volume (`cloud`): core's `deepLink.test.ts`, every naming both ways, nothing else.
         let oldest = "meteoradar/volumes/20260924T194500/R39853139.mcvx"
         precondition(NativeMapLink.cloudLink(oldest) == "20260924T194500/R39853139")

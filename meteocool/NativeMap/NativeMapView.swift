@@ -515,11 +515,32 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     // MARK: - Settings
 
     func isOn(_ layer: NativeMapLayer) -> Bool {
-        defaults?.object(forKey: "nativeMap.\(layer.rawValue)") as? Bool ?? layer.defaultOn
+        linkOverrides[layer] ?? defaults?.object(forKey: "nativeMap.\(layer.rawValue)") as? Bool ?? layer.defaultOn
     }
 
     func setOn(_ layer: NativeMapLayer, _ on: Bool) {
+        // The reader's own switch wins over what a link said.
+        linkOverrides[layer] = nil
         defaults?.set(on, forKey: "nativeMap.\(layer.rawValue)")
+        applySettings()
+    }
+
+    /// What a link turned on or off for this visit (core's `settings.override`),
+    /// over the reader's own settings, which it leaves as they were.
+    private var linkOverrides: [NativeMapLayer: Bool] = [:]
+
+    /// The radar map's overlays as links name them.
+    private static let overlayLayers: [String: NativeMapLayer] = ["cells": .storms, "lightning": .lightning, "mesocyclones": .mesocyclones]
+
+    /// A link's overlays (`applyLinkedOverlays`): on the radar map a link that
+    /// names none means all of them; a storm or a cell turns storms on.
+    private func applyLinkedOverlays(_ parameters: [String: String]) {
+        let named = NativeMapLink.overlays(parameters["overlays"])
+        let onRadar = (parameters["layer"].flatMap(NativeMapModel.Capability.init) ?? model.capability) == .radar
+        if let on = named ?? (onRadar ? NativeMapLink.overlayNames : nil) {
+            for (name, layer) in Self.overlayLayers { linkOverrides[layer] = on.contains(name) }
+        }
+        if parameters["storm"] != nil || parameters["cell"] != nil { linkOverrides[.storms] = true }
         applySettings()
     }
 
@@ -712,9 +733,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
             setCapability(capability)
         }
+        applyLinkedOverlays(parameters)
         if let link = NativeMapLink(search: search) {
             if placed { place(link, animated: true) } else { pendingView = link }
-            radar.show(time: link.time)
+            // A storm's link opens on now: it is about the storm, not a frame.
+            if parameters["storm"] == nil, parameters["cell"] == nil { radar.show(time: link.time) }
         }
         for feature in features { _ = feature.open(parameters) }
     }
@@ -746,12 +769,21 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // The 3D map's camera where it is the map shown (core's `mapView`).
         let shown = features.lazy.compactMap { $0.linkView() }.first
         let center = center ?? shown.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) } ?? mapView.centerCoordinate
-        let time = player.step != player.timeline.now ? player.step : nil
-        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
         let shared = NativeMapLink.frameLink(Int(Date().timeIntervalSince1970) / 60 * 60)
         var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
         extra.merge(given) { _, new in new }
         for feature in features { extra.merge(feature.linkParameters()) { first, _ in first } }
+        // The overlays, only where they differ from all on: saying all on
+        // would override a reader who turned lightning off for good.
+        if model.capability == .radar {
+            let on = NativeMapLink.overlayNames.filter { Self.overlayLayers[$0].map(isOn) ?? true }
+            if on.count != NativeMapLink.overlayNames.count { extra["overlays"] = NativeMapLink.overlaysValue(on) }
+        }
+        // The frame: not for a storm, which is about now, and not mid-play,
+        // which would park the link on whichever frame it caught.
+        let tracked = extra["storm"] != nil || extra["cell"] != nil
+        let time = player.step != player.timeline.now && !player.playing && !tracked ? player.step : nil
+        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
         var components = URLComponents()
         components.queryItems = extra.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         let more = extra.isEmpty ? "" : "&" + (components.percentEncodedQuery ?? "")
