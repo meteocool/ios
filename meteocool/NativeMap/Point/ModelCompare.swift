@@ -163,7 +163,30 @@ struct SpreadChart: View {
         }
         .accessibilityElement()
         .accessibilityLabel(CoreStrings.t("compare.spread.heading", ["variable": CoreStrings.t("compare.variable.\(spec.variable)")]))
-        .accessibilityValue(summary)
+        // The tooltip, read out: swiped through hour by hour, as a finger
+        // moves along the chart.
+        .accessibilityValue(picked.map { reading($0).joined(separator: ", ") } ?? summary)
+        .accessibilityAdjustableAction { direction in
+            guard !compact else { return }
+            switch direction {
+            case .increment: step(picked.map { $0.index + 1 } ?? 0)
+            case .decrement: step(picked.map { $0.index - 1 } ?? count - 1)
+            @unknown default: break
+            }
+        }
+        .accessibilityIdentifier(compact ? "" : "nativeMap.compare.chart")
+    }
+
+    /// An hour picked without a finger: the model nearest the median.
+    private func step(_ index: Int) {
+        guard count > 0 else { return }
+        let i = max(0, min(count - 1, index))
+        let mid = envelope.mid[safe: i] ?? nil
+        let nearest = series.ids.compactMap { id -> (String, Double)? in
+            guard let v = series.series[id]?[safe: from + i] ?? nil else { return nil }
+            return (id, abs(v - (mid ?? v)))
+        }.min { $0.1 < $1.1 }
+        if let nearest { picked = (i, nearest.0) }
     }
 
     /// A model's line over the window; `offset` is where its values start
@@ -192,6 +215,23 @@ struct SpreadChart: View {
     }
 
     private func tooltip(_ picked: (index: Int, model: String), frame f: Frame) -> some View {
+        let lines = reading(picked)
+        let x = f.x(picked.index)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(lines[0]).scaledFont(11, weight: .semibold, relativeTo: .caption2)
+            Text(lines[1]).scaledFont(11, relativeTo: .caption2)
+            Text(lines[2]).scaledFont(10, relativeTo: .caption2).foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .fixedSize()
+        .offset(x: min(max(0, x - 80), max(0, f.x1 - 170)), y: f.top)
+        .allowsHitTesting(false)
+    }
+
+    /// The tooltip's lines: the hour, the picked model's value, and the
+    /// models' median and spread.
+    private func reading(_ picked: (index: Int, model: String)) -> [String] {
         let env = envelope
         let digits = 1
         let value = series.series[picked.model]?[safe: from + picked.index] ?? nil
@@ -205,19 +245,9 @@ struct SpreadChart: View {
             formatter.dateFormat = "EEE HH:mm"
             return formatter.string(from: date)
         } ?? ""
-        let x = f.x(picked.index)
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(time).scaledFont(11, weight: .semibold, relativeTo: .caption2)
-            Text("\(CompareModels.label(picked.model)): \(value.map { String(format: "%.1f", $0) } ?? "–")\(spec.unit)")
-                .scaledFont(11, relativeTo: .caption2)
-            Text(CoreStrings.t("compare.spread.tooltip", ["median": median, "spread": spread, "count": env.count[safe: picked.index] ?? 0]))
-                .scaledFont(10, relativeTo: .caption2).foregroundStyle(.secondary)
-        }
-        .padding(8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-        .fixedSize()
-        .offset(x: min(max(0, x - 80), max(0, f.x1 - 170)), y: f.top)
-        .allowsHitTesting(false)
+        return [time,
+                "\(CompareModels.label(picked.model)): \(value.map { String(format: "%.1f", $0) } ?? "–")\(spec.unit)",
+                CoreStrings.t("compare.spread.tooltip", ["median": median, "spread": spread, "count": env.count[safe: picked.index] ?? 0])]
     }
 
     private var summary: String {

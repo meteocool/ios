@@ -270,6 +270,13 @@
 "native_map_3d_pinch" = "Knib";
 "native_map_3d_two_fingers" = "To fingre";
 "native_map_3d_tap" = "Tryk";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Hæld";
+"native_map_3d_flat" = "Se lige ned";
+"native_map_3d_zoom_in" = "Zoom ind";
+"native_map_3d_zoom_out" = "Zoom ud";
+"native_map_3d_turn_left" = "Drej til venstre";
+"native_map_3d_turn_right" = "Drej til højre";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Min placering";

@@ -270,6 +270,13 @@
 "native_map_3d_pinch" = "Suimkite";
 "native_map_3d_two_fingers" = "Du pirštai";
 "native_map_3d_tap" = "Bakstelėkite";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Pakreipti";
+"native_map_3d_flat" = "Žiūrėti tiesiai žemyn";
+"native_map_3d_zoom_in" = "Priartinti";
+"native_map_3d_zoom_out" = "Nutolinti";
+"native_map_3d_turn_left" = "Pasukti kairėn";
+"native_map_3d_turn_right" = "Pasukti dešinėn";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mano vieta";

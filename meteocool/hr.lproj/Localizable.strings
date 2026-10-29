@@ -270,6 +270,13 @@
 "native_map_3d_pinch" = "Stisni";
 "native_map_3d_two_fingers" = "Dva prsta";
 "native_map_3d_tap" = "Dodirni";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Nagni";
+"native_map_3d_flat" = "Gledaj ravno dolje";
+"native_map_3d_zoom_in" = "Povećaj";
+"native_map_3d_zoom_out" = "Smanji";
+"native_map_3d_turn_left" = "Okreni ulijevo";
+"native_map_3d_turn_right" = "Okreni udesno";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Moja lokacija";
