@@ -222,6 +222,8 @@ struct StormDetailsView: View {
                 }
             }
             .padding(.bottom, 14)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("nativeMap.storm.stats")
         }
     }
 
@@ -259,6 +261,8 @@ struct StormDetailsView: View {
                     }
                 }
                 .padding(.bottom, 4)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.storm.signals")
             }
         }
     }
@@ -342,6 +346,8 @@ struct StormDetailsView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("nativeMap.storm.readings")
         }
     }
 
@@ -602,6 +608,8 @@ struct StormDetailsView: View {
                         .accessibilityLabel(CoreStrings.t("storm.history.aria", ["title": panel.title, "unit": panel.unit]))
                 }
                 .padding(.bottom, 6)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.storm.history.\(panel.key)")
             }
         }
     }
@@ -750,6 +758,8 @@ struct StormDetailsView: View {
                      CoreStrings.t("storm.fact.forecast_value", ["time": clock(last.t), "km": last.majorKm.map { StormRules.toFixed($0, 1) } ?? "–"]))
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("nativeMap.storm.facts")
     }
 
     private func fact(_ label: String, _ value: String, ink: Color = .primary) -> some View {

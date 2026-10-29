@@ -340,7 +340,9 @@ struct StormCappi: View {
                     ruler(km)
                 }
                 .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 2)
+                // Over the panel's scroll: a vertical drag on the slice holds a
+                // height, as core's canvas does, rather than scrolling past it.
+                .highPriorityGesture(DragGesture(minimumDistance: 2)
                     .onChanged { value in
                         if dragFrom == nil { dragFrom = held ?? height(at: Date().timeIntervalSince(started)) }
                         let (low, high) = range

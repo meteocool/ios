@@ -548,6 +548,41 @@ final class NativeMapUITests: XCTestCase {
         // Its slice at a height, and the radars that saw it.
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         XCTAssertTrue(element("nativeMap.storm.cappi.caption").exists, "What the slice shows, under it")
+        // Held at a height by a finger: dragged down, the slice goes down.
+        // Into the visible part of the panel, by short drags on the screen
+        // (`isHittable` says yes for a slice scrolled out of the sheet); a
+        // phone's sheet raised by its grabber first.
+        let cappi = element("nativeMap.storm.cappi")
+        let window = app.windows.firstMatch
+        let height = window.frame.height
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let grabber = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: element("nativeMap.storm.details").frame.minY / height + 0.01))
+            grabber.press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)))
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+        }
+        let screenMiddle = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.6))
+        for _ in 0 ..< 8 {
+            let frame = cappi.frame
+            if frame.minY < height * 0.15 {
+                screenMiddle.press(forDuration: 0.05, thenDragTo: screenMiddle.withOffset(CGVector(dx: 0, dy: 120)))
+            } else if frame.maxY > height * 0.9 {
+                screenMiddle.press(forDuration: 0.05, thenDragTo: screenMiddle.withOffset(CGVector(dx: 0, dy: -120)))
+            } else {
+                break
+            }
+        }
+        screenshot("before cappi drag")
+        cappi.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.3))
+            .press(forDuration: 0.05, thenDragTo: cappi.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.9)))
+        let held = cappi.value as? String ?? ""
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        XCTAssertEqual(cappi.value as? String, held, "Held where the finger left it")
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            // The sheet back down, where the map's buttons are not under it.
+            let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: element("nativeMap.storm.details").frame.minY / height + 0.01))
+            top.press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62)))
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+        }
         XCTAssertTrue(element("nativeMap.storm.radars").waitForExistence(timeout: 10))
         // A box of sky is meteocool's own.
         XCTAssertTrue(element("nativeMap.storm.source.meteocool").exists)
@@ -675,12 +710,15 @@ final class NativeMapUITests: XCTestCase {
         let iso = ISO8601DateFormatter()
         let seen = iso.string(from: Date().addingTimeInterval(-60))
         let born = iso.string(from: Date().addingTimeInterval(-40 * 60))
+        let before = iso.string(from: Date().addingTimeInterval(-11 * 60))
         let volumePart = volume.map { " \"volume\": {\"path\": \"\($0)\", \"coverage\": 0.9, \"sites\": [\"isn\"], \"tier\": 2}," } ?? ""
         return """
         {"type": "Feature", "properties": {"code": "\(code)", "first_seen": "\(born)", "last_seen": "\(seen)",
          "n_steps": 9, "active": true, "max_severity": 2, "max_dbz": 58, "echo_top_max_m": 11000, "echo_bottom_m": 1200,
+         "hail_ever": true, "hail_minutes": 20,
          "polygon": [[\(lon - 0.06), \(lat - 0.04)], [\(lon + 0.06), \(lat - 0.04)], [\(lon + 0.06), \(lat + 0.04)], [\(lon - 0.06), \(lat + 0.04)]],
-         "series": [{"t": "\(seen)", "lon": \(lon), "lat": \(lat), "severity": 2, "max_dbz": 58, "echo_top_m": 11000, "area_km2": 95, "heading_deg": 60}],\(volumePart)
+         "series": [{"t": "\(before)", "lon": \(lon - 0.02), "lat": \(lat - 0.01), "severity": 1, "max_dbz": 52, "echo_top_m": 9500, "area_km2": 70, "heading_deg": 60},
+                    {"t": "\(seen)", "lon": \(lon), "lat": \(lat), "severity": 2, "max_dbz": 58, "echo_top_m": 11000, "area_km2": 95, "heading_deg": 60, "hail_flag": 1}],\(volumePart)
          "structure": [{"dbz": 30, "area_km2": 95, "top_m": 9200, "volume_km3": 400},
                        {"dbz": 45, "area_km2": 30, "top_m": 7600, "volume_km3": 100},
                        {"dbz": 55, "area_km2": 4, "top_m": 6100, "volume_km3": 12}]}}
@@ -754,7 +792,12 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(source.waitForExistence(timeout: 5))
         XCTAssertTrue(source.label.contains("KONRAD3D"), source.label)
         screenshot("cell radars and source")
-        for _ in 0 ..< 4 where !open.isHittable { details.swipeDown() }
+        // Back up a little, by a drag in the middle: a swipe down at the top
+        // would put a phone's sheet away.
+        for _ in 0 ..< 4 where !open.isHittable {
+            details.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                .press(forDuration: 0.05, thenDragTo: details.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)))
+        }
         open.tap()
         let tray = element("nativeMap.site")
         XCTAssertTrue(tray.waitForExistence(timeout: 10), "The radar's own sweeps")
@@ -805,6 +848,25 @@ final class NativeMapUITests: XCTestCase {
         volume.switches.firstMatch.tap()
         element("nativeMap.stormKey.close").tap()
         XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 20), "Storms back")
+    }
+
+    /// A cell's panel, top to bottom: its stats, its signals, its readings,
+    /// its history and its facts.
+    func testCellPanelShowsEverySection() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        let details = element("nativeMap.storm.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
+        for (section, what) in [("nativeMap.storm.stats", "Status, tracked, updated"), ("nativeMap.storm.signals", "Hail"),
+                                ("nativeMap.storm.readings", "Peak, echo top"), ("nativeMap.storm.history.dbz", "Its history"),
+                                ("nativeMap.storm.facts", "Observed, source")] {
+            let item = element(section)
+            for _ in 0 ..< 6 where !item.exists { details.swipeUp() }
+            XCTAssertTrue(item.waitForExistence(timeout: 5), what)
+        }
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Hail'")).firstMatch.exists, "The hail signal")
+        screenshot("cell panel bottom")
     }
 
     func testCellPanelShowsItsMeasuredStructure() {
