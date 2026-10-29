@@ -122,6 +122,14 @@ enum SiteSweepRules {
         return best
     }
 
+    /// The timeline steps an open radar has a sweep for, oldest first: what
+    /// playback steps through while it is open. Observed steps only: on a
+    /// forecast step a sweep would be the newest scan under a later label.
+    /// `latest` is the live step, judged as `sweepAt` judges it.
+    static func stepsWithSweep(_ scans: [ListedScan], steps: [Int], latest: Int) -> [Int] {
+        steps.filter { $0 <= latest && sweepAt(scans, step: Double($0), live: $0 == latest) != nil }
+    }
+
     /// The sweeps to fetch ahead of the one shown: the next `count` scanned
     /// after it, oldest first; from the oldest again past the newest.
     static func ahead(of scans: [ListedScan], shown: ListedScan?, count: Int = 3) -> [ListedScan] {
@@ -141,6 +149,27 @@ enum SiteSweepRules {
     /// which is what a reader choosing a tilt actually wants to know.
     static func tiltLabel(_ elevationDeg: Double, _ beamKmAt100: Double) -> String {
         "\(fixed1(elevationDeg))° · \(fixed1(beamKmAt100)) km"
+    }
+
+    /// A radar open in site mode, as a link names it (core's `radar=`,
+    /// `sweep=`, `tilt=`): its code, what is drawn of it (reflectivity unless
+    /// said) and the tilt (the lowest unless said, as elevation 0 picks it).
+    /// nil where the code is not a plain word, or absent.
+    static func fromLink(radar: String?, sweep: String?, tilt: String?) -> SiteMode? {
+        guard let site = radar?.lowercased(), site.range(of: "^[a-z0-9]{3,12}$", options: .regularExpression) != nil else { return nil }
+        let quantity = sweep.flatMap(SiteQuantity.init(rawValue:)).flatMap { $0 == .reflectivity ? nil : $0 } ?? .reflectivity
+        let elevation = tilt.flatMap(Double.init).flatMap { $0.isFinite && $0 >= 0 && $0 <= 90 ? $0 : nil } ?? 0
+        return SiteMode(site: site, quantity: quantity, elevation: elevation)
+    }
+
+    /// The link's parameters for an open radar: reflectivity left unsaid, the
+    /// tilt to two decimals (Meteo-France's 0.39) without trailing zeros.
+    static func toLink(_ mode: SiteMode) -> [String: String] {
+        var out = ["radar": mode.site]
+        if mode.quantity != .reflectivity { out["sweep"] = mode.quantity.rawValue }
+        let tilt = (mode.elevation * 100).rounded() / 100
+        out["tilt"] = tilt == tilt.rounded() ? String(Int(tilt)) : String(tilt)
+        return out
     }
 
     /// One decimal, as JavaScript's `toFixed(1)` writes it: a tie rounds away from zero.

@@ -143,6 +143,22 @@ struct SiteSweepTray: View {
     }
 }
 
+/// The open radar's controls as a glass card over the player (core's pill
+/// over it): the player keeps its height and its timeline.
+struct SiteSweepCard: View {
+    @ObservedObject var state: SiteSweepState
+    @ObservedObject var model: NativeMapModel
+
+    var body: some View {
+        let theme = ChromeTheme(dark: model.isDark)
+        SiteSweepTray(state: state, escapes: model.selectedStorm == nil && model.covers.isEmpty, theme: theme)
+            .padding(EdgeInsets(top: 10, leading: 6, bottom: 12, trailing: 10))
+            .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous), strong: true)
+            .environment(\.colorScheme, theme.colorScheme)
+            .padding(.horizontal, ChromeTheme.gutter)
+    }
+}
+
 /// The legend for a radar's radial velocity: toward the radar green, away
 /// red, across the sweep's own Nyquist velocity, which is as fast a wind as
 /// that tilt measures at all. Ticks every 5 m/s, every 10 on a narrow tray

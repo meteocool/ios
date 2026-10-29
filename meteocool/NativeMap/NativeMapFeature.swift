@@ -153,6 +153,6 @@ enum NativeMapLayer: String, CaseIterable {
     case lightning, mesocyclones, storms, snow, cells3d, terrain3d, sites
 
     /// Whether it is on before the user has chosen: as core's settings
-    /// (`layer3dCells` and `layerSites` off, the rest on).
-    var defaultOn: Bool { self != .cells3d && self != .sites }
+    /// (`layer3dCells` off, the rest on).
+    var defaultOn: Bool { self != .cells3d }
 }

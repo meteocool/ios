@@ -1110,16 +1110,13 @@ final class NativeMapUITests: XCTestCase {
 
     // MARK: - Site mode
 
-    /// Turns the radars' marks on, as the layers panel does; they are off
-    /// until then (`layerSites`).
+    /// The radars' marks, on unless turned off in the layers panel (`layerSites`).
     private func turnOnRadarSites() {
         openLayers()
         let sites = app.switches["nativeMap.layers.sites"].firstMatch
         XCTAssertTrue(sites.waitForExistence(timeout: 5))
         for _ in 0 ..< 4 where !sites.isHittable { element("nativeMap.layers").swipeUp() }
-        XCTAssertEqual(sites.value as? String, "0", "Off until turned on")
-        sites.switches.firstMatch.tap()
-        XCTAssertTrue(waitForValue(sites) { $0 == "1" }, "Switched on")
+        XCTAssertEqual(sites.value as? String, "1", "On by default")
         element("nativeMap.layers.close").tap()
     }
 
@@ -1142,10 +1139,33 @@ final class NativeMapUITests: XCTestCase {
         return tray
     }
 
-    func testRadarMarksAreOffUntilTurnedOn() {
+    func testRadarMarksAreOnUntilTurnedOff() {
         launch(link: "?latLonZ=50.2,9.2,7.4")
         waitForSeries()
-        XCTAssertFalse(element("nativeMap.site.deoft").waitForExistence(timeout: 6))
+        XCTAssertTrue(element("nativeMap.site.deoft").waitForExistence(timeout: 20), "On by default")
+        openLayers()
+        let sites = app.switches["nativeMap.layers.sites"].firstMatch
+        for _ in 0 ..< 4 where !sites.isHittable { element("nativeMap.layers").swipeUp() }
+        sites.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(sites) { $0 == "0" })
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(element("nativeMap.site.deoft").waitForNonExistence(timeout: 6), "Turned off")
+    }
+
+    /// A link to a radar opens it, what is drawn of it and its tilt; the map
+    /// shares it back.
+    func testRadarLinkOpensItsSweep() {
+        launch(link: "?radar=deoft&sweep=velocity&tilt=1.5")
+        waitForSeries()
+        let tray = element("nativeMap.site")
+        XCTAssertTrue(tray.waitForExistence(timeout: 20), "The linked radar")
+        XCTAssertEqual(tray.label, "Offenthal radar")
+        XCTAssertTrue(tray.buttons["Velocity"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(tray.buttons["Velocity"].firstMatch.isSelected)
+        let tilt = element("nativeMap.site.tilt")
+        XCTAssertTrue(waitForValue(tilt) { $0.hasPrefix("1.5° ") }, "The linked tilt: \(tilt.value ?? "")")
+        // The radar's reach in view: its mark on screen.
+        XCTAssertTrue(element("nativeMap.site.deoft").waitForExistence(timeout: 20))
     }
 
     func testRadarMarkOpensItsSweepWithItsTiltsAndClosesBackToTheTimeline() {
@@ -1153,10 +1173,11 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         turnOnRadarSites()
         let tray = openSite("deoft", name: "Offenthal")
-        // The timeline gives way to the radar: nothing to play, nothing to go back to.
-        XCTAssertTrue(timeline.waitForNonExistence(timeout: 5))
-        XCTAssertFalse(playButton.exists)
-        XCTAssertFalse(element("nativeMap.backToNow").exists)
+        // The timeline stays, on the steps the radar has a sweep for; the
+        // product pill names the radar.
+        XCTAssertTrue(timeline.exists)
+        XCTAssertTrue(playButton.exists)
+        XCTAssertTrue(element("nativeMap.productPill").label.contains("Offenthal"))
         XCTAssertTrue(element("nativeMap.site.deoft").isSelected, "The open radar's mark")
         // Its tilts, each with how high its beam is 100 km out.
         let tilt = element("nativeMap.site.tilt")
@@ -1188,8 +1209,8 @@ final class NativeMapUITests: XCTestCase {
 
         element("nativeMap.site.close").tap()
         XCTAssertTrue(tray.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(timeline.waitForExistence(timeout: 5))
-        XCTAssertTrue(element("nativeMap.legend").exists)
+        XCTAssertTrue(element("nativeMap.legend").waitForExistence(timeout: 5))
+        XCTAssertFalse(element("nativeMap.productPill").label.contains("Offenthal"))
     }
 
     func testHoldInsideAnOpenRadarReadsItsBin() {

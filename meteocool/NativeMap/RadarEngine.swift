@@ -94,6 +94,7 @@ final class RadarEngine {
         scene = RadarScene(compositor: compositor)
         overlay = RadarOverlay(scene: scene)
         player.palette = RadarLUT(palette: palette).name
+        paletteChoice = palette
 
         store.onTile = { [weak self] key in self?.tileArrived(key) }
         player.onStep = { [weak self] step in self?.showStep(step) }
@@ -153,10 +154,22 @@ final class RadarEngine {
     }
 
     func setPalette(_ palette: String) {
-        guard RadarLUT(palette: palette).name != store.paletteName else { return }
-        store.setPalette(palette)
+        paletteChoice = palette
+        applyPalette()
+    }
+
+    /// Under an open radar's sweep the composites are drawn in grey.
+    var ink: RadarLUT.Ink? {
+        didSet { if ink != oldValue { applyPalette() } }
+    }
+    private var paletteChoice = "classic"
+
+    private func applyPalette() {
+        let lut = RadarLUT(palette: paletteChoice, ink: ink)
+        guard lut.id != store.paletteName else { return }
+        store.setPalette(paletteChoice, ink: ink)
         compositor.clear()
-        player.palette = RadarLUT(palette: palette).name
+        player.palette = lut.name
         renderer?.setNeedsDisplay()
         schedulePrepare()
     }

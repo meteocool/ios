@@ -34,26 +34,19 @@ struct PlayerTray: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let mode = site.mode {
-                // Site mode has no timeline, so nothing to play.
-                SiteSweepTray(state: site, escapes: model.selectedStorm == nil && model.covers.isEmpty, theme: theme)
-                Spacer(minLength: 0)
+            head
+            // With a radar open the strip scrubs its sweeps as it scrubs frames.
+            TimelineStrip(player: player, theme: theme)
+            HStack(spacing: 6) {
+                PlayButton(player: player, theme: theme)
                 Group {
-                    if mode.quantity == .reflectivity {
-                        RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
-                    } else {
+                    if let mode = site.mode, mode.quantity != .reflectivity {
                         VelocityLegend(nyquist: site.view?.nyquist, relative: mode.quantity == .srv, theme: theme)
+                    } else {
+                        RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
                     }
                 }
                 .padding(.horizontal, 4)
-            } else {
-                head
-                TimelineStrip(player: player, theme: theme)
-                HStack(spacing: 6) {
-                    PlayButton(player: player, theme: theme)
-                    RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
-                        .padding(.horizontal, 4)
-                }
             }
         }
         .padding(.top, 6)
@@ -98,7 +91,7 @@ struct PlayerTray: View {
                 StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
                              theme: theme, open: actions.openStormKey)
             }
-            ProductPill(player: player, theme: theme, open: actions.openProducts)
+            ProductPill(player: player, theme: theme, site: site.mode.map { _ in site.view }, open: actions.openProducts)
             if model.point != nil, model.userLocation == nil {
                 Button(action: actions.showForMyLocation) {
                     Image(systemName: "xmark")
@@ -248,9 +241,48 @@ struct RadarLegend: View {
 struct ProductPill: View {
     @ObservedObject var player: RadarPlayer
     let theme: ChromeTheme
+    /// With a radar open, its sweep shown: the pill is about that radar.
+    var site: SiteSweepView?? = nil
     let open: () -> Void
 
     var body: some View {
+        if let site { sitePill(site) } else { productPill }
+    }
+
+    /// The open radar's name, and how long ago its sweep on screen was scanned.
+    private func sitePill(_ view: SiteSweepView?) -> some View {
+        TimelineView(.periodic(from: .now, by: 15)) { context in
+            Button(action: open) {
+                HStack(spacing: 5) {
+                    Image(systemName: "dot.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
+                    Text(view.map { RadarSiteAnnotation.name($0.site.site) } ?? "").truncationMode(.tail)
+                    Text(Self.siteAge(view, now: context.date))
+                        .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
+                        .foregroundStyle(theme.text2)
+                        .layoutPriority(1)
+                }
+                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .foregroundStyle(theme.text)
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .frame(height: 24)
+                .background(theme.tint, in: Capsule())
+            }
+            .buttonStyle(PressScale())
+        }
+        .accessibilityLabel(CoreStrings.t("chrome.radar_product.choose") + ": " + (view.map { RadarSiteAnnotation.name($0.site.site) } ?? ""))
+        .accessibilityIdentifier("nativeMap.productPill")
+    }
+
+    static func siteAge(_ view: SiteSweepView?, now: Date) -> String {
+        guard let iso = view?.startedAt ?? view?.scannedAt, let at = SiteSweepRules.seconds(iso) else {
+            return CoreStrings.t("chrome.radar_product.unavailable")
+        }
+        return CoreStrings.t("chrome.radar_product.age", ["minutes": max(0, Int(((now.timeIntervalSince1970 - at) / 60).rounded()))])
+    }
+
+    @ViewBuilder
+    private var productPill: some View {
         let timeline = player.timeline
         let forecast = player.step.map(timeline.isForecast) ?? false
         let product = forecast ? RadarProduct.hx : timeline.drawn

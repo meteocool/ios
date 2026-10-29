@@ -44,6 +44,15 @@ struct NativeMapSitesCheck {
             precondition(SiteSweepRules.sweepAt(scans, step: step(15) + SiteSweepRules.maxAgeS + 1, live: false) == nil)
             precondition(SiteSweepRules.sweepAt(scans, step: step(-1), live: false) == nil)
         }
+        test("an open radar plays the observed steps it has a sweep for, and none after now") {
+            let s = { (minute: Int) in Int(step(minute)) }
+            let scans = [at(0), at(5), at(30)]
+            let steps = [-5, 0, 5, 10, 15, 20, 25, 30, 35, 40].map(s)
+            // 20 and 25: the sweep at 5 is more than two cycles old. 35 and 40: forecast.
+            precondition(SiteSweepRules.stepsWithSweep(scans, steps: steps, latest: s(30)) == [0, 5, 10, 15, 30].map(s))
+            // The live step shows the newest sweep, filed after it.
+            precondition(SiteSweepRules.stepsWithSweep([at(0), at(7)], steps: [0, 5].map(s), latest: s(5)) == [0, 5].map(s))
+        }
         test("the live step shows the newest sweep, whatever its stamp") {
             precondition(SiteSweepRules.sweepAt(scans, step: step(10), live: true)?.path == "p15")
         }
@@ -81,6 +90,21 @@ struct NativeMapSitesCheck {
         }
         test("a tilt's label is its elevation and its beam 100 km out") {
             precondition(SiteSweepRules.tiltLabel(0.5, 1.234) == "0.5° · 1.2 km")
+        }
+        test("a radar open round-trips, reflectivity left unsaid") {
+            let srv = SiteMode(site: "frave", quantity: .srv, elevation: 0.39)
+            precondition(SiteSweepRules.toLink(srv) == ["radar": "frave", "sweep": "srv", "tilt": "0.39"])
+            precondition(SiteSweepRules.fromLink(radar: "frave", sweep: "srv", tilt: "0.39") == srv)
+            precondition(SiteSweepRules.toLink(SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0.5)) == ["radar": "deoft", "tilt": "0.5"])
+            precondition(SiteSweepRules.toLink(SiteMode(site: "deoft", quantity: .velocity, elevation: 12)) == ["radar": "deoft", "sweep": "velocity", "tilt": "12"])
+            precondition(SiteSweepRules.fromLink(radar: "DEOFT", sweep: nil, tilt: nil) == SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0))
+        }
+        test("a radar link that does not parse is dropped, and an unknown sweep is reflectivity") {
+            precondition(SiteSweepRules.fromLink(radar: "../tiles", sweep: nil, tilt: nil) == nil)
+            precondition(SiteSweepRules.fromLink(radar: "", sweep: nil, tilt: nil) == nil)
+            precondition(SiteSweepRules.fromLink(radar: "deoft", sweep: "hail", tilt: "-3") == SiteMode(site: "deoft", quantity: .reflectivity, elevation: 0))
+            // A tilt or sweep alone means nothing.
+            precondition(SiteSweepRules.fromLink(radar: nil, sweep: "velocity", tilt: "1.5") == nil)
         }
         test("the listing decodes as /sweeps answers it") {
             let json = """

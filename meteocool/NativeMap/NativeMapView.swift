@@ -200,6 +200,19 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         dockOnTray = dock.bottomAnchor.constraint(equalTo: tray.topAnchor, constant: -ChromeTheme.gutter)
         dockOnOther = dock.bottomAnchor.constraint(equalTo: other.topAnchor, constant: -ChromeTheme.gutter)
         dockOnTray?.isActive = true
+        // An open radar's controls, on the tray; the strips stand on them.
+        let siteCard = addToDock(SiteSweepCard(state: model.site, model: model))
+        siteCard.isHidden = true
+        model.site.$mode
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak siteCard] open in
+                DispatchQueue.main.async {
+                    siteCard?.isHidden = !open
+                    siteCard?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
         let strips = addToDock(NoticeStrips(player: player, model: model, notices: notices))
         stripsChrome = strips
         notices.objectWillChange

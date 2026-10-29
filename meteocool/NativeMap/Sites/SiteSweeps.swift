@@ -58,8 +58,10 @@ final class SiteSweepState: ObservableObject {
 final class SiteSweeps: NativeMapFeature {
     /// Below this the marks are clutter: a whole network fits in a thumb's width.
     static let minZoom = 6.0
-    /// How the composites are drawn under an open radar's sweep.
-    static let compositeDim = 0.35
+    /// How strongly the composites are drawn under an open radar's sweep,
+    /// and only while one is drawn: in grey there, they no longer mix with
+    /// its colours, so they keep most of their structure.
+    static let compositeDim = 0.6
     /// Sweeps kept decoded: a step's, the three ahead, and a few behind.
     private static let kept = 16
 
@@ -195,6 +197,27 @@ final class SiteSweeps: NativeMapFeature {
         redraw()
     }
 
+    /// A link to a radar (`radar=`, `sweep=`, `tilt=`) opens it, on the
+    /// radar map; with no view of its own, the radar's reach in view.
+    func open(_ link: [String: String]) -> Bool {
+        guard let map, let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
+        if map.model.capability != .radar { map.setCapability(.radar) }
+        if link["latLonZ"] == nil, let site = RadarSites.site(mode.site) {
+            map.place(NativeMapLink(latitude: site.lat, longitude: site.lon, zoom: Self.linkZoom), animated: false)
+        }
+        state?.mode = mode
+        return false
+    }
+
+    /// The open radar, for a link to the map on screen.
+    func linkParameters() -> [String: String] {
+        guard map?.model.capability == .radar, let mode = state?.mode else { return [:] }
+        return SiteSweepRules.toLink(mode)
+    }
+
+    /// Where a link to a radar opens when it does not say: its whole reach in view.
+    static let linkZoom = 7.0
+
     /// Site mode is the radar map's.
     func capabilityDidChange(_ capability: NativeMapModel.Capability) {
         if capability != .radar { state?.close() }
@@ -260,6 +283,7 @@ final class SiteSweeps: NativeMapFeature {
         for mark in marks.values { (mapView.view(for: mark) as? RadarSiteMarkView)?.setDark(dark) }
         overlay.scene.setDark(dark)
         if overlayAdded { mapView.renderer(for: overlay)?.setNeedsDisplay() }
+        greyComposites()
         ringsKey = ""
         if let shown { showRings(shown.sweep.header.geometry) }
     }
@@ -273,9 +297,6 @@ final class SiteSweeps: NativeMapFeature {
         let current = state.mode
         if current?.site == code { return }
         let lowest = marks[code].map { SiteSweepRules.listed($0.site, .reflectivity).map(\.elevationDeg).min() ?? 0 } ?? 0
-        // Site mode has no timeline: a frame parked on or a playback running
-        // would be left with no way back.
-        if map.player.playing || !map.player.isLive { map.player.showLive() }
         state.mode = SiteMode(site: code, quantity: current?.quantity ?? .reflectivity, elevation: lowest)
     }
 
@@ -289,7 +310,6 @@ final class SiteSweeps: NativeMapFeature {
     private func modeChanged(_ mode: SiteMode?) {
         guard let map else { return }
         markOpen(mode?.site)
-        map.radar.siteDimmed = mode != nil
         guard let mode else {
             openSite = nil
             shown = nil
@@ -300,6 +320,7 @@ final class SiteSweeps: NativeMapFeature {
             show(nil)
             clearRings()
             state?.view = nil
+            map.player.only = nil
             return
         }
         if openSite?.site != mode.site {
@@ -336,6 +357,11 @@ final class SiteSweeps: NativeMapFeature {
         let generation = generation
         let tilts = SiteSweepRules.listed(site, mode.quantity)
         let tilt = SiteSweepRules.tiltNear(tilts, mode.elevation)
+        // The timeline keeps to the steps this tilt has a sweep for.
+        if let player = map?.player, let latest = player.timeline.now {
+            let only = Set(SiteSweepRules.stepsWithSweep(tilt?.scans ?? [], steps: player.timeline.steps, latest: latest))
+            if player.only != only { player.only = only }
+        }
         let live = step.isLive || step.time == nil
         let scan = tilt.flatMap { SiteSweepRules.sweepAt($0.scans, step: Double(step.time ?? 0), live: live) }
         let motion = self.motion()
@@ -410,6 +436,15 @@ final class SiteSweeps: NativeMapFeature {
             overlayAdded = false
         }
         if overlayAdded { mapView.renderer(for: overlay)?.setNeedsDisplay() }
+        greyComposites()
+    }
+
+    /// The composites under a drawn sweep: dimmed, and in grey, black ink on
+    /// a light map and white on a dark one.
+    private func greyComposites() {
+        guard let map else { return }
+        map.radar.siteDimmed = overlayAdded
+        map.radar.ink = overlayAdded ? (map.model.isDark ? .white : .black) : nil
     }
 
     private func showRings(_ geometry: SweepGeometry) {

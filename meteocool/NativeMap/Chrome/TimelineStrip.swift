@@ -31,7 +31,8 @@ final class StripMotion: ObservableObject {
     private let tick = UIImpactFeedbackGenerator(style: .light)
     private let detent = UIImpactFeedbackGenerator(style: .medium)
 
-    private var last: Int { player?.lastIndex ?? 0 }
+    private var reach: TimelinePhysics.Reach { player?.reach ?? .all(0) }
+    private var last: Int { reach.last }
     private var nowIndex: Int? { player?.nowIndex }
 
     func touch(at x: CGFloat, start: CGFloat, width: CGFloat, count: Int) {
@@ -50,7 +51,7 @@ final class StripMotion: ObservableObject {
         if !moved, abs(x - startX) < TimelinePhysics.slop { return }
         moved = true
         let raw = Double(x / width) * Double(count) - 0.5
-        let p = TimelinePhysics.rubberBand(raw, last: Double(last))
+        let p = TimelinePhysics.rubberBand(raw, reach: reach)
         let now = CACurrentMediaTime()
         let dt = max((now - lastMove) * 1000, 1)
         if let previous = position {
@@ -67,7 +68,7 @@ final class StripMotion: ObservableObject {
         if !moved {
             // A tap: straight to that step.
             let raw = Double(x / width) * Double(count) - 0.5
-            let to = TimelinePhysics.restingStep(raw, last: last, detent: nil)
+            let to = TimelinePhysics.restingStep(raw, reach: reach, detent: nil)
             position = nil
             report(Double(to))
             player?.release()
@@ -92,13 +93,13 @@ final class StripMotion: ObservableObject {
         }
         guard let p = position else { return finish(at: player?.index ?? 0) }
         if velocity != 0 {
-            let next = TimelinePhysics.glideStep(position: p, velocity: velocity, dt: dt, last: last, detent: nowIndex)
+            let next = TimelinePhysics.glideStep(position: p, velocity: velocity, dt: dt, reach: reach, detent: nowIndex)
             position = next.position
             velocity = next.velocity
             report(next.position)
             return
         }
-        settle = (p, TimelinePhysics.restingStep(p, last: last, detent: nowIndex), time)
+        settle = (p, TimelinePhysics.restingStep(p, reach: reach, detent: nowIndex), time)
     }
 
     private func finish(at index: Int) {
@@ -112,11 +113,11 @@ final class StripMotion: ObservableObject {
     /// Each whole step the needle reaches is shown, with a tick, or a firmer
     /// one on now and the ends (core's `tick`/`detent` haptics).
     private func report(_ p: Double) {
-        let step = max(0, min(last, Int(p.rounded())))
+        let step = max(reach.first, min(last, Int(p.rounded())))
         guard step != reported else { return }
         reported = step
         player?.scrub(to: step)
-        if step == nowIndex || step == 0 || step == last { detent.impactOccurred() } else { tick.impactOccurred() }
+        if step == nowIndex || step == reach.first || step == last { detent.impactOccurred() } else { tick.impactOccurred() }
     }
 
     private func startLink() {
@@ -194,8 +195,8 @@ struct TimelineStrip: View {
         .accessibilityValue(player.label)
         .accessibilityAdjustableAction { direction in
             switch direction {
-            case .increment: player.scrub(to: player.index + 1)
-            case .decrement: player.scrub(to: player.index - 1)
+            case .increment: player.scrub(to: TimelinePhysics.stepOver(player.index, by: 1, reach: player.reach))
+            case .decrement: player.scrub(to: TimelinePhysics.stepOver(player.index, by: -1, reach: player.reach))
             @unknown default: break
             }
         }
@@ -235,6 +236,21 @@ struct TimelineStrip: View {
                 fill.opacity = theme.preloadOpacity
                 for (i, step) in steps.enumerated() where player.preloaded.contains(step) {
                     fill.fill(Path(CGRect(x: CGFloat(i) * slot - 0.5, y: 0, width: slot + 1, height: plot)), with: .color(theme.brand))
+                }
+            }
+            // An open radar's steps without a sweep, hatched (core's `sweepGaps`).
+            for run in TimelinePhysics.gaps(steps: steps, only: player.only) {
+                let rect = CGRect(x: CGFloat(run.lowerBound) * slot, y: 0, width: CGFloat(run.count) * slot, height: plot)
+                plotLayer.drawLayer { hatch in
+                    hatch.clip(to: Path(rect))
+                    var stripes = Path()
+                    var x = rect.minX - plot
+                    while x < rect.maxX {
+                        stripes.move(to: CGPoint(x: x, y: plot))
+                        stripes.addLine(to: CGPoint(x: x + plot, y: 0))
+                        x += 6
+                    }
+                    hatch.stroke(stripes, with: .color(theme.text2.opacity(0.22)), lineWidth: 1.5)
                 }
             }
             // The past, tinted up to now.
