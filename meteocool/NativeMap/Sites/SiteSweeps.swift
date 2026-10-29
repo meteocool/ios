@@ -25,8 +25,12 @@ struct SiteSweepView: Equatable {
     var nyquist: Double?
     var dealiased: Bool?
     var dealiaser: String?
-    /// Whether a storm is selected for SRV to take the motion of.
-    let hasMotion: Bool
+    /// What SRV takes out, and whose it is.
+    var srv = SrvMotion(source: .manual, motion: SrvMotionRules.motion(of: SrvMotionRules.defaultMotion))
+    /// Whether a selected storm says how it moves, so its motion is on offer.
+    var stormMoves = false
+    /// The selected storm, as the motion's row names it.
+    var stormName: String?
 }
 
 /// Site mode's state: what is open (set by a mark and by the tray), and
@@ -34,6 +38,26 @@ struct SiteSweepView: Equatable {
 @MainActor
 final class SiteSweepState: ObservableObject {
     @Published var mode: SiteMode?
+    /// The motion set by hand on the dial, kept (core's `srvMotion` setting).
+    @Published var manual = SrvMotionRules.parse(SiteSweepState.defaults?.string(forKey: SiteSweepState.manualKey)) {
+        didSet { SiteSweepState.defaults?.set(SrvMotionRules.format(manual), forKey: SiteSweepState.manualKey) }
+    }
+    /// The reader asked for their own motion over the selected storm's.
+    @Published var prefersManual = false
+    /// The motion's dial and stepper are open in the card.
+    @Published var motionOpen = false
+
+    private static let manualKey = "nativeMap.srvMotion"
+    private static let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
+
+    /// Sets the motion by hand, from the one SRV takes out now; a storm's
+    /// motion turned on the dial becomes the reader's own.
+    func editMotion(heading: Double? = nil, speed: Double? = nil) {
+        guard let srv = view?.srv else { return }
+        let base = SrvMotionRules.editBase(srv, manual: manual)
+        manual = ManualMotion(headingDeg: heading ?? base.headingDeg, speedKmh: SrvMotionRules.clampSpeed(speed ?? base.speedKmh))
+        if srv.source == .storm { prefersManual = true }
+    }
     @Published fileprivate(set) var view: SiteSweepView?
     fileprivate var reader: ((CLLocationCoordinate2D) -> ReadingParts?)?
     fileprivate var opener: ((String) -> Void)?
@@ -91,12 +115,21 @@ final class SiteSweeps: NativeMapFeature {
     private var overlayAdded = false
     private var observers = Set<AnyCancellable>()
 
-    init(motion: @escaping () -> StormMotion?, hitsStorm: @escaping (CGPoint) -> Bool) {
+    /// The selected storm's name: its place, else its strength.
+    private let stormName: () -> String?
+
+    init(motion: @escaping () -> StormMotion?, stormName: @escaping () -> String? = { nil }, hitsStorm: @escaping (CGPoint) -> Bool) {
         self.motion = motion
+        self.stormName = stormName
         self.hitsStorm = hitsStorm
     }
 
     private var state: SiteSweepState? { map?.model.site }
+    /// What SRV takes out: the selected storm's motion, or the reader's own.
+    private var srv: SrvMotion {
+        SrvMotionRules.resolve(storm: motion(), manual: state?.manual ?? SrvMotionRules.defaultMotion,
+                               prefersManual: state?.prefersManual ?? false)
+    }
     private var marksShown: Bool {
         guard let map else { return false }
         return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom
@@ -118,6 +151,10 @@ final class SiteSweeps: NativeMapFeature {
             .store(in: &observers)
         // SRV takes the selected storm's motion out; its details may come later.
         Publishers.Merge(map.model.$selectedStorm.map { _ in () }, map.model.$opened.map { _ in () })
+            .sink { [weak self] in DispatchQueue.main.async { self?.redraw() } }
+            .store(in: &observers)
+        // The dial turned: the sweep on screen drawn again, nothing fetched.
+        Publishers.Merge(map.model.site.$manual.dropFirst().map { _ in () }, map.model.site.$prefersManual.dropFirst().map { _ in () })
             .sink { [weak self] in DispatchQueue.main.async { self?.redraw() } }
             .store(in: &observers)
         map.model.$isDark
@@ -364,9 +401,9 @@ final class SiteSweeps: NativeMapFeature {
         }
         let live = step.isLive || step.time == nil
         let scan = tilt.flatMap { SiteSweepRules.sweepAt($0.scans, step: Double(step.time ?? 0), live: live) }
-        let motion = self.motion()
         let base = SiteSweepView(site: site, tilts: offered(site, mode), hasVelocity: !SiteSweepRules.listed(site, .velocity).isEmpty,
-                                 status: .loading, hasMotion: motion != nil)
+                                 status: .loading, srv: srv, stormMoves: motion() != nil,
+                                 stormName: stormName())
         guard let scan, let tilt else {
             shown = nil
             show(nil)
@@ -396,7 +433,8 @@ final class SiteSweeps: NativeMapFeature {
             self.shown = (scan, sweep)
             let geometry = sweep.header.geometry
             self.reach = (geometry, SweepGeometryRules.reachM(geometry))
-            self.show(SiteSweepScene.drawing(sweep, quantity: mode.quantity, motion: motion,
+            // Taken now, not before the fetch: the dial may have turned while it was out.
+            self.show(SiteSweepScene.drawing(sweep, quantity: mode.quantity, motion: self.srv.motion,
                                              reflectivity: RadarLUT(palette: self.map?.player.palette ?? "classic")))
             self.showRings(geometry)
             var view = base.with(status: .shown)
@@ -408,7 +446,8 @@ final class SiteSweeps: NativeMapFeature {
             // Offered again with the drawn antenna's own height.
             state.view = SiteSweepView(site: view.site, tilts: self.offered(site, mode), hasVelocity: view.hasVelocity, status: .shown,
                                        startedAt: view.startedAt, scannedAt: view.scannedAt, nyquist: view.nyquist,
-                                       dealiased: view.dealiased, dealiaser: view.dealiaser, hasMotion: view.hasMotion)
+                                       dealiased: view.dealiased, dealiaser: view.dealiaser, srv: self.srv,
+                                       stormMoves: view.stormMoves, stormName: view.stormName)
             // The next few, so a step forward finds its sweep already here.
             for next in SiteSweepRules.ahead(of: tilt.scans, shown: scan) { self.load(next.path) { _ in } }
         }
@@ -476,8 +515,8 @@ final class SiteSweeps: NativeMapFeature {
         let header = shown.sweep.header
         guard let bin = SweepGeometryRules.binAt(header.geometry, lon: coordinate.longitude, lat: coordinate.latitude) else { return nil }
         var reading = Sweep.read(header.encoding, shown.sweep.bins[bin.ray * header.nbins + bin.bin])
-        if mode.quantity == .srv, let motion = motion(), case .value(let value) = reading {
-            reading = .value(SweepGeometryRules.stormRelative(value, azimuthDeg: bin.azimuthDeg, motion: motion))
+        if mode.quantity == .srv, case .value(let value) = reading {
+            reading = .value(SweepGeometryRules.stormRelative(value, azimuthDeg: bin.azimuthDeg, motion: srv.motion))
         }
         return SiteSweepRules.describe(reading, mode.quantity, azimuthDeg: bin.azimuthDeg, groundM: bin.groundM, heightM: bin.heightM) {
             CoreStrings.t($0, $1)
@@ -518,6 +557,7 @@ final class SiteSweeps: NativeMapFeature {
 private extension SiteSweepView {
     func with(status: Status) -> SiteSweepView {
         SiteSweepView(site: site, tilts: tilts, hasVelocity: hasVelocity, status: status, startedAt: startedAt, scannedAt: scannedAt,
-                      nyquist: nyquist, dealiased: dealiased, dealiaser: dealiaser, hasMotion: hasMotion)
+                      nyquist: nyquist, dealiased: dealiased, dealiaser: dealiaser, srv: srv, stormMoves: stormMoves,
+                      stormName: stormName)
     }
 }

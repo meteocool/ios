@@ -127,6 +127,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // only it, unless it lands on a storm.
         let sites = SiteSweeps(motion: { [weak storms] in
             storms?.store.selection.flatMap(StormSelect.motionOf).map { StormMotion(speedMs: $0.speedMs, headingDeg: $0.headingDeg) }
+        }, stormName: { [weak storms] in
+            guard let selection = storms?.store.selection else { return nil }
+            let t: StormTranslate = { CoreStrings.t($0, $1) }
+            if let place = StormRules.placementLabel(selection.cell?.placement ?? selection.summary?.properties.placement, t, style: .short) {
+                return place
+            }
+            guard StormSelect.knowsSeverity(selection) else { return CoreStrings.t("storm.storm_label.unclassed") }
+            return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
         return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), sites, storms, CloudHints(), PointFeature(),
                 RadarWash(), ThreeDMap()]
@@ -210,6 +218,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                 DispatchQueue.main.async {
                     siteCard?.isHidden = !open
                     siteCard?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
+        // Measured again as it grows or shrinks: the motion's editor, another
+        // quantity's rows. A host keeps the size it was laid out at otherwise,
+        // and what grows past it takes no touches.
+        Publishers.Merge(model.site.$motionOpen.map { _ in () }, model.site.$mode.map { _ in () })
+            .sink { [weak self, weak siteCard] in
+                DispatchQueue.main.async {
+                    siteCard?.invalidateIntrinsicContentSize()
+                    self?.setNeedsLayout()
                 }
             }
             .store(in: &observers)

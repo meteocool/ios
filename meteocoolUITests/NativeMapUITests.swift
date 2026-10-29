@@ -1206,6 +1206,19 @@ final class NativeMapUITests: XCTestCase {
         // Storm-relative needs a storm to take the motion of.
         tray.buttons["Storm-relative"].firstMatch.tap()
         XCTAssertTrue(waitForLabel(note) { $0.hasPrefix("Select a storm") })
+        // Or set by hand: a speed on the stepper, a heading on the dial.
+        let motion = element("nativeMap.site.motion")
+        XCTAssertTrue(motion.waitForExistence(timeout: 5))
+        motion.tap()
+        let speed = element("nativeMap.site.motion.speed")
+        XCTAssertTrue(speed.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 { speed.buttons["nativeMap.site.motion.speed-Increment"].tap() }
+        XCTAssertTrue(waitForValue(motion) { $0.contains("manual") && $0.contains("20 km/h") }, "Set by hand: \(motion.value ?? "")")
+        let dial = element("nativeMap.site.motion.dial")
+        dial.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(waitForValue(motion) { $0.hasSuffix(" E") }, "Going east: \(motion.value ?? "")")
+        XCTAssertTrue(waitForLabel(note) { !$0.hasPrefix("Select a storm") }, "Something to take out now: \(note.label)")
+        screenshot("site storm-relative by hand")
 
         element("nativeMap.site.close").tap()
         XCTAssertTrue(tray.waitForNonExistence(timeout: 5))

@@ -502,3 +502,115 @@ enum VelocityPalette {
         return rgba(stops[stops.count - 1].1, 240)
     }
 }
+
+// MARK: - The motion storm-relative velocity takes out
+
+/// A motion set by hand on the tray's dial: the heading it moves toward,
+/// clockwise from north, and how fast (core's `ManualMotion`). Kept in km/h
+/// and whole degrees, as the storm panel says a storm's speed and heading.
+struct ManualMotion: Equatable, Sendable {
+    var headingDeg: Double
+    var speedKmh: Double
+}
+
+/// The motion SRV takes out, and whose it is: the selected storm's, or the
+/// reader's own (core's `SrvMotion`).
+struct SrvMotion: Equatable, Sendable {
+    enum Source: String, Sendable { case storm, manual }
+    let source: Source
+    let motion: StormMotion
+}
+
+/// Core's `lib/srvMotion.ts`.
+enum SrvMotionRules {
+    /// What the dial snaps to, and a VoiceOver adjust turns it by.
+    static let headingStep = 5.0
+    /// What the stepper adds or takes away.
+    static let speedStep = 5.0
+    /// As fast as the stepper goes: faster than any storm in Europe moves.
+    static let maxSpeedKmh = 150.0
+    /// Before the reader sets one: north-east, the way most storms here go,
+    /// but standing still, so nothing is taken out until they say how fast.
+    static let defaultMotion = ManualMotion(headingDeg: 45, speedKmh: 0)
+
+    /// A heading in [0, 360).
+    static func normalHeading(_ deg: Double) -> Double {
+        (deg.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    /// A heading on the dial's grid, 360 being 0.
+    static func snapHeading(_ deg: Double) -> Double {
+        normalHeading(jsRound(deg / headingStep) * headingStep)
+    }
+
+    /// A speed the stepper can hold: whole km/h, from standing still to the top.
+    static func clampSpeed(_ kmh: Double) -> Double {
+        guard kmh.isFinite else { return 0 }
+        return min(max(jsRound(kmh), 0), maxSpeedKmh)
+    }
+
+    /// The heading a finger at (`dx`, `dy`) from the dial's centre points
+    /// along, in points (y down), snapped; nil on the centre itself.
+    static func headingFromPoint(dx: Double, dy: Double) -> Double? {
+        if dx == 0 && dy == 0 { return nil }
+        return snapHeading(atan2(dx, -dy) * 180 / .pi)
+    }
+
+    /// The heading `steps` clicks round from `deg`, clockwise for positive.
+    static func turnHeading(_ deg: Double, steps: Int) -> Double {
+        snapHeading(deg + Double(steps) * headingStep)
+    }
+
+    /// The stepper's next speed up (+1) or down (-1): the next multiple of
+    /// five that way, so a typed 43 goes to 45 or 40 and then on in fives.
+    static func stepSpeed(_ kmh: Double, direction: Int) -> Double {
+        let on = clampSpeed(kmh)
+        let next = direction > 0 ? (on / speedStep).rounded(.down) * speedStep + speedStep
+            : (on / speedStep).rounded(.up) * speedStep - speedStep
+        return clampSpeed(next)
+    }
+
+    /// The manual motion as the setting keeps it: "heading,km/h".
+    static func format(_ motion: ManualMotion) -> String {
+        "\(Int(snapHeading(motion.headingDeg))),\(Int(clampSpeed(motion.speedKmh)))"
+    }
+
+    /// The setting read back; anything it cannot read is the default.
+    static func parse(_ value: Any?) -> ManualMotion {
+        guard let value = value as? String else { return defaultMotion }
+        let parts = value.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty }), let heading = Double(parts[0]), let speed = Double(parts[1]),
+              heading.isFinite, speed.isFinite else { return defaultMotion }
+        return ManualMotion(headingDeg: snapHeading(heading), speedKmh: clampSpeed(speed))
+    }
+
+    /// A manual motion as SRV takes it: m/s.
+    static func motion(of manual: ManualMotion) -> StormMotion {
+        StormMotion(speedMs: clampSpeed(manual.speedKmh) / 3.6, headingDeg: snapHeading(manual.headingDeg))
+    }
+
+    /// What SRV takes out: the selected storm's motion where it says one and
+    /// the reader has not asked for their own, else theirs.
+    static func resolve(storm: StormMotion?, manual: ManualMotion, prefersManual: Bool) -> SrvMotion {
+        if let storm, !prefersManual { return SrvMotion(source: .storm, motion: storm) }
+        return SrvMotion(source: .manual, motion: motion(of: manual))
+    }
+
+    /// The manual motion an edit starts from: the one SRV is taking out. A
+    /// dial turned while it shows the storm's motion corrects the storm's.
+    static func editBase(_ srv: SrvMotion, manual: ManualMotion) -> ManualMotion {
+        if srv.source == .manual { return manual }
+        return ManualMotion(headingDeg: snapHeading(srv.motion.headingDeg), speedKmh: clampSpeed(srv.motion.speedMs * 3.6))
+    }
+
+    /// The sixteen points a heading is worded in, clockwise from north.
+    static let compassPoints = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+    /// The point of the compass a heading is nearest, as `storm.compass.*` names it.
+    static func compassPoint(_ deg: Double) -> String {
+        compassPoints[Int(jsRound(normalHeading(deg) / 22.5)) % 16]
+    }
+
+    /// JavaScript's `Math.round`: halves up.
+    static func jsRound(_ x: Double) -> Double { (x + 0.5).rounded(.down) }
+}
