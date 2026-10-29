@@ -223,7 +223,7 @@ final class RadarEngine {
         // A stalled answer is asked again soon rather than after a minute.
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
-        seriesTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        seriesTask = URLSession.meteocool.dataTask(with: request) { [weak self] data, response, error in
             let status = (response as? HTTPURLResponse)?.statusCode
             let series = Self.forTests(status == 200 ? data.flatMap { try? RadarSeries.decode($0) } : nil)
             let cancelled = (error as? URLError)?.code == .cancelled
@@ -281,7 +281,7 @@ final class RadarEngine {
     }
 
     private func loadCoverage() {
-        URLSession.shared.dataTask(with: endpoints.coverage) { [weak self] data, response, _ in
+        URLSession.meteocool.dataTask(with: endpoints.coverage) { [weak self] data, response, _ in
             guard (response as? HTTPURLResponse)?.statusCode == 200, let data, let coverage = RadarCoverage(json: data) else { return }
             Task { @MainActor in
                 guard let self else { return }

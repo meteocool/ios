@@ -103,6 +103,7 @@ targets:
       - path: NotificationService
         excludes:
           - "**/.DS_Store"
+      - path: Shared/UserAgent.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.NotificationService

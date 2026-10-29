@@ -216,7 +216,7 @@ final class ThreeDGround {
                 for y in range.y {
                     group.addTask {
                         guard let url = URL(string: "https://map.meteocool.com/mapterhorn-20261002/\(z)/\(x)/\(y).webp"),
-                              let (data, response) = try? await URLSession.shared.data(from: url),
+                              let (data, response) = try? await URLSession.meteocool.data(from: url),
                               (response as? HTTPURLResponse)?.statusCode == 200,
                               let image = UIImage(data: data)?.cgImage else { return ("\(x)/\(y)", nil) }
                         let width = image.width, height = image.height

@@ -356,6 +356,17 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             nativeMap.applySettings()
             return
         }
+        // The storyboard's web view cannot be given an application name, so
+        // the first load waits for WebKit's own user agent to append the
+        // app's to it, as CarPlay's configuration does.
+        guard webView.customUserAgent != nil else {
+            webView.evaluateJavaScript("navigator.userAgent") { [weak self] agent, _ in
+                guard let self, self.webView.customUserAgent == nil else { return }
+                self.webView.customUserAgent = [agent as? String, UserAgent.value].compactMap { $0 }.joined(separator: " ")
+                self.loadMap()
+            }
+            return
+        }
         webviewReady = false
         layerSwitcherButton.isEnabled = false
         webView.load(URLRequest(url: MeteocoolEnvironment.current.webURL))
