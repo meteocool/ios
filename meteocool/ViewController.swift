@@ -46,6 +46,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var arButtonBackdrop: UIView?
     /// Sends a link to what the map shows; see `shareMap`.
     let shareButton = UIButton(type: .system)
+    /// Opens the storm log, the storms that passed the phone: a pill beside the logo.
+    let stormLogButton = UIButton(type: .system)
+    /// The pill's glass element (iOS 26) or blur capsule (before), hidden with the logo.
+    private var stormLogBackdrop: UIView?
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
     /// glass column's elements, hidden with the rest of it.
     private var shareButtonBackdrop: UIView?
@@ -160,11 +164,13 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
         configureShareButton()
         configureARButton()
+        configureStormLogButton()
         if #available(iOS 26.0, *) {
             applyLiquidGlass()
         } else {
             installClassicShareButton()
             installClassicARButton()
+            installClassicStormLogButton()
         }
         configureLogo()
 
@@ -733,10 +739,11 @@ extension ViewController {
     }
 
     /// Moves the logo off the opaque plate in the `Logo Button` artwork and
-    /// onto a glass disc.
+    /// onto a glass disc, with the storm log's pill beside it.
     /// The disc matches the glass control column on the other side of the
     /// screen. `TribbleButton` got the same change, because a painted slab
-    /// next to real glass looks out of place.
+    /// next to real glass looks out of place. The disc and the pill share a
+    /// container, as the column's elements do: glass cannot sample glass.
     @available(iOS 26.0, *)
     private func installGlassLogo() {
         // Remove the storyboard constraints: they pin the logo to the safe
@@ -752,18 +759,41 @@ extension ViewController {
         // Interactive: the logo takes the user back to the radar (`logoTapped`).
         let glass = LiquidGlass.element()
         glass.contentView.addSubview(logo)
-        view.addSubview(glass)
         glassLogo = glass
+
+        let pill = LiquidGlass.element()
+        stormLogButton.translatesAutoresizingMaskIntoConstraints = false
+        stormLogButton.tintColor = .label
+        pill.contentView.addSubview(stormLogButton)
+        stormLogBackdrop = pill
+
+        let row = UIStackView(arrangedSubviews: [glass, pill])
+        row.axis = .horizontal
+        row.spacing = 8
+        row.translatesAutoresizingMaskIntoConstraints = false
+        let container = LiquidGlass.container(spacing: 10)
+        container.contentView.addSubview(row)
+        view.addSubview(container)
 
         NSLayoutConstraint.activate([
             glass.widthAnchor.constraint(equalToConstant: 52),
             glass.heightAnchor.constraint(equalToConstant: 52),
-            glass.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            glass.topAnchor.constraint(equalTo: blur.bottomAnchor, constant: 12),
+            pill.widthAnchor.constraint(equalToConstant: 72),
+            pill.heightAnchor.constraint(equalToConstant: 52),
+            row.topAnchor.constraint(equalTo: container.contentView.topAnchor),
+            row.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor),
+            row.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor),
+            row.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor),
+            container.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            container.topAnchor.constraint(equalTo: blur.bottomAnchor, constant: 12),
             logo.centerXAnchor.constraint(equalTo: glass.contentView.centerXAnchor),
             logo.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
             logo.widthAnchor.constraint(equalToConstant: 30),
             logo.heightAnchor.constraint(equalToConstant: 30),
+            stormLogButton.leadingAnchor.constraint(equalTo: pill.contentView.leadingAnchor),
+            stormLogButton.trailingAnchor.constraint(equalTo: pill.contentView.trailingAnchor),
+            stormLogButton.topAnchor.constraint(equalTo: pill.contentView.topAnchor),
+            stormLogButton.bottomAnchor.constraint(equalTo: pill.contentView.bottomAnchor),
         ])
     }
 
@@ -810,6 +840,7 @@ extension ViewController {
     func setLogoHidden(_ hidden: Bool) {
         logo.isHidden = hidden
         glassLogo?.isHidden = hidden
+        stormLogBackdrop?.isHidden = hidden
     }
 
 }
@@ -914,6 +945,45 @@ extension ViewController {
               if (lm && lm.currentCap !== "radar" && lm.getCapability?.("radar")) lm.setTarget("radar", "map");
             })();
             """)
+    }
+}
+
+// MARK: - Storm log
+
+extension ViewController {
+    /// The pill beside the logo: a logbook, opening the storms that passed the phone.
+    fileprivate func configureStormLogButton() {
+        stormLogButton.setImage(UIImage(systemName: "book.closed", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
+        stormLogButton.accessibilityLabel = NSLocalizedString("storm_log_title", value: "Storm Log", comment: "")
+        stormLogButton.accessibilityIdentifier = "map.stormLog"
+        stormLogButton.addAction(UIAction { [weak self] _ in self?.openStormLog() }, for: .touchUpInside)
+    }
+
+    /// Before iOS 26 the pill is a blurred capsule beside the logo artwork.
+    fileprivate func installClassicStormLogButton() {
+        let capsule = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+        capsule.layer.cornerRadius = 22
+        capsule.clipsToBounds = true
+        capsule.translatesAutoresizingMaskIntoConstraints = false
+        stormLogButton.translatesAutoresizingMaskIntoConstraints = false
+        stormLogButton.tintColor = .label
+        capsule.contentView.addSubview(stormLogButton)
+        view.addSubview(capsule)
+        stormLogBackdrop = capsule
+        NSLayoutConstraint.activate([
+            capsule.widthAnchor.constraint(equalToConstant: 64),
+            capsule.heightAnchor.constraint(equalToConstant: 44),
+            capsule.leadingAnchor.constraint(equalTo: logo.trailingAnchor, constant: 8),
+            capsule.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
+            stormLogButton.leadingAnchor.constraint(equalTo: capsule.contentView.leadingAnchor),
+            stormLogButton.trailingAnchor.constraint(equalTo: capsule.contentView.trailingAnchor),
+            stormLogButton.topAnchor.constraint(equalTo: capsule.contentView.topAnchor),
+            stormLogButton.bottomAnchor.constraint(equalTo: capsule.contentView.bottomAnchor),
+        ])
+    }
+
+    func openStormLog() {
+        present(UINavigationController(rootViewController: StormLogViewController()), animated: true)
     }
 }
 

@@ -883,11 +883,7 @@ final class meteocoolUITests: XCTestCase {
         app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
         app.launch()
         completeOnboardingWithoutPermissions()
-        tap("map.settings")
-
-        let row = app.cells["settings.stormLog"]
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Settings offers the storm log")
-        row.tap()
+        tap("map.stormLog")
         let list = app.tables["stormLog"]
         XCTAssertTrue(list.cells.element(boundBy: 2).waitForExistence(timeout: 10), "The log lists its entries")
         XCTAssertTrue(list.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Cabin · '")).firstMatch.exists,
