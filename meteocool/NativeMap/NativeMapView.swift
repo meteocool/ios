@@ -136,8 +136,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             guard StormSelect.knowsSeverity(selection) else { return CoreStrings.t("storm.storm_label.unclassed") }
             return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
-        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), sites, storms, CloudHints(), PointFeature(),
-                RadarWash(), ThreeDMap()]
+        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StationMarks(), sites, storms, CloudHints(),
+                PointFeature(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -176,7 +176,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private func configureChrome() {
         let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
                                   openProducts: { [weak self] in self?.openProducts() },
-                                  openStormKey: { [weak self] in self?.openStormKey() })
+                                  openStormKey: { [weak self] in self?.openStormKey() },
+                                  toggleStations: { [weak self] in
+                                      guard let self else { return }
+                                      self.setOn(.stations, !self.isOn(.stations))
+                                  })
         let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
         // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
         let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
@@ -229,6 +233,19 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                 DispatchQueue.main.async {
                     siteCard?.invalidateIntrinsicContentSize()
                     self?.setNeedsLayout()
+                }
+            }
+            .store(in: &observers)
+        // The stations' parameter, over the radar's controls when both are up.
+        let stationCard = addToDock(StationPicker(model: model, state: model.stations))
+        stationCard.isHidden = true
+        model.$layersOn.combineLatest(model.$capability)
+            .map { on, capability in on.contains(.stations) && capability == .radar }
+            .removeDuplicates()
+            .sink { [weak stationCard] shown in
+                DispatchQueue.main.async {
+                    stationCard?.isHidden = !shown
+                    stationCard?.invalidateIntrinsicContentSize()
                 }
             }
             .store(in: &observers)

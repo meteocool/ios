@@ -24,6 +24,8 @@ mkdir "$scratch/sweeps"
 for quantity in DBZH VRADH; do gunzip -c "tests/fixtures/sweeps/$quantity.mcsw" > "$scratch/sweeps/$quantity.mcsw"; done
 xcrun swiftc meteocool/NativeMap/Sites/SiteSweepRules.swift meteocool/NativeMap/Storms/RadarSites.swift tests/NativeMapSitesCheck.swift -o "$scratch/check-native-map-sites"
 "$scratch/check-native-map-sites" "$scratch/sweeps"
+xcrun swiftc meteocool/NativeMap/Stations/StationRules.swift tests/NativeMapStationsCheck.swift -o "$scratch/check-native-map-stations"
+"$scratch/check-native-map-stations"
 "$scratch/check-native-map-storms"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
 "$scratch/check-widgets"

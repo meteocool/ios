@@ -13,6 +13,7 @@ struct TrayActions {
     var showForMyLocation: () -> Void = {}
     var openProducts: () -> Void = {}
     var openStormKey: () -> Void = {}
+    var toggleStations: () -> Void = {}
 }
 
 /// The tray at the bottom of the radar map.
@@ -86,6 +87,8 @@ struct PlayerTray: View {
                 .accessibilityIdentifier("nativeMap.showForMyLocation")
             }
             Spacer(minLength: 0)
+            // DWD's weather stations, on or off: first, so the pills after it never move it.
+            StationTogglePill(on: model.layersOn.contains(.stations), theme: theme, toggle: actions.toggleStations)
             // What the storm marks are, while they are drawn.
             if model.layersOn.contains(.storms) {
                 StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),

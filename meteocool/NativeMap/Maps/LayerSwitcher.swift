@@ -78,6 +78,7 @@ struct LayerSwitcherView: View {
                         toggle(CoreStrings.t("chrome.playback.mesocyclones"), .mesocyclones)
                         toggle(CoreStrings.t("chrome.playback.cells"), .storms)
                         toggle(CoreStrings.t("chrome.playback.radar_sites"), .sites)
+                        toggle(CoreStrings.t("stations.title"), .stations)
                     }
                     section(CoreStrings.t("settings.playback")) {
                         Toggle(CoreStrings.t("settings.playback_from_start"), isOn: fromStart)

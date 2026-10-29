@@ -779,6 +779,52 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(value("mesocyclones"), "1", "The reader's own")
     }
 
+    /// DWD's weather stations: on from their pill, a parameter chosen over
+    /// the player, a station's sheet with its history, and off again.
+    func testWeatherStationsShowTheirValuesAndAStationsHistory() {
+        launch(link: "?latLonZ=50.75,9.3,9")
+        waitForSeries()
+        let marks = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.station.' AND NOT identifier BEGINSWITH 'nativeMap.station.sheet'"))
+        XCTAssertFalse(marks.firstMatch.waitForExistence(timeout: 4), "Off until turned on")
+        let pill = element("nativeMap.stations.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 5))
+        pill.tap()
+        XCTAssertTrue(pill.isSelected)
+        let status = element("nativeMap.stations.status")
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForLabel(status, timeout: 20) { $0.hasPrefix("Measured ") }, "When they measured: \(status.label)")
+        XCTAssertTrue(marks.firstMatch.waitForExistence(timeout: 20), "Wind barbs")
+        screenshot("stations wind")
+        app.buttons["Temp"].firstMatch.tap()
+        XCTAssertTrue(waitForLabel(marks.firstMatch, timeout: 20) { $0.contains(where: \.isNumber) && !$0.contains("kt") }, "Temperatures")
+        screenshot("stations temperature")
+        // A station's sheet, from one snapshot of the marks in the open middle.
+        let screen = app.windows.firstMatch.frame
+        var frames: [CGRect] = []
+        func collect(_ node: XCUIElementSnapshot) {
+            if node.identifier.hasPrefix("nativeMap.station.0") { frames.append(node.frame) }
+            node.children.forEach(collect)
+        }
+        if let snapshot = try? app.snapshot() { collect(snapshot) }
+        let target = frames.first { $0.midX > screen.width * 0.15 && $0.midX < screen.width * 0.75 && $0.midY > screen.height * 0.2 && $0.midY < screen.height * 0.55 }
+        XCTAssertNotNil(target, "A station in view")
+        if let target {
+            app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.midX, dy: target.midY)).tap()
+            let sheet = element("nativeMap.station.sheet")
+            XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The station's sheet")
+            let panels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.station.panel.'"))
+            XCTAssertTrue(panels.firstMatch.waitForExistence(timeout: 20), "Its history")
+            app.buttons["7 days"].firstMatch.tap()
+            XCTAssertTrue(panels.firstMatch.waitForExistence(timeout: 20), "A week of it")
+            screenshot("station sheet")
+            element("nativeMap.station.close").tap()
+            XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
+        }
+        pill.tap()
+        XCTAssertTrue(marks.firstMatch.waitForNonExistence(timeout: 10), "Off again")
+        XCTAssertFalse(status.exists)
+    }
+
     func testLayerSwitcherTurnsLightningOff() {
         launch()
         waitForSeries()

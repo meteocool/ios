@@ -80,6 +80,8 @@ final class NativeMapModel: ObservableObject {
     let cut = StormCut()
     /// The radar open on the flat map in its own sweep (site mode).
     let site = SiteSweepState()
+    /// DWD's weather stations over the radar map.
+    let stations = StationState()
     /// The layer switches that are on, for the chrome that follows them.
     @Published var layersOn = Set<NativeMapLayer>()
     /// What the storm key turned off (core's `hiddenStormMarks`), kept.
