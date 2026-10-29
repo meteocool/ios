@@ -1241,10 +1241,12 @@ final class NativeMapUITests: XCTestCase {
         picker.tap()
         screenshot("3D scan menu")
         if picker.label.hasSuffix("not live") {
-            let shown = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picked)).firstMatch
-            XCTAssertTrue(shown.waitForExistence(timeout: 5))
-            let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: shown)
-            XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 15), .completed, "The scan on the map is checked: \(shown.label), \(picker.label)")
+            // Any row of that time, checked: the menu's face says the time too.
+            let rows = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picked))
+            XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
+            let checked = rows.matching(NSPredicate(format: "selected == true")).firstMatch
+            XCTAssertTrue(checked.waitForExistence(timeout: 15),
+                          "The scan on the map is checked: \(rows.allElementsBoundByIndex.map { "\($0.label) \($0.isSelected)" }), \(picker.label)")
         }
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Latest'")).firstMatch.tap()
         expectation(for: NSPredicate(format: "label == 'Storms: latest scan'"), evaluatedWith: picker)
@@ -1542,7 +1544,11 @@ final class NativeMapUITests: XCTestCase {
         let toggle = app.switches["Native Map (Beta)"].firstMatch
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertEqual(toggle.value as? String, "1")
-        toggle.tap()
+        // The knob itself: on an iPad's form sheet a tap on the row's middle
+        // can miss it. Once more if the first tap did not take.
+        let knob = toggle.switches.firstMatch.exists ? toggle.switches.firstMatch : toggle
+        knob.tap()
+        if !waitForValue(toggle, timeout: 3, { $0 == "0" }) { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap() }
         XCTAssertTrue(waitForValue(toggle) { $0 == "0" })
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
