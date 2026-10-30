@@ -81,7 +81,16 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
 
     @objc private func matchSystemChanged() {
         baseLayer = matchSystem.isOn ? "system" : manualLayer
-        baseLayerMappingList.reconfigureRows(at: optionKeys.indices.map { IndexPath(row: $0, section: 1) })
+        refreshOptions()
+    }
+
+    /// Updates the basemaps on screen in place; `willDisplay` catches the rest.
+    /// Reconfiguring the rows makes the table re-estimate the long footers,
+    /// which at the largest text sizes scrolls the list away from the tapped row.
+    private func refreshOptions() {
+        for indexPath in baseLayerMappingList.indexPathsForVisibleRows ?? [] where indexPath.section == 1 {
+            if let cell = baseLayerMappingList.cellForRow(at: indexPath) { configureOption(cell, row: indexPath.row) }
+        }
     }
 
     func numberOfSections(in tableView: UITableView) -> Int { 2 }
@@ -111,12 +120,23 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
             cell.accessibilityTraits = []
             return cell
         }
-        content.text = baseLayerMapping[indexPath.row]
+        configureOption(cell, row: indexPath.row)
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.section == 1 { configureOption(cell, row: indexPath.row) }
+    }
+
+    private func configureOption(_ cell: UITableViewCell, row: Int) {
+        var content = cell.defaultContentConfiguration()
+        content.textProperties.numberOfLines = 0
+        content.text = baseLayerMapping[row]
         // Greyed out while the switch is on: the system picks Light or Dark.
         content.textProperties.color = followsSystem ? .tertiaryLabel : .label
         cell.contentConfiguration = content
         cell.selectionStyle = followsSystem ? .none : .default
-        let selected = !followsSystem && optionKeys[indexPath.row] == baseLayer
+        let selected = !followsSystem && optionKeys[row] == baseLayer
         let checkmark = UIImage(systemName: "checkmark")!
         let accessory = UIImageView(frame: CGRect(origin: .zero, size: checkmark.size))
         // The accessory keeps the checkmark's width on every row.
@@ -126,7 +146,6 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
         var traits: UIAccessibilityTraits = selected ? [.button, .selected] : [.button]
         if followsSystem { traits.insert(.notEnabled) }
         cell.accessibilityTraits = traits
-        return cell
     }
 
     func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
@@ -136,7 +155,7 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         baseLayer = optionKeys[indexPath.row]
         manualLayer = baseLayer
-        tableView.reconfigureRows(at: optionKeys.indices.map { IndexPath(row: $0, section: 1) })
+        refreshOptions()
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
