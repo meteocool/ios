@@ -26,6 +26,9 @@ enum EnvironmentCheck {
         defaults.set("bogus", forKey: "environment")
         defaults.removeObject(forKey: "demoMode")
         precondition(MeteocoolEnvironment.stored(in: defaults) == .app, "An unknown mode falls back to production")
+        precondition(MeteocoolEnvironment.staging.hasExperimentalFeatures, "Experimental Features offers them")
+        precondition(!MeteocoolEnvironment.app.hasExperimentalFeatures && !MeteocoolEnvironment.demo.hasExperimentalFeatures,
+                     "Production and Demo hide the experimental features")
         print("Environment selection and migration checks passed")
     }
 }

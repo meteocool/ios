@@ -65,6 +65,11 @@ enum MeteocoolEnvironment: String, CaseIterable {
         NotificationCenter.default.post(name: didChange, object: nil)
     }
 
+    /// Whether this is "Experimental Features" under Mode, the one deployment
+    /// that offers the features not ready for everyone: the storm log, the AR
+    /// storm view and flash to bang. Production and Demo hide them.
+    var hasExperimentalFeatures: Bool { self == .staging }
+
     /// Base URL for the unversioned mobile API (`post_location`,
     /// `clear_notification`, `unregister`).
     ///

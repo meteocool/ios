@@ -90,11 +90,14 @@ final class FlashToBang: NativeMapFeature {
         if case .counting = state.session.phase { state.session.reset() }
     }
 
-    /// Offered on the lightning map, and over the radar while it draws lightning.
+    /// Offered on the lightning map, and over the radar while it draws
+    /// lightning, in the Experimental Features mode only. The mode can
+    /// switch while the map is up: it reaches here as a settings change.
     private func updateOffer() {
         guard let map else { return }
         let capability = map.model.capability
-        let offered = (capability == .lightning || capability == .radar && map.isOn(.lightning)) && !map.model.trayHidden
+        let offered = MeteocoolEnvironment.current.hasExperimentalFeatures
+            && (capability == .lightning || capability == .radar && map.isOn(.lightning)) && !map.model.trayHidden
         button?.isHidden = !offered || !map.model.covers.isEmpty
         if !offered, state.open { close() }
     }

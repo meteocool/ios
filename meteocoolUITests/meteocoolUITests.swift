@@ -788,8 +788,7 @@ final class meteocoolUITests: XCTestCase {
         app.launch()
         completeOnboardingWithoutPermissions()
         XCTAssertTrue(app.webViews.staticTexts["Map connection restored"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons["map.ar"].exists, "AR stays hidden until the logo is tapped five times")
-        app.buttons["map.logo"].tap(withNumberOfTaps: 5, numberOfTouches: 1)
+        // Experimental Features, as `setUp` launches: AR is offered.
         tap("map.ar")
         // Closing works, and leaves the map as it was.
         tap("ar.close")
@@ -880,6 +879,76 @@ final class meteocoolUITests: XCTestCase {
         screenshot("Past alerts")
         app.navigationBars.buttons["Done"].tap()
         XCTAssertTrue(app.buttons["map.alerts"].waitForExistence(timeout: 5), "Back on the map")
+    }
+
+    /// Picks a mode under Settings, About, Mode, and goes back to the map.
+    private func selectMode(_ mode: String) {
+        tap("map.settings")
+        let row = app.staticTexts["Mode"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        for _ in 0 ..< 6 where !row.isHittable { app.tables.firstMatch.swipeUp() }
+        row.tap()
+        let option = app.tables["settings.options"].staticTexts[mode]
+        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        option.tap()
+        tap("picker.save")
+        XCTAssertTrue(app.staticTexts[mode].waitForExistence(timeout: 5))
+        tap("Done")
+    }
+
+    /// The logbook and AR beside the web map only in Experimental Features:
+    /// hidden in production, there as soon as the mode is picked, with no
+    /// restart, and gone again on the way back, where the bell closes up to
+    /// the logo.
+    func testExperimentalControlsFollowTheMode() {
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-environment" || $0 == "staging" }
+        app.launch()
+        completeOnboardingWithoutPermissions()
+        let logo = app.buttons["map.logo"], bell = app.buttons["map.alerts"]
+        let log = app.buttons["map.stormLog"], ar = app.buttons["map.ar"]
+        XCTAssertTrue(bell.waitForExistence(timeout: 10))
+
+        func check(experimental: Bool, file: StaticString = #filePath, line: UInt = #line) {
+            for (name, control) in [("logbook", log), ("AR", ar)] {
+                let settled = experimental ? control.waitForExistence(timeout: 5) : control.waitForNonExistence(timeout: 5)
+                XCTAssertTrue(settled, "\(name) \(experimental ? "shown" : "hidden")", file: file, line: line)
+            }
+            XCTAssertTrue(bell.isHittable, file: file, line: line)
+            if experimental {
+                XCTAssertGreaterThan(bell.frame.minX, log.frame.maxX, "The bell after the logbook", file: file, line: line)
+            } else {
+                XCTAssertLessThan(bell.frame.minX - logo.frame.maxX, 20, "The bell closes up to the logo", file: file, line: line)
+            }
+        }
+
+        check(experimental: false)
+        screenshot("Production map controls")
+        selectMode("Experimental Features")
+        check(experimental: true)
+        screenshot("Experimental map controls")
+        selectMode("Production")
+        check(experimental: false)
+    }
+
+    /// Three quick taps on the logo throw confetti over the map, which takes
+    /// no touches and clears itself away.
+    func testLogoTripleTapThrowsConfetti() {
+        completeOnboardingWithoutPermissions()
+        let logo = app.buttons["map.logo"]
+        XCTAssertTrue(logo.waitForExistence(timeout: 10))
+        let confetti = app.descendants(matching: .any)["map.confetti"].firstMatch
+        logo.tap()
+        XCTAssertFalse(confetti.waitForExistence(timeout: 1), "One tap throws no confetti")
+        // Past the run of taps the single one started.
+        Thread.sleep(forTimeInterval: 1.2)
+        logo.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+        XCTAssertTrue(confetti.waitForExistence(timeout: 3), "Three taps throw confetti")
+        screenshot("Confetti over the web map")
+        tap("map.settings")
+        XCTAssertTrue(app.switches["Enable Notifications"].waitForExistence(timeout: 5), "Settings opens through the confetti")
+        tap("Done")
+        XCTAssertTrue(confetti.waitForNonExistence(timeout: 8), "The confetti clears itself away")
     }
 
     /// The storm log from the map, against the recorder's made-up log: the
