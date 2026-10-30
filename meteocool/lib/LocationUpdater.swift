@@ -249,8 +249,8 @@ import CoreLocation
 
             // Notify observers in every app state.
             // The CarPlay map is an observer, and it is on screen while the phone is not.
-            // For the phone's own map in the background this costs one JS call,
-            // which WebKit throttles.
+            // The phone's web map holds background fixes back itself, since a
+            // JS call wakes its page (`ViewController.notify`).
             for observer in observers.allObjects {
                 (observer as? LocationObserver)?.notify(location: location)
             }
