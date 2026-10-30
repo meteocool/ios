@@ -436,10 +436,9 @@ final class meteocoolUITests: XCTestCase {
         screenshot("Layer switcher")
         radar.tap()
         XCTAssertTrue(app.buttons["map.settings"].waitForExistence(timeout: 10))
-        tap("Playback Controls")
-        XCTAssertTrue(app.buttons["Collapse playback controls"].waitForExistence(timeout: 10))
+        // The player is the radar's bottom tray, open whenever the radar is on screen.
+        XCTAssertTrue(app.webViews.buttons["Play"].waitForExistence(timeout: 15), "The radar's player is open")
         screenshot("Web playback")
-        tap("Collapse playback controls")
         tap("map.settings")
         XCTAssertTrue(app.switches["Enable Notifications"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.switches["Enable Notifications"].value as? String, "0")
@@ -623,7 +622,7 @@ final class meteocoolUITests: XCTestCase {
     func testLocationRecoveryFromSystemSettings() {
         completeOnboardingWithoutPermissions()
         tap("map.location")
-        tap("Change In Settings")
+        tap("Change in Settings")
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
         // A fresh simulator can open Settings at its root on the first visit.
         if !settings.staticTexts["Location"].waitForExistence(timeout: 3) {

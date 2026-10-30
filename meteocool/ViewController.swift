@@ -20,6 +20,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     var autoFocusOnce = false
     var zoomOnce = false
     var webviewReady = false
+    /// The newest fix that arrived in the background, for the web map once
+    /// the app is active again. See `notify(location:)`.
+    private var backgroundLocation: CLLocation?
     /// The MapKit map shown in place of the web view while `nativeMap` is on
     /// in Settings; nil while the web map is shown.
     private(set) var nativeMap: NativeMapView?
@@ -440,6 +443,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
 
     @objc func didBecomeActive(){
         refreshAlertsBadge()
+        if let location = backgroundLocation {
+            backgroundLocation = nil
+            notify(location: location)
+        }
         if let nativeMap {
             nativeMap.start()
             return
@@ -489,6 +496,16 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             return
         }
         guard webviewReady else { return }
+        // In the background these are significant-change fixes, about one
+        // every five minutes on the move. Any JS call wakes the suspended
+        // page for a few seconds, enough to reconnect its socket and fetch
+        // the forecast and place name for a map nobody sees. Keep the newest
+        // for `didBecomeActive`. `willEnterForeground` still runs in the
+        // background state, so its location request is held here too.
+        if UIApplication.shared.applicationState == .background {
+            backgroundLocation = location
+            return
+        }
         // Pass the same fix to the geolocation shim. This resolves pending
         // getCurrentPosition calls in the page and updates its watchers.
         GeolocationBridge.deliver(location, to: webView)
