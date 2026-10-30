@@ -34,6 +34,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private let socket: RadarSocket
     private(set) var features: [NativeMapFeature] = []
     private var chrome: [UIView] = []
+    /// Data Licenses' line, on Apple's Legal link's (`layoutSubviews`).
+    private var licencesLine: NSLayoutConstraint?
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
     private var otherChrome: UIView?
@@ -185,6 +187,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                       guard let self else { return }
                                       self.setOn(.stations, !self.isOn(.stations))
                                   })
+        // Across from Apple's logo and Legal link and on their line, under the
+        // other chrome; `layoutSubviews` keeps it there.
+        let licences = addChrome(DataLicencesLink(model: model) { [weak self] in
+            self?.host?.presentOverMap(DataLicencesViewController.sheet())
+        })
+        let licencesLine = licences.centerYAnchor.constraint(equalTo: bottomAnchor)
+        self.licencesLine = licencesLine
+        NSLayoutConstraint.activate([
+            licences.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            licencesLine,
+        ])
+
         let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
         // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
         let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
@@ -488,12 +502,16 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         if abs(chromeState.width - bounds.width) > 0.5 { chromeState.width = bounds.width }
-        // Keep Apple's logo and legal link clear of the controls at the bottom.
+        // Keep Apple's logo and legal link, and Data Licenses across from
+        // them, clear of the controls at the bottom.
         if let bottom = [bottomChrome, otherChrome].compactMap({ $0 }).first(where: { !$0.isHidden }) ?? bottomChrome {
             let covered = bottom.isHidden ? 0 : bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
             if abs(mapView.layoutMargins.bottom - covered) > 1 {
                 mapView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: max(covered, 0), right: 0)
             }
+            // MapKit centres its Legal link about 15.5 pt above the margin.
+            let line = -(safeAreaInsets.bottom + max(covered, 0) + 15.5)
+            if let licencesLine, abs(licencesLine.constant - line) > 0.5 { licencesLine.constant = line }
         }
         if !placed, mapView.bounds.width > 0 {
             placed = true

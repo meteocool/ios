@@ -186,6 +186,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Licenser för öppen källkod";
+"data_licences" = "Datalicenser";
 "open_source_footer" = "Licenserna för meteocool och för programvaran den bygger på. Tryck på en för att läsa den.";
 "Py-ART Colour Maps" = "Färgskalor från Py-ART";
 "Web Map Libraries" = "Bibliotek för webbkartan";

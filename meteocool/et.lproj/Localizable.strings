@@ -185,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Avatud lähtekoodiga litsentsid";
+"data_licences" = "Andmelitsentsid";
 "open_source_footer" = "meteocooli ja selle aluseks oleva tarkvara litsentsid. Puuduta litsentsi, et seda lugeda.";
 "Py-ART Colour Maps" = "Py-ART värviskaalad";
 "Web Map Libraries" = "Veebikaardi teegid";

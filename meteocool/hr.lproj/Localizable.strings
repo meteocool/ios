@@ -185,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Licence otvorenog koda";
+"data_licences" = "Licence podataka";
 "open_source_footer" = "Licence meteocoola i softvera na kojem je izgrađen. Dodirni jednu da je pročitaš.";
 "Py-ART Colour Maps" = "Py-ART palete boja";
 "Web Map Libraries" = "Biblioteke web karte";

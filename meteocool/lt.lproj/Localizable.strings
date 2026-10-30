@@ -185,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Atvirojo kodo licencijos";
+"data_licences" = "Duomenų licencijos";
 "open_source_footer" = "meteocool ir programinės įrangos, kuria jis paremtas, licencijos. Bakstelėk, kad perskaitytum.";
 "Py-ART Colour Maps" = "Py-ART spalvų skalės";
 "Web Map Libraries" = "Internetinio žemėlapio bibliotekos";

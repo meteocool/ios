@@ -53,6 +53,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Opens the past alerts, the rain alerts this phone received: the bell beside the logbook.
     let alertsButton = UIButton(type: .system)
     private var alertsBackdrop: UIView?
+    /// Data Licenses, the web map's small print: under the control column,
+    /// where core keeps its credits. The native map has its own.
+    let dataLicencesButton = UIButton(type: .system)
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
     /// glass column's elements, hidden with the rest of it.
     private var shareButtonBackdrop: UIView?
@@ -177,6 +180,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             installClassicStormLogButton()
         }
         configureLogo()
+        installDataLicencesButton()
 
         setMapControlsHidden(false)
         settingsButton.accessibilityLabel = NSLocalizedString("Settings", comment: "")
@@ -533,6 +537,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             ])
             nativeMap = map
+            // The native map has its own, by Apple's Legal link.
+            dataLicencesButton.isHidden = true
             layerSwitcherButton.isEnabled = true
             map.start()
             // The location button may already be on: the dot from the last fix, without moving the map.
@@ -546,6 +552,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             map.removeFromSuperview()
             nativeMap = nil
             webView.isHidden = false
+            dataLicencesButton.isHidden = glassControls?.isHidden ?? trippleButton.isHidden
             loadMap()
         }
     }
@@ -840,6 +847,7 @@ extension ViewController {
     /// On iOS 26 and later the unit is the glass container. Before iOS 26 it
     /// is the `TribbleButton` artwork and the three buttons.
     func setMapControlsHidden(_ hidden: Bool) {
+        dataLicencesButton.isHidden = hidden || nativeMap != nil
         if let glassControls {
             glassControls.isHidden = hidden
         } else {
@@ -1273,6 +1281,40 @@ extension ViewController {
             guard let self else { return }
             self.presentShare(share, from: self.shareButtonBackdrop ?? self.shareButton)
         }
+    }
+
+    /// Small print, right-aligned under the control column (and the AR
+    /// button's place before iOS 26): opens Data Licences.
+    fileprivate func installDataLicencesButton() {
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = NSLocalizedString("data_licences", comment: "licence")
+        configuration.baseForegroundColor = .secondaryLabel
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4)
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(for: .systemFont(ofSize: 10, weight: .medium))
+            return attributes
+        }
+        dataLicencesButton.configuration = configuration
+        // A halo, so it reads over the radar as well as the map.
+        dataLicencesButton.layer.shadowColor = UIColor.systemBackground.cgColor
+        dataLicencesButton.layer.shadowOpacity = 0.8
+        dataLicencesButton.layer.shadowRadius = 1
+        dataLicencesButton.layer.shadowOffset = .zero
+        dataLicencesButton.accessibilityTraits = .link
+        dataLicencesButton.accessibilityIdentifier = "map.dataLicences"
+        dataLicencesButton.addAction(UIAction { [weak self] _ in
+            self?.present(DataLicencesViewController.sheet(), animated: true)
+        }, for: .touchUpInside)
+        dataLicencesButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(dataLicencesButton)
+        let column: UIView = glassControls ?? arButtonBackdrop ?? shareButtonBackdrop ?? trippleButton
+        NSLayoutConstraint.activate([
+            dataLicencesButton.topAnchor.constraint(equalTo: column.bottomAnchor, constant: 4),
+            dataLicencesButton.trailingAnchor.constraint(equalTo: column.trailingAnchor, constant: 4),
+            dataLicencesButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            dataLicencesButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
     }
 
     /// Before iOS 26: a blurred disc of its own under the `TribbleButton`.

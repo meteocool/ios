@@ -121,6 +121,34 @@ final class NativeMapUITests: XCTestCase {
         screenshot("native map")
     }
 
+    /// Data Licenses: small print in the bottom-right corner, on the line of
+    /// Apple's logo and Legal link across from it and clear of the tray,
+    /// opens every data source and the open-source licences.
+    func testDataLicencesLinkOpensTheSourcesAndLicences() {
+        launch()
+        let link = element("map.dataLicences")
+        XCTAssertTrue(link.waitForExistence(timeout: 20))
+        let legal = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Legal'")).firstMatch
+        XCTAssertTrue(legal.waitForExistence(timeout: 10), "Apple's Legal link")
+        let tray = element("nativeMap.player")
+        XCTAssertTrue(tray.waitForExistence(timeout: 10))
+        XCTAssertGreaterThan(link.frame.maxX, app.frame.width - 60, "In the right-hand corner")
+        XCTAssertEqual(link.frame.midY, legal.frame.midY, accuracy: 4, "On the line of Apple's Legal link")
+        XCTAssertGreaterThan(link.frame.minX, legal.frame.maxX + 24, "Clear of Apple's Legal link")
+        XCTAssertLessThanOrEqual(link.frame.maxY, tray.frame.minY, "Clear of the tray")
+        link.tap()
+        let sheet = app.tables["dataLicences"]
+        XCTAssertTrue(sheet.staticTexts["© Deutscher Wetterdienst (DWD)"].waitForExistence(timeout: 5))
+        let openSource = sheet.staticTexts["Open Source Licenses"]
+        for _ in 0..<10 where !openSource.isHittable { sheet.swipeUp() }
+        openSource.tap()
+        XCTAssertTrue(app.tables["licences"].staticTexts["SwiftFSM"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons["Done"].tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(link.isHittable)
+    }
+
     func testPlayingMovesThroughTheSteps() {
         // The demo: it always has a forecast to play into, where a live
         // deployment can be without one for a while.

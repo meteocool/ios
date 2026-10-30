@@ -185,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Avoimen lähdekoodin lisenssit";
+"data_licences" = "Tietolisenssit";
 "open_source_footer" = "meteocoolin ja sen pohjana olevien ohjelmistojen lisenssit. Lue lisenssi napauttamalla.";
 "Py-ART Colour Maps" = "Py-ART-väriasteikot";
 "Web Map Libraries" = "Verkkokartan kirjastot";

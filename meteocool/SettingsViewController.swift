@@ -93,9 +93,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("notifications", comment: "header"),
         NSLocalizedString("notification_style_header", comment: "header"),
         NSLocalizedString("Map View", comment: "header"),
-        NSLocalizedString("About", comment: "header"),
-        NSLocalizedString("data_sources_header", comment: "header"),
-        ""
+        NSLocalizedString("About", comment: "header")
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
@@ -103,72 +101,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
         // Read from the bundle, not from the translations.
         // A version number typed into the translations went out of date.
-        SettingsViewController.version,
-        NSLocalizedString("data_sources_footer", comment: "footer"),
-        ""
-    ]
-
-    /// Each source of data or artwork the app shows, with its licence and the licence URL.
-    /// The app hides the web map's attribution, so this list is the app's credit.
-    /// Keep it in sync with core's `layers/attributions.ts` and the imprint's `#data`.
-    private struct DataSource {
-        let name: String
-        let detailKey: String
-        let url: String
-    }
-    private let dataSources = [
-        DataSource(name: "© Deutscher Wetterdienst (DWD)", detailKey: "source_dwd",
-                   url: "https://www.dwd.de/EN/service/copyright/copyright_node.html"),
-        DataSource(name: "© MeteoSwiss", detailKey: "source_meteoswiss",
-                   url: "https://opendatadocs.meteoswiss.ch/general/terms-of-use"),
-        DataSource(name: "© Météo-France", detailKey: "source_meteofrance",
-                   url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence/"),
-        DataSource(name: "© Český hydrometeorologický ústav (ČHMÚ)", detailKey: "source_chmi",
-                   url: "https://www.chmi.cz/o-chmu/caste-dotazy-faq/open-data"),
-        DataSource(name: "© IMGW-PIB", detailKey: "source_imgw",
-                   url: "https://danepubliczne.imgw.pl/regulations"),
-        DataSource(name: "© Royal Meteorological Institute of Belgium (RMI)", detailKey: "source_rmi",
-                   url: "https://opendata.meteo.be/termsandconditions"),
-        DataSource(name: "© Vlaamse Milieumaatschappij (VMM)", detailKey: "source_vmm",
-                   url: "https://creativecommons.org/licenses/by/4.0/"),
-        DataSource(name: "© Slovenský hydrometeorologický ústav (SHMÚ)", detailKey: "source_shmu",
-                   url: "https://opendata.shmu.sk/README.txt"),
-        DataSource(name: "© Lietuvos hidrometeorologijos tarnyba prie Aplinkos ministerijos (LHMT)", detailKey: "source_lhmt",
-                   url: "https://api.meteo.lt/"),
-        DataSource(name: "© Keskkonnaagentuur (Estonian Environment Agency)", detailKey: "source_kaur",
-                   url: "https://keskkonnaportaal.ee/et/avaandmed/meteoroloogiliste-radarite-andmestik"),
-        DataSource(name: "© Met Éireann", detailKey: "source_met_eireann",
-                   url: "https://www.met.ie/about-us/specialised-services/open-data"),
-        DataSource(name: "© Državni hidrometeorološki zavod (DHMZ)", detailKey: "source_dhmz",
-                   url: "https://klima.hr/razno/katalog_i_cjenikDHMZ.pdf"),
-        DataSource(name: "© Danish Meteorological Institute (DMI)", detailKey: "source_dmi",
-                   url: "https://www.dmi.dk/friedata/dokumentation/terms-of-use"),
-        DataSource(name: "© Koninklijk Nederlands Meteorologisch Instituut (KNMI)", detailKey: "source_knmi",
-                   url: "https://creativecommons.org/licenses/by/4.0/"),
-        DataSource(name: "© Finnish Meteorological Institute (FMI)", detailKey: "source_fmi",
-                   url: "https://en.ilmatieteenlaitos.fi/open-data-licence"),
-        DataSource(name: "© Swedish Meteorological and Hydrological Institute (SMHI)", detailKey: "source_smhi",
-                   url: "https://www.smhi.se/data/om-smhis-data/villkor-for-anvandning"),
-        DataSource(name: "© Norwegian Meteorological Institute (MET Norway)", detailKey: "source_met_norway",
-                   url: "https://www.met.no/en/free-meteorological-data/Licensing-and-crediting"),
-        DataSource(name: "EUMETNET Open Radar Data", detailKey: "source_eumetnet",
-                   url: "https://eumetnet.github.io/openradardata-documentation/"),
-        DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
-                   url: "https://www.weather.gov/disclaimer"),
-        DataSource(name: "© Blitzortung.org and its contributors", detailKey: "source_blitzortung",
-                   url: "https://www.blitzortung.org/"),
-        DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
-                   url: "https://open-meteo.com/en/licence"),
-        DataSource(name: "© OpenStreetMap contributors", detailKey: "source_osm",
-                   url: "https://www.openstreetmap.org/copyright"),
-        DataSource(name: "© Protomaps", detailKey: "source_protomaps",
-                   url: "https://protomaps.com"),
-        DataSource(name: "© Mapterhorn", detailKey: "source_mapterhorn",
-                   url: "https://mapterhorn.com/attribution"),
-        DataSource(name: "Freepik · Flaticon", detailKey: "source_freepik",
-                   url: "https://www.flaticon.com"),
-        DataSource(name: "Vitaly Gorbachev · Flaticon", detailKey: "source_gorbachev",
-                   url: "https://www.flaticon.com/authors/vitaly-gorbachev"),
+        SettingsViewController.version
     ]
 
     /// Footer text such as `Version: 2.2`, built from the bundle's marketing version.
@@ -298,10 +231,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return dataMapView.count
         case 3: //About
             return dataAboutLabel.count
-        case 4: //Data sources
-            return dataSources.count
-        case 5: //Open-source licences
-            return 1
         default:
             return 0
         }
@@ -456,15 +385,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkValueLable.text = ""
                 return linkCell
             }
-        case 4: //Data sources
-            let source = dataSources[indexPath.row]
-            linkCell.linkInfoLable.text = source.name
-            linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
-            return linkCell
-        case 5: //Open-source licences, on their own page
-            linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
-            linkCell.linkValueLable.text = ""
-            return linkCell
         default:
             print("This should not happen...")
             return textCell
@@ -544,12 +464,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         }
         if (indexPath.section == 3 && indexPath.row == 4){ // Mode
             present(UINavigationController(rootViewController: EnvironmentPickerViewController()), animated: true)
-        }
-        if indexPath.section == 4, let url = URL(string: dataSources[indexPath.row].url) {
-            UIApplication.shared.open(url)
-        }
-        if indexPath.section == 5 {
-            present(UINavigationController(rootViewController: LicencesViewController()), animated: true)
         }
     }
     

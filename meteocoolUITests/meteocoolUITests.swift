@@ -277,15 +277,27 @@ final class meteocoolUITests: XCTestCase {
         tap("Collapse playback controls")
     }
 
-    /// The open-source licences are a page linked from the bottom of Settings,
-    /// and each opens its full text: the notices MIT and BSD ask to reproduce.
+    /// Data Licenses, under the control column on the web map, lists the
+    /// data sources and the open-source licences, which no longer clutter
+    /// Settings. Each licence opens its full text: the notices MIT and BSD
+    /// ask to reproduce.
     func testLicencesShowTheirText() {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
-        let table = app.tables.firstMatch
-        let link = table.staticTexts["Open Source Licenses"]
-        for _ in 0..<15 where !link.isHittable { table.swipeUp() }
-        XCTAssertTrue(link.isHittable, "Open Source Licenses is linked at the bottom of Settings")
+        let settings = app.tables.firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        for _ in 0..<15 { settings.swipeUp() }
+        XCTAssertFalse(settings.staticTexts["Open Source Licenses"].exists, "Not in Settings any more")
+        XCTAssertFalse(settings.staticTexts["© Deutscher Wetterdienst (DWD)"].exists, "Not in Settings any more")
+        app.buttons["Done"].firstMatch.tap()
+
+        let dataLicences = app.descendants(matching: .any)["map.dataLicences"].firstMatch
+        XCTAssertTrue(dataLicences.waitForExistence(timeout: 15), "Data Licenses under the control column")
+        dataLicences.tap()
+        let sheet = app.tables["dataLicences"]
+        XCTAssertTrue(sheet.staticTexts["© Deutscher Wetterdienst (DWD)"].waitForExistence(timeout: 5))
+        let link = sheet.staticTexts["Open Source Licenses"]
+        for _ in 0..<10 where !link.isHittable { sheet.swipeUp() }
         link.tap()
         let licences = app.tables["licences"]
         XCTAssertTrue(licences.staticTexts["Web Map Libraries"].waitForExistence(timeout: 5))
