@@ -1736,9 +1736,11 @@ final class NativeMapUITests: XCTestCase {
         selectMode("Experimental Features")
         check(experimental: true)
         screenshot("experimental features")
+        // Off until turned on: the logbook opens the log's opt-in first.
         log.tap()
-        XCTAssertTrue(app.navigationBars["Storm Log"].waitForExistence(timeout: 10), "The logbook opens the storm log")
-        app.navigationBars["Storm Log"].buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["Your Area, Not Your Address"].waitForExistence(timeout: 10), "The logbook opens the storm log")
+        app.buttons["Not Now"].tap()
+        XCTAssertTrue(log.waitForExistence(timeout: 5))
         selectMode("Production")
         check(experimental: false)
     }
