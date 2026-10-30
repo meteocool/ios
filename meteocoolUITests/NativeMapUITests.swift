@@ -12,10 +12,12 @@ final class NativeMapUITests: XCTestCase {
     }
 
     /// Starts the app on the native map: `link` is a map search to open at
-    /// (`MC_NATIVE_MAP_LINK`, read by simulator debug builds).
-    private func launch(link: String? = nil, demo: Bool = false, hiddenFeatures: Bool = false) {
+    /// (`MC_NATIVE_MAP_LINK`, read by simulator debug builds). Experimental
+    /// Features (staging) unless `demo`, or `production` for app.meteocool.com,
+    /// where the experimental features are hidden.
+    private func launch(link: String? = nil, demo: Bool = false, production: Bool = false, arguments: [String] = []) {
         app.launchArguments = ["--ui-test-reset", "--native-map", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-                               "-environment", demo ? "demo" : "staging"] + (hiddenFeatures ? ["--hidden-features"] : [])
+                               "-environment", production ? "app" : demo ? "demo" : "staging"] + arguments
         if let link { app.launchEnvironment["MC_NATIVE_MAP_LINK"] = link }
         app.launch()
         if demo {
@@ -824,19 +826,19 @@ final class NativeMapUITests: XCTestCase {
     func testStormPanelOpensARWhereThereIsAR() {
         let code = "2026102012009999999999"
         app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
-        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
         let details = element("nativeMap.storm.details")
-        XCTAssertTrue(details.waitForExistence(timeout: 30))
         let ar = element("nativeMap.storm.ar")
-        // A hidden feature: not offered until unlocked.
+        // An experimental feature: not offered in production.
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)", production: true)
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
         for _ in 0 ..< 3 { details.swipeUp() }
-        XCTAssertFalse(ar.exists, "AR stays hidden until unlocked")
-        // Unlocked from the start this time.
+        XCTAssertFalse(ar.exists, "AR stays hidden outside Experimental Features")
+        // Experimental Features this time.
         app.terminate()
-        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)", hiddenFeatures: true)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
         XCTAssertTrue(details.waitForExistence(timeout: 30))
         for _ in 0 ..< 4 where !ar.isHittable { details.swipeUp() }
-        XCTAssertTrue(ar.waitForExistence(timeout: 5), "AR offered once unlocked")
+        XCTAssertTrue(ar.waitForExistence(timeout: 5), "AR offered in Experimental Features")
         // The camera and the position, asked the first time.
         addUIInterruptionMonitor(withDescription: "AR permissions") { alert in
             for label in ["Allow While Using App", "OK", "Allow"] where alert.buttons[label].exists {
@@ -1152,9 +1154,10 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.flashBang.ring").waitForNonExistence(timeout: 5))
     }
 
+    /// On staging: flash to bang is an experimental feature, which the demo hides.
     func testFlashToBangOnTheLightningMap() {
         app.launchEnvironment["MC_USER_LOCATION"] = "44.0,3.5"
-        launch(link: "?latLonZ=44,3.5,8", demo: true)
+        launch(link: "?latLonZ=44,3.5,8")
         waitForSeries()
         openLayers()
         element("nativeMap.layers.map.lightning").tap()
@@ -1166,7 +1169,7 @@ final class NativeMapUITests: XCTestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(9))
         element("nativeMap.flashBang.target").tap()
         XCTAssertTrue(element("nativeMap.flashBang.result").waitForExistence(timeout: 5))
-        // The search runs 20 s past the thunder; the demo's strikes may match.
+        // The search runs 20 s past the thunder; a live strike may match.
         RunLoop.current.run(until: Date().addingTimeInterval(22))
         screenshot("flash to bang on the lightning map, searched")
     }
@@ -1680,6 +1683,108 @@ final class NativeMapUITests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(map.exists)
+    }
+
+    // MARK: - Experimental features and the logo
+
+    /// Picks a mode under Settings, About, Mode, and goes back to the map.
+    private func selectMode(_ mode: String, file: StaticString = #filePath, line: UInt = #line) {
+        app.buttons["map.settings"].tap()
+        let row = app.staticTexts["Mode"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5), file: file, line: line)
+        for _ in 0 ..< 6 where !row.isHittable { app.tables.firstMatch.swipeUp() }
+        row.tap()
+        let option = app.tables["settings.options"].staticTexts[mode]
+        XCTAssertTrue(option.waitForExistence(timeout: 5), file: file, line: line)
+        option.tap()
+        app.buttons["picker.save"].tap()
+        XCTAssertTrue(app.staticTexts[mode].waitForExistence(timeout: 5), file: file, line: line)
+        app.buttons["Done"].firstMatch.tap()
+    }
+
+    /// The logbook, AR and flash to bang only in Experimental Features:
+    /// hidden in production, there as soon as the mode is picked, with no
+    /// restart, and gone again on the way back. Without the logbook the bell
+    /// closes up to the logo, and the status pill keeps clear of the row.
+    func testExperimentalFeaturesComeAndGoWithTheMode() {
+        app.launchEnvironment["MC_USER_LOCATION"] = "48.14,11.58"
+        launch(link: "?latLonZ=48.14,11.58,9", production: true)
+        XCTAssertTrue(map.waitForExistence(timeout: 15))
+        let logo = element("map.logo"), bell = app.buttons["map.alerts"], log = app.buttons["map.stormLog"]
+        let ar = app.buttons["map.ar"], flash = element("nativeMap.flashBang"), pill = element("nativeMap.pill")
+        XCTAssertTrue(bell.waitForExistence(timeout: 10))
+        XCTAssertTrue(pill.waitForExistence(timeout: 15))
+
+        func check(experimental: Bool, file: StaticString = #filePath, line: UInt = #line) {
+            for (name, control) in [("logbook", log), ("AR", ar), ("flash to bang", flash)] {
+                let settled = experimental ? control.waitForExistence(timeout: 10) : control.waitForNonExistence(timeout: 10)
+                XCTAssertTrue(settled, "\(name) \(experimental ? "shown" : "hidden")", file: file, line: line)
+            }
+            XCTAssertTrue(bell.isHittable, file: file, line: line)
+            let gap = bell.frame.minX - logo.frame.maxX
+            if experimental {
+                XCTAssertGreaterThan(log.frame.minX, logo.frame.maxX, file: file, line: line)
+                XCTAssertGreaterThan(bell.frame.minX, log.frame.maxX, "The bell after the logbook", file: file, line: line)
+            } else {
+                XCTAssertLessThan(gap, 20, "The bell closes up to the logo", file: file, line: line)
+            }
+            XCTAssertGreaterThanOrEqual(pill.frame.minX, bell.frame.maxX, "The pill keeps clear of the row", file: file, line: line)
+        }
+
+        check(experimental: false)
+        screenshot("production, no experimental features")
+        selectMode("Experimental Features")
+        check(experimental: true)
+        screenshot("experimental features")
+        log.tap()
+        XCTAssertTrue(app.navigationBars["Storm Log"].waitForExistence(timeout: 10), "The logbook opens the storm log")
+        app.navigationBars["Storm Log"].buttons["Done"].tap()
+        selectMode("Production")
+        check(experimental: false)
+    }
+
+    private var confetti: XCUIElement { element("map.confetti") }
+
+    /// One tap on the logo goes back to the radar at once, with no confetti;
+    /// three quick ones throw it, over controls that keep working, and it
+    /// clears itself away.
+    func testLogoGoesBackToTheRadarAndThreeTapsThrowConfetti() {
+        launch(link: "?latLonZ=44,3.5,6", demo: true)
+        waitForSeries()
+        openLayers()
+        element("nativeMap.layers.map.lightning").tap()
+        let chart = element("nativeMap.lightningChart")
+        XCTAssertTrue(chart.waitForExistence(timeout: 10))
+        let logo = element("map.logo")
+        logo.tap()
+        XCTAssertTrue(chart.waitForNonExistence(timeout: 3), "One tap goes back to the radar")
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(confetti.exists, "One tap throws no confetti")
+
+        logo.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+        XCTAssertTrue(confetti.waitForExistence(timeout: 3), "Three taps throw confetti")
+        XCTAssertEqual(confetti.value as? String, "burst")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        screenshot("confetti")
+        // It takes no touches: the controls under it still work.
+        app.buttons["map.settings"].tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 5), "Settings opens through the confetti")
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(confetti.waitForNonExistence(timeout: 8), "The confetti clears itself away")
+    }
+
+    /// Under Reduce Motion the confetti lies still and fades.
+    func testLogoConfettiUnderReduceMotion() {
+        launch(link: "?latLonZ=48.14,11.58,8", arguments: ["--reduce-motion"])
+        XCTAssertTrue(map.waitForExistence(timeout: 15))
+        let logo = element("map.logo")
+        XCTAssertTrue(logo.waitForExistence(timeout: 10))
+        logo.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+        XCTAssertTrue(confetti.waitForExistence(timeout: 3))
+        XCTAssertEqual(confetti.value as? String, "still")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        screenshot("confetti under reduce motion")
+        XCTAssertTrue(confetti.waitForNonExistence(timeout: 5), "The still pieces fade away")
     }
 
     // MARK: - Site mode

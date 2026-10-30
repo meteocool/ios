@@ -39,6 +39,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
     private var otherChrome: UIView?
+    /// Keeps the status pill clear of the logo's row (`logoRowWidth`).
+    private var pillClearOfLogo: NSLayoutConstraint?
     /// The dock stands on the radar's tray, or on another map's bar.
     private var dockOnTray: NSLayoutConstraint?
     private var dockOnOther: NSLayoutConstraint?
@@ -282,18 +284,24 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             back.bottomAnchor.constraint(equalTo: dock.topAnchor, constant: -ChromeTheme.gutter),
         ])
 
-        let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self))
-        // Centred, unless the logo's row of discs on the left (the logo, the
-        // logbook and the bell, 52 pt each with 8 pt between, 12 pt in) reaches
-        // it on a narrow phone: then it keeps to their right.
+        let pillHost = WeakView()
+        let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self) {
+            pillHost.view?.invalidateIntrinsicContentSize()
+        })
+        pillHost.view = pill
+        // Centred, unless the logo's row of discs on the left reaches it on a
+        // narrow phone: then it keeps to their right (`logoRowWidth`).
         // Below its content's compression resistance, or the host is squeezed
         // to keep the centre and the capsule overflows it back to the middle.
         let centred = pill.centerXAnchor.constraint(equalTo: centerXAnchor)
         centred.priority = .defaultLow
         pill.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let clear = pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
+                                                  constant: Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures))
+        pillClearOfLogo = clear
         NSLayoutConstraint.activate([
             centred,
-            pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 12 + 3 * 52 + 3 * 8 + ChromeTheme.gutter),
+            clear,
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 
@@ -303,6 +311,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
             toast.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter + 44 + ChromeTheme.gutter),
         ])
+    }
+
+    /// How far the app's row of discs beside the logo reaches in from the
+    /// safe area, with a gutter after it: 12 pt in, then the logo, the
+    /// logbook (in the Experimental Features mode only) and the bell, 52 pt
+    /// each with 8 pt after each.
+    static func logoRowWidth(experimental: Bool) -> CGFloat {
+        let discs: CGFloat = experimental ? 3 : 2
+        return 12 + discs * (52 + 8) + ChromeTheme.gutter
     }
 
     /// The tray, strips and "Back to now" are the radar map's; other maps
@@ -670,6 +687,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
+        // The logbook beside the logo comes and goes with the mode.
+        pillClearOfLogo?.constant = Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures)
         let on = Set(NativeMapLayer.allCases.filter(isOn))
         if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }
@@ -790,7 +809,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Back to the live radar, as the logo does on the web map.
     func showLive() {
-        model.capability = .radar
+        // As picking the radar in the layer switcher: the other map's parts
+        // hear of it and put themselves away.
+        setCapability(.radar)
         player.showLive()
     }
 
@@ -964,10 +985,15 @@ private struct PillHost: View {
     @ObservedObject var model: NativeMapModel
     @ObservedObject var monitor: ConnectionMonitor
     @ObservedObject var owner: NativeMapView
+    /// The capsule changed width ("Latest", a time, a warning): the host is
+    /// measured again. Left at its first size it stays a point wide, and
+    /// the capsule spills out of it over the logo's row.
+    let resized: () -> Void
 
     var body: some View {
         StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() }, wakes: owner.wakeCount)
             .opacity(model.capability == .radar ? 1 : 0)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in DispatchQueue.main.async { resized() } }
     }
 }
 
