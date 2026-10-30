@@ -147,6 +147,81 @@ enum StormLogRules {
         return "\(passage.startedAt.formatted(day)), \(start)–\(end.formatted(clock))"
     }
 
+    /// The row's time: the clock alone today, the day earlier this year, the
+    /// day and year before that.
+    static func shortWhen(_ passage: StormPassage, now: Date = Date(), timeZone: TimeZone = .current,
+                          locale: Locale = .current) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let start = passage.startedAt
+        var style: Date.FormatStyle
+        if calendar.isDate(start, inSameDayAs: now) {
+            style = Date.FormatStyle(date: .omitted, time: .shortened)
+        } else if calendar.component(.year, from: start) == calendar.component(.year, from: now) {
+            style = Date.FormatStyle().day().month(.abbreviated)
+        } else {
+            style = Date.FormatStyle(date: .abbreviated, time: .omitted)
+        }
+        style.timeZone = timeZone
+        return start.formatted(style.locale(locale))
+    }
+
+    /// How long it stayed near, until now while it still is.
+    static func duration(_ passage: StormPassage, now: Date = Date()) -> TimeInterval {
+        max(0, (passage.endedAt ?? now).timeIntervalSince(passage.startedAt))
+    }
+
+    /// A finished passage's length in hours and minutes; nil for one seen at a
+    /// single step or still near.
+    static func durationText(_ passage: StormPassage, locale: Locale = .current) -> String? {
+        guard passage.endedAt != nil else { return nil }
+        let minutes = Int((duration(passage) / 60).rounded())
+        guard minutes > 0 else { return nil }
+        return Duration.seconds(minutes * 60)
+            .formatted(.units(allowed: [.hours, .minutes], width: .abbreviated).locale(locale))
+    }
+
+    // MARK: Sorting
+
+    /// The list's orders, `recent` until the user picks another. Every one
+    /// falls back to the newest first. Never the server's order, which the
+    /// app does not rely on.
+    enum Sort: String, CaseIterable {
+        case recent, severity, closest, duration, lightning
+    }
+
+    static func sorted(_ passages: [StormPassage], by sort: Sort, now: Date = Date()) -> [StormPassage] {
+        passages.sorted { a, b in
+            switch sort {
+            case .recent:
+                // A storm still near comes first, then by the time it came, as the rows show it.
+                if (a.endedAt == nil) != (b.endedAt == nil) { return a.endedAt == nil }
+            case .severity:
+                if clamped(a.severity) != clamped(b.severity) { return clamped(a.severity) > clamped(b.severity) }
+                if (a.peakDbz ?? -.infinity) != (b.peakDbz ?? -.infinity) { return (a.peakDbz ?? -.infinity) > (b.peakDbz ?? -.infinity) }
+            case .closest:
+                let near = { (passage: StormPassage) in passage.over ? -1 : max(0, passage.closestKm) }
+                if near(a) != near(b) { return near(a) < near(b) }
+            case .duration:
+                if duration(a, now: now) != duration(b, now: now) { return duration(a, now: now) > duration(b, now: now) }
+            case .lightning:
+                if a.strikes != b.strikes { return a.strikes > b.strikes }
+            }
+            return a.startedAt != b.startedAt ? a.startedAt > b.startedAt : a.id < b.id
+        }
+    }
+
+    // MARK: Consent
+
+    /// The log is off until the user turns it on (`StormLogOnboarding`): a
+    /// Bool in the app group's defaults, which `LocationUpdater` sends along.
+    static let enabledKey = "stormLogEnabled"
+    /// Set when it is turned on: the log is wiped before it is first shown,
+    /// so it holds nothing from before.
+    static let wipePendingKey = "stormLogWipePending"
+    /// The list's order, a `Sort`'s raw value.
+    static let sortKey = "stormLogSort"
+
     // MARK: Map
 
     /// The track's positions as (latitude, longitude), any malformed one left out.

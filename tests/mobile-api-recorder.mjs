@@ -7,6 +7,9 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+// MC_RECORDER_PORT moves it, for a second recorder beside one already running.
+const PORT = Number(process.env.MC_RECORDER_PORT ?? 18765);
+
 // Only synthetic simulator data reaches this process. Never proxy to a server.
 const requests = [];
 let registered = false;
@@ -70,13 +73,14 @@ function stormLog() {
       ...extra,
     };
   };
+  // Not newest first, the oldest leading: the app orders the log itself.
   return { entries: [
+    passage('fixture/cabin/0', 'cabin', 'Cabin', { lat: 47.65, lon: 12.05 }, { lat: 47.5, lon: 11.8 }, { lat: 47.75, lon: 12.25 }, 2880, 2840,
+      { over: false, closest_km: 6.8, peak_dbz: 55, top_km: 9.4, vil_kg_m2: 22, severity: 1, hail: false, meso: true, strikes: 0 }),
     passage('fixture/-/1', null, null, { lat: 48.15, lon: 11.55 }, { lat: 47.95, lon: 11.25 }, { lat: 48.3, lon: 11.9 }, 15, null,
       { over: false, closest_km: 2.4, peak_dbz: 47, top_km: null, vil_kg_m2: null, severity: 0, hail: false, meso: false, strikes: 3 }),
     passage('fixture/-/0', null, null, { lat: 48.15, lon: 11.55 }, { lat: 47.9, lon: 11.3 }, { lat: 48.35, lon: 11.85 }, 120, 75,
       { over: true, closest_km: 0, peak_dbz: 61.5, top_km: 11.3, vil_kg_m2: 38, severity: 2, hail: true, meso: false, strikes: 27 }),
-    passage('fixture/cabin/0', 'cabin', 'Cabin', { lat: 47.65, lon: 12.05 }, { lat: 47.5, lon: 11.8 }, { lat: 47.75, lon: 12.25 }, 2880, 2840,
-      { over: false, closest_km: 6.8, peak_dbz: 55, top_km: 9.4, vil_kg_m2: 22, severity: 1, hail: false, meso: true, strikes: 0 }),
   ] };
 }
 
@@ -341,4 +345,4 @@ http.createServer(async (request, response) => {
   } catch {
     response.writeHead(400).end('{"success":false}');
   }
-}).listen(18765, '127.0.0.1', () => console.log('Simulator recorder listening on 127.0.0.1:18765'));
+}).listen(PORT, '127.0.0.1', () => console.log(`Simulator recorder listening on 127.0.0.1:${PORT}`));

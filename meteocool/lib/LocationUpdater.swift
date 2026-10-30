@@ -315,6 +315,10 @@ import CoreLocation
             "locationPermission": LocationPermissionWarning.reported,
             // Muted alerts (Settings), held back by the backend; null when on.
             "pausedUntil": SharedAlertMute.pausedUntil,
+            // Whether the user turned the storm log on. ng logs every
+            // registration's storms for now and ignores this, so the app
+            // wipes the log when it is turned on or off (StormLogViewController).
+            "stormLog": userDefaults?.bool(forKey: StormLogRules.enabledKey) ?? false,
             ] as [String: Any]
 
         let origin = NetworkHelper.apiURL
