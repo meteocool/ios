@@ -141,7 +141,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
         return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StationMarks(), sites, storms, CloudHints(),
-                PointFeature(), RadarWash(), ThreeDMap()]
+                PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -269,8 +269,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         ])
 
         let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self))
+        // Centred, unless the logo's row of discs on the left (the logo, the
+        // logbook and the bell, 52 pt each with 8 pt between, 12 pt in) reaches
+        // it on a narrow phone: then it keeps to their right.
+        // Below its content's compression resistance, or the host is squeezed
+        // to keep the centre and the capsule overflows it back to the middle.
+        let centred = pill.centerXAnchor.constraint(equalTo: centerXAnchor)
+        centred.priority = .defaultLow
+        pill.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
-            pill.centerXAnchor.constraint(equalTo: centerXAnchor),
+            centred,
+            pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 12 + 3 * 52 + 3 * 8 + ChromeTheme.gutter),
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 

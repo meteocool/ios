@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Tjek tilladelser";
 "notification_permissions_help" = "Regnvarsler kræver notifikationer og adgang til placering. Hvis du vil have varsler, mens du er på farten og appen er lukket, skal du sætte Lokalitet til Altid i Indstillinger. Du kan stadig bruge kortet uden disse tilladelser.";
 "notification_sync_failed" = "Ændringerne af notifikationer kunne ikke nå serveren. Varslerne bruger måske stadig dine tidligere indstillinger. Tjek din forbindelse, og åbn appen igen for at prøve igen.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Sæt varsler på pause";
+"mute_off" = "Fra";
+"mute_on" = "Til";
+"mute_day" = "I 1 dag";
+"mute_week" = "I 1 uge";
+"mute_rain" = "Indtil regnen er ovre";
+"mute_unmute" = "Genoptag varsler";
+"mute_until" = "På pause indtil %@";
+"mute_until_rain" = "På pause, indtil regnen er ovre";
+"mute_until_rain_about" = "På pause, indtil regnen er ovre, ca. %@";
+"mute_no_rain_title" = "Ingen regn på vej";
+"mute_no_rain" = "Prognosen viser ingen regn her, så der er intet at sætte på pause.";
+"mute_no_forecast_title" = "Varslerne kunne ikke sættes på pause";
+"mute_no_forecast" = "Prognosen for din placering kunne ikke indlæses. Prøv igen senere.";
+"mute_ok" = "OK";
 "feedback_body" = "Beskriv dit problem eller forslag her:\n";
 
 "map_layers" = "Kortlag";
@@ -280,3 +296,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Min placering";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Lyn til torden";
+"native_map_flash_bang_flash" = "Lyn";
+"native_map_flash_bang_flash_hint" = "Tryk, når du ser lynet";
+"native_map_flash_bang_thunder" = "Torden?";
+"native_map_flash_bang_thunder_hint" = "Tryk, når du hører tordenen";
+"native_map_flash_bang_about" = "Ca. %@ km væk";
+"native_map_flash_bang_counted" = "Talt %@ s";
+"native_map_flash_bang_counted_about" = "Talt %1$@ s: ca. %2$@ km";
+"native_map_flash_bang_searching" = "Leder efter nedslaget i live-dataene …";
+"native_map_flash_bang_matched" = "Nedslag kl. %1$@, %2$@";
+"native_map_flash_bang_close" = "passer præcist";
+"native_map_flash_bang_fair" = "passer godt";
+"native_map_flash_bang_loose" = "passer groft";
+"native_map_flash_bang_no_match" = "Intet nedslag i dataene passer: Netværket fanger ikke alle.";
+"native_map_flash_bang_too_far" = "Ingen torden inden for et minut: for langt væk til at kunne høres.";
+"native_map_flash_bang_shelter" = "Lynet kan ramme dig her: Gå indenfor nu.";
+"native_map_flash_bang_no_location" = "Kræver din placering: Slå placeringsknappen til.";
+"native_map_flash_bang_show" = "Vis på kortet";
+"native_map_flash_bang_strike" = "Fundet nedslag";

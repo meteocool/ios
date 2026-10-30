@@ -1052,6 +1052,77 @@ final class NativeMapUITests: XCTestCase {
         screenshot("lightning map")
     }
 
+    func testFlashToBangCountsTheThunder() {
+        app.launchEnvironment["MC_USER_LOCATION"] = "48.14,11.58"
+        launch(link: "?latLonZ=48.14,11.58,9")
+        waitForSeries()
+        let button = element("nativeMap.flashBang")
+        XCTAssertTrue(button.waitForExistence(timeout: 10))
+        button.tap()
+        let target = element("nativeMap.flashBang.target")
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        XCTAssertEqual(target.label, "Flash")
+        target.tap()
+        XCTAssertEqual(target.label, "Thunder?")
+        RunLoop.current.run(until: Date().addingTimeInterval(3))
+        screenshot("flash to bang, counting")
+        target.tap()
+        // About a kilometre for three seconds, and inside striking range.
+        let result = element("nativeMap.flashBang.result")
+        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'About ' AND label ENDSWITH ' km away'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Lightning can reach you here: get indoors now."].firstMatch.exists)
+        XCTAssertEqual(target.label, "Flash")
+        screenshot("flash to bang, counted")
+        button.tap()
+        XCTAssertTrue(element("nativeMap.flashBang.panel").waitForNonExistence(timeout: 5))
+    }
+
+    func testFlashToBangMatchesAStrike() {
+        app.launchEnvironment["MC_USER_LOCATION"] = "48.14,11.58"
+        // A strike 2 km west, half a second before the flash, in the feed 2 s later.
+        app.launchEnvironment["MC_FLASH_BANG_STRIKE"] = "2000,270"
+        launch(link: "?latLonZ=48.14,11.58,10")
+        waitForSeries()
+        element("nativeMap.flashBang").tap()
+        let target = element("nativeMap.flashBang.target")
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        target.tap()
+        // 2 km is 5.8 s of sound; the taps take a little of it.
+        RunLoop.current.run(until: Date().addingTimeInterval(5.5))
+        target.tap()
+        XCTAssertTrue(element("nativeMap.flashBang.ring").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["2.0 km W"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["270°"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Strike at ' AND label ENDSWITH ', close match'")).firstMatch.exists)
+        screenshot("flash to bang, matched")
+        element("nativeMap.flashBang.show").tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        screenshot("flash to bang, matched strike in view")
+        // A new flash puts the old strike away.
+        target.tap()
+        XCTAssertTrue(element("nativeMap.flashBang.ring").waitForNonExistence(timeout: 5))
+    }
+
+    func testFlashToBangOnTheLightningMap() {
+        app.launchEnvironment["MC_USER_LOCATION"] = "44.0,3.5"
+        launch(link: "?latLonZ=44,3.5,8", demo: true)
+        waitForSeries()
+        openLayers()
+        element("nativeMap.layers.map.lightning").tap()
+        XCTAssertTrue(element("nativeMap.lightningChart").waitForExistence(timeout: 10))
+        element("nativeMap.flashBang").tap()
+        XCTAssertTrue(element("nativeMap.flashBang.panel").waitForExistence(timeout: 5))
+        screenshot("flash to bang on the lightning map")
+        element("nativeMap.flashBang.target").tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(9))
+        element("nativeMap.flashBang.target").tap()
+        XCTAssertTrue(element("nativeMap.flashBang.result").waitForExistence(timeout: 5))
+        // The search runs 20 s past the thunder; the demo's strikes may match.
+        RunLoop.current.run(until: Date().addingTimeInterval(22))
+        screenshot("flash to bang on the lightning map, searched")
+    }
+
     func testLightningHistogramHidesAndATapBringsItBack() {
         launch(link: "?latLonZ=44,3.5,6", demo: true)
         waitForSeries()

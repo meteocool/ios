@@ -255,6 +255,7 @@ import CoreLocation
                 (observer as? LocationObserver)?.notify(location: location)
             }
             SharedLiveActivities.refresh()
+            SharedAlertMute.follow()
 
             if (!background) {
                 if location.horizontalAccuracy <= 20 {
@@ -312,6 +313,8 @@ import CoreLocation
             "token": tokenValue,
             // Only Always follows the phone in the background (LocationPermissionWarning).
             "locationPermission": LocationPermissionWarning.reported,
+            // Muted alerts (Settings), held back by the backend; null when on.
+            "pausedUntil": SharedAlertMute.pausedUntil,
             ] as [String: Any]
 
         let origin = NetworkHelper.apiURL

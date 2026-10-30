@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Patikrink leidimus";
 "notification_permissions_help" = "Įspėjimams apie lietų reikia pranešimų ir vietovės prieigos. Kad gautum įspėjimus judėdamas, kai programėlė uždaryta, nustatymuose vietovės prieigą pakeisk į „Always“ (visada). Žemėlapį gali naršyti ir be šių leidimų.";
 "notification_sync_failed" = "Pranešimų pakeitimų nepavyko perduoti serveriui. Įspėjimai gali vis dar naudoti ankstesnius nustatymus. Patikrink ryšį ir iš naujo atidaryk programėlę, kad bandytum dar kartą.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Pristabdyti įspėjimus";
+"mute_off" = "Išjungta";
+"mute_on" = "Įjungta";
+"mute_day" = "1 dienai";
+"mute_week" = "1 savaitei";
+"mute_rain" = "Kol baigsis lietus";
+"mute_unmute" = "Atnaujinti įspėjimus";
+"mute_until" = "Pristabdyta iki %@";
+"mute_until_rain" = "Pristabdyta, kol baigsis lietus";
+"mute_until_rain_about" = "Pristabdyta, kol baigsis lietus, apie %@";
+"mute_no_rain_title" = "Lietaus nenumatoma";
+"mute_no_rain" = "Prognozė čia nerodo lietaus, todėl nėra ką pristabdyti.";
+"mute_no_forecast_title" = "Nepavyko pristabdyti įspėjimų";
+"mute_no_forecast" = "Nepavyko įkelti tavo vietovės prognozės. Bandyk vėliau.";
+"mute_ok" = "Gerai";
 "feedback_body" = "Čia aprašyk savo problemą ar pasiūlymą:\n";
 
 "map_layers" = "Žemėlapio sluoksniai";
@@ -280,3 +296,24 @@
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mano vieta";
+
+/* Flash to bang: the count from a flash to its thunder, and the strike it was. */
+"native_map_flash_bang" = "Nuo žaibo iki griaustinio";
+"native_map_flash_bang_flash" = "Žaibas";
+"native_map_flash_bang_flash_hint" = "Bakstelėk, kai pamatysi žaibą";
+"native_map_flash_bang_thunder" = "Griaustinis?";
+"native_map_flash_bang_thunder_hint" = "Bakstelėk, kai išgirsi griaustinį";
+"native_map_flash_bang_about" = "Apie %@ km nuo tavęs";
+"native_map_flash_bang_counted" = "Suskaičiuota %@ s";
+"native_map_flash_bang_counted_about" = "Suskaičiuota %1$@ s: apie %2$@ km";
+"native_map_flash_bang_searching" = "Ieškomas išlydis tiesioginiuose duomenyse…";
+"native_map_flash_bang_matched" = "Išlydis %1$@, %2$@";
+"native_map_flash_bang_close" = "tikslus atitikmuo";
+"native_map_flash_bang_fair" = "geras atitikmuo";
+"native_map_flash_bang_loose" = "apytikslis atitikmuo";
+"native_map_flash_bang_no_match" = "Joks išlydis duomenyse netinka: tinklas užfiksuoja ne visus.";
+"native_map_flash_bang_too_far" = "Per minutę negriaudėjo: per toli, kad girdėtųsi.";
+"native_map_flash_bang_shelter" = "Žaibas čia gali tave pasiekti: tuoj pat eik į vidų.";
+"native_map_flash_bang_no_location" = "Reikia tavo vietos: įjunk vietos mygtuką.";
+"native_map_flash_bang_show" = "Rodyti žemėlapyje";
+"native_map_flash_bang_strike" = "Rastas išlydis";
