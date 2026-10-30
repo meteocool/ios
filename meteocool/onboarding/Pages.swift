@@ -35,6 +35,38 @@ import Foundation
             action: action)
     }
 
+    /// Asked the first time the storm log is opened, not at first launch: the
+    /// log is off until the user turns it on. Says what it keeps, where, and
+    /// for how long, as ng's storm log (ADR 0040) and this app do.
+    static func stormLog(action: @escaping OnboardingAction) -> OnboardingPage {
+        OnboardingPage(
+            artwork: .symbol("book.closed.fill"),
+            title: NSLocalizedString("storm_log_title", value: "Storm Log", comment: "Storm log onboarding"),
+            message: NSLocalizedString("storm_log_onboarding_message", comment: "Storm log onboarding"),
+            features: [
+                OnboardingFeature(
+                    symbol: "cloud.bolt.rain.fill",
+                    title: NSLocalizedString("storm_log_onboarding_saves_title", comment: "Storm log onboarding"),
+                    detail: NSLocalizedString("storm_log_onboarding_saves_text", comment: "Storm log onboarding")),
+                OnboardingFeature(
+                    symbol: "mappin.and.ellipse",
+                    title: NSLocalizedString("storm_log_onboarding_area_title", comment: "Storm log onboarding"),
+                    detail: NSLocalizedString("storm_log_onboarding_area_text", comment: "Storm log onboarding")),
+                OnboardingFeature(
+                    symbol: "server.rack",
+                    title: NSLocalizedString("storm_log_onboarding_server_title", comment: "Storm log onboarding"),
+                    detail: NSLocalizedString("storm_log_onboarding_server_text", comment: "Storm log onboarding")),
+                OnboardingFeature(
+                    symbol: "trash.fill",
+                    title: NSLocalizedString("storm_log_onboarding_off_title", comment: "Storm log onboarding"),
+                    detail: NSLocalizedString("storm_log_onboarding_off_text", comment: "Storm log onboarding")),
+            ],
+            footnote: NSLocalizedString("storm_log_onboarding_footnote", comment: "Storm log onboarding"),
+            primaryTitle: NSLocalizedString("storm_log_turn_on", comment: "Storm log onboarding"),
+            secondaryTitle: NSLocalizedString("Not Now", comment: "Skip a permission"),
+            action: action)
+    }
+
     static func notifications(action: @escaping OnboardingAction) -> OnboardingPage {
         OnboardingPage(
             artwork: .symbol("bell.badge.fill"),

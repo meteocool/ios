@@ -2,10 +2,75 @@
 //  LicenceViewController.swift
 //  meteocool
 //
-//  Open-source licences at the bottom of Settings.
+//  Data Licences: the data sources and the open-source licences, linked
+//  from the map's bottom-right corner as Apple's Maps links its own.
 //
 
 import UIKit
+
+/// A source of data or artwork the app shows, with its licence and the licence URL.
+/// The app hides the web map's attribution, so `all` is the app's credit.
+/// Keep it in sync with core's `layers/attributions.ts` and the imprint's `#data`.
+struct DataSource {
+    let name: String
+    let detailKey: String
+    let url: String
+
+    static let all = [
+        DataSource(name: "© Deutscher Wetterdienst (DWD)", detailKey: "source_dwd",
+                   url: "https://www.dwd.de/EN/service/copyright/copyright_node.html"),
+        DataSource(name: "© MeteoSwiss", detailKey: "source_meteoswiss",
+                   url: "https://opendatadocs.meteoswiss.ch/general/terms-of-use"),
+        DataSource(name: "© Météo-France", detailKey: "source_meteofrance",
+                   url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence/"),
+        DataSource(name: "© Český hydrometeorologický ústav (ČHMÚ)", detailKey: "source_chmi",
+                   url: "https://www.chmi.cz/o-chmu/caste-dotazy-faq/open-data"),
+        DataSource(name: "© IMGW-PIB", detailKey: "source_imgw",
+                   url: "https://danepubliczne.imgw.pl/regulations"),
+        DataSource(name: "© Royal Meteorological Institute of Belgium (RMI)", detailKey: "source_rmi",
+                   url: "https://opendata.meteo.be/termsandconditions"),
+        DataSource(name: "© Vlaamse Milieumaatschappij (VMM)", detailKey: "source_vmm",
+                   url: "https://creativecommons.org/licenses/by/4.0/"),
+        DataSource(name: "© Slovenský hydrometeorologický ústav (SHMÚ)", detailKey: "source_shmu",
+                   url: "https://opendata.shmu.sk/README.txt"),
+        DataSource(name: "© Lietuvos hidrometeorologijos tarnyba prie Aplinkos ministerijos (LHMT)", detailKey: "source_lhmt",
+                   url: "https://api.meteo.lt/"),
+        DataSource(name: "© Keskkonnaagentuur (Estonian Environment Agency)", detailKey: "source_kaur",
+                   url: "https://keskkonnaportaal.ee/et/avaandmed/meteoroloogiliste-radarite-andmestik"),
+        DataSource(name: "© Met Éireann", detailKey: "source_met_eireann",
+                   url: "https://www.met.ie/about-us/specialised-services/open-data"),
+        DataSource(name: "© Državni hidrometeorološki zavod (DHMZ)", detailKey: "source_dhmz",
+                   url: "https://klima.hr/razno/katalog_i_cjenikDHMZ.pdf"),
+        DataSource(name: "© Danish Meteorological Institute (DMI)", detailKey: "source_dmi",
+                   url: "https://www.dmi.dk/friedata/dokumentation/terms-of-use"),
+        DataSource(name: "© Koninklijk Nederlands Meteorologisch Instituut (KNMI)", detailKey: "source_knmi",
+                   url: "https://creativecommons.org/licenses/by/4.0/"),
+        DataSource(name: "© Finnish Meteorological Institute (FMI)", detailKey: "source_fmi",
+                   url: "https://en.ilmatieteenlaitos.fi/open-data-licence"),
+        DataSource(name: "© Swedish Meteorological and Hydrological Institute (SMHI)", detailKey: "source_smhi",
+                   url: "https://www.smhi.se/data/om-smhis-data/villkor-for-anvandning"),
+        DataSource(name: "© Norwegian Meteorological Institute (MET Norway)", detailKey: "source_met_norway",
+                   url: "https://www.met.no/en/free-meteorological-data/Licensing-and-crediting"),
+        DataSource(name: "EUMETNET Open Radar Data", detailKey: "source_eumetnet",
+                   url: "https://eumetnet.github.io/openradardata-documentation/"),
+        DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
+                   url: "https://www.weather.gov/disclaimer"),
+        DataSource(name: "© Blitzortung.org and its contributors", detailKey: "source_blitzortung",
+                   url: "https://www.blitzortung.org/"),
+        DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
+                   url: "https://open-meteo.com/en/licence"),
+        DataSource(name: "© OpenStreetMap contributors", detailKey: "source_osm",
+                   url: "https://www.openstreetmap.org/copyright"),
+        DataSource(name: "© Protomaps", detailKey: "source_protomaps",
+                   url: "https://protomaps.com"),
+        DataSource(name: "© Mapterhorn", detailKey: "source_mapterhorn",
+                   url: "https://mapterhorn.com/attribution"),
+        DataSource(name: "Freepik · Flaticon", detailKey: "source_freepik",
+                   url: "https://www.flaticon.com"),
+        DataSource(name: "Vitaly Gorbachev · Flaticon", detailKey: "source_gorbachev",
+                   url: "https://www.flaticon.com/authors/vitaly-gorbachev"),
+    ]
+}
 
 /// One piece of third-party software and the notice its licence asks to
 /// reproduce. `Licences.json` lists them, generated by `scripts/licences.py`
@@ -29,8 +94,90 @@ struct Licence: Decodable {
     }()
 }
 
-/// The open-source licences, linked from the bottom of Settings. A tap
-/// shows one in full.
+/// Data Licences: who the map's data and artwork are from, each opening its
+/// licence, and the open-source licences. The maps link it from their
+/// bottom-right corner, as Apple's Maps links its own.
+final class DataLicencesViewController: UITableViewController {
+    /// The sheet the maps' link opens, with its Done button.
+    static func sheet() -> UIViewController {
+        let navigation = UINavigationController(rootViewController: DataLicencesViewController())
+        navigation.modalPresentationStyle = .pageSheet
+        if let sheet = navigation.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        return navigation
+    }
+
+    init() {
+        super.init(style: .insetGrouped)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = NSLocalizedString("data_licences", comment: "licence")
+        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
+            self?.dismiss(animated: true)
+        })
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "source")
+        tableView.accessibilityIdentifier = "dataLicences"
+    }
+
+    override func numberOfSections(in tableView: UITableView) -> Int { 2 }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        section == 0 ? DataSource.all.count : 1
+    }
+
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        section == 0 ? NSLocalizedString("data_sources_header", comment: "header") : nil
+    }
+
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        section == 0 ? NSLocalizedString("data_sources_footer", comment: "footer") : nil
+    }
+
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "source", for: indexPath)
+        var content = UIListContentConfiguration.subtitleCell()
+        if indexPath.section == 0 {
+            let source = DataSource.all[indexPath.row]
+            content.text = source.name
+            content.secondaryText = NSLocalizedString(source.detailKey, comment: "data source")
+            content.secondaryTextProperties.color = .secondaryLabel
+            // Opens the licence in Safari.
+            let arrow = UIImageView(image: UIImage(systemName: "arrow.up.forward"))
+            arrow.tintColor = .tertiaryLabel
+            arrow.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .footnote, scale: .medium)
+            cell.accessoryView = arrow
+            cell.accessoryType = .none
+            cell.accessibilityTraits = .link
+        } else {
+            content = UIListContentConfiguration.cell()
+            content.text = NSLocalizedString("open_source_header", comment: "licence")
+            cell.accessoryView = nil
+            cell.accessoryType = .disclosureIndicator
+            cell.accessibilityTraits = .button
+        }
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        if indexPath.section == 0 {
+            if let url = URL(string: DataSource.all[indexPath.row].url) { UIApplication.shared.open(url) }
+        } else {
+            navigationController?.pushViewController(LicencesViewController(), animated: true)
+        }
+    }
+}
+
+/// The open-source licences, under Data Licences. A tap shows one in full.
 final class LicencesViewController: UITableViewController {
     init() {
         super.init(style: .insetGrouped)
@@ -43,9 +190,6 @@ final class LicencesViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = NSLocalizedString("open_source_header", comment: "licence")
-        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
-            self?.dismiss(animated: true)
-        })
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "licence")
         tableView.accessibilityIdentifier = "licences"
     }

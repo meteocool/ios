@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Tarkista luvat";
 "notification_permissions_help" = "Sadehälytykset tarvitsevat ilmoitukset ja sijainnin käyttöoikeuden. Jos haluat hälytykset liikkuessasi myös apin ollessa suljettuna, aseta Sijainti-asetukseksi Aina Asetuksissa. Karttaa voit selata ilman näitäkin lupia.";
 "notification_sync_failed" = "Ilmoitusasetusten muutokset eivät menneet perille palvelimelle. Hälytykset saattavat yhä käyttää aiempia asetuksiasi. Tarkista yhteys ja yritä uudelleen avaamalla appi uudestaan.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Keskeytä hälytykset";
+"mute_off" = "Pois";
+"mute_on" = "Päällä";
+"mute_day" = "1 päiväksi";
+"mute_week" = "1 viikoksi";
+"mute_rain" = "Kunnes sade on ohi";
+"mute_unmute" = "Jatka hälytyksiä";
+"mute_until" = "Keskeytetty %@ asti";
+"mute_until_rain" = "Keskeytetty, kunnes sade on ohi";
+"mute_until_rain_about" = "Keskeytetty, kunnes sade on ohi, noin %@";
+"mute_no_rain_title" = "Ei sadetta tulossa";
+"mute_no_rain" = "Ennuste ei näytä täällä sadetta, joten keskeytettävää ei ole.";
+"mute_no_forecast_title" = "Hälytyksiä ei voitu keskeyttää";
+"mute_no_forecast" = "Sijaintisi ennustetta ei voitu ladata. Yritä myöhemmin uudelleen.";
+"mute_ok" = "OK";
 "feedback_body" = "Kuvaile ongelmasi tai ehdotuksesi tähän:\n";
 
 "map_layers" = "Karttatasot";
@@ -169,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Avoimen lähdekoodin lisenssit";
+"data_licences" = "Tietolisenssit";
 "open_source_footer" = "meteocoolin ja sen pohjana olevien ohjelmistojen lisenssit. Lue lisenssi napauttamalla.";
 "Py-ART Colour Maps" = "Py-ART-väriasteikot";
 "Web Map Libraries" = "Verkkokartan kirjastot";
@@ -270,6 +287,13 @@
 "native_map_3d_pinch" = "Nipistä";
 "native_map_3d_two_fingers" = "Kaksi sormea";
 "native_map_3d_tap" = "Napauta";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Kallista";
+"native_map_3d_flat" = "Katso suoraan alas";
+"native_map_3d_zoom_in" = "Lähennä";
+"native_map_3d_zoom_out" = "Loitonna";
+"native_map_3d_turn_left" = "Käännä vasemmalle";
+"native_map_3d_turn_right" = "Käännä oikealle";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Oma sijainti";
@@ -294,3 +318,53 @@
 "native_map_flash_bang_no_location" = "Tarvitsee sijaintisi: kytke sijaintipainike päälle.";
 "native_map_flash_bang_show" = "Näytä kartalla";
 "native_map_flash_bang_strike" = "Löydetty isku";
+/* Storm log: list, entry, turning it on and off, sorting */
+"storm_log_title" = "Ukkospäiväkirja";
+"storm_log_unregistered" = "Ukkonen kirjataan, kun se kulkee sen sijainnin yli, josta saat sadehälytyksiä. Laita ilmoitukset päälle ja salli sijainti aina.";
+"storm_log_failed" = "Ukkospäiväkirjaa ei voitu ladata.";
+"storm_log_retry" = "Yritä uudelleen";
+"storm_log_empty" = "Ei vielä ukkosia. Ukkonen kirjataan, kun se kulkee sen sijainnin, josta saat sadehälytyksiä, tai jonkin paikkasi yli tai 10 km:n päästä. Se vaatii ilmoitukset päälle ja sijainnin aina sallituksi.";
+"storm_log_footer" = "Ukkoset, jotka tulivat 10 km:n päähän sijainnistasi tai paikoistasi, säilytetään noin 13 kuukautta.";
+"storm_log_delete" = "Poista päiväkirja";
+"storm_log_delete_title" = "Poistetaanko ukkospäiväkirja?";
+"storm_log_delete_message" = "Kaikki merkinnät poistetaan, myös paikkojesi. Myöhemmin ohittavat ukkoset kirjataan taas.";
+"storm_log_delete_failed" = "Ukkospäiväkirjaa ei voitu poistaa.";
+"storm_log_cancel" = "Kumoa";
+"storm_log_over" = "Suoraan yläpuolella";
+"storm_log_closest" = "%@ päässä";
+"storm_log_top" = "Huippu %@";
+"storm_log_strikes" = "Salamat: %ld";
+"storm_log_ongoing" = "Yhä lähellä";
+"storm_log_ongoing_footer" = "Ukkonen on yhä lähellä; merkintää päivitetään sen liikkuessa.";
+"storm_log_map" = "Kartta ukkosen reitistä";
+"storm_log_place" = "Paikka";
+"storm_log_when" = "Milloin";
+"storm_log_closest_label" = "Lähimmillään";
+"storm_log_severity" = "Voimakkuus";
+"storm_log_peak" = "Voimakkain kaiku";
+"storm_log_top_label" = "Kaikujen huippu";
+"storm_log_strikes_label" = "Salamat 10 km:n säteellä";
+"storm_log_yes" = "Kyllä";
+"storm_log_near_here" = "Tässä lähellä";
+"storm_log_onboarding_message" = "Päiväkirja ukkosista, jotka kulkevat sijaintisi ja paikkojesi yli tai 10 km:n päästä.";
+"storm_log_onboarding_saves_title" = "Mitä se tallentaa";
+"storm_log_onboarding_saves_text" = "Jokaisesta ukkosesta: milloin se tuli ja meni, kuinka lähelle se tuli, kuinka voimakas ja korkea se oli, rakeet, lähellä iskeneet salamat ja sen reitti.";
+"storm_log_onboarding_area_title" = "Alueesi, ei osoitteesi";
+"storm_log_onboarding_area_text" = "Sadehälytykset lähettävät jo sijaintisi ja paikkasi meteocoolin palvelimelle. Päiväkirja säilyttää vain noin 10 km:n alueen, jolla sijaintisi on, ja paikkojesi nimet.";
+"storm_log_onboarding_server_title" = "Säilytetään palvelimella";
+"storm_log_onboarding_server_text" = "Päiväkirja kootaan ja säilytetään meteocoolin palvelimella noin 13 kuukautta, sidottuna tämän puhelimen ilmoitustunnisteeseen. Puhelin ei säilytä kopiota, vain valintasi ja lajittelujärjestyksen.";
+"storm_log_onboarding_off_title" = "Pois päältä milloin vain";
+"storm_log_onboarding_off_text" = "Kun laitat sen pois päältä, päiväkirja poistetaan palvelimelta. Myös sadehälytysten poistaminen käytöstä poistaa sen.";
+"storm_log_onboarding_footnote" = "Se alkaa tyhjänä. Se vaatii sadehälytykset päälle ja sijainnin aina sallituksi.";
+"storm_log_turn_on" = "Laita päälle";
+"storm_log_sort" = "Lajittele";
+"storm_log_sort_recent" = "Uusimmat";
+"storm_log_sort_severity" = "Voimakkuus";
+"storm_log_sort_closest" = "Lähimmät";
+"storm_log_sort_duration" = "Pisimmät";
+"storm_log_sort_lightning" = "Eniten salamoita";
+"storm_log_turn_off" = "Laita ukkospäiväkirja pois";
+"storm_log_turn_off_title" = "Laitetaanko ukkospäiväkirja pois päältä?";
+"storm_log_turn_off_message" = "Kaikki merkinnät poistetaan palvelimelta, myös paikkojesi. Voit laittaa sen myöhemmin taas päälle.";
+"storm_log_turn_off_confirm" = "Laita pois";
+"storm_log_turn_off_failed" = "Ukkospäiväkirjaa ei voitu poistaa, joten se on yhä päällä. Yritä myöhemmin uudelleen.";

@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Patikrink leidimus";
 "notification_permissions_help" = "Įspėjimams apie lietų reikia pranešimų ir vietovės prieigos. Kad gautum įspėjimus judėdamas, kai programėlė uždaryta, nustatymuose vietovės prieigą pakeisk į „Always“ (visada). Žemėlapį gali naršyti ir be šių leidimų.";
 "notification_sync_failed" = "Pranešimų pakeitimų nepavyko perduoti serveriui. Įspėjimai gali vis dar naudoti ankstesnius nustatymus. Patikrink ryšį ir iš naujo atidaryk programėlę, kad bandytum dar kartą.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Pristabdyti įspėjimus";
+"mute_off" = "Išjungta";
+"mute_on" = "Įjungta";
+"mute_day" = "1 dienai";
+"mute_week" = "1 savaitei";
+"mute_rain" = "Kol baigsis lietus";
+"mute_unmute" = "Atnaujinti įspėjimus";
+"mute_until" = "Pristabdyta iki %@";
+"mute_until_rain" = "Pristabdyta, kol baigsis lietus";
+"mute_until_rain_about" = "Pristabdyta, kol baigsis lietus, apie %@";
+"mute_no_rain_title" = "Lietaus nenumatoma";
+"mute_no_rain" = "Prognozė čia nerodo lietaus, todėl nėra ką pristabdyti.";
+"mute_no_forecast_title" = "Nepavyko pristabdyti įspėjimų";
+"mute_no_forecast" = "Nepavyko įkelti tavo vietovės prognozės. Bandyk vėliau.";
+"mute_ok" = "Gerai";
 "feedback_body" = "Čia aprašyk savo problemą ar pasiūlymą:\n";
 
 "map_layers" = "Žemėlapio sluoksniai";
@@ -169,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Atvirojo kodo licencijos";
+"data_licences" = "Duomenų licencijos";
 "open_source_footer" = "meteocool ir programinės įrangos, kuria jis paremtas, licencijos. Bakstelėk, kad perskaitytum.";
 "Py-ART Colour Maps" = "Py-ART spalvų skalės";
 "Web Map Libraries" = "Internetinio žemėlapio bibliotekos";
@@ -270,6 +287,13 @@
 "native_map_3d_pinch" = "Suimkite";
 "native_map_3d_two_fingers" = "Du pirštai";
 "native_map_3d_tap" = "Bakstelėkite";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Pakreipti";
+"native_map_3d_flat" = "Žiūrėti tiesiai žemyn";
+"native_map_3d_zoom_in" = "Priartinti";
+"native_map_3d_zoom_out" = "Nutolinti";
+"native_map_3d_turn_left" = "Pasukti kairėn";
+"native_map_3d_turn_right" = "Pasukti dešinėn";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mano vieta";
@@ -294,3 +318,53 @@
 "native_map_flash_bang_no_location" = "Reikia tavo vietos: įjunk vietos mygtuką.";
 "native_map_flash_bang_show" = "Rodyti žemėlapyje";
 "native_map_flash_bang_strike" = "Rastas išlydis";
+/* Storm log: list, entry, turning it on and off, sorting */
+"storm_log_title" = "Audrų dienoraštis";
+"storm_log_unregistered" = "Audra įrašoma, kai ji praeina virš vietos, kuriai gauni įspėjimus apie lietų. Įjunk pranešimus ir visada leisk naudoti vietą.";
+"storm_log_failed" = "Nepavyko įkelti audrų dienoraščio.";
+"storm_log_retry" = "Bandyti dar kartą";
+"storm_log_empty" = "Audrų dar nėra. Audra įrašoma, kai ji praeina virš vietos, kuriai gauni įspėjimus apie lietų, ar vienos iš tavo vietų arba priartėja prie jų per 10 km. Tam reikia įjungtų pranešimų ir visada leidžiamos vietos.";
+"storm_log_footer" = "Audros, priartėjusios per 10 km prie tavo vietos ar tavo vietų, saugomos apie 13 mėnesių.";
+"storm_log_delete" = "Ištrinti dienoraštį";
+"storm_log_delete_title" = "Ištrinti audrų dienoraštį?";
+"storm_log_delete_message" = "Ištrinami visi įrašai, ir tavo vietų. Vėliau praeinančios audros vėl įrašomos.";
+"storm_log_delete_failed" = "Nepavyko ištrinti audrų dienoraščio.";
+"storm_log_cancel" = "Atšaukti";
+"storm_log_over" = "Tiesiai viršuje";
+"storm_log_closest" = "už %@";
+"storm_log_top" = "Viršūnė %@";
+"storm_log_strikes" = "Žaibai: %ld";
+"storm_log_ongoing" = "Vis dar netoli";
+"storm_log_ongoing_footer" = "Audra vis dar netoli; įrašas atnaujinamas jai judant.";
+"storm_log_map" = "Audros kelio žemėlapis";
+"storm_log_place" = "Vieta";
+"storm_log_when" = "Kada";
+"storm_log_closest_label" = "Arčiausiai";
+"storm_log_severity" = "Stiprumas";
+"storm_log_peak" = "Stipriausias aidas";
+"storm_log_top_label" = "Aido viršūnė";
+"storm_log_strikes_label" = "Žaibai 10 km spinduliu";
+"storm_log_yes" = "Taip";
+"storm_log_near_here" = "Maždaug čia";
+"storm_log_onboarding_message" = "Audrų, kurios praeina virš tavo vietos ir tavo vietų arba priartėja prie jų per 10 km, dienoraštis.";
+"storm_log_onboarding_saves_title" = "Ką jis išsaugo";
+"storm_log_onboarding_saves_text" = "Apie kiekvieną audrą: kada ji atėjo ir praėjo, kaip arti priartėjo, kokia stipri ir aukšta buvo, kruša, žaibai netoliese ir jos kelias.";
+"storm_log_onboarding_area_title" = "Tavo apylinkė, ne adresas";
+"storm_log_onboarding_area_text" = "Įspėjimai apie lietų jau siunčia tavo vietą ir tavo vietas į meteocool serverį. Dienoraštis saugo tik maždaug 10 km apylinkę, kurioje yra tavo vieta, ir tavo vietų pavadinimus.";
+"storm_log_onboarding_server_title" = "Saugoma serveryje";
+"storm_log_onboarding_server_text" = "Dienoraštis sudaromas ir saugomas meteocool serveryje apie 13 mėnesių, susietas su šio telefono pranešimų ID. Telefone nelieka kopijos, tik tavo pasirinkimas ir rikiavimo tvarka.";
+"storm_log_onboarding_off_title" = "Išjunk bet kada";
+"storm_log_onboarding_off_text" = "Išjungus dienoraštis ištrinamas iš serverio. Jį ištrina ir įspėjimų apie lietų išjungimas.";
+"storm_log_onboarding_footnote" = "Jis prasideda tuščias. Tam reikia įjungtų įspėjimų apie lietų ir visada leidžiamos vietos.";
+"storm_log_turn_on" = "Įjungti";
+"storm_log_sort" = "Rikiuoti pagal";
+"storm_log_sort_recent" = "Naujausios";
+"storm_log_sort_severity" = "Stiprumas";
+"storm_log_sort_closest" = "Arčiausios";
+"storm_log_sort_duration" = "Ilgiausios";
+"storm_log_sort_lightning" = "Daugiausia žaibų";
+"storm_log_turn_off" = "Išjungti audrų dienoraštį";
+"storm_log_turn_off_title" = "Išjungti audrų dienoraštį?";
+"storm_log_turn_off_message" = "Visi įrašai ištrinami iš serverio, ir tavo vietų. Vėliau gali jį vėl įjungti.";
+"storm_log_turn_off_confirm" = "Išjungti";
+"storm_log_turn_off_failed" = "Nepavyko ištrinti audrų dienoraščio, todėl jis vis dar įjungtas. Bandyk vėliau.";

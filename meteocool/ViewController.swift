@@ -41,21 +41,32 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var glassControls: UIVisualEffectView?
     private var glassLogo: UIVisualEffectView?
 
-    /// Opens the AR storm view. Shown only where AR works and while the
-    /// `HiddenFeatures` are on; see `refreshARButton`.
+    /// Opens the AR storm view. Shown only where AR works and in the
+    /// Experimental Features mode; see `refreshARButton`.
     let arButton = UIButton(type: .system)
     /// The AR button's own glass element (iOS 26) or blur disc (before), so
     /// hiding it leaves no empty backdrop.
     private var arButtonBackdrop: UIView?
     /// Sends a link to what the map shows; see `shareMap`.
     let shareButton = UIButton(type: .system)
-    /// Opens the storm log, the storms that passed the phone: a pill beside the logo.
+    /// Opens the storm log, the storms that passed the phone: a pill beside
+    /// the logo, in the Experimental Features mode only.
     let stormLogButton = UIButton(type: .system)
     /// The pill's glass element (iOS 26) or blur capsule (before), hidden with the logo.
     private var stormLogBackdrop: UIView?
-    /// Opens the past alerts, the rain alerts this phone received: the bell beside the logbook.
+    /// Opens the past alerts, the rain alerts this phone received: the bell
+    /// beside the logbook, or beside the logo without it.
     let alertsButton = UIButton(type: .system)
     private var alertsBackdrop: UIView?
+    /// Data Licenses, the web map's small print: under the control column,
+    /// where core keeps its credits. The native map has its own.
+    let dataLicencesButton = UIButton(type: .system)
+    /// Before iOS 26, where the bell sits: right of the logbook, or right of
+    /// the logo while the logbook is hidden. One of the two is active.
+    private var alertsAfterLog: NSLayoutConstraint?
+    private var alertsAfterLogo: NSLayoutConstraint?
+    /// Counts the logo's taps for its confetti; see `logoTapped`.
+    private var logoTaps = TapRun(taps: 3, within: 1)
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
     /// glass column's elements, hidden with the rest of it.
     private var shareButtonBackdrop: UIView?
@@ -180,6 +191,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             installClassicStormLogButton()
         }
         configureLogo()
+        installDataLicencesButton()
+        refreshExperimentalFeatures()
 
         setMapControlsHidden(false)
         settingsButton.accessibilityLabel = NSLocalizedString("Settings", comment: "")
@@ -266,11 +279,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.settingsChanged),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)
         // Mode in Settings, or "Disable Demo Mode", switched the deployment:
-        // load that deployment's map without a restart.
-        NotificationCenter.default.addObserver(self, selector: #selector(loadMap),
+        // load that deployment's map, with its features, without a restart.
+        NotificationCenter.default.addObserver(self, selector: #selector(environmentChanged),
                                                name: MeteocoolEnvironment.didChange, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(hiddenFeaturesChanged),
-                                               name: HiddenFeatures.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(screenshotTaken),
                                                name: UIApplication.userDidTakeScreenshotNotification, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
@@ -550,6 +561,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                 map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             ])
             nativeMap = map
+            // The native map has its own, by Apple's Legal link.
+            dataLicencesButton.isHidden = true
             layerSwitcherButton.isEnabled = true
             map.start()
             // The location button may already be on: the dot from the last fix, without moving the map.
@@ -563,6 +576,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             map.removeFromSuperview()
             nativeMap = nil
             webView.isHidden = false
+            dataLicencesButton.isHidden = glassControls?.isHidden ?? trippleButton.isHidden
             loadMap()
         }
     }
@@ -857,6 +871,7 @@ extension ViewController {
     /// On iOS 26 and later the unit is the glass container. Before iOS 26 it
     /// is the `TribbleButton` artwork and the three buttons.
     func setMapControlsHidden(_ hidden: Bool) {
+        dataLicencesButton.isHidden = hidden || nativeMap != nil
         if let glassControls {
             glassControls.isHidden = hidden
         } else {
@@ -874,7 +889,7 @@ extension ViewController {
     func setLogoHidden(_ hidden: Bool) {
         logo.isHidden = hidden
         glassLogo?.isHidden = hidden
-        stormLogBackdrop?.isHidden = hidden
+        stormLogBackdrop?.isHidden = hidden || !MeteocoolEnvironment.current.hasExperimentalFeatures
         alertsBackdrop?.isHidden = hidden
     }
 
@@ -933,8 +948,8 @@ extension ViewController {
 // MARK: - Logo
 
 extension ViewController {
-    /// The logo is the way home: a tap brings back the radar map. Five taps
-    /// in a row show or hide the `HiddenFeatures`.
+    /// The logo is the way home: a tap brings back the radar map. Three quick
+    /// taps also set off a burst of confetti.
     fileprivate func configureLogo() {
         // On iOS 26 the glass disc around the logo is the larger target.
         let target: UIView = glassLogo ?? logo
@@ -947,11 +962,13 @@ extension ViewController {
         target.accessibilityIdentifier = "map.logo"
     }
 
+    /// Every tap goes back to the radar at once; taps are counted rather than
+    /// left to a triple-tap recogniser, which would hold the single tap back.
     @objc private func logoTapped() {
-        if HiddenFeatures.logoTapped() {
-            feedbackHeavy?.impactOccurred()
-        }
         showRadarMap()
+        if logoTaps.tap() {
+            Confetti.burst(in: view, from: glassLogo ?? logo)
+        }
     }
 
     /// Leaves whatever the page shows for the radar map: closes the panels on
@@ -994,13 +1011,35 @@ extension ViewController {
         stormLogButton.addAction(UIAction { [weak self] _ in self?.openStormLog() }, for: .touchUpInside)
     }
 
-    /// Before iOS 26 the logbook and the bell are blurred discs beside the logo artwork.
+    /// Before iOS 26 the logbook and the bell are blurred discs beside the
+    /// logo artwork. The bell moves up to the logo while the logbook is hidden.
     fileprivate func installClassicStormLogButton() {
-        stormLogBackdrop = classicDisc(for: stormLogButton, rightOf: logo)
-        alertsBackdrop = classicDisc(for: alertsButton, rightOf: stormLogBackdrop!)
+        let log = classicDisc(for: stormLogButton, rightOf: logo)
+        let bell = classicDisc(for: alertsButton, rightOf: log.disc)
+        stormLogBackdrop = log.disc
+        alertsBackdrop = bell.disc
+        alertsAfterLog = bell.leading
+        alertsAfterLogo = bell.disc.leadingAnchor.constraint(equalTo: logo.trailingAnchor, constant: 8)
     }
 
-    private func classicDisc(for button: UIButton, rightOf anchor: UIView) -> UIView {
+    /// Shows the storm log's pill in the Experimental Features mode only,
+    /// and closes up the row of discs beside the logo without it.
+    fileprivate func refreshStormLogButton() {
+        let shown = MeteocoolEnvironment.current.hasExperimentalFeatures
+        stormLogBackdrop?.isHidden = !shown || !covers.isEmpty
+        // On iOS 26 the row is a stack view, which closes up on its own.
+        if let alertsAfterLog, let alertsAfterLogo {
+            if shown {
+                alertsAfterLogo.isActive = false
+                alertsAfterLog.isActive = true
+            } else {
+                alertsAfterLog.isActive = false
+                alertsAfterLogo.isActive = true
+            }
+        }
+    }
+
+    private func classicDisc(for button: UIButton, rightOf anchor: UIView) -> (disc: UIView, leading: NSLayoutConstraint) {
         let disc = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
         disc.layer.cornerRadius = 22
         disc.clipsToBounds = true
@@ -1009,21 +1048,24 @@ extension ViewController {
         button.tintColor = .label
         disc.contentView.addSubview(button)
         view.addSubview(disc)
+        let leading = disc.leadingAnchor.constraint(equalTo: anchor.trailingAnchor, constant: 8)
         NSLayoutConstraint.activate([
             disc.widthAnchor.constraint(equalToConstant: 44),
             disc.heightAnchor.constraint(equalToConstant: 44),
-            disc.leadingAnchor.constraint(equalTo: anchor.trailingAnchor, constant: 8),
+            leading,
             disc.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
             button.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
             button.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
             button.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
         ])
-        return disc
+        return (disc, leading)
     }
 
+    /// The storm log, in the Experimental Features mode only.
     func openStormLog() {
-        present(UINavigationController(rootViewController: StormLogViewController()), animated: true)
+        guard MeteocoolEnvironment.current.hasExperimentalFeatures else { return }
+        StormLogViewController.open(from: self)
     }
 
     /// The bell: a red dot on it for alerts since the list was last opened,
@@ -1114,19 +1156,29 @@ extension ViewController {
         arButtonBackdrop?.isHidden = !visible
     }
 
-    /// Offers the AR view only while the `HiddenFeatures` are on (five taps
-    /// on the logo), and only where it can work: ARKit, or the simulator's
-    /// preview in debug builds. Whoever turned it on asked for it, so it is
-    /// offered on a quiet day too, where the view says no storm is in range.
+    /// Whether the AR view is offered: in the Experimental Features mode,
+    /// and only where it can work: ARKit, or the simulator's preview in debug
+    /// builds. Whoever picked the mode asked for it, so it is offered on a
+    /// quiet day too, where the view says no storm is in range.
+    var arAvailable: Bool { MeteocoolEnvironment.current.hasExperimentalFeatures && ARStormViewController.isAvailable }
+
     func refreshARButton() {
-        setARButtonVisible(HiddenFeatures.unlocked && ARStormViewController.isAvailable)
+        setARButtonVisible(arAvailable)
     }
 
-    /// The page learns about the AR view only from a script that runs before
-    /// it loads, so turning the hidden features on or off reloads the map:
-    /// a storm's panel then offers "View in AR", or stops offering it.
-    @objc fileprivate func hiddenFeaturesChanged() {
+    /// The controls of the Experimental Features mode: the storm log's pill
+    /// and the AR button. The native map shows and hides its own.
+    fileprivate func refreshExperimentalFeatures() {
         refreshARButton()
+        refreshStormLogButton()
+    }
+
+    /// The mode switched: its controls come and go at once. The page learns
+    /// about the AR view only from a script that runs before it loads, and
+    /// the map is reloaded for the new deployment anyway: a storm's panel
+    /// then offers "View in AR", or stops offering it.
+    @objc fileprivate func environmentChanged() {
+        refreshExperimentalFeatures()
         installUserScripts()
         loadMap()
     }
@@ -1142,7 +1194,7 @@ extension ViewController {
         controller.removeAllUserScripts()
         controller.addUserScript(GeolocationBridge.userScript)
         controller.addUserScript(MapRecovery.graphicsWatch)
-        let capabilities = HiddenFeatures.unlocked && ARStormViewController.isAvailable ? "{ share: true, ar: true }" : "{ share: true }"
+        let capabilities = arAvailable ? "{ share: true, ar: true }" : "{ share: true }"
         controller.addUserScript(WKUserScript(
             source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, \(capabilities));",
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -1174,7 +1226,7 @@ extension ViewController {
     }
 
     func presentAR(target: StormTarget?, marker: ARMarker? = nil) {
-        guard presentedViewController == nil, HiddenFeatures.unlocked, ARStormViewController.isAvailable else { return }
+        guard presentedViewController == nil, arAvailable else { return }
         let ar = ARStormViewController(target: target, marker: marker)
         ar.onOpenOnMap = { [weak self] search in self?.openLink(search: search) }
         ar.onClose = { [weak self] in self?.arDidClose() }
@@ -1292,6 +1344,40 @@ extension ViewController {
         }
     }
 
+    /// Small print, right-aligned under the control column (and the AR
+    /// button's place before iOS 26): opens Data Licences.
+    fileprivate func installDataLicencesButton() {
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = NSLocalizedString("data_licences", comment: "licence")
+        configuration.baseForegroundColor = .secondaryLabel
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4)
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(for: .systemFont(ofSize: 10, weight: .medium))
+            return attributes
+        }
+        dataLicencesButton.configuration = configuration
+        // A halo, so it reads over the radar as well as the map.
+        dataLicencesButton.layer.shadowColor = UIColor.systemBackground.cgColor
+        dataLicencesButton.layer.shadowOpacity = 0.8
+        dataLicencesButton.layer.shadowRadius = 1
+        dataLicencesButton.layer.shadowOffset = .zero
+        dataLicencesButton.accessibilityTraits = .link
+        dataLicencesButton.accessibilityIdentifier = "map.dataLicences"
+        dataLicencesButton.addAction(UIAction { [weak self] _ in
+            self?.present(DataLicencesViewController.sheet(), animated: true)
+        }, for: .touchUpInside)
+        dataLicencesButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(dataLicencesButton)
+        let column: UIView = glassControls ?? arButtonBackdrop ?? shareButtonBackdrop ?? trippleButton
+        NSLayoutConstraint.activate([
+            dataLicencesButton.topAnchor.constraint(equalTo: column.bottomAnchor, constant: 4),
+            dataLicencesButton.trailingAnchor.constraint(equalTo: column.trailingAnchor, constant: 4),
+            dataLicencesButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            dataLicencesButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
+    }
+
     /// Before iOS 26: a blurred disc of its own under the `TribbleButton`.
     fileprivate func installClassicShareButton() {
         shareButtonBackdrop = classicDisc(for: shareButton, below: trippleButton)
@@ -1376,6 +1462,4 @@ extension ViewController: NativeMapHost {
         // Over a sheet of the map's own (a storm's) when one is up.
         presentShare(share, from: source, over: presentedViewController)
     }
-
-    var arAvailable: Bool { HiddenFeatures.unlocked && ARStormViewController.isAvailable }
 }

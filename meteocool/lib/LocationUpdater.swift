@@ -255,6 +255,7 @@ import CoreLocation
                 (observer as? LocationObserver)?.notify(location: location)
             }
             SharedLiveActivities.refresh()
+            SharedAlertMute.follow()
 
             if (!background) {
                 if location.horizontalAccuracy <= 20 {
@@ -303,7 +304,7 @@ import CoreLocation
             "ahead": (min(max(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2, 0), 8) + 1) * 5,
             "intensity": intensityDbzValues[min(max(userDefaults?.integer(forKey: "intensityValue") ?? 1, 0), 4)] ,
             "source": "ios",
-            "experimental": MeteocoolEnvironment.current == .staging,
+            "experimental": MeteocoolEnvironment.current.hasExperimentalFeatures,
             // Send the same value under both keys: the old backend reads `details`,
             // the v4 backend reads `withDBZ`. The app talks to either one depending
             // on the environment, and each ignores the other's key.
@@ -312,6 +313,12 @@ import CoreLocation
             "token": tokenValue,
             // Only Always follows the phone in the background (LocationPermissionWarning).
             "locationPermission": LocationPermissionWarning.reported,
+            // Muted alerts (Settings), held back by the backend; null when on.
+            "pausedUntil": SharedAlertMute.pausedUntil,
+            // Whether the user turned the storm log on. ng logs every
+            // registration's storms for now and ignores this, so the app
+            // wipes the log when it is turned on or off (StormLogViewController).
+            "stormLog": userDefaults?.bool(forKey: StormLogRules.enabledKey) ?? false,
             ] as [String: Any]
 
         let origin = NetworkHelper.apiURL

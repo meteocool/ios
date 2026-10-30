@@ -64,6 +64,7 @@ struct ThreeDGuide: View {
                     control(NSLocalizedString("native_map_3d_two_fingers", comment: ""), CoreStrings.t("guide_3d.turn"), symbol: "rotate.3d")
                     control(NSLocalizedString("native_map_3d_tap", comment: ""), CoreStrings.t("guide_3d.click_storm"), symbol: "hand.tap")
                     control(CoreStrings.t("guide_3d.compass"), CoreStrings.t("guide_3d.compass_does"), symbol: "location.north.line")
+                    control("3D", NSLocalizedString("native_map_3d_tilt", comment: ""), symbol: "view.3d")
                 }
             }
             .navigationTitle(CoreStrings.t("guide_3d.title"))

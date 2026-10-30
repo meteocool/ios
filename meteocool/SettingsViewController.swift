@@ -93,9 +93,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("notifications", comment: "header"),
         NSLocalizedString("notification_style_header", comment: "header"),
         NSLocalizedString("Map View", comment: "header"),
-        NSLocalizedString("About", comment: "header"),
-        NSLocalizedString("data_sources_header", comment: "header"),
-        ""
+        NSLocalizedString("About", comment: "header")
     ]
     private var footer = [
         NSLocalizedString("notifications_explanation", comment: "footer"),
@@ -103,72 +101,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NSLocalizedString("footer_map_appearance_explanation", comment: "footer"),
         // Read from the bundle, not from the translations.
         // A version number typed into the translations went out of date.
-        SettingsViewController.version,
-        NSLocalizedString("data_sources_footer", comment: "footer"),
-        ""
-    ]
-
-    /// Each source of data or artwork the app shows, with its licence and the licence URL.
-    /// The app hides the web map's attribution, so this list is the app's credit.
-    /// Keep it in sync with core's `layers/attributions.ts` and the imprint's `#data`.
-    private struct DataSource {
-        let name: String
-        let detailKey: String
-        let url: String
-    }
-    private let dataSources = [
-        DataSource(name: "© Deutscher Wetterdienst (DWD)", detailKey: "source_dwd",
-                   url: "https://www.dwd.de/EN/service/copyright/copyright_node.html"),
-        DataSource(name: "© MeteoSwiss", detailKey: "source_meteoswiss",
-                   url: "https://opendatadocs.meteoswiss.ch/general/terms-of-use"),
-        DataSource(name: "© Météo-France", detailKey: "source_meteofrance",
-                   url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence/"),
-        DataSource(name: "© Český hydrometeorologický ústav (ČHMÚ)", detailKey: "source_chmi",
-                   url: "https://www.chmi.cz/o-chmu/caste-dotazy-faq/open-data"),
-        DataSource(name: "© IMGW-PIB", detailKey: "source_imgw",
-                   url: "https://danepubliczne.imgw.pl/regulations"),
-        DataSource(name: "© Royal Meteorological Institute of Belgium (RMI)", detailKey: "source_rmi",
-                   url: "https://opendata.meteo.be/termsandconditions"),
-        DataSource(name: "© Vlaamse Milieumaatschappij (VMM)", detailKey: "source_vmm",
-                   url: "https://creativecommons.org/licenses/by/4.0/"),
-        DataSource(name: "© Slovenský hydrometeorologický ústav (SHMÚ)", detailKey: "source_shmu",
-                   url: "https://opendata.shmu.sk/README.txt"),
-        DataSource(name: "© Lietuvos hidrometeorologijos tarnyba prie Aplinkos ministerijos (LHMT)", detailKey: "source_lhmt",
-                   url: "https://api.meteo.lt/"),
-        DataSource(name: "© Keskkonnaagentuur (Estonian Environment Agency)", detailKey: "source_kaur",
-                   url: "https://keskkonnaportaal.ee/et/avaandmed/meteoroloogiliste-radarite-andmestik"),
-        DataSource(name: "© Met Éireann", detailKey: "source_met_eireann",
-                   url: "https://www.met.ie/about-us/specialised-services/open-data"),
-        DataSource(name: "© Državni hidrometeorološki zavod (DHMZ)", detailKey: "source_dhmz",
-                   url: "https://klima.hr/razno/katalog_i_cjenikDHMZ.pdf"),
-        DataSource(name: "© Danish Meteorological Institute (DMI)", detailKey: "source_dmi",
-                   url: "https://www.dmi.dk/friedata/dokumentation/terms-of-use"),
-        DataSource(name: "© Koninklijk Nederlands Meteorologisch Instituut (KNMI)", detailKey: "source_knmi",
-                   url: "https://creativecommons.org/licenses/by/4.0/"),
-        DataSource(name: "© Finnish Meteorological Institute (FMI)", detailKey: "source_fmi",
-                   url: "https://en.ilmatieteenlaitos.fi/open-data-licence"),
-        DataSource(name: "© Swedish Meteorological and Hydrological Institute (SMHI)", detailKey: "source_smhi",
-                   url: "https://www.smhi.se/data/om-smhis-data/villkor-for-anvandning"),
-        DataSource(name: "© Norwegian Meteorological Institute (MET Norway)", detailKey: "source_met_norway",
-                   url: "https://www.met.no/en/free-meteorological-data/Licensing-and-crediting"),
-        DataSource(name: "EUMETNET Open Radar Data", detailKey: "source_eumetnet",
-                   url: "https://eumetnet.github.io/openradardata-documentation/"),
-        DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
-                   url: "https://www.weather.gov/disclaimer"),
-        DataSource(name: "© Blitzortung.org and its contributors", detailKey: "source_blitzortung",
-                   url: "https://www.blitzortung.org/"),
-        DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",
-                   url: "https://open-meteo.com/en/licence"),
-        DataSource(name: "© OpenStreetMap contributors", detailKey: "source_osm",
-                   url: "https://www.openstreetmap.org/copyright"),
-        DataSource(name: "© Protomaps", detailKey: "source_protomaps",
-                   url: "https://protomaps.com"),
-        DataSource(name: "© Mapterhorn", detailKey: "source_mapterhorn",
-                   url: "https://mapterhorn.com/attribution"),
-        DataSource(name: "Freepik · Flaticon", detailKey: "source_freepik",
-                   url: "https://www.flaticon.com"),
-        DataSource(name: "Vitaly Gorbachev · Flaticon", detailKey: "source_gorbachev",
-                   url: "https://www.flaticon.com/authors/vitaly-gorbachev"),
+        SettingsViewController.version
     ]
 
     /// Footer text such as `Version: 2.2`, built from the bundle's marketing version.
@@ -179,8 +112,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private var dataPushNotification = [
         NSLocalizedString("Enable Notifications", comment: "dataPushNotification"),
         NSLocalizedString("Intensity Threshold", comment: "dataPushNotification"),
-        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification")
+        NSLocalizedString("Notification Timeframe", comment: "dataPushNotification"),
+        NSLocalizedString("mute_alerts", comment: "dataPushNotification")
     ]
+    /// While "until the rain is over" looks for the rain to mute.
+    private var muting = false
     /// Rows after the Live Activity preview image.
     private var dataNotificationStyle = [
         NSLocalizedString("live_activity", comment: "dataPushNotification"),
@@ -295,10 +231,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             return dataMapView.count
         case 3: //About
             return dataAboutLabel.count
-        case 4: //Data sources
-            return dataSources.count
-        case 5: //Open-source licences
-            return 1
         default:
             return 0
         }
@@ -392,6 +324,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                     timeSliderLoad = true
                 }
                 return stepperSliderCellTime
+            case 3: //Mute
+                return muteCell()
             default:
                 print("This should not happen...")
                 return textCell
@@ -451,15 +385,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 linkCell.linkValueLable.text = ""
                 return linkCell
             }
-        case 4: //Data sources
-            let source = dataSources[indexPath.row]
-            linkCell.linkInfoLable.text = source.name
-            linkCell.linkValueLable.text = NSLocalizedString(source.detailKey, comment: "data source")
-            return linkCell
-        case 5: //Open-source licences, on their own page
-            linkCell.linkInfoLable.text = NSLocalizedString("open_source_header", comment: "licence")
-            linkCell.linkValueLable.text = ""
-            return linkCell
         default:
             print("This should not happen...")
             return textCell
@@ -540,14 +465,87 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         if (indexPath.section == 3 && indexPath.row == 4){ // Mode
             present(UINavigationController(rootViewController: EnvironmentPickerViewController()), animated: true)
         }
-        if indexPath.section == 4, let url = URL(string: dataSources[indexPath.row].url) {
-            UIApplication.shared.open(url)
-        }
-        if indexPath.section == 5 {
-            present(UINavigationController(rootViewController: LicencesViewController()), animated: true)
-        }
     }
     
+    /// Mute Alerts: whether and until when, and a pull-down menu with the
+    /// mute's lengths and Unmute (AlertMuteManager).
+    private func muteCell() -> UITableViewCell {
+        let cell = UITableViewCell()
+        cell.selectionStyle = .none
+        let mute = SharedAlertMute.current
+        let title = UILabel()
+        title.text = dataPushNotification[3]
+        let detail = UILabel()
+        detail.text = mute.map(Self.describe)
+        detail.isHidden = mute == nil
+
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = NSLocalizedString(mute == nil ? "mute_off" : "mute_on", comment: "settings")
+        configuration.indicator = .popup
+        configuration.showsActivityIndicator = muting
+        configuration.contentInsets.trailing = 0
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = .preferredFont(forTextStyle: .body)
+            return attributes
+        }
+        let button = UIButton(configuration: configuration)
+        button.isEnabled = !muting
+        button.showsMenuAsPrimaryAction = true
+        let lengths: [(AlertMute.Length, String)] = [(.day, "mute_day"), (.week, "mute_week"), (.rain, "mute_rain")]
+        var sections = [UIMenu(options: .displayInline, children: lengths.map { length, key in
+            UIAction(title: NSLocalizedString(key, comment: "settings"), state: mute?.length == length ? .on : .off) { [weak self] _ in
+                self?.mute(length)
+            }
+        })]
+        if mute != nil {
+            sections.append(UIMenu(options: .displayInline, children: [
+                UIAction(title: NSLocalizedString("mute_unmute", comment: "settings")) { _ in SharedAlertMute.unmute() },
+            ]))
+        }
+        button.menu = UIMenu(children: sections)
+        button.accessibilityLabel = title.text
+        button.accessibilityValue = detail.text ?? configuration.title
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        layoutSettingsCell(cell, labels: [title, detail], accessory: button)
+        detail.font = .preferredFont(forTextStyle: .subheadline)
+        detail.textColor = .secondaryLabel
+        return cell
+    }
+
+    /// "Muted until …": when the alerts come back.
+    private static func describe(_ mute: AlertMute) -> String {
+        guard mute.length != .rain else {
+            if mute.openEnded { return NSLocalizedString("mute_until_rain", comment: "settings") }
+            return String(format: NSLocalizedString("mute_until_rain_about", comment: "settings"),
+                          mute.until.formatted(date: .omitted, time: .shortened))
+        }
+        let until = Calendar.current.isDateInToday(mute.until)
+            ? mute.until.formatted(date: .omitted, time: .shortened)
+            : mute.until.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+        return String(format: NSLocalizedString("mute_until", comment: "settings"), until)
+    }
+
+    private func mute(_ length: AlertMute.Length) {
+        muting = true
+        settingsTable.reloadData()
+        Task {
+            let outcome = await SharedAlertMute.mute(length)
+            muting = false
+            settingsTable.reloadData()
+            let keys: (title: String, message: String)
+            switch outcome {
+            case .muted: return
+            case .noRain: keys = ("mute_no_rain_title", "mute_no_rain")
+            case .noForecast: keys = ("mute_no_forecast_title", "mute_no_forecast")
+            }
+            let alert = UIAlertController(title: NSLocalizedString(keys.title, comment: "settings"),
+                                          message: NSLocalizedString(keys.message, comment: "settings"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("mute_ok", comment: "settings"), style: .default))
+            present(alert, animated: true)
+        }
+    }
+
     @objc func willEnterForeground() {
         SharedNotificationManager.refreshAuthorization()
         settingsTable.reloadData()

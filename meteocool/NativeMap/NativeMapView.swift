@@ -34,9 +34,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private let socket: RadarSocket
     private(set) var features: [NativeMapFeature] = []
     private var chrome: [UIView] = []
+    /// Data Licenses' line, on Apple's Legal link's (`layoutSubviews`).
+    private var licencesLine: NSLayoutConstraint?
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
     private var otherChrome: UIView?
+    /// Keeps the status pill clear of the logo's row (`logoRowWidth`).
+    private var pillClearOfLogo: NSLayoutConstraint?
     /// The dock stands on the radar's tray, or on another map's bar.
     private var dockOnTray: NSLayoutConstraint?
     private var dockOnOther: NSLayoutConstraint?
@@ -57,6 +61,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var pendingView: NativeMapLink?
     private var lastRotation: Bool?
     private var observers = Set<AnyCancellable>()
+    /// The place the title's name was last asked for ("p" a point, "u" your
+    /// own position, then three decimals), and the newest ask.
+    private var placeAsked: String?
+    private var placeToken = 0
 
     init() {
         radar = RadarEngine(mapView: mapView, endpoints: endpoints,
@@ -181,6 +189,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                       guard let self else { return }
                                       self.setOn(.stations, !self.isOn(.stations))
                                   })
+        // Across from Apple's logo and Legal link and on their line, under the
+        // other chrome; `layoutSubviews` keeps it there.
+        let licences = addChrome(DataLicencesLink(model: model) { [weak self] in
+            self?.host?.presentOverMap(DataLicencesViewController.sheet())
+        })
+        let licencesLine = licences.centerYAnchor.constraint(equalTo: bottomAnchor)
+        self.licencesLine = licencesLine
+        NSLayoutConstraint.activate([
+            licences.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            licencesLine,
+        ])
+
         let tray = addChrome(PlayerTray(player: player, model: model, actions: actions))
         // The tray sits half the home indicator's height above the bottom (`--mc-tray-bottom`).
         let trayBottom = tray.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -21)
@@ -264,18 +284,24 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             back.bottomAnchor.constraint(equalTo: dock.topAnchor, constant: -ChromeTheme.gutter),
         ])
 
-        let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self))
-        // Centred, unless the logo's row of discs on the left (the logo, the
-        // logbook and the bell, 52 pt each with 8 pt between, 12 pt in) reaches
-        // it on a narrow phone: then it keeps to their right.
+        let pillHost = WeakView()
+        let pill = addChrome(PillHost(player: player, model: model, monitor: monitor, owner: self) {
+            pillHost.view?.invalidateIntrinsicContentSize()
+        })
+        pillHost.view = pill
+        // Centred, unless the logo's row of discs on the left reaches it on a
+        // narrow phone: then it keeps to their right (`logoRowWidth`).
         // Below its content's compression resistance, or the host is squeezed
         // to keep the centre and the capsule overflows it back to the middle.
         let centred = pill.centerXAnchor.constraint(equalTo: centerXAnchor)
         centred.priority = .defaultLow
         pill.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let clear = pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
+                                                  constant: Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures))
+        pillClearOfLogo = clear
         NSLayoutConstraint.activate([
             centred,
-            pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 12 + 3 * 52 + 3 * 8 + ChromeTheme.gutter),
+            clear,
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 
@@ -285,6 +311,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
             toast.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter + 44 + ChromeTheme.gutter),
         ])
+    }
+
+    /// How far the app's row of discs beside the logo reaches in from the
+    /// safe area, with a gutter after it: 12 pt in, then the logo, the
+    /// logbook (in the Experimental Features mode only) and the bell, 52 pt
+    /// each with 8 pt after each.
+    static func logoRowWidth(experimental: Bool) -> CGFloat {
+        let discs: CGFloat = experimental ? 3 : 2
+        return 12 + discs * (52 + 8) + ChromeTheme.gutter
     }
 
     /// The tray, strips and "Back to now" are the radar map's; other maps
@@ -315,6 +350,32 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.point = nil
         if let location = model.userLocation { radar.point = location.coordinate }
         updateTitle()
+    }
+
+    /// The name of where the bars are about: the inspected point, or else
+    /// your own position (core's `resolvePlace`). A new point starts over;
+    /// a position that moves keeps its old name until the new one is in.
+    private func resolvePlace() {
+        let point = model.point
+        guard let coordinate = point ?? model.userLocation?.coordinate else {
+            placeAsked = nil
+            placeToken += 1
+            model.placeName = nil
+            return
+        }
+        let key = String(format: "%@%.3f,%.3f", point != nil ? "p" : "u", coordinate.latitude, coordinate.longitude)
+        guard key != placeAsked else { return }
+        if point != nil || placeAsked?.hasPrefix("p") == true { model.placeName = nil }
+        placeAsked = key
+        placeToken += 1
+        let token = placeToken
+        let language = CoreStrings.language
+        Task { [weak self] in
+            let place = await ReverseGeocoder.shared.nearPlace(latitude: coordinate.latitude, longitude: coordinate.longitude,
+                                                               language: language, channel: "forecast")
+            guard let self, token == self.placeToken else { return }
+            self.model.placeName = place?.name
+        }
     }
 
     /// The tray's title: the place's name once known, else what the bars
@@ -458,12 +519,16 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         if abs(chromeState.width - bounds.width) > 0.5 { chromeState.width = bounds.width }
-        // Keep Apple's logo and legal link clear of the controls at the bottom.
+        // Keep Apple's logo and legal link, and Data Licenses across from
+        // them, clear of the controls at the bottom.
         if let bottom = [bottomChrome, otherChrome].compactMap({ $0 }).first(where: { !$0.isHidden }) ?? bottomChrome {
             let covered = bottom.isHidden ? 0 : bounds.maxY - bottom.frame.minY - safeAreaInsets.bottom + 8
             if abs(mapView.layoutMargins.bottom - covered) > 1 {
                 mapView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: max(covered, 0), right: 0)
             }
+            // MapKit centres its Legal link about 15.5 pt above the margin.
+            let line = -(safeAreaInsets.bottom + max(covered, 0) + 15.5)
+            if let licencesLine, abs(licencesLine.constant - line) > 0.5 { licencesLine.constant = line }
         }
         if !placed, mapView.bounds.width > 0 {
             placed = true
@@ -622,6 +687,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
+        // The logbook beside the logo comes and goes with the mode.
+        pillClearOfLogo?.constant = Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures)
         let on = Set(NativeMapLayer.allCases.filter(isOn))
         if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }
@@ -693,6 +760,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         Publishers.CombineLatest3(model.$point, model.$userLocation, model.$placeName)
             .sink { [weak self] _, _, _ in DispatchQueue.main.async { self?.updateTitle() } }
             .store(in: &observers)
+        Publishers.CombineLatest(model.$point, model.$userLocation)
+            .sink { [weak self] _, _ in DispatchQueue.main.async { self?.resolvePlace() } }
+            .store(in: &observers)
         Publishers.CombineLatest(model.$capability, model.$trayHidden)
             .sink { [weak self] _, _ in DispatchQueue.main.async { self?.updateChromeVisibility() } }
             .store(in: &observers)
@@ -739,7 +809,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Back to the live radar, as the logo does on the web map.
     func showLive() {
-        model.capability = .radar
+        // As picking the radar in the layer switcher: the other map's parts
+        // hear of it and put themselves away.
+        setCapability(.radar)
         player.showLive()
     }
 
@@ -913,10 +985,15 @@ private struct PillHost: View {
     @ObservedObject var model: NativeMapModel
     @ObservedObject var monitor: ConnectionMonitor
     @ObservedObject var owner: NativeMapView
+    /// The capsule changed width ("Latest", a time, a warning): the host is
+    /// measured again. Left at its first size it stays a point wide, and
+    /// the capsule spills out of it over the logo's row.
+    let resized: () -> Void
 
     var body: some View {
         StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() }, wakes: owner.wakeCount)
             .opacity(model.capability == .radar ? 1 : 0)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in DispatchQueue.main.async { resized() } }
     }
 }
 

@@ -132,6 +132,22 @@
 "notification_permissions_title" = "Kontrollera behörigheter";
 "notification_permissions_help" = "Regnvarningar kräver notiser och platsåtkomst. Om du vill få varningar när du rör dig medan appen är stängd, ställ in Plats på Alltid i Inställningar. Du kan fortfarande titta på kartan utan dessa behörigheter.";
 "notification_sync_failed" = "Ändringarna av notiserna kunde inte nå servern. Varningarna kan fortfarande använda dina tidigare inställningar. Kontrollera anslutningen och öppna appen igen för att försöka på nytt.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Pausa varningar";
+"mute_off" = "Av";
+"mute_on" = "På";
+"mute_day" = "I 1 dag";
+"mute_week" = "I 1 vecka";
+"mute_rain" = "Tills regnet är över";
+"mute_unmute" = "Återuppta varningar";
+"mute_until" = "Pausade till %@";
+"mute_until_rain" = "Pausade tills regnet är över";
+"mute_until_rain_about" = "Pausade tills regnet är över, cirka %@";
+"mute_no_rain_title" = "Inget regn på väg";
+"mute_no_rain" = "Prognosen visar inget regn här, så det finns inget att pausa.";
+"mute_no_forecast_title" = "Det gick inte att pausa varningarna";
+"mute_no_forecast" = "Prognosen för din plats kunde inte läsas in. Försök igen senare.";
+"mute_ok" = "OK";
 "feedback_body" = "Beskriv ditt problem eller förslag här:\n";
 
 "map_layers" = "Kartlager";
@@ -170,6 +186,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Licenser för öppen källkod";
+"data_licences" = "Datalicenser";
 "open_source_footer" = "Licenserna för meteocool och för programvaran den bygger på. Tryck på en för att läsa den.";
 "Py-ART Colour Maps" = "Färgskalor från Py-ART";
 "Web Map Libraries" = "Bibliotek för webbkartan";
@@ -270,6 +287,13 @@
 "native_map_3d_pinch" = "Nyp";
 "native_map_3d_two_fingers" = "Två fingrar";
 "native_map_3d_tap" = "Tryck";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Luta";
+"native_map_3d_flat" = "Titta rakt ned";
+"native_map_3d_zoom_in" = "Zooma in";
+"native_map_3d_zoom_out" = "Zooma ut";
+"native_map_3d_turn_left" = "Vrid åt vänster";
+"native_map_3d_turn_right" = "Vrid åt höger";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Min plats";
@@ -294,3 +318,53 @@
 "native_map_flash_bang_no_location" = "Kräver din plats: slå på platsknappen.";
 "native_map_flash_bang_show" = "Visa på kartan";
 "native_map_flash_bang_strike" = "Matchat nedslag";
+/* Storm log: list, entry, turning it on and off, sorting */
+"storm_log_title" = "Åskdagbok";
+"storm_log_unregistered" = "Åskväder loggas när de passerar över platsen du får regnvarningar för. Slå på notiser och tillåt alltid platsen.";
+"storm_log_failed" = "Åskdagboken kunde inte läsas in.";
+"storm_log_retry" = "Försök igen";
+"storm_log_empty" = "Inga åskväder ännu. Ett åskväder loggas när det passerar över, eller inom 10 km från, platsen du får regnvarningar för, eller någon av dina platser. Det kräver att notiser är på och att platsen alltid är tillåten.";
+"storm_log_footer" = "Åskväder som kom inom 10 km från din plats eller dina platser, sparas i ungefär 13 månader.";
+"storm_log_delete" = "Radera dagbok";
+"storm_log_delete_title" = "Radera åskdagboken?";
+"storm_log_delete_message" = "Alla poster raderas, även dina platsers. Åskväder som passerar senare loggas igen.";
+"storm_log_delete_failed" = "Åskdagboken kunde inte raderas.";
+"storm_log_cancel" = "Avbryt";
+"storm_log_over" = "Rakt ovanför";
+"storm_log_closest" = "%@ bort";
+"storm_log_top" = "Topp %@";
+"storm_log_strikes" = "Blixtar: %ld";
+"storm_log_ongoing" = "Fortfarande nära";
+"storm_log_ongoing_footer" = "Åskvädret är fortfarande nära; posten uppdateras medan det rör sig.";
+"storm_log_map" = "Karta över åskvädrets bana";
+"storm_log_place" = "Plats";
+"storm_log_when" = "När";
+"storm_log_closest_label" = "Närmast";
+"storm_log_severity" = "Styrka";
+"storm_log_peak" = "Starkaste eko";
+"storm_log_top_label" = "Ekotopp";
+"storm_log_strikes_label" = "Blixtar inom 10 km";
+"storm_log_yes" = "Ja";
+"storm_log_near_here" = "Ungefär här";
+"storm_log_onboarding_message" = "En dagbok över de åskväder som passerar över, eller inom 10 km från, din plats och dina platser.";
+"storm_log_onboarding_saves_title" = "Vad den sparar";
+"storm_log_onboarding_saves_text" = "För varje åskväder: när det kom och gick, hur nära det kom, hur kraftigt och hur högt det var, hagel, blixtarna i närheten och dess bana.";
+"storm_log_onboarding_area_title" = "Ditt område, inte din adress";
+"storm_log_onboarding_area_text" = "Regnvarningar skickar redan din plats och dina platser till meteocool-servern. Dagboken sparar bara området på ungefär 10 km som din plats ligger i, och dina platsers namn.";
+"storm_log_onboarding_server_title" = "Sparas på servern";
+"storm_log_onboarding_server_text" = "Dagboken sammanställs och sparas på meteocool-servern i ungefär 13 månader, kopplad till den här telefonens notis-ID. Telefonen sparar ingen kopia, bara ditt val och sorteringen.";
+"storm_log_onboarding_off_title" = "Stäng av när som helst";
+"storm_log_onboarding_off_text" = "När du stänger av den raderas dagboken från servern. Att stänga av regnvarningar raderar den också.";
+"storm_log_onboarding_footnote" = "Den börjar tom. Den kräver att regnvarningar är på och att platsen alltid är tillåten.";
+"storm_log_turn_on" = "Slå på";
+"storm_log_sort" = "Sortera efter";
+"storm_log_sort_recent" = "Senaste";
+"storm_log_sort_severity" = "Styrka";
+"storm_log_sort_closest" = "Närmast";
+"storm_log_sort_duration" = "Längst";
+"storm_log_sort_lightning" = "Flest blixtar";
+"storm_log_turn_off" = "Stäng av åskdagbok";
+"storm_log_turn_off_title" = "Stänga av åskdagboken?";
+"storm_log_turn_off_message" = "Alla poster raderas från servern, även dina platsers. Du kan slå på den igen senare.";
+"storm_log_turn_off_confirm" = "Stäng av";
+"storm_log_turn_off_failed" = "Åskdagboken kunde inte raderas, så den är fortfarande på. Försök igen senare.";

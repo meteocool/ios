@@ -25,7 +25,7 @@ enum WebSettings {
             "mapRotation": defaults?.value(forKey: "mapRotation"),
             "radarColorMapping": defaults?.value(forKey: "radarColorMapping"),
             "mapBaseLayer": defaults?.value(forKey: "baseLayer"),
-            "experimentalFeatures": MeteocoolEnvironment.current == .staging,
+            "experimentalFeatures": MeteocoolEnvironment.current.hasExperimentalFeatures,
         ]
 
         guard let data = try? JSONSerialization.data(withJSONObject: config, options: .withoutEscapingSlashes),

@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Toestemmingen controleren";
 "notification_permissions_help" = "Regenmeldingen hebben meldingen en locatietoegang nodig. Wil je onderweg meldingen terwijl de app gesloten is, zet Locatie dan in Instellingen op Altijd. De kaart kun je ook zonder deze toestemmingen gebruiken.";
 "notification_sync_failed" = "De wijzigingen in je meldingen konden de server niet bereiken. Meldingen gebruiken mogelijk nog je vorige instellingen. Controleer je verbinding en open de app opnieuw om het nog eens te proberen.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Meldingen pauzeren";
+"mute_off" = "Uit";
+"mute_on" = "Aan";
+"mute_day" = "Voor 1 dag";
+"mute_week" = "Voor 1 week";
+"mute_rain" = "Tot de regen voorbij is";
+"mute_unmute" = "Meldingen hervatten";
+"mute_until" = "Gepauzeerd tot %@";
+"mute_until_rain" = "Gepauzeerd tot de regen voorbij is";
+"mute_until_rain_about" = "Gepauzeerd tot de regen voorbij is, rond %@";
+"mute_no_rain_title" = "Geen regen op komst";
+"mute_no_rain" = "De verwachting toont hier geen regen, dus er valt niets te pauzeren.";
+"mute_no_forecast_title" = "Pauzeren van meldingen mislukt";
+"mute_no_forecast" = "De verwachting voor je locatie kon niet worden geladen. Probeer het later opnieuw.";
+"mute_ok" = "OK";
 "feedback_body" = "Beschrijf hier je probleem of suggestie:\n";
 
 "map_layers" = "Kaartlagen";
@@ -169,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Opensourcelicenties";
+"data_licences" = "Datalicenties";
 "open_source_footer" = "De licenties van meteocool en van de software waarop het is gebouwd. Tik op een licentie om die te lezen.";
 "Py-ART Colour Maps" = "Py-ART-kleurenschalen";
 "Web Map Libraries" = "Bibliotheken van de webkaart";
@@ -270,6 +287,13 @@
 "native_map_3d_pinch" = "Knijpen";
 "native_map_3d_two_fingers" = "Twee vingers";
 "native_map_3d_tap" = "Tikken";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Kantelen";
+"native_map_3d_flat" = "Recht naar beneden kijken";
+"native_map_3d_zoom_in" = "Inzoomen";
+"native_map_3d_zoom_out" = "Uitzoomen";
+"native_map_3d_turn_left" = "Naar links draaien";
+"native_map_3d_turn_right" = "Naar rechts draaien";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Mijn locatie";
@@ -294,3 +318,53 @@
 "native_map_flash_bang_no_location" = "Je locatie is nodig: zet de locatieknop aan.";
 "native_map_flash_bang_show" = "Toon op kaart";
 "native_map_flash_bang_strike" = "Gevonden inslag";
+/* Storm log: list, entry, turning it on and off, sorting */
+"storm_log_title" = "Onweerslogboek";
+"storm_log_unregistered" = "Onweer wordt vastgelegd als het over de locatie trekt waarvoor je regenmeldingen krijgt. Zet meldingen aan en sta de locatie altijd toe.";
+"storm_log_failed" = "Het onweerslogboek kon niet worden geladen.";
+"storm_log_retry" = "Probeer opnieuw";
+"storm_log_empty" = "Nog geen onweer. Onweer wordt vastgelegd als het over, of binnen 10 km van, de locatie trekt waarvoor je regenmeldingen krijgt, of een van je plaatsen. Daarvoor moeten meldingen aan staan en moet de locatie altijd zijn toegestaan.";
+"storm_log_footer" = "Onweer dat binnen 10 km van je locatie of je plaatsen kwam, ongeveer 13 maanden bewaard.";
+"storm_log_delete" = "Logboek verwijderen";
+"storm_log_delete_title" = "Onweerslogboek verwijderen?";
+"storm_log_delete_message" = "Alle items worden verwijderd, ook die van je plaatsen. Onweer dat later langskomt, wordt opnieuw vastgelegd.";
+"storm_log_delete_failed" = "Het onweerslogboek kon niet worden verwijderd.";
+"storm_log_cancel" = "Annuleer";
+"storm_log_over" = "Recht erboven";
+"storm_log_closest" = "%@ verderop";
+"storm_log_top" = "Top %@";
+"storm_log_strikes" = "Bliksem: %ld";
+"storm_log_ongoing" = "Nog dichtbij";
+"storm_log_ongoing_footer" = "Het onweer is nog dichtbij; dit item wordt bijgewerkt terwijl het verder trekt.";
+"storm_log_map" = "Kaart van de baan van het onweer";
+"storm_log_place" = "Plaats";
+"storm_log_when" = "Wanneer";
+"storm_log_closest_label" = "Dichtstbij";
+"storm_log_severity" = "Sterkte";
+"storm_log_peak" = "Sterkste echo";
+"storm_log_top_label" = "Echotop";
+"storm_log_strikes_label" = "Bliksem binnen 10 km";
+"storm_log_yes" = "Ja";
+"storm_log_near_here" = "Ongeveer hier";
+"storm_log_onboarding_message" = "Een dagboek van het onweer dat over, of binnen 10 km van, je locatie en je plaatsen trekt.";
+"storm_log_onboarding_saves_title" = "Wat het bewaart";
+"storm_log_onboarding_saves_text" = "Per onweer: wanneer het kwam en ging, hoe dichtbij het kwam, hoe sterk en hoe hoog het was, hagel, de bliksem in de buurt en de baan.";
+"storm_log_onboarding_area_title" = "Je omgeving, niet je adres";
+"storm_log_onboarding_area_text" = "Regenmeldingen sturen je locatie en je plaatsen al naar de meteocool-server. Het logboek bewaart alleen het gebied van ongeveer 10 km waarin je locatie ligt, en de namen van je plaatsen.";
+"storm_log_onboarding_server_title" = "Bewaard op de server";
+"storm_log_onboarding_server_text" = "Het logboek wordt op de meteocool-server samengesteld en daar ongeveer 13 maanden bewaard, gekoppeld aan de meldings-ID van deze telefoon. De telefoon bewaart geen kopie, alleen je keuze en de sortering.";
+"storm_log_onboarding_off_title" = "Altijd uit te zetten";
+"storm_log_onboarding_off_text" = "Als je het uitzet, wordt het logboek van de server verwijderd. Regenmeldingen uitzetten verwijdert het ook.";
+"storm_log_onboarding_footnote" = "Het begint leeg. Daarvoor moeten regenmeldingen aan staan en moet de locatie altijd zijn toegestaan.";
+"storm_log_turn_on" = "Zet aan";
+"storm_log_sort" = "Sorteer op";
+"storm_log_sort_recent" = "Nieuwste";
+"storm_log_sort_severity" = "Sterkte";
+"storm_log_sort_closest" = "Dichtstbij";
+"storm_log_sort_duration" = "Langste";
+"storm_log_sort_lightning" = "Meeste bliksem";
+"storm_log_turn_off" = "Zet onweerslogboek uit";
+"storm_log_turn_off_title" = "Onweerslogboek uitzetten?";
+"storm_log_turn_off_message" = "Alle items worden van de server verwijderd, ook die van je plaatsen. Je kunt het later weer aanzetten.";
+"storm_log_turn_off_confirm" = "Zet uit";
+"storm_log_turn_off_failed" = "Het onweerslogboek kon niet worden verwijderd en staat dus nog aan. Probeer het later opnieuw.";

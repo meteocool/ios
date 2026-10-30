@@ -16,12 +16,21 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     /// iOS gives the extension about 30 s in all.
     private static let previewDeadline: TimeInterval = 10
 
+    /// Where the app keeps the mute (Shared/AlertMute.swift).
+    nonisolated(unsafe) static var defaults = UserDefaults(suiteName: AlertHistory.groupID)
+
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         // Kept for the list of past alerts before the alert is shown (Shared/AlertHistory.swift).
         AlertHistory.add([ReceivedAlert(request: request, received: Date())])
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else {
             contentHandler(request.content)
             return
+        }
+        // Muted, but the backend had not heard yet: the alert cannot be
+        // dropped without Apple's filtering entitlement, so it comes quietly.
+        if AlertMute.active(in: Self.defaults) != nil {
+            content.sound = nil
+            content.interruptionLevel = .passive
         }
         lock.withLock {
             self.handler = contentHandler

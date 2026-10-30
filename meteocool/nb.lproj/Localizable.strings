@@ -131,6 +131,22 @@
 "notification_permissions_title" = "Sjekk tillatelsene";
 "notification_permissions_help" = "Regnvarsling krever varslinger og tilgang til posisjon. Hvis du vil ha varslinger mens du er på farten og appen er lukket, setter du Posisjon til Alltid i Innstillinger. Du kan bruke kartet også uten disse tillatelsene.";
 "notification_sync_failed" = "Endringene i varslingene nådde ikke fram til serveren. Varslingene kan fortsatt bruke de forrige innstillingene dine. Sjekk tilkoblingen og åpne appen på nytt for å prøve igjen.";
+/* Muting the rain alerts, in Settings */
+"mute_alerts" = "Sett varsler på pause";
+"mute_off" = "Av";
+"mute_on" = "På";
+"mute_day" = "I 1 dag";
+"mute_week" = "I 1 uke";
+"mute_rain" = "Til regnet er over";
+"mute_unmute" = "Gjenoppta varsler";
+"mute_until" = "På pause til %@";
+"mute_until_rain" = "På pause til regnet er over";
+"mute_until_rain_about" = "På pause til regnet er over, ca. %@";
+"mute_no_rain_title" = "Ingen regn i sikte";
+"mute_no_rain" = "Prognosen viser ikke regn her, så det er ingenting å sette på pause.";
+"mute_no_forecast_title" = "Kunne ikke sette varsler på pause";
+"mute_no_forecast" = "Prognosen for posisjonen din kunne ikke lastes inn. Prøv igjen senere.";
+"mute_ok" = "OK";
 "feedback_body" = "Beskriv problemet eller forslaget ditt her:\n";
 
 "map_layers" = "Kartlag";
@@ -169,6 +185,7 @@
 
 /* Open-source licences (Licences.json, LicenceViewController) */
 "open_source_header" = "Lisenser for åpen kildekode";
+"data_licences" = "Datalisenser";
 "open_source_footer" = "Lisensene til meteocool og programvaren den bygger på. Trykk på en for å lese den.";
 "Py-ART Colour Maps" = "Fargeskalaer fra Py-ART";
 "Web Map Libraries" = "Biblioteker for nettkartet";
@@ -270,6 +287,13 @@
 "native_map_3d_pinch" = "Knip";
 "native_map_3d_two_fingers" = "To fingre";
 "native_map_3d_tap" = "Trykk";
+/* The 3D map's tilt button, and its VoiceOver actions. */
+"native_map_3d_tilt" = "Vipp";
+"native_map_3d_flat" = "Se rett ned";
+"native_map_3d_zoom_in" = "Zoom inn";
+"native_map_3d_zoom_out" = "Zoom ut";
+"native_map_3d_turn_left" = "Drei mot venstre";
+"native_map_3d_turn_right" = "Drei mot høyre";
 
 /* The reader's position on the 3D map, for VoiceOver. */
 "my_location" = "Min posisjon";
@@ -294,3 +318,53 @@
 "native_map_flash_bang_no_location" = "Krever posisjonen din: Slå på posisjonsknappen.";
 "native_map_flash_bang_show" = "Vis på kartet";
 "native_map_flash_bang_strike" = "Funnet nedslag";
+/* Storm log: list, entry, turning it on and off, sorting */
+"storm_log_title" = "Tordenværslogg";
+"storm_log_unregistered" = "Tordenvær logges når det passerer over posisjonen du får regnvarsling for. Slå på varsler og tillat posisjonen alltid.";
+"storm_log_failed" = "Tordenværsloggen kunne ikke lastes inn.";
+"storm_log_retry" = "Prøv igjen";
+"storm_log_empty" = "Ingen tordenvær ennå. Et tordenvær logges når det passerer over, eller innen 10 km fra, posisjonen du får regnvarsling for, eller et av stedene dine. Det krever at varsler er på og at posisjonen alltid er tillatt.";
+"storm_log_footer" = "Tordenvær som kom innen 10 km fra posisjonen din eller stedene dine, lagret i omtrent 13 måneder.";
+"storm_log_delete" = "Slett logg";
+"storm_log_delete_title" = "Slette tordenværsloggen?";
+"storm_log_delete_message" = "Alle oppføringer slettes, også for stedene dine. Tordenvær som passerer senere, logges igjen.";
+"storm_log_delete_failed" = "Tordenværsloggen kunne ikke slettes.";
+"storm_log_cancel" = "Avbryt";
+"storm_log_over" = "Rett over";
+"storm_log_closest" = "%@ unna";
+"storm_log_top" = "Topp %@";
+"storm_log_strikes" = "Lyn: %ld";
+"storm_log_ongoing" = "Fortsatt i nærheten";
+"storm_log_ongoing_footer" = "Tordenværet er fortsatt i nærheten; oppføringen oppdateres mens det flytter seg.";
+"storm_log_map" = "Kart over tordenværets bane";
+"storm_log_place" = "Sted";
+"storm_log_when" = "Når";
+"storm_log_closest_label" = "Nærmest";
+"storm_log_severity" = "Styrke";
+"storm_log_peak" = "Sterkeste ekko";
+"storm_log_top_label" = "Ekkotopp";
+"storm_log_strikes_label" = "Lyn innen 10 km";
+"storm_log_yes" = "Ja";
+"storm_log_near_here" = "Omtrent her";
+"storm_log_onboarding_message" = "En dagbok over tordenvær som passerer over, eller innen 10 km fra, posisjonen din og stedene dine.";
+"storm_log_onboarding_saves_title" = "Hva den lagrer";
+"storm_log_onboarding_saves_text" = "For hvert tordenvær: når det kom og gikk, hvor nær det kom, hvor kraftig og hvor høyt det var, hagl, lynene i nærheten og banen.";
+"storm_log_onboarding_area_title" = "Området ditt, ikke adressen";
+"storm_log_onboarding_area_text" = "Regnvarsling sender allerede posisjonen din og stedene dine til meteocool-serveren. Loggen beholder bare området på omtrent 10 km som posisjonen din ligger i, og navnene på stedene dine.";
+"storm_log_onboarding_server_title" = "Lagret på serveren";
+"storm_log_onboarding_server_text" = "Loggen settes sammen og lagres på meteocool-serveren i omtrent 13 måneder, knyttet til denne telefonens varslings-ID. Telefonen lagrer ingen kopi, bare valget ditt og sorteringen.";
+"storm_log_onboarding_off_title" = "Slå av når som helst";
+"storm_log_onboarding_off_text" = "Når du slår den av, slettes loggen fra serveren. Å slå av regnvarsling sletter den også.";
+"storm_log_onboarding_footnote" = "Den starter tom. Den krever at regnvarsling er på og at posisjonen alltid er tillatt.";
+"storm_log_turn_on" = "Slå på";
+"storm_log_sort" = "Sorter etter";
+"storm_log_sort_recent" = "Nyeste";
+"storm_log_sort_severity" = "Styrke";
+"storm_log_sort_closest" = "Nærmest";
+"storm_log_sort_duration" = "Lengst";
+"storm_log_sort_lightning" = "Flest lyn";
+"storm_log_turn_off" = "Slå av tordenværslogg";
+"storm_log_turn_off_title" = "Slå av tordenværsloggen?";
+"storm_log_turn_off_message" = "Alle oppføringer slettes fra serveren, også for stedene dine. Du kan slå den på igjen senere.";
+"storm_log_turn_off_confirm" = "Slå av";
+"storm_log_turn_off_failed" = "Tordenværsloggen kunne ikke slettes, så den er fortsatt på. Prøv igjen senere.";
