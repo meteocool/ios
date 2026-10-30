@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import CoreLocation
 
 final class meteocoolUITests: XCTestCase {
     let app = XCUIApplication()
@@ -29,6 +30,12 @@ final class meteocoolUITests: XCTestCase {
         let alert = SpringboardHelper.springboard.alerts.firstMatch
         guard alert.waitForExistence(timeout: timeout) else { return }
         alert.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch.tap()
+    }
+
+    /// A location for the simulator, which has none after an erase: a rain
+    /// alert registration is posted only with one.
+    private func simulateLocation() {
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 48.15, longitude: 11.58))
     }
 
     private func screenshot(_ name: String) {
@@ -306,6 +313,28 @@ final class meteocoolUITests: XCTestCase {
         let text = app.textViews["licence.text"]
         XCTAssertTrue(text.waitForExistence(timeout: 5))
         XCTAssertTrue((text.value as? String ?? "").contains("Copyright (c) 2016 Vishal V. Shekkar"))
+    }
+
+    /// Relaunches against the loopback recorder and allows location and
+    /// notifications during onboarding, which registers this device for rain
+    /// alerts. Needs a simulator that was never asked: erase it first.
+    private func onboardGrantingPermissions() {
+        app.terminate()
+        app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
+        simulateLocation()
+        app.launch()
+        addUIInterruptionMonitor(withDescription: "Grant system permission") { alert in
+            for title in ["Allow While Using App", "Change to Always Allow", "Allow"] {
+                if alert.buttons[title].exists { alert.buttons[title].tap(); return true }
+            }
+            return false
+        }
+        tap("Continue")
+        tap("Continue") // location
+        app.tap()
+        tap("Tell Me Before It Rains!")
+        app.tap()
+        app.tap()
     }
 
     private func openNotificationSliderSettings() {
@@ -663,21 +692,7 @@ final class meteocoolUITests: XCTestCase {
         reset.httpMethod = "DELETE"
         do { _ = try await URLSession.shared.data(for: reset) }
         catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs and use a fresh simulator for permission grants") }
-        app.terminate()
-        app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
-        app.launch()
-        addUIInterruptionMonitor(withDescription: "Grant system permission") { alert in
-            for title in ["Allow While Using App", "Change to Always Allow", "Allow"] {
-                if alert.buttons[title].exists { alert.buttons[title].tap(); return true }
-            }
-            return false
-        }
-        tap("Continue")
-        tap("Continue") // location
-        app.tap()
-        tap("Tell Me Before It Rains!")
-        app.tap()
-        app.tap()
+        onboardGrantingPermissions()
         tap("map.settings")
         let timeframe = app.sliders["Notification Timeframe"]
         XCTAssertTrue(timeframe.waitForExistence(timeout: 10))
@@ -770,7 +785,9 @@ final class meteocoolUITests: XCTestCase {
             }
             return nil
         }
-        openNotificationSliderSettings()
+        // Its token names the device: notifications must really be allowed.
+        onboardGrantingPermissions()
+        tap("map.settings")
         let toggle = app.switches["Live Activity During Rain"]
         scrollIntoView(toggle)
         XCTAssertTrue(toggle.waitForExistence(timeout: 10))
@@ -844,21 +861,7 @@ final class meteocoolUITests: XCTestCase {
         reset.httpMethod = "DELETE"
         do { _ = try await URLSession.shared.data(for: reset) }
         catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs and use a fresh simulator for permission grants") }
-        app.terminate()
-        app.launchEnvironment["MC_TEST_API_URL"] = "http://127.0.0.1:18765/"
-        app.launch()
-        addUIInterruptionMonitor(withDescription: "Grant system permission") { alert in
-            for title in ["Allow While Using App", "Change to Always Allow", "Allow"] {
-                if alert.buttons[title].exists { alert.buttons[title].tap(); return true }
-            }
-            return false
-        }
-        tap("Continue")
-        tap("Continue") // location
-        app.tap()
-        tap("Tell Me Before It Rains!")
-        app.tap()
-        app.tap()
+        onboardGrantingPermissions()
         tap("map.settings")
         let mute = app.buttons["Mute Alerts"]
         XCTAssertTrue(mute.waitForExistence(timeout: 10))
