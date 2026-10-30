@@ -23,7 +23,8 @@ import WebKit
 ///
 /// The shim implements `getCurrentPosition`, `watchPosition` and `clearWatch`.
 /// Positions arrive through `deliver(_:to:)`. `ViewController.notify(location:)`
-/// calls it for every fix, so watchers update while native updates run.
+/// calls it for every fix while the app is not in the background, and with
+/// the newest background fix on return, so watchers update while the map is up.
 @MainActor
 enum GeolocationBridge {
     /// The message handler the shim posts to. Registered by `ViewController`.

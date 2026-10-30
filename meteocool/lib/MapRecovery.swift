@@ -24,7 +24,8 @@ import WebKit
 /// the network comes back or the app returns to the foreground.
 ///
 /// While the page runs, the view on screen (`window.shareLink()`, the link
-/// the share sheet offers) is noted every `viewInterval`. The first reload
+/// the share sheet offers) is noted every `viewInterval`, except in the
+/// background, where asking would wake the suspended page. The first reload
 /// after a page that ran opens that view again, so a crash in the 3D map
 /// comes back to the same storm rather than the radar. Should the page die
 /// again before `stableAfter`, the view may be what kills it, and the next
@@ -190,6 +191,13 @@ final class MapRecovery {
         viewWatch = Task { [weak self] in
             while !Task.isCancelled {
                 guard let webView = self?.webView else { return }
+                // The loop also runs when the app gets background time (a
+                // location fix), and a JS call would wake the suspended page.
+                // The view noted before it left is the one to restore.
+                if UIApplication.shared.applicationState == .background {
+                    try? await Task.sleep(for: .seconds(Self.viewInterval))
+                    continue
+                }
                 let json = try? await webView.evaluateJavaScript("JSON.stringify(window.shareLink ? window.shareLink() : null)") as? String
                 guard !Task.isCancelled, let self else { return }
                 if let json, let share = MapShare(json: json, mapHost: webView.url?.host) {
