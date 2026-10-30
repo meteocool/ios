@@ -605,6 +605,21 @@ final class NativeMapUITests: XCTestCase {
     }
 
     /// The openable storm cores the demo lists now, strongest first.
+    /// Runs `find` on the demo's strongest core, and once more on the next
+    /// scan's when it finds nothing there: when the demo's replay starts
+    /// over, the cores it lists and the storms on the map part for a scan.
+    private func onDemoCore<T>(_ find: (Core) throws -> T?) throws -> T? {
+        for attempt in 0 ..< 2 {
+            if attempt > 0 {
+                app.terminate()
+                RunLoop.current.run(until: Date().addingTimeInterval(60))
+            }
+            let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+            if let found = try find(core) { return found }
+        }
+        return nil
+    }
+
     private func demoCores() -> [Core] {
         guard let answer = demoJSON("cells/volumes") as? [String: Any], let volumes = answer["volumes"] as? [[String: Any]] else { return [] }
         return volumes
@@ -686,11 +701,27 @@ final class NativeMapUITests: XCTestCase {
     }
 
     func testThreeDTagOpensTheCoreOnTheThreeDMap() throws {
-        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
+        let target = try XCTUnwrap(onDemoCore { core in try tagSpot(at: core) }, "A tag in view, clear of the storms")
+        screenshot("3D tags")
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        origin.withOffset(CGVector(dx: target.x, dy: target.y)).tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
+        XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
+        screenshot("core opened from its tag")
+        // A detour: closing the core goes back to the flat map.
+        element("nativeMap.storm.close").tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+    }
+
+    /// The flat map opened at `core`: where to tap a "3D" tag in view, clear
+    /// of the storms' discs.
+    private func tagSpot(at core: Core) throws -> CGPoint? {
         launch(link: "?latLonZ=\(core.lat),\(core.lon),8", demo: true)
         waitForSeries()
         let tags = app.descendants(matching: .any).matching(identifier: "nativeMap.cloudHint")
-        XCTAssertTrue(tags.firstMatch.waitForExistence(timeout: 30), "A tag beside the strongest core")
+        guard tags.firstMatch.waitForExistence(timeout: 30) else { return nil }
         // The tags as one snapshot, once the map has come to rest and the
         // list stops changing: queried one by one, a live list reorders
         // under the query, and a tag still sliding is elsewhere by the tap.
@@ -710,21 +741,10 @@ final class NativeMapUITests: XCTestCase {
                 CGPoint(x: frame.minX + frame.width * x, y: frame.minY + frame.height * y)
             } }.first { point in !marks.storms.contains { $0.insetBy(dx: -3, dy: -3).contains(point) } }
         }
-        let target = try XCTUnwrap(marks.tags.lazy.filter { frame in
+        return marks.tags.lazy.filter { frame in
             frame.midX > screen.width * 0.08 && frame.midX < screen.width * 0.75
                 && frame.midY > screen.height * 0.17 && frame.midY < screen.height * 0.65
-        }.compactMap(spot).first, "A tag in view, clear of the storms")
-        screenshot("3D tags")
-        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
-        origin.withOffset(CGVector(dx: target.x, dy: target.y)).tap()
-        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
-        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
-        XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
-        screenshot("core opened from its tag")
-        // A detour: closing the core goes back to the flat map.
-        element("nativeMap.storm.close").tap()
-        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
-        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+        }.compactMap(spot).first
     }
 
     func testThreeDLabelOpensTheStormOnTheFlatMap() throws {
@@ -1354,21 +1374,23 @@ final class NativeMapUITests: XCTestCase {
 
     /// A tap on a storm in 3D opens its panel at once, as a click does in core.
     func testThreeDTapOnAStormOpensIt() throws {
-        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
-        launch(link: "?latLonZ=\(core.lat),\(core.lon),9&layer=cells3d&pitch=0", demo: true)
-        let canvas = element("nativeMap.3d.canvas")
-        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
-        let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
-        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Storms drawn")
-        // Looking straight down on the strongest core: it is under the middle
-        // of the screen, a little beside its label.
         let details = element("nativeMap.storm.details")
-        let spots = [CGVector(dx: 0.5, dy: 0.42), CGVector(dx: 0.5, dy: 0.48), CGVector(dx: 0.45, dy: 0.45), CGVector(dx: 0.55, dy: 0.45)]
-        for spot in spots where !details.exists {
-            canvas.coordinate(withNormalizedOffset: spot).tap()
-            _ = details.waitForExistence(timeout: 6)
+        let opened = try onDemoCore { core -> Bool? in
+            launch(link: "?latLonZ=\(core.lat),\(core.lon),9&layer=cells3d&pitch=0", demo: true)
+            let canvas = element("nativeMap.3d.canvas")
+            XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+            let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
+            XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Storms drawn")
+            // Looking straight down on the strongest core: it is under the
+            // middle of the screen, a little beside its label.
+            let spots = [CGVector(dx: 0.5, dy: 0.42), CGVector(dx: 0.5, dy: 0.48), CGVector(dx: 0.45, dy: 0.45), CGVector(dx: 0.55, dy: 0.45)]
+            for spot in spots where !details.exists {
+                canvas.coordinate(withNormalizedOffset: spot).tap()
+                _ = details.waitForExistence(timeout: 6)
+            }
+            return details.exists ? true : nil
         }
-        XCTAssertTrue(details.exists, "The storm's panel")
+        XCTAssertEqual(opened, true, "The storm's panel")
         screenshot("3D storm tapped")
         element("nativeMap.storm.close").tap()
         XCTAssertTrue(details.waitForNonExistence(timeout: 5))
@@ -1402,26 +1424,31 @@ final class NativeMapUITests: XCTestCase {
     /// A drag or a turn that starts on a storm's tag moves the map; only a
     /// tap picks the storm.
     func testThreeDMapMovesUnderAStormTag() throws {
-        let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
-        launch(link: "?latLonZ=\(core.lat),\(core.lon),8&layer=cells3d&pitch=40&bearing=0", demo: true)
         let canvas = element("nativeMap.3d.canvas")
-        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
-        XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,0,") })
         let labels = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ar.storm.'"))
-        XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
-        let screen = app.windows.firstMatch.frame
         // The tags settle as the storms load, nearest first: waited for.
-        func tagInView() throws -> XCUIElement {
+        // `margin` keeps one clear of the controls; the drag below carries its
+        // tag towards the edge, so the steps after it take one nearer it.
+        func tagNearTheMiddle(margin: CGFloat = 0.2) -> XCUIElement? {
+            let screen = app.windows.firstMatch.frame
             var tag: XCUIElement?
             for _ in 0 ..< 15 where tag == nil {
                 tag = (0 ..< labels.count).map { labels.element(boundBy: $0) }.first { label in
                     label.isHittable && label.frame.midY > screen.height * 0.2 && label.frame.midY < screen.height * 0.7
-                        && label.frame.midX > screen.width * 0.2 && label.frame.midX < screen.width * 0.8
+                        && label.frame.midX > screen.width * margin && label.frame.midX < screen.width * (1 - margin)
                 }
                 if tag == nil { RunLoop.current.run(until: Date().addingTimeInterval(1)) }
             }
-            return try XCTUnwrap(tag, "A tag near the middle")
+            return tag
         }
+        func tagInView() throws -> XCUIElement { try XCTUnwrap(tagNearTheMiddle(margin: 0.08), "A tag in view") }
+        _ = try XCTUnwrap(onDemoCore { core -> XCUIElement? in
+            launch(link: "?latLonZ=\(core.lat),\(core.lon),8&layer=cells3d&pitch=40&bearing=0", demo: true)
+            XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+            XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("40,0,") })
+            XCTAssertTrue(labels.firstMatch.waitForExistence(timeout: 30), "Labelled storms")
+            return tagNearTheMiddle()
+        }, "A tag near the middle")
         func centre() -> (Double, Double) {
             let parts = (canvas.value as? String ?? "").split(separator: ",").compactMap { Double($0) }
             return parts.count >= 4 ? (parts[2], parts[3]) : (0, 0)
@@ -1429,7 +1456,8 @@ final class NativeMapUITests: XCTestCase {
         let details = element("nativeMap.3d.details")
         // Dragged from the tag to the left: the view goes east, nothing opens.
         let before = centre()
-        let tag = try tagInView()
+        let screen = app.windows.firstMatch.frame
+        let tag = try XCTUnwrap(tagNearTheMiddle(), "A tag near the middle")
         tag.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: tag.frame.midY / screen.height)))
         XCTAssertTrue(waitForValue(canvas) { _ in centre().1 > before.1 + 0.05 }, "Panned east: \(canvas.value ?? "")")
