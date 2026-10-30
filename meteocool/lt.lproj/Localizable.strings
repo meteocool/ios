@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Išjungus dienoraštis ištrinamas iš serverio. Jį ištrina ir įspėjimų apie lietų išjungimas.";
 "storm_log_onboarding_footnote" = "Jis prasideda tuščias. Tam reikia įjungtų įspėjimų apie lietų ir visada leidžiamos vietos.";
 "storm_log_turn_on" = "Įjungti";
-"storm_log_more" = "Daugiau";
 "storm_log_sort" = "Rikiuoti pagal";
 "storm_log_sort_recent" = "Naujausios";
 "storm_log_sort_severity" = "Stiprumas";

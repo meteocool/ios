@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "När du stänger av den raderas dagboken från servern. Att stänga av regnvarningar raderar den också.";
 "storm_log_onboarding_footnote" = "Den börjar tom. Den kräver att regnvarningar är på och att platsen alltid är tillåten.";
 "storm_log_turn_on" = "Slå på";
-"storm_log_more" = "Mer";
 "storm_log_sort" = "Sortera efter";
 "storm_log_sort_recent" = "Senaste";
 "storm_log_sort_severity" = "Styrka";

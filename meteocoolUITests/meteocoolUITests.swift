@@ -908,9 +908,13 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(entry("Cabin · 6.8 km away").exists, "A place's entry names the place and how close")
         XCTAssertTrue(entry("Still near").exists, "An entry whose storm is still near says so")
         // A row reads as one element inside its cell: the storm, the place, when and what it brought.
-        let first = { list.cells.element(boundBy: 0).descendants(matching: .any)
+        let row = { (index: Int) in list.cells.element(boundBy: index).descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS ' storm, '")).firstMatch.label }
-        XCTAssertTrue(first().hasPrefix("Weak storm"), "Newest first: \(first())")
+        let first = { row(0) }
+        // The recorder sends the oldest first; the app orders them itself.
+        XCTAssertEqual(app.buttons["stormLog.sort"].value as? String, "Most Recent", "The order in use is named above the list")
+        XCTAssertEqual([row(0), row(1), row(2)].map { $0.components(separatedBy: ",")[0] },
+                       ["Weak storm", "Strong storm", "Moderate storm"], "Still near first, then newest first")
         screenshot("Storm log")
 
         sortStormLog(by: "Severity")
@@ -969,7 +973,7 @@ final class meteocoolUITests: XCTestCase {
         tap("map.stormLog")
         tap("Turn On")
         XCTAssertTrue(app.tables["stormLog"].exists || app.staticTexts["Storm Log"].waitForExistence(timeout: 10))
-        tap("stormLog.more")
+        // Empty after the wipe: turning off is offered beside the empty log.
         tap("Turn Off Storm Log")
         let confirm = app.sheets.buttons["Turn Off"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Turning off asks first")
@@ -983,17 +987,38 @@ final class meteocoolUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Turn On"].waitForExistence(timeout: 10), "Off again, it asks again")
     }
 
-    /// Relaunches against the loopback recorder, its log full again, past onboarding.
+    /// The native map, on by default, opens the storm log from beside its logo too.
     @MainActor
-    private func startStormLogRecorder() async throws -> URL {
-        let server = URL(string: "http://127.0.0.1:18765/")!
+    func testStormLogOpensFromTheNativeMap() async throws {
+        let server = try await startStormLogRecorder(nativeMap: true)
+        tap("map.stormLog")
+        tap("Turn On")
+        XCTAssertTrue(app.navigationBars["Storm Log"].waitForExistence(timeout: 10), "The log opens over the native map")
+        let afterTurningOn = try await stormLogRequests(server)
+        XCTAssertEqual(afterTurningOn, ["DELETE"])
+        screenshot("Storm log over the native map")
+    }
+
+    /// Relaunches against the loopback recorder, its log full again, past
+    /// onboarding: on the web map, or on the native map, which skips it.
+    @MainActor
+    private func startStormLogRecorder(nativeMap: Bool = false) async throws -> URL {
+        // Another recorder may hold the usual port: `TEST_RUNNER_MC_RECORDER_PORT` names this one's.
+        let port = ProcessInfo.processInfo.environment["MC_RECORDER_PORT"] ?? "18765"
+        let server = URL(string: "http://127.0.0.1:\(port)/")!
         do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("map/recover")) }
         catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs") }
         try await resetRecorder(server)
         app.terminate()
-        app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
-        app.launch()
-        completeOnboardingWithoutPermissions()
+        if nativeMap {
+            app.launchArguments.append("--native-map")
+            app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString]
+            app.launch()
+        } else {
+            app.launchEnvironment = ["MC_TEST_API_URL": server.absoluteString, "MC_TEST_MAP": "1"]
+            app.launch()
+            completeOnboardingWithoutPermissions()
+        }
         return server
     }
 
@@ -1012,12 +1037,9 @@ final class meteocoolUITests: XCTestCase {
 
     @MainActor
     private func sortStormLog(by order: String) {
-        tap("stormLog.more")
-        // The submenu reads "Sort By" and the order it is in.
-        let sortBy = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Sort By'")).firstMatch
-        XCTAssertTrue(sortBy.waitForExistence(timeout: 5), "The menu offers the orders")
-        sortBy.tap()
+        tap("stormLog.sort")
         tap(order)
+        XCTAssertEqual(app.buttons["stormLog.sort"].value as? String, order, "The button names the new order")
     }
 
     private func waitUntil(timeout: TimeInterval = 5, _ condition: @escaping () -> Bool) -> Bool {

@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Väljalülitamisel kustutatakse päevik serverist. Ka vihmahoiatuste väljalülitamine kustutab selle.";
 "storm_log_onboarding_footnote" = "See algab tühjana. Selleks peavad vihmahoiatused olema sees ja asukoht alati lubatud.";
 "storm_log_turn_on" = "Lülita sisse";
-"storm_log_more" = "Veel";
 "storm_log_sort" = "Sordi";
 "storm_log_sort_recent" = "Uusimad";
 "storm_log_sort_severity" = "Tugevus";

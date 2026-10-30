@@ -183,7 +183,9 @@ enum StormLogRules {
 
     // MARK: Sorting
 
-    /// The list's orders. Every one falls back to the newest first.
+    /// The list's orders, `recent` until the user picks another. Every one
+    /// falls back to the newest first. Never the server's order, which the
+    /// app does not rely on.
     enum Sort: String, CaseIterable {
         case recent, severity, closest, duration, lightning
     }
@@ -192,7 +194,8 @@ enum StormLogRules {
         passages.sorted { a, b in
             switch sort {
             case .recent:
-                break
+                // A storm still near comes first, then by the time it came, as the rows show it.
+                if (a.endedAt == nil) != (b.endedAt == nil) { return a.endedAt == nil }
             case .severity:
                 if clamped(a.severity) != clamped(b.severity) { return clamped(a.severity) > clamped(b.severity) }
                 if (a.peakDbz ?? -.infinity) != (b.peakDbz ?? -.infinity) { return (a.peakDbz ?? -.infinity) > (b.peakDbz ?? -.infinity) }

@@ -138,7 +138,8 @@ enum StormLogCheck {
         ]
         let now = Date(timeIntervalSince1970: 1_793_000_000 + 9000)
         let order = { (sort: StormLogRules.Sort) in StormLogRules.sorted(log3, by: sort, now: now).map(\.id) }
-        check(order(.recent) == ["new-weak", "near", "mid-strong", "old-strong"], "newest first: \(order(.recent))")
+        check(order(.recent) == ["near", "new-weak", "mid-strong", "old-strong"], "still near first, then newest: \(order(.recent))")
+        check(StormLogRules.sorted(log3.reversed(), by: .recent, now: now).map(\.id) == order(.recent), "whatever order the server sends")
         check(order(.severity) == ["mid-strong", "old-strong", "near", "new-weak"], "strongest first, then the higher echo: \(order(.severity))")
         check(order(.closest) == ["new-weak", "near", "old-strong", "mid-strong"], "overhead, then nearest: \(order(.closest))")
         // The open one has been near for an hour by now.

@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Isključivanjem se dnevnik briše s poslužitelja. Briše ga i isključivanje upozorenja na kišu.";
 "storm_log_onboarding_footnote" = "Počinje prazan. Za to upozorenja na kišu moraju biti uključena, a lokacija uvijek dopuštena.";
 "storm_log_turn_on" = "Uključi";
-"storm_log_more" = "Više";
 "storm_log_sort" = "Poredaj po";
 "storm_log_sort_recent" = "Najnovije";
 "storm_log_sort_severity" = "Jačina";

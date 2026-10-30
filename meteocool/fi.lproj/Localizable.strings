@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Kun laitat sen pois päältä, päiväkirja poistetaan palvelimelta. Myös sadehälytysten poistaminen käytöstä poistaa sen.";
 "storm_log_onboarding_footnote" = "Se alkaa tyhjänä. Se vaatii sadehälytykset päälle ja sijainnin aina sallituksi.";
 "storm_log_turn_on" = "Laita päälle";
-"storm_log_more" = "Lisää";
 "storm_log_sort" = "Lajittele";
 "storm_log_sort_recent" = "Uusimmat";
 "storm_log_sort_severity" = "Voimakkuus";

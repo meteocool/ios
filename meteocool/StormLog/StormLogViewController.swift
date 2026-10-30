@@ -24,6 +24,11 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
 
     private enum State {
+        var isLoading: Bool {
+            if case .loading = self { return true }
+            return false
+        }
+
         case loading
         /// No push token: the phone never registered its location here.
         case unregistered
@@ -40,7 +45,25 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
         get { Self.defaults?.string(forKey: StormLogRules.sortKey).flatMap(StormLogRules.Sort.init) ?? .recent }
         set { Self.defaults?.set(newValue.rawValue, forKey: StormLogRules.sortKey) }
     }
-    private lazy var moreItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"), menu: nil)
+    /// The order, above the list: a pull-down that names the one in use.
+    private let sortButton = UIButton(configuration: .plain())
+    private lazy var sortHeader: UITableViewHeaderFooterView = {
+        let header = UITableViewHeaderFooterView(reuseIdentifier: nil)
+        sortButton.translatesAutoresizingMaskIntoConstraints = false
+        sortButton.showsMenuAsPrimaryAction = true
+        sortButton.accessibilityIdentifier = "stormLog.sort"
+        sortButton.accessibilityLabel = Self.text("storm_log_sort", "Sort By")
+        header.contentView.addSubview(sortButton)
+        let margins = header.contentView.layoutMarginsGuide
+        NSLayoutConstraint.activate([
+            sortButton.leadingAnchor.constraint(equalTo: margins.leadingAnchor),
+            sortButton.trailingAnchor.constraint(lessThanOrEqualTo: margins.trailingAnchor),
+            sortButton.topAnchor.constraint(equalTo: header.contentView.topAnchor, constant: 4),
+            sortButton.bottomAnchor.constraint(equalTo: header.contentView.bottomAnchor, constant: -6),
+            sortButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
+        return header
+    }()
 
     static let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
     static var isEnabled: Bool { defaults?.bool(forKey: StormLogRules.enabledKey) ?? false }
@@ -87,12 +110,10 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
         let done = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
             self?.dismiss(animated: true)
         })
-        moreItem.accessibilityLabel = Self.text("storm_log_more", "More")
-        moreItem.accessibilityIdentifier = "stormLog.more"
-        navigationItem.rightBarButtonItems = [done, moreItem]
-        updateMenu()
+        navigationItem.rightBarButtonItem = done
+        updateSortButton()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "passage")
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "delete")
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "action")
         tableView.accessibilityIdentifier = "stormLog"
         let refresh = UIRefreshControl()
         refresh.addAction(UIAction { [weak self] _ in self?.load() }, for: .valueChanged)
@@ -194,10 +215,19 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
         case .loading: break // a refresh keeps the list until the answer
         case .unregistered, .failed: passages = []
         }
+        // With no list to scroll to its end, turning off is offered here.
+        if var shown = empty, !(state.isLoading) {
+            var off = UIButton.Configuration.plain()
+            off.title = Self.text("storm_log_turn_off", "Turn Off Storm Log")
+            off.baseForegroundColor = .systemRed
+            shown.secondaryButton = off
+            shown.secondaryButtonProperties.primaryAction = UIAction { [weak self] _ in self?.confirmTurnOff(from: nil) }
+            empty = shown
+        }
         contentUnavailableConfiguration = empty
         tableView.isHidden = empty != nil
         tableView.reloadData()
-        updateMenu()
+        updateSortButton()
     }
 
     private static func empty(symbol: String, _ key: String, _ english: String) -> UIContentUnavailableConfiguration {
@@ -213,25 +243,32 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
         NSLocalizedString(key, value: english, comment: "storm log")
     }
 
-    // MARK: Menu
+    // MARK: Sorting
 
-    /// The order, to pick from while there is a list, and turning the log off.
-    private func updateMenu() {
+    /// The button shows the order in use and offers the others.
+    private func updateSortButton() {
         let current = sort
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = Self.title(current)
+        configuration.image = UIImage(systemName: "arrow.up.arrow.down")
+        configuration.imagePadding = 6
+        configuration.indicator = .popup
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 8)
+        configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .subheadline)
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = UIFont.preferredFont(forTextStyle: .subheadline)
+            return attributes
+        }
+        sortButton.configuration = configuration
+        sortButton.accessibilityValue = Self.title(current)
         let orders = StormLogRules.Sort.allCases.map { order in
             UIAction(title: Self.title(order), image: UIImage(systemName: Self.symbol(order)),
-                     attributes: passages.isEmpty ? .disabled : [], state: order == current ? .on : .off) { [weak self] _ in
+                     state: order == current ? .on : .off) { [weak self] _ in
                 self?.resort(order)
             }
         }
-        let sortMenu = UIMenu(title: Self.text("storm_log_sort", "Sort By"), image: UIImage(systemName: "arrow.up.arrow.down"),
-                              options: .singleSelection, children: orders)
-        sortMenu.subtitle = Self.title(current)
-        let turnOff = UIAction(title: Self.text("storm_log_turn_off", "Turn Off Storm Log"), image: UIImage(systemName: "power"),
-                               attributes: .destructive) { [weak self] _ in
-            self?.confirmTurnOff()
-        }
-        moreItem.menu = UIMenu(children: [sortMenu, UIMenu(options: .displayInline, children: [turnOff])])
+        sortButton.menu = UIMenu(title: Self.text("storm_log_sort", "Sort By"), options: .singleSelection, children: orders)
     }
 
     private func resort(_ order: StormLogRules.Sort) {
@@ -242,7 +279,7 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
             tableView.reloadSections(IndexSet(integer: 0), with: UIAccessibility.isReduceMotionEnabled ? .none : .fade)
             if !passages.isEmpty { tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .top, animated: false) }
         }
-        updateMenu()
+        updateSortButton()
         UIAccessibility.post(notification: .announcement, argument: Self.title(order))
     }
 
@@ -273,7 +310,11 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? passages.count : 1
+        section == 0 ? passages.count : 2
+    }
+
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        section == 0 ? sortHeader : nil
     }
 
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
@@ -282,9 +323,11 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 1 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "delete", for: indexPath)
+            let cell = tableView.dequeueReusableCell(withIdentifier: "action", for: indexPath)
             var content = cell.defaultContentConfiguration()
-            content.text = Self.text("storm_log_delete", "Delete Log")
+            content.text = indexPath.row == 0
+                ? Self.text("storm_log_delete", "Delete Log")
+                : Self.text("storm_log_turn_off", "Turn Off Storm Log")
             content.textProperties.color = .systemRed
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
@@ -302,7 +345,8 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         if indexPath.section == 1 {
-            confirmDelete(from: tableView.cellForRow(at: indexPath))
+            let cell = tableView.cellForRow(at: indexPath)
+            if indexPath.row == 0 { confirmDelete(from: cell) } else { confirmTurnOff(from: cell) }
             return
         }
         navigationController?.pushViewController(StormLogDetailViewController(passage: passages[indexPath.row]), animated: true)
@@ -338,7 +382,7 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
 
     // MARK: Turning off
 
-    private func confirmTurnOff() {
+    private func confirmTurnOff(from source: UIView?) {
         let sheet = UIAlertController(title: Self.text("storm_log_turn_off_title", "Turn off the storm log?"),
                                       message: Self.text("storm_log_turn_off_message", "Every entry is deleted from the server, your places' too. You can turn it on again later."),
                                       preferredStyle: .actionSheet)
@@ -346,7 +390,8 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
             self?.turnOff()
         })
         sheet.addAction(UIAlertAction(title: Self.text("storm_log_cancel", "Cancel"), style: .cancel))
-        sheet.popoverPresentationController?.barButtonItem = moreItem
+        sheet.popoverPresentationController?.sourceView = source ?? view
+        sheet.popoverPresentationController?.sourceRect = source?.bounds ?? view.bounds
         present(sheet, animated: true)
     }
 

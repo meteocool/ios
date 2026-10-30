@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Når du slår den fra, slettes dagbogen fra serveren. At slå regnvarsler fra sletter den også.";
 "storm_log_onboarding_footnote" = "Den starter tom. Den kræver regnvarsler slået til og placeringen altid tilladt.";
 "storm_log_turn_on" = "Slå til";
-"storm_log_more" = "Mere";
 "storm_log_sort" = "Sortér efter";
 "storm_log_sort_recent" = "Nyeste";
 "storm_log_sort_severity" = "Styrke";

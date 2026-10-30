@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Als je het uitzet, wordt het logboek van de server verwijderd. Regenmeldingen uitzetten verwijdert het ook.";
 "storm_log_onboarding_footnote" = "Het begint leeg. Daarvoor moeten regenmeldingen aan staan en moet de locatie altijd zijn toegestaan.";
 "storm_log_turn_on" = "Zet aan";
-"storm_log_more" = "Meer";
 "storm_log_sort" = "Sorteer op";
 "storm_log_sort_recent" = "Nieuwste";
 "storm_log_sort_severity" = "Sterkte";

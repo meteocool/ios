@@ -333,7 +333,6 @@
 "storm_log_onboarding_off_text" = "Når du slår den av, slettes loggen fra serveren. Å slå av regnvarsling sletter den også.";
 "storm_log_onboarding_footnote" = "Den starter tom. Den krever at regnvarsling er på og at posisjonen alltid er tillatt.";
 "storm_log_turn_on" = "Slå på";
-"storm_log_more" = "Mer";
 "storm_log_sort" = "Sorter etter";
 "storm_log_sort_recent" = "Nyeste";
 "storm_log_sort_severity" = "Styrke";
