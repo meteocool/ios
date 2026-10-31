@@ -1,3 +1,4 @@
+import CoreLocation
 import UIKit
 import UserNotifications
 
@@ -10,6 +11,9 @@ import UserNotifications
     private(set) var syncFailed = false
     private var unregistering = false
     private var removalPending = false
+    /// Set when the user turns alerts on; the next registration then asks
+    /// whether they reach the phone (`checkCoverage`).
+    private var coverageCheckPending = false
 
     var enabled: Bool { defaults?.bool(forKey: "pushNotification") == true }
     private var registrationOrigin: URL? {
@@ -51,6 +55,7 @@ import UserNotifications
                 let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
                 authorized = granted
                 defaults?.set(granted, forKey: "pushNotification")
+                coverageCheckPending = granted
                 if granted {
                     registerWithAPNs()
                 } else {
@@ -92,6 +97,7 @@ import UserNotifications
 
     func disable() {
         defaults?.set(false, forKey: "pushNotification")
+        coverageCheckPending = false
         clearNotifications()
         SharedLiveActivities.settingChanged()
         SharedLocationUpdater.updateBackgroundMonitoring()
@@ -149,7 +155,7 @@ import UserNotifications
         }
     }
 
-    func registrationFinished(success: Bool, origin: URL) {
+    func registrationFinished(success: Bool, origin: URL, token: String, at coordinate: CLLocationCoordinate2D) {
         syncFailed = !success
         // Recorded again because a removal that ran meanwhile cleared it, and
         // the server now holds this registration.
@@ -159,8 +165,42 @@ import UserNotifications
         }
         // Remove the new registration if alerts were turned off, or the
         // deployment changed, while the POST was running.
-        if !canRegister { unregister() }
+        if !canRegister {
+            unregister()
+        } else if success && coverageCheckPending {
+            coverageCheckPending = false
+            checkCoverage(origin: origin, token: token, at: coordinate)
+        }
         changed()
+    }
+
+    /// Tells the user when the alerts do not reach where the phone is. Asked
+    /// once, after the registration that follows turning them on: the route
+    /// wants a registered token. The alerts stay on, for when the user moves
+    /// into a domain; an answer that does not say shows nothing.
+    private func checkCoverage(origin: URL, token: String, at coordinate: CLLocationCoordinate2D) {
+        guard let request = NotificationCoverage.request(api: origin, token: token,
+                                                         latitude: coordinate.latitude, longitude: coordinate.longitude) else { return }
+        Task {
+            guard let (data, response) = try? await URLSession.meteocool.data(for: request),
+                  (response as? HTTPURLResponse)?.statusCode == 200,
+                  NotificationCoverage.outside(data) == true,
+                  enabled else { return }
+            let alert = UIAlertController(title: NSLocalizedString("notifications_outside_title", comment: "settings"),
+                                          message: NSLocalizedString("notifications_outside", comment: "settings"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("mute_ok", comment: "settings"), style: .default))
+            Self.topViewController()?.present(alert, animated: true)
+        }
+    }
+
+    /// What is on screen in the app's foreground window, to present over.
+    private static func topViewController() -> UIViewController? {
+        let scene = UIApplication.shared.connectedScenes.lazy.compactMap { $0 as? UIWindowScene }.first {
+            $0.session.role == .windowApplication && $0.activationState == .foregroundActive
+        }
+        var top = scene?.keyWindow?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed { top = presented }
+        return top
     }
 
     func registrationFailed() {

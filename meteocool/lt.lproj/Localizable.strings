@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Nepavyko pristabdyti įspėjimų";
 "mute_no_forecast" = "Nepavyko įkelti tavo vietovės prognozės. Bandyk vėliau.";
 "mute_ok" = "Gerai";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Čia pranešimų nėra";
+"notifications_outside" = "meteocool pranešimai tavo vietovėje neveikia, nes ji yra už mūsų radarų duomenų aprėpties ribų. Pranešimai lieka įjungti ir pradės veikti, kai būsi aprėpiamoje vietovėje.";
 "feedback_body" = "Čia aprašyk savo problemą ar pasiūlymą:\n";
 
 "map_layers" = "Žemėlapio sluoksniai";

@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Kunne ikke sette varsler på pause";
 "mute_no_forecast" = "Prognosen for posisjonen din kunne ikke lastes inn. Prøv igjen senere.";
 "mute_ok" = "OK";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Ingen varslinger her";
+"notifications_outside" = "meteocool-varslinger fungerer ikke der du er, fordi stedet ligger utenfor området radardataene våre dekker. Varslingene forblir på og starter så snart du er i et dekket område.";
 "feedback_body" = "Beskriv problemet eller forslaget ditt her:\n";
 
 "map_layers" = "Kartlag";

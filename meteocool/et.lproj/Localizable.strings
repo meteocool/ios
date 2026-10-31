@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Hoiatusi ei saanud peatada";
 "mute_no_forecast" = "Sinu asukoha prognoosi ei õnnestunud laadida. Proovi hiljem uuesti.";
 "mute_ok" = "OK";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Siin teavitusi ei ole";
+"notifications_outside" = "meteocooli teavitused sinu asukohas ei tööta, sest see jääb väljapoole meie radariandmete kattealat. Teavitused jäävad sisse ja hakkavad tööle, kui jõuad kaetud alale.";
 "feedback_body" = "Kirjelda siin oma probleemi või ettepanekut:\n";
 
 "map_layers" = "Kaardikihid";
