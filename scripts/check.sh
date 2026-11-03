@@ -13,6 +13,8 @@ xcrun swiftc meteocool/lib/MapShare.swift tests/MapShareCheck.swift -o "$scratch
 "$scratch/check-share"
 xcrun swiftc meteocool/StormLog/StormLogRules.swift tests/StormLogCheck.swift -o "$scratch/check-storm-log"
 "$scratch/check-storm-log"
+xcrun swiftc meteocool/lib/NotificationCoverage.swift tests/NotificationCoverageCheck.swift -o "$scratch/check-notification-coverage"
+"$scratch/check-notification-coverage"
 xcrun swiftc Shared/AlertHistory.swift tests/AlertHistoryCheck.swift -o "$scratch/check-alerts"
 "$scratch/check-alerts"
 xcrun swiftc Shared/AlertMute.swift Shared/AlertMute+Rain.swift Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/AlertMuteCheck.swift -o "$scratch/check-mute"

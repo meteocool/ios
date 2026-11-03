@@ -340,10 +340,10 @@ import CoreLocation
                 let (data, response) = try await URLSession.meteocool.data(for: request)
                 let success = NetworkHelper.checkResponse(data: data, response: response, error: nil) != nil
                 if !success { self.lastPostedLocation = nil }
-                SharedNotificationManager.registrationFinished(success: success, origin: origin)
+                SharedNotificationManager.registrationFinished(success: success, origin: origin, token: tokenValue, at: location.coordinate)
             } catch {
                 self.lastPostedLocation = nil
-                SharedNotificationManager.registrationFinished(success: false, origin: origin)
+                SharedNotificationManager.registrationFinished(success: false, origin: origin, token: tokenValue, at: location.coordinate)
             }
         }
     }

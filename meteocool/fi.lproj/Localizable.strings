@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Hälytyksiä ei voitu keskeyttää";
 "mute_no_forecast" = "Sijaintisi ennustetta ei voitu ladata. Yritä myöhemmin uudelleen.";
 "mute_ok" = "OK";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Ei ilmoituksia täällä";
+"notifications_outside" = "meteocoolin ilmoitukset eivät toimi sijainnissasi, koska se on tutkadatamme kattaman alueen ulkopuolella. Ilmoitukset pysyvät päällä ja alkavat toimia, kun olet katetulla alueella.";
 "feedback_body" = "Kuvaile ongelmasi tai ehdotuksesi tähän:\n";
 
 "map_layers" = "Karttatasot";

@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Varslerne kunne ikke sættes på pause";
 "mute_no_forecast" = "Prognosen for din placering kunne ikke indlæses. Prøv igen senere.";
 "mute_ok" = "OK";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Ingen notifikationer her";
+"notifications_outside" = "meteocool-notifikationer virker ikke på din placering, fordi den ligger uden for det område, vores radardata dækker. Notifikationerne forbliver slået til og starter, så snart du er i et dækket område.";
 "feedback_body" = "Beskriv dit problem eller forslag her:\n";
 
 "map_layers" = "Kortlag";

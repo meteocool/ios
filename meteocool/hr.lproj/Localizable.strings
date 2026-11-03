@@ -147,6 +147,9 @@
 "mute_no_forecast_title" = "Upozorenja nije moguće pauzirati";
 "mute_no_forecast" = "Prognozu za tvoju lokaciju nije moguće učitati. Pokušaj ponovno kasnije.";
 "mute_ok" = "U redu";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Ovdje nema obavijesti";
+"notifications_outside" = "meteocool obavijesti ne rade na tvojoj lokaciji jer je izvan područja koje pokrivaju naši radarski podaci. Obavijesti ostaju uključene i počinju raditi čim budeš u pokrivenom području.";
 "feedback_body" = "Ovdje opiši svoj problem ili prijedlog:\n";
 
 "map_layers" = "Slojevi karte";

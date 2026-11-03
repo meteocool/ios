@@ -148,6 +148,9 @@
 "mute_no_forecast_title" = "Det gick inte att pausa varningarna";
 "mute_no_forecast" = "Prognosen för din plats kunde inte läsas in. Försök igen senare.";
 "mute_ok" = "OK";
+/* Turning the alerts on where they do not reach, in Settings */
+"notifications_outside_title" = "Inga notiser här";
+"notifications_outside" = "meteocool-notiser fungerar inte där du är, eftersom platsen ligger utanför området som våra radardata täcker. Notiserna förblir på och börjar fungera när du är i ett täckt område.";
 "feedback_body" = "Beskriv ditt problem eller förslag här:\n";
 
 "map_layers" = "Kartlager";

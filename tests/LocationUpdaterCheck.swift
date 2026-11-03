@@ -12,7 +12,7 @@ import CoreLocation
     func getToken() -> String? { String(repeating: "a", count: 64) }
     func unregister() {}
     func registrationWillBegin(origin: URL) {}
-    func registrationFinished(success: Bool, origin: URL) { precondition(success) }
+    func registrationFinished(success: Bool, origin: URL, token: String, at coordinate: CLLocationCoordinate2D) { precondition(success) }
 }
 @MainActor let SharedNotificationManager = NotificationState()
 @MainActor final class WidgetsStub {
