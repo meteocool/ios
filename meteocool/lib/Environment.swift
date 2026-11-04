@@ -160,16 +160,6 @@ enum MeteocoolEnvironment: String, CaseIterable {
         return page()
     }
 
-    /// The map page for CarPlay, without controls.
-    ///
-    /// `toolbar=no` is a URL setting read by core (`src/App.svelte`).
-    /// It removes the bottom toolbar, the forecast strip and their padding.
-    /// The result is the live radar with nothing to tap.
-    /// App builds already hide the logo and the layer switcher.
-    var carPlayURL: URL {
-        page(query: ["toolbar": "no"])
-    }
-
     /// Whether `host` serves one of the environments' web maps, so a link on
     /// it is a link to the map.
     static func isWebHost(_ host: String) -> Bool {

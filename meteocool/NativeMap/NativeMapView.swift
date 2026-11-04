@@ -792,8 +792,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.userLocation = location
         guard let location else { return }
         if focus {
-            let accuracy = location.horizontalAccuracy
-            let level: Double? = zoom ? (accuracy < 800 ? 10 : accuracy < 2000 ? 9 : 8) : nil
+            let level: Double? = zoom ? Self.locationZoom(accuracy: location.horizontalAccuracy) : nil
             if let level {
                 place(NativeMapLink(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, zoom: level),
                       animated: true)
@@ -805,6 +804,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
         // The readings are for a long-pressed point while there is one.
         if model.point == nil { radar.point = location.coordinate }
+    }
+
+    /// The zoom the location button zooms in to: closer the better the fix.
+    static func locationZoom(accuracy: CLLocationAccuracy) -> Double {
+        accuracy < 800 ? 10 : accuracy < 2000 ? 9 : 8
     }
 
     /// Back to the live radar, as the logo does on the web map.
@@ -899,36 +903,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     // MARK: - View
 
     /// OpenLayers' zoom, which links carry: 256 points per world at zoom 0.
-    var zoomLevel: Double {
-        let width = mapView.visibleMapRect.width
-        guard width > 0, mapView.bounds.width > 0 else { return Self.defaultView.zoom }
-        return log2(MKMapSize.world.width * Double(mapView.bounds.width) / (256 * width))
-    }
+    var zoomLevel: Double { mapView.zoomLevel ?? Self.defaultView.zoom }
 
     func place(_ link: NativeMapLink, animated: Bool) {
         guard mapView.bounds.width > 0 else {
             pendingView = link
             return
         }
-        let coordinate = CLLocationCoordinate2D(latitude: link.latitude, longitude: link.longitude)
-        let width = MKMapSize.world.width * Double(mapView.bounds.width) / (256 * pow(2, link.zoom))
-        if !animated {
-            // Close enough to measure from: MapKit fits a rect inside the
-            // safe area and the strip, so it lands zoomed out a little.
-            let height = width * Double(mapView.bounds.height / mapView.bounds.width)
-            let center = MKMapPoint(coordinate)
-            mapView.setVisibleMapRect(MKMapRect(x: center.x - width / 2, y: center.y - height / 2, width: width, height: height),
-                                      animated: false)
-        }
-        // The camera's distance sets the zoom over the whole view: the width
-        // it shows grows with it, in map points per metre where it looks.
-        let camera = mapView.camera
-        let shown = mapView.visibleMapRect.width / MKMapPointsPerMeterAtLatitude(mapView.centerCoordinate.latitude)
-        guard shown > 0, camera.centerCoordinateDistance > 0 else { return }
-        let wanted = width / MKMapPointsPerMeterAtLatitude(link.latitude)
-        let target = MKMapCamera(lookingAtCenter: coordinate, fromDistance: camera.centerCoordinateDistance * wanted / shown,
-                                 pitch: 0, heading: camera.heading)
-        mapView.setCamera(target, animated: animated)
+        mapView.place(link, animated: animated)
     }
 
     // MARK: - MKMapViewDelegate
@@ -1030,5 +1012,37 @@ private final class PassthroughStack: UIStackView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
         return hit === self ? nil : hit
+    }
+}
+
+extension MKMapView {
+    /// OpenLayers' zoom, which links carry: 256 points per world at zoom 0.
+    /// Nil before the map is laid out.
+    var zoomLevel: Double? {
+        let width = visibleMapRect.width
+        guard width > 0, bounds.width > 0 else { return nil }
+        return log2(MKMapSize.world.width * Double(bounds.width) / (256 * width))
+    }
+
+    /// Moves the map to a link's view: its centre at its zoom.
+    func place(_ link: NativeMapLink, animated: Bool) {
+        let coordinate = CLLocationCoordinate2D(latitude: link.latitude, longitude: link.longitude)
+        let width = MKMapSize.world.width * Double(bounds.width) / (256 * pow(2, link.zoom))
+        if !animated {
+            // Close enough to measure from: MapKit fits a rect inside the
+            // safe area and the strip, so it lands zoomed out a little.
+            let height = width * Double(bounds.height / bounds.width)
+            let center = MKMapPoint(coordinate)
+            setVisibleMapRect(MKMapRect(x: center.x - width / 2, y: center.y - height / 2, width: width, height: height),
+                              animated: false)
+        }
+        // The camera's distance sets the zoom over the whole view: the width
+        // it shows grows with it, in map points per metre where it looks.
+        let shown = visibleMapRect.width / MKMapPointsPerMeterAtLatitude(centerCoordinate.latitude)
+        guard shown > 0, camera.centerCoordinateDistance > 0 else { return }
+        let wanted = width / MKMapPointsPerMeterAtLatitude(link.latitude)
+        let target = MKMapCamera(lookingAtCenter: coordinate, fromDistance: camera.centerCoordinateDistance * wanted / shown,
+                                 pitch: 0, heading: camera.heading)
+        setCamera(target, animated: animated)
     }
 }
