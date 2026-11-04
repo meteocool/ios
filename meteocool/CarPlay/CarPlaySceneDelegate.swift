@@ -1,131 +1,123 @@
-//
-//  CarPlaySceneDelegate.swift
-//  meteocool
-//
-//  The CarPlay scene: the radar map, the location button and zoom.
-//
-
 import CarPlay
+import CoreLocation
 import UIKit
 
-/// Scene delegate for the CarPlay screen.
-///
-/// CarPlay splits a map app in two parts:
-/// - templates (`CPInterfaceController`): drawn by the system, and the only
-///   part the driver can touch;
-/// - the map: an ordinary `UIViewController` in the `CPWindow` under the
-///   templates.
-/// The root template is a `CPMapTemplate` with three map buttons: the
-/// location button, and zoom in and out for cars whose screens take no
-/// pinch. Its delegate hands pans and pinches on to the map.
-///
-/// Drawing into the `CPWindow` requires the `com.apple.developer.carplay-maps`
-/// entitlement. Apple grants it per app on request.
-class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPMapTemplateDelegate {
-    private var interfaceController: CPInterfaceController?
-    private var mapController: CarPlayMapViewController?
+/// Driving Task apps use system templates; CPWindow and CPMapTemplate require Navigation approval.
+@MainActor
+final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, LocationObserver {
+    private let template = CPInformationTemplate(title: "meteocool", layout: .leading,
+                                                  items: CarPlayRainStatus.loading, actions: [])
+    private var active = false
+    private var timer: Timer?
+    private var task: Task<Void, Never>?
+    private var location: CLLocation?
+    private var requestedLocation: CLLocation?
+    private var lastRequest: Date?
+    private var requestedSettings: CarPlayRainStatus.Settings?
+    private var authorization: CLAuthorizationStatus?
+    private var defaultsObserver: NSObjectProtocol?
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didConnect interfaceController: CPInterfaceController,
-                                  to window: CPWindow) {
-        self.interfaceController = interfaceController
+    func templateApplicationScene(_ scene: CPTemplateApplicationScene, didConnect controller: CPInterfaceController) {
         SharedLocationUpdater.carPlayConnected = true
         SharedLocationUpdater.updateBackgroundMonitoring()
-
-        let map = CarPlayMapViewController()
-        window.rootViewController = map
-        mapController = map
-
-        let template = CPMapTemplate()
-        template.mapDelegate = self
-        let locate = Self.button(map.locationState.symbolName) { [weak map] in map?.locationButton() }
-        map.onLocationState = { [weak locate] state in locate?.image = Self.symbol(state.symbolName) }
-        map.onLocationDenied = { [weak self] in self?.showLocationDenied() }
-        template.mapButtons = [
-            Self.button("plus") { [weak map] in map?.zoom(by: 1) },
-            Self.button("minus") { [weak map] in map?.zoom(by: -1) },
-            locate,
-        ]
-        // CarPlay shows nothing until a root template is set, even when the
-        // window's view controller is ready.
-        interfaceController.setRootTemplate(template, animated: false, completion: nil)
-        map.start()
+        template.actions = [CPTextButton(title: CarPlayRainStatus.text("carplay_refresh"), textStyle: .normal) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh(force: true) }
+        }]
+        controller.setRootTemplate(template, animated: false) { success, error in
+            if !success { NSLog("CarPlay template failed: %@", error?.localizedDescription ?? "Unknown error") }
+        }
+        start()
     }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didDisconnectInterfaceController interfaceController: CPInterfaceController,
-                                  from window: CPWindow) {
-        self.interfaceController = nil
-        mapController?.disconnect()
-        window.rootViewController = nil
-        mapController = nil
+    func templateApplicationScene(_ scene: CPTemplateApplicationScene, didDisconnectInterfaceController controller: CPInterfaceController) {
+        stop()
+        location = nil
         SharedLocationUpdater.carPlayConnected = false
         SharedLocationUpdater.updateBackgroundMonitoring()
+        if UIApplication.shared.applicationState != .active { SharedLocationUpdater.stopAccurateLocationUpdates() }
+    }
 
-        // Stop the high-accuracy updates the CarPlay map requested. If the
-        // phone app is active, its own map uses those updates, so they stay
-        // on.
-        if UIApplication.shared.applicationState != .active {
-            SharedLocationUpdater.stopAccurateLocationUpdates()
+    func sceneDidEnterBackground(_ scene: UIScene) { stop() }
+    func sceneWillEnterForeground(_ scene: UIScene) { start() }
+
+    private func start() {
+        guard !active else { return }
+        active = true
+        SharedLocationUpdater.addObserver(observer: self)
+        SharedLocationUpdater.startAccurateLocationUpdates(force: true)
+        NotificationCenter.default.addObserver(self, selector: #selector(settingsChanged), name: NSNotification.Name("SettingsChanged"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(settingsChanged), name: MeteocoolEnvironment.didChange, object: nil)
+        defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.settingsChanged() }
         }
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.active else { return }
+                SharedLocationUpdater.requestLocation(observer: self, explicit: false)
+                self.refresh()
+            }
+        }
+        SharedLocationUpdater.requestLocation(observer: self, explicit: false)
+        refresh()
     }
 
-    // Another app on the car's screen: nothing to keep live meanwhile.
-    func sceneDidEnterBackground(_ scene: UIScene) {
-        mapController?.stop()
+    private func stop() {
+        active = false
+        timer?.invalidate()
+        timer = nil
+        task?.cancel()
+        task = nil
+        lastRequest = nil
+        requestedLocation = nil
+        requestedSettings = nil
+        authorization = nil
+        NotificationCenter.default.removeObserver(self)
+        if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
+        defaultsObserver = nil
     }
 
-    func sceneWillEnterForeground(_ scene: UIScene) {
-        mapController?.start()
+    @objc private func settingsChanged() {
+        guard requestedSettings != CarPlayRainStatus.settings || authorization != SharedLocationUpdater.authorizationStatus else { return }
+        refresh(force: true)
     }
 
-    /// Location access is off: the driver turns it on on the phone.
-    private func showLocationDenied() {
-        guard let interfaceController, interfaceController.presentedTemplate == nil else { return }
-        let alert = CPAlertTemplate(titleVariants: [NSLocalizedString("location_permission_required", comment: "Alerts")], actions: [
-            CPAlertAction(title: NSLocalizedString("Dismiss", comment: "Alerts"), style: .cancel) { [weak interfaceController] _ in
-                interfaceController?.dismissTemplate(animated: true, completion: nil)
-            },
-        ])
-        interfaceController.presentTemplate(alert, animated: true, completion: nil)
+    func notify(location: CLLocation) {
+        guard active, self.location.map({ $0.timestamp <= location.timestamp }) ?? true else { return }
+        self.location = location
+        if let requestedLocation, location.distance(from: requestedLocation) > 500 {
+            task?.cancel()
+            task = nil
+            self.requestedLocation = nil
+            template.items = CarPlayRainStatus.loading
+        }
+        refresh()
     }
 
-    private static func button(_ symbol: String, _ action: @escaping @MainActor () -> Void) -> CPMapButton {
-        let button = CPMapButton { _ in MainActor.assumeIsolated { action() } }
-        button.image = Self.symbol(symbol)
-        return button
-    }
-
-    private static func symbol(_ name: String) -> UIImage? {
-        UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold))
-    }
-
-    // MARK: - CPMapTemplateDelegate
-
-    func mapTemplateDidBeginPanGesture(_ mapTemplate: CPMapTemplate) {
-        mapController?.panBegan()
-    }
-
-    func mapTemplate(_ mapTemplate: CPMapTemplate, didUpdatePanGestureWithTranslation translation: CGPoint, velocity: CGPoint) {
-        mapController?.pan(by: translation)
-    }
-
-    func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {
-        mapController?.panEnded(velocity: velocity)
-    }
-
-    @available(iOS 26.0, *)
-    func mapTemplateDidBeginZoomGesture(_ mapTemplate: CPMapTemplate) {
-        mapController?.pinchBegan()
-    }
-
-    @available(iOS 26.0, *)
-    func mapTemplate(_ mapTemplate: CPMapTemplate, didUpdateZoomGestureWithCenter center: CGPoint, scale: CGFloat, velocity: CGFloat) {
-        mapController?.zoom(around: center, scale: scale)
-    }
-
-    @available(iOS 26.0, *)
-    func mapTemplate(_ mapTemplate: CPMapTemplate, didEndZoomGestureWithVelocity velocity: CGFloat) {
-        mapController?.pinchEnded()
+    private func refresh(force: Bool = false) {
+        guard active else { return }
+        let status = SharedLocationUpdater.authorizationStatus
+        authorization = status
+        guard status == .authorizedAlways || status == .authorizedWhenInUse, let location else {
+            task?.cancel()
+            task = nil
+            requestedSettings = CarPlayRainStatus.settings
+            template.items = CarPlayRainStatus.noLocation
+            return
+        }
+        guard force || (lastRequest.map({ Date().timeIntervalSince($0) >= 30 }) ?? true) else { return }
+        task?.cancel()
+        if force || requestedLocation == nil { template.items = CarPlayRainStatus.loading }
+        requestedLocation = location
+        requestedSettings = CarPlayRainStatus.settings
+        lastRequest = Date()
+        task = Task { [weak self] in
+            let items = await CarPlayRainStatus.load(at: location)
+            guard !Task.isCancelled, let self, self.active else { return }
+            self.task = nil
+            guard self.requestedSettings == CarPlayRainStatus.settings else { self.refresh(force: true); return }
+            // A response for a place the car has left must not describe the new location.
+            guard let current = self.location, current.distance(from: location) <= 500 else { return }
+            self.template.items = items
+        }
     }
 }

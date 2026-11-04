@@ -4,7 +4,7 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
-	<key>com.apple.developer.carplay-maps</key>
+	<key>com.apple.developer.carplay-driving-task</key>
 	<true/>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
