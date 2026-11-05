@@ -53,6 +53,11 @@ final class SnowOverlay: NativeMapFeature {
     private var state: SnowState?
     private var live = true
     private var added = false
+    /// A past window's step on screen, and the snowfields of each step asked
+    /// (nil where none was measured), so playing asks each once.
+    private var windowStep: Int?
+    private var past: [Int: SnowState?] = [:]
+    private var asking = Set<Int>()
 
     func attach(to map: NativeMapContext) {
         self.map = map
@@ -66,7 +71,7 @@ final class SnowOverlay: NativeMapFeature {
         overlay === self.overlay ? VectorTileRenderer(overlay: overlay) : nil
     }
 
-    func wake() { load() }
+    func wake() { if windowStep == nil, map?.model.window == nil { load() } else { loadPast() } }
 
     func socketEvent(_ name: String, _ data: Data) {
         if name == "snow" { load() }
@@ -74,10 +79,47 @@ final class SnowOverlay: NativeMapFeature {
 
     func stepDidChange(_ step: RadarStep) {
         live = step.time == nil || step.isLive
+        windowStep = step.window != nil ? step.time : nil
+        if windowStep != nil { loadPast() } else { update() }
+    }
+
+    func windowDidChange(_ window: RadarWindow?) {
+        past = [:]
+        asking = []
+        windowStep = nil
+        state = nil
         update()
     }
 
-    func settingsDidChange() { update() }
+    /// `GET /v3/radar/snow?at=`: the snowfields measured at or before the
+    /// window's step on screen (404 where there are none).
+    private func loadPast() {
+        guard let map, map.isOn(.snow), let step = windowStep else { return update() }
+        if let held = past[step] {
+            state = held
+            return update()
+        }
+        guard !asking.contains(step) else { return }
+        asking.insert(step)
+        map.fetch(map.endpoints.snow(at: step)) { [weak self] data, status in
+            guard let self else { return }
+            self.asking.remove(step)
+            if status == 404 {
+                self.past[step] = .some(nil)
+            } else if let data, let state = SnowState.decode(data) {
+                self.past[step] = state
+            } else {
+                return
+            }
+            if self.past.count > 400 { self.past = [step: self.past[step]!] }
+            if step == self.windowStep {
+                self.state = self.past[step]!
+                self.update()
+            }
+        }
+    }
+
+    func settingsDidChange() { if windowStep != nil { loadPast() } else { update() } }
 
     func regionDidChange() {
         guard let map, added else { return }
@@ -85,7 +127,7 @@ final class SnowOverlay: NativeMapFeature {
     }
 
     private func load() {
-        guard let map, map.isOn(.snow) else { return }
+        guard let map, map.isOn(.snow), map.model.window == nil else { return }
         map.fetch(map.endpoints.snow) { [weak self] data, status in
             guard let self else { return }
             if status == 404 {
@@ -106,7 +148,7 @@ final class SnowOverlay: NativeMapFeature {
         } else {
             overlay.urlTemplate = nil
         }
-        let show = map.isOn(.snow) && live && overlay.urlTemplate != nil && map.model.capability == .radar
+        let show = map.isOn(.snow) && (live || windowStep != nil) && overlay.urlTemplate != nil && map.model.capability == .radar
         if show != added {
             added = show
             if show { map.mapView.addOverlay(overlay, level: .aboveRoads) } else { map.mapView.removeOverlay(overlay) }

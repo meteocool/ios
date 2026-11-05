@@ -33,10 +33,18 @@ final class LightningOverlay: NSObject, MKOverlay, @unchecked Sendable {
     let boundingMapRect = MKMapRect.world
     private let lock = NSLock()
     private var current: [Strike] = []
+    private var shownAt: Date?
 
     var strikes: [Strike] {
         get { lock.withLock { current } }
         set { lock.withLock { current = newValue } }
+    }
+
+    /// What the strikes are aged against: the step on screen in a past
+    /// window, nil for now.
+    var reference: Date? {
+        get { lock.withLock { shownAt } }
+        set { lock.withLock { shownAt = newValue } }
     }
 }
 
@@ -62,7 +70,7 @@ final class LightningRenderer: MKOverlayRenderer {
 
         struct Cluster { var x = 0.0, y = 0.0, age = 0.0, count = 0 }
         var clusters: [Int64: Cluster] = [:]
-        let now = Date()
+        let now = lightning.reference ?? Date()
         for strike in lightning.strikes where area.contains(strike.point) {
             let key = Int64(strike.point.x / cell) << 32 | Int64(strike.point.y / cell)
             var cluster = clusters[key] ?? Cluster()
@@ -79,10 +87,7 @@ final class LightningRenderer: MKOverlayRenderer {
             let size: Double = n > 13 ? 40 : n > 9 ? 34 : n > 3 ? 29 : 24
             let height = size * 0.2 / 40 * 206 / Double(zoomScale)
             let width = height / aspect
-            let meanAge = cluster.age / Double(n) / 60
-            var level = min(Int((meanAge / 2.5).rounded()) + 1, 20)
-            if level < 5 { level = 0 }
-            let alpha = max(0, min(1, 1 - Double(level) / 30 * 0.8 - 0.2))
+            let alpha = StrikeFade.alpha(meanAgeMinutes: cluster.age / Double(n) / 60)
             let center = CGPoint(x: cluster.x / Double(n), y: cluster.y / Double(n))
             context.saveGState()
             context.setAlpha(alpha)
@@ -96,7 +101,8 @@ final class LightningRenderer: MKOverlayRenderer {
 }
 
 /// The strikes of the last half hour: backfilled from `/lightning_cache`,
-/// then one by one from the socket (core's `StrikeManager`).
+/// then one by one from the socket (core's `StrikeManager`). In a past
+/// window, the half hour before the step on screen, from the archive.
 @MainActor
 final class LightningMarks: NativeMapFeature {
     static let maxAge: TimeInterval = 30 * 60
@@ -115,8 +121,15 @@ final class LightningMarks: NativeMapFeature {
         }
     }
 
+    private var archive: ArchiveStrikeLoader?
+    /// The window's step on screen, nil live.
+    private var archiveStep: Int?
+
     func attach(to map: NativeMapContext) {
         self.map = map
+        let archive = ArchiveStrikeLoader(map: map)
+        archive.onLoad = { [weak self] in self?.showArchive() }
+        self.archive = archive
         settingsDidChange()
     }
 
@@ -124,12 +137,39 @@ final class LightningMarks: NativeMapFeature {
         visible = (map?.isOn(.lightning) ?? false) && map?.model.capability == .radar
     }
 
+    func windowDidChange(_ window: RadarWindow?) {
+        archive?.clear()
+        archiveStep = nil
+        strikes = [:]
+        overlay.reference = nil
+        publish()
+    }
+
+    func stepDidChange(_ step: RadarStep) {
+        guard step.window != nil, let time = step.time else { return }
+        archiveStep = time
+        showArchive()
+    }
+
+    /// The window's step on screen, its half hour of strikes aged against it.
+    private func showArchive() {
+        guard let step = archiveStep, map?.model.window != nil, let archive else { return }
+        let reference = Date(timeIntervalSince1970: TimeInterval(step))
+        overlay.reference = reference
+        strikes = [:]
+        for strike in archive.strikes(at: step) {
+            insert(Wire(lat: strike.y, lon: strike.x, time: strike.milliseconds))
+        }
+        publish(now: reference)
+    }
+
     func renderer(for overlay: MKOverlay) -> MKOverlayRenderer? {
         overlay === self.overlay ? LightningRenderer(overlay: overlay) : nil
     }
 
     func wake() {
-        guard let map else { return }
+        // Live only: a past window's come with its steps.
+        guard let map, map.model.window == nil else { return }
         map.fetch(map.endpoints.lightning) { [weak self] data, _ in
             if let data { self?.load(data) }
         }
@@ -185,9 +225,9 @@ final class LightningMarks: NativeMapFeature {
         (mapView?.renderer(for: overlay))?.setNeedsDisplay()
     }
 
-    /// Fades the strikes as they age.
+    /// Fades the strikes as they age; a window's stay as old as their step.
     func tick() {
-        publish()
+        if map?.model.window == nil { publish() }
     }
 
     /// How many strikes are held, for tests and the AR view's count.
@@ -255,8 +295,11 @@ final class MesocycloneMarks: NativeMapFeature {
     }
 
     func settingsDidChange() {
-        visible = (map?.isOn(.mesocyclones) ?? false) && map?.model.capability == .radar
+        // Nothing keeps them as a series: none in a past window.
+        visible = (map?.isOn(.mesocyclones) ?? false) && map?.model.capability == .radar && map?.model.window == nil
     }
+
+    func windowDidChange(_ window: RadarWindow?) { settingsDidChange() }
 
     func view(for annotation: MKAnnotation, in mapView: MKMapView) -> MKAnnotationView? {
         annotation is MesocycloneAnnotation
@@ -264,7 +307,8 @@ final class MesocycloneMarks: NativeMapFeature {
     }
 
     func wake() {
-        guard let map else { return }
+        // Live only: a past window's come with its steps.
+        guard let map, map.model.window == nil else { return }
         map.fetch(map.endpoints.mesocyclones) { [weak self] data, _ in
             if let data { self?.load(data) }
         }

@@ -432,6 +432,10 @@ final class StormMarks: NativeMapFeature {
 
     func wake() { store.refresh() }
 
+    /// A window's storms are every one that overlapped it, rewound to each
+    /// step (`stepDidChange` shows them at it: no step of a window is live).
+    func windowDidChange(_ window: RadarWindow?) { store.setWindow(window) }
+
     func socketEvent(_ name: String, _ data: Data) {
         if name == "storms" { store.refresh() }
     }

@@ -232,8 +232,15 @@ final class StationMarks: NativeMapFeature {
 
     func wake() { if shown { fetch() } }
 
+    /// Another time: asked about again once its first step is on screen.
+    func windowDidChange(_ window: RadarWindow?) {
+        at = nil
+        scrub?.invalidate()
+    }
+
     func tick() {
-        if shown, Date().timeIntervalSince(lastFetch) >= StationRules.refreshSeconds { fetch() }
+        // A past window's observations do not change.
+        if shown, map?.model.window == nil, Date().timeIntervalSince(lastFetch) >= StationRules.refreshSeconds { fetch() }
     }
 
     /// The frame on screen: greyed at once on a forecast frame; asked about
@@ -243,12 +250,14 @@ final class StationMarks: NativeMapFeature {
         let newest = map.player.timeline.now ?? 0
         let shownAt = step.time ?? 0
         let following = step.isLive
-        let nextStale = !following && StationRules.stale(shown: shownAt, newest: newest)
+        // In a past window every step is asked about, its end too.
+        let inWindow = step.window != nil && shownAt > 0
+        let nextStale = !following && !inWindow && StationRules.stale(shown: shownAt, newest: newest)
         if nextStale != stale {
             stale = nextStale
             restyle()
         }
-        let nextAt = following ? nil : StationRules.at(shown: shownAt, newest: newest)
+        let nextAt = inWindow ? shownAt : following ? nil : StationRules.at(shown: shownAt, newest: newest)
         scrub?.invalidate()
         scrub = Timer.scheduledTimer(withTimeInterval: StationRules.scrubDebounce, repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -298,6 +307,8 @@ final class StationMarks: NativeMapFeature {
 
     private func fetch() {
         guard let map, shown else { return }
+        // A window's stations are its steps', never today's.
+        if let window = map.model.window, !(at.map(window.contains) ?? false) { return }
         let choice = map.model.stations.choice
         generation += 1
         let generation = generation

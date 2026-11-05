@@ -132,7 +132,8 @@ final class SiteSweeps: NativeMapFeature {
     }
     private var marksShown: Bool {
         guard let map else { return false }
-        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom
+        // The sweeps are kept a day: a past window has no site mode.
+        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom && map.model.window == nil
     }
 
     func attach(to map: NativeMapContext) {
@@ -141,6 +142,7 @@ final class SiteSweeps: NativeMapFeature {
         map.mapView.register(BeamRingLabelView.self, forAnnotationViewWithReuseIdentifier: BeamRingLabelView.reuse)
         map.model.site.reader = { [weak self] coordinate in self?.readAt(coordinate) }
         map.model.site.opener = { [weak self] code in
+            guard self?.map?.model.window == nil else { return }
             // Site mode is the flat radar map's.
             if self?.map?.model.capability != .radar { self?.map?.setCapability(.radar) }
             self?.open(code)
@@ -226,6 +228,11 @@ final class SiteSweeps: NativeMapFeature {
         refreshOpenSite(code) { [weak self] in self?.redraw() }
     }
 
+    func windowDidChange(_ window: RadarWindow?) {
+        if window != nil { state?.close() }
+        updateMarks()
+    }
+
     func settingsDidChange() {
         guard let map else { return }
         if !map.isOn(.sites) { state?.close() }
@@ -237,7 +244,8 @@ final class SiteSweeps: NativeMapFeature {
     /// A link to a radar (`radar=`, `sweep=`, `tilt=`) opens it, on the
     /// radar map; with no view of its own, the radar's reach in view.
     func open(_ link: [String: String]) -> Bool {
-        guard let map, let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
+        guard let map, map.model.window == nil,
+              let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
         if map.model.capability != .radar { map.setCapability(.radar) }
         if link["latLonZ"] == nil, let site = RadarSites.site(mode.site) {
             map.place(NativeMapLink(latitude: site.lat, longitude: site.lon, zoom: Self.linkZoom), animated: false)
