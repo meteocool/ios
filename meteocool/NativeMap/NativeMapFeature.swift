@@ -87,6 +87,10 @@ protocol NativeMapFeature: AnyObject {
     func stop()
     /// Another of core's maps is shown (`NativeMapModel.capability`).
     func capabilityDidChange(_ capability: NativeMapModel.Capability)
+    /// A past window was opened, or left for live (nil). A `wake` follows,
+    /// which fetches what the window or live draws; this puts away what
+    /// the other drew.
+    func windowDidChange(_ window: RadarWindow?)
     /// A link's query (core's `lib/deepLink.ts`: `storm`, `cell`, `cloud`,
     /// `point`, …), every part in turn; true when this part took it.
     func open(_ link: [String: String]) -> Bool
@@ -116,6 +120,7 @@ extension NativeMapFeature {
     func settingsDidChange() {}
     func stop() {}
     func capabilityDidChange(_ capability: NativeMapModel.Capability) {}
+    func windowDidChange(_ window: RadarWindow?) {}
     func open(_ link: [String: String]) -> Bool { false }
     func linkParameters() -> [String: String] { [:] }
     func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) -> Bool { false }
@@ -129,6 +134,8 @@ struct RadarStep: Equatable {
     /// The newest observation: what core calls live.
     let isLive: Bool
     let isForecast: Bool
+    /// The past window it is a step of, nil live.
+    var window: RadarWindow? = nil
 }
 
 /// The app around the native map (`ViewController`).

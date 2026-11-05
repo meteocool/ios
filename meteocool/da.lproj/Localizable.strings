@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Alle poster slettes fra serveren, også dine steders. Du kan slå den til igen senere.";
 "storm_log_turn_off_confirm" = "Slå fra";
 "storm_log_turn_off_failed" = "Uvejrsdagbogen kunne ikke slettes, så den er stadig slået til. Prøv igen senere.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Arkiv";
+"native_map_archive_hint" = "Viser kortet på et tidspunkt, som arkivet stadig gemmer.";
+"native_map_archive_open" = "Åbn";
+"native_map_archive_empty_title" = "Intet gemt endnu";
+"native_map_archive_empty" = "Arkivet er tomt. Når det begynder, gemmes radar, lyn, uvejr og stationer.";
+"native_map_archive_failed_title" = "Arkivet er utilgængeligt";
+"native_map_archive_failed" = "Arkivet kunne ikke nås.";
+"native_map_archive_retry" = "Prøv igen";
+"native_map_archive_day" = "Dag";
+"native_map_archive_start" = "Start";
+"native_map_archive_length" = "Varighed";
+"native_map_archive_hours" = "%d t";
+"native_map_archive_kept" = "Gemt fra %1$@ til %2$@.";
+"native_map_archive_back" = "Tilbage til live";
+"native_map_archive_refused" = "Arkivet har ikke det tidspunkt.";

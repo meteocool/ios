@@ -17,6 +17,8 @@ struct NativeMapLink: Equatable {
     var zoom: Double
     /// A frame's unix second, nil for the live one.
     var time: Int?
+    /// A past window (`from=`, `to=`), nil live.
+    var window: RadarWindow?
 
     /// Reads a link's search (`?latLonZ=48.1,11.5,9&t=20260924T1945Z`).
     /// Nil without a usable view.
@@ -31,10 +33,23 @@ struct NativeMapLink: Equatable {
         longitude = lon
         self.zoom = min(max(zoom, 3), 20)
         time = items.first(where: { $0.name == "t" })?.value.flatMap(Self.frameTime)
+        window = Self.window(from: items.first(where: { $0.name == "from" })?.value, to: items.first(where: { $0.name == "to" })?.value)
     }
 
-    init(latitude: Double, longitude: Double, zoom: Double, time: Int? = nil) {
-        (self.latitude, self.longitude, self.zoom, self.time) = (latitude, longitude, zoom, time)
+    init(latitude: Double, longitude: Double, zoom: Double, time: Int? = nil, window: RadarWindow? = nil) {
+        (self.latitude, self.longitude, self.zoom, self.time, self.window) = (latitude, longitude, zoom, time, window)
+    }
+
+    /// A link's window, `from=20261102T1400Z&to=20261102T1700Z` as core
+    /// writes it; nil unless both are there and make a window.
+    static func window(from: String?, to: String?) -> RadarWindow? {
+        guard let start = from.flatMap(frameTime), let end = to.flatMap(frameTime) else { return nil }
+        return RadarWindow(start: start, end: end)
+    }
+
+    /// A window's `from=` and `to=`.
+    static func windowParameters(_ window: RadarWindow) -> [String: String] {
+        ["from": frameLink(window.start), "to": frameLink(window.end)]
     }
 
     /// Every parameter of a link's search, first value of each.
@@ -71,6 +86,7 @@ struct NativeMapLink: Equatable {
     var search: String {
         var search = "?latLonZ=" + [String(format: "%.5f", latitude), String(format: "%.5f", longitude), String(format: "%.2f", zoom)]
             .joined(separator: ",")
+        if let window { search += "&from=" + Self.frameLink(window.start) + "&to=" + Self.frameLink(window.end) }
         if let time { search += "&t=" + Self.frameLink(time) }
         return search
     }

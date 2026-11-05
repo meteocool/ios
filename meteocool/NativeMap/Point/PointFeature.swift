@@ -50,9 +50,14 @@ final class PointFeature: NativeMapFeature {
     // MARK: - The hold
 
     func didLongPress(at coordinate: CLLocationCoordinate2D) -> Bool {
-        guard let map, map.model.capability == .radar else { return false }
+        // A point's reading and outlook are live only: none in a past window.
+        guard let map, map.model.capability == .radar, map.model.window == nil else { return false }
         openMenu(at: coordinate)
         return true
+    }
+
+    func windowDidChange(_ window: RadarWindow?) {
+        if window != nil { closeMenu() }
     }
 
     func regionWillChange() {

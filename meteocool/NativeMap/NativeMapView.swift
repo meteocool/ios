@@ -85,6 +85,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             self.updateCoverage()
         }
         radar.onGaveUp = { [weak self] product in self?.gaveUp(product) }
+        radar.onWindowRefused = { [weak self] _ in self?.windowRefused() }
         monitor.radarStale = { [weak self] in self?.model.stale ?? false }
         monitor.newestProcessed = { [weak self] in self?.radar.processedTimes ?? (nil, nil) }
         observeSettings()
@@ -188,7 +189,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                   toggleStations: { [weak self] in
                                       guard let self else { return }
                                       self.setOn(.stations, !self.isOn(.stations))
-                                  })
+                                  },
+                                  openArchive: { [weak self] in self?.openArchive() })
         // Across from Apple's logo and Legal link and on their line, under the
         // other chrome; `layoutSubviews` keeps it there.
         let licences = addChrome(DataLicencesLink(model: model) { [weak self] in
@@ -277,7 +279,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         // Above whichever bars are up, as core counts the open strips and hints.
         let backHost = WeakView()
-        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site) { backHost.view?.invalidateIntrinsicContentSize() })
+        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site,
+                                           leaveWindow: { [weak self] in self?.leaveWindow() }) { backHost.view?.invalidateIntrinsicContentSize() })
         backHost.view = back
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -448,7 +451,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         player.outOfRadar = out
         let timeline = player.timeline
         let anyRun = Set(timeline.nowcastDomains.values.flatMap { $0 })
-        player.noForecast = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: Array(anyRun)) >= 1
+        // A window has no forecast to miss.
+        player.noForecast = timeline.window == nil && !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: Array(anyRun)) >= 1
         if let step = player.step, timeline.isForecast(step) {
             notices.noForecastHere = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: timeline.nowcastDomains[step] ?? []) >= 1
         } else {
@@ -576,7 +580,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private func wake() {
         // On wake core judges the radar's age: out of date until a new grid lands.
         let now = Int(Date().timeIntervalSince1970)
-        if ConnectionRules.outdated(newestObservation: player.timeline.now, period: radar.processedTimes.cadence, now: now) {
+        // A window is as old as it was chosen to be.
+        if model.window == nil,
+           ConnectionRules.outdated(newestObservation: player.timeline.now, period: radar.processedTimes.cadence, now: now) {
             model.stale = true
             radar.stale = true
         }
@@ -592,15 +598,87 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     private func stepChanged() {
         updateCoverage()
-        let step = RadarStep(time: player.step, isLive: player.step != nil && player.step == player.timeline.now,
-                             isForecast: player.step.map(player.timeline.isForecast) ?? false)
+        let step = RadarStep(time: player.step, isLive: player.isLive,
+                             isForecast: player.step.map(player.timeline.isForecast) ?? false, window: player.timeline.window)
         for feature in features { feature.stepDidChange(step) }
         updateCredits()
     }
 
     private func socketEvent(_ name: String, _ data: Data) {
         radar.socketEvent(name, data)
+        // The socket announces the live sky: nothing for a past window.
+        guard model.window == nil else { return }
         for feature in features { feature.socketEvent(name, data) }
+    }
+
+    // MARK: - The archive
+
+    /// What `/v3/archive` last said it keeps, for links to a past frame.
+    private var archiveCoverage: ArchiveCoverage?
+
+    /// The archive's sheet: a day, a start and a length to open.
+    func openArchive() {
+        var controller: UIViewController?
+        let picker = ArchivePicker(state: ArchivePickerState(url: endpoints.archive, fetch: { [weak self] url, done in self?.fetch(url, done) },
+                                                             current: model.window),
+                                   open: { [weak self] window in
+                                       self?.dismissSheet { self?.openWindow(window) }
+                                   },
+                                   live: model.window == nil ? nil : { [weak self] in self?.dismissSheet { self?.leaveWindow() } },
+                                   close: { controller?.dismiss(animated: true) })
+        let host = UIHostingController(rootView: picker)
+        controller = host
+        presentSheet(host, detents: [.medium(), .large()])
+    }
+
+    /// Uses the map in a past window, on `time` or its first step: the
+    /// timeline, the radar and what is drawn over it are the window's.
+    func openWindow(_ window: RadarWindow, at time: Int? = nil) {
+        // The 3D map has no past.
+        if model.capability == .cells3d { setCapability(.radar) }
+        let changed = model.window != window
+        model.window = window
+        radar.open(window: window, at: time.map(window.clamp))
+        guard changed else { return }
+        for feature in features { feature.windowDidChange(window) }
+        if started { wake() }
+        updateCredits()
+    }
+
+    /// Back to live: the newest frame, followed, and everything live again.
+    func leaveWindow() {
+        guard model.window != nil else { return }
+        model.window = nil
+        radar.open(window: nil)
+        for feature in features { feature.windowDidChange(nil) }
+        if started { wake() }
+        updateCredits()
+    }
+
+    private func windowRefused() {
+        model.toast = NSLocalizedString("native_map_archive_refused", value: "The archive does not keep that time.", comment: "")
+        leaveWindow()
+    }
+
+    /// A link's frame before the live strip: the two hours up to it, where
+    /// the archive keeps them; otherwise the strip's nearest step.
+    private func showLinked(time: Int) {
+        let now = Int(Date().timeIntervalSince1970)
+        guard time < RadarWindow.grid(now) - 2 * 3600 else { return radar.show(time: time) }
+        let open: (ArchiveCoverage?) -> Void = { [weak self] coverage in
+            guard let self else { return }
+            if let window = RadarWindow.forLink(time: time, now: now, archive: coverage) {
+                self.openWindow(window, at: time)
+            } else {
+                self.radar.show(time: time)
+            }
+        }
+        if let archiveCoverage, archiveCoverage.until >= time { return open(archiveCoverage) }
+        fetch(endpoints.archive) { [weak self] data, _ in
+            let coverage = data.flatMap(ArchiveCoverage.decode)
+            self?.archiveCoverage = coverage
+            open(coverage)
+        }
     }
 
     // MARK: - Settings
@@ -812,7 +890,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // As picking the radar in the layer switcher: the other map's parts
         // hear of it and put themselves away.
         setCapability(.radar)
-        player.showLive()
+        if model.window != nil { leaveWindow() } else { player.showLive() }
     }
 
     /// A link: its map (`layer`), view and frame (`latLonZ`, `t`), and
@@ -829,10 +907,21 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             setCapability(capability)
         }
         applyLinkedOverlays(parameters)
-        if let link = NativeMapLink(search: search) {
+        let link = NativeMapLink(search: search)
+        if let link {
             if placed { place(link, animated: true) } else { pendingView = link }
+        }
+        // A past window (`from=`, `to=`), on its frame; a link without one is
+        // about live, and leaves any window open.
+        let time = link?.time ?? parameters["t"].flatMap(NativeMapLink.frameTime)
+        if let window = link?.window ?? NativeMapLink.window(from: parameters["from"], to: parameters["to"]) {
+            openWindow(window, at: time)
+        } else if link != nil {
+            leaveWindow()
             // A storm's link opens on now: it is about the storm, not a frame.
-            if parameters["storm"] == nil, parameters["cell"] == nil { radar.show(time: link.time) }
+            if parameters["storm"] == nil, parameters["cell"] == nil {
+                if let time { showLinked(time: time) } else { radar.show(time: nil) }
+            }
         }
         for feature in features { _ = feature.open(parameters) }
     }
@@ -843,6 +932,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     func setCapability(_ capability: NativeMapModel.Capability) {
         guard capability != model.capability else { return }
+        // The 3D map has no past: picking it is going back to live.
+        if capability == .cells3d { leaveWindow() }
         if capability != .cells3d { model.detour = nil }
         model.capability = capability
         radar.visible = capability == .radar
@@ -877,8 +968,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // The frame: not for a storm, which is about now, and not mid-play,
         // which would park the link on whichever frame it caught.
         let tracked = extra["storm"] != nil || extra["cell"] != nil
-        let time = player.step != player.timeline.now && !player.playing && !tracked ? player.step : nil
-        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time)
+        // A window, and the step of it on screen, whatever else the link is about.
+        let window = player.timeline.window
+        let time = window != nil ? player.step : player.step != player.timeline.now && !player.playing && !tracked ? player.step : nil
+        let link = NativeMapLink(latitude: center.latitude, longitude: center.longitude, zoom: shown?.zoom ?? zoomLevel, time: time,
+                                 window: window)
         var components = URLComponents()
         components.queryItems = extra.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         let more = extra.isEmpty ? "" : "&" + (components.percentEncodedQuery ?? "")
@@ -991,7 +1085,8 @@ private struct PillHost: View {
     let resized: () -> Void
 
     var body: some View {
-        StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() }, wakes: owner.wakeCount)
+        StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() },
+                   leaveWindow: { owner.leaveWindow() }, wakes: owner.wakeCount)
             .opacity(model.capability == .radar ? 1 : 0)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in DispatchQueue.main.async { resized() } }
     }

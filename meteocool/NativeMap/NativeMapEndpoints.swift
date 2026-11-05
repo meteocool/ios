@@ -50,6 +50,38 @@ struct NativeMapEndpoints: Equatable, Sendable {
         return components.url!
     }
 
+    /// A past window's steps (`start`, `end`): observed only, so no
+    /// nowcast; no point, so no readings.
+    func timeseries(window: RadarWindow, network: String?, products: [String] = []) -> URL {
+        var components = URLComponents(url: api.appendingPathComponent("v3/radar/timeseries"), resolvingAgainstBaseURL: false)!
+        var items = [URLQueryItem(name: "start", value: String(window.start)), URLQueryItem(name: "end", value: String(window.end))]
+        if let network { items.append(URLQueryItem(name: "network", value: network)) }
+        for product in products { items.append(URLQueryItem(name: "products", value: product)) }
+        components.queryItems = items
+        return components.url!
+    }
+
+    /// What the archive covers (404 while it keeps nothing).
+    var archive: URL { api.appendingPathComponent("v3/archive") }
+
+    /// The strikes from `since` up to `until`, unix seconds, at most three hours apart.
+    func strikes(since: Int, until: Int) -> URL {
+        query(api.appendingPathComponent("v3/lightning/strikes"), ["since": String(since), "until": String(until)])
+    }
+
+    /// The snowfields or the precipitation types measured at or before `at`.
+    func snow(at: Int) -> URL { query(snow, ["at": String(at)]) }
+    func classification(at: Int?) -> URL {
+        let url = api.appendingPathComponent("v3/radar/classification")
+        return at.map { query(url, ["at": String($0)]) } ?? url
+    }
+
+    private func query(_ url: URL, _ items: [String: String]) -> URL {
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        components.queryItems = items.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
+        return components.url!
+    }
+
     /// Every radar in a box that has published sweeps lately, or one radar
     /// alone, with each tilt's newest sweeps (site mode). A sweep itself is
     /// fetched from `tiles` by its `path`.
@@ -67,14 +99,15 @@ struct NativeMapEndpoints: Equatable, Sendable {
     var lightning: URL { data.appendingPathComponent("lightning_cache") }
     var mesocyclones: URL { data.appendingPathComponent("mesocyclones/all/") }
 
-    /// Storms around a box, seen in the last three hours (core's `StormManager`).
-    func storms(minLon: Double, minLat: Double, maxLon: Double, maxLat: Double, since: Date) -> URL {
+    /// Storms around a box, seen in the last three hours (core's `StormManager`);
+    /// with `until`, every storm that overlapped a past window.
+    func storms(minLon: Double, minLat: Double, maxLon: Double, maxLat: Double, since: Date, until: Date? = nil) -> URL {
         var components = URLComponents(url: data.appendingPathComponent("storms"), resolvingAgainstBaseURL: false)!
         let iso = ISO8601DateFormatter()
         components.queryItems = [
             URLQueryItem(name: "bbox", value: [minLon, minLat, maxLon, maxLat].map { String(format: "%.3f", $0) }.joined(separator: ",")),
             URLQueryItem(name: "since", value: iso.string(from: since)),
-        ]
+        ] + (until.map { [URLQueryItem(name: "until", value: iso.string(from: $0))] } ?? [])
         return components.url!
     }
 }

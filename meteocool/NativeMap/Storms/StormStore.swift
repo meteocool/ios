@@ -51,6 +51,9 @@ final class StormStore: ObservableObject {
     @Published private(set) var revision = 0
     /// A link's slice, for the storm it is opening (`cut`).
     var linkCut: Double?
+    /// A past window: every storm that overlapped it, rewound to the step
+    /// on screen; nil live.
+    private(set) var window: RadarWindow?
 
     weak var map: NativeMapContext?
     /// The box the held storms were asked for.
@@ -87,8 +90,9 @@ final class StormStore: ObservableObject {
         let padded = StormDrawing.worldExtent(StormDrawing.padExtent(view, Self.padding))
         token += 1
         let mine = token
-        let since = Date().addingTimeInterval(-Self.windowMinutes * 60)
-        let url = map.endpoints.storms(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north, since: since)
+        let (since, until) = Self.span(window)
+        let url = map.endpoints.storms(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
+                                       since: since, until: until)
         map.fetch(url) { [weak self] data, status in
             guard let self, mine == self.token else { return }
             if let data, let collection = StormJSON.storms(data) {
@@ -103,6 +107,24 @@ final class StormStore: ObservableObject {
                 self.revision += 1
             }
         }
+    }
+
+    /// What `/storms` is asked for: the last three hours live; a window's
+    /// whole span, with `until`, so every storm that overlapped it comes.
+    private static func span(_ window: RadarWindow?) -> (since: Date, until: Date?) {
+        guard let window else { return (Date().addingTimeInterval(-windowMinutes * 60), nil) }
+        return (Date(timeIntervalSince1970: TimeInterval(window.start)), Date(timeIntervalSince1970: TimeInterval(window.end)))
+    }
+
+    /// A past window opened, or left: the storms held were another time's.
+    func setWindow(_ next: RadarWindow?) {
+        guard next != window else { return }
+        window = next
+        token += 1
+        fetched = nil
+        held = []
+        selection = nil
+        revision += 1
     }
 
     /// Socket `storms`, or a wake: fetch again, and the selection's detail.
@@ -224,8 +246,9 @@ final class StormStore: ObservableObject {
         }
         guard let map, let position = selection.flatMap(StormSelect.positionOf) else { return }
         let asked = StormSelect.selectionKey(selection)
+        let (since, until) = Self.span(window)
         let url = map.endpoints.storms(minLon: position.lon - 0.5, minLat: position.lat - 0.5, maxLon: position.lon + 0.5,
-                                       maxLat: position.lat + 0.5, since: Date().addingTimeInterval(-Self.windowMinutes * 60))
+                                       maxLat: position.lat + 0.5, since: since, until: until)
         map.fetch(url) { [weak self] data, _ in
             guard let self, StormSelect.selectionKey(self.selection) == asked, let data,
                   let around = StormJSON.storms(data)?.features,

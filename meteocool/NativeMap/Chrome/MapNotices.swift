@@ -15,15 +15,19 @@ struct BackToNowPill: View {
     @ObservedObject var model: NativeMapModel
     /// Site mode has no timeline to go back along.
     @ObservedObject var site: SiteSweepState
+    /// Leaves a past window for live.
+    var leaveWindow: () -> Void = {}
     /// Its host measured again: grown from the empty placeholder it was
     /// laid out at, or the pill is squeezed to its icon and out of reach.
     var resized: () -> Void = {}
     @State private var shown = false
 
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
+    /// In a past window: always there, as the way back to live.
+    private var archive: Bool { model.window != nil }
     private var wanted: Bool {
-        !player.timeline.steps.isEmpty && (player.playing || !player.isLive) && !player.grabbed && !model.stale
-            && model.capability == .radar
+        !player.timeline.steps.isEmpty && (player.playing || !player.isLive || archive) && !player.grabbed
+            && (!model.stale || archive) && model.capability == .radar
     }
 
     var body: some View {
@@ -31,9 +35,10 @@ struct BackToNowPill: View {
         ZStack {
             Color.clear.frame(width: 1, height: 32)
             if shown {
-                Button(action: player.showLive) {
+                Button(action: archive ? leaveWindow : player.showLive) {
                     HStack(spacing: 6) {
-                        Text(CoreStrings.t("chrome.playback.back_to_latest"))
+                        Text(archive ? NSLocalizedString("native_map_archive_back", value: "Back to Live", comment: "")
+                            : CoreStrings.t("chrome.playback.back_to_latest"))
                             .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .tracking(-0.13)
                             .foregroundStyle(theme.text)

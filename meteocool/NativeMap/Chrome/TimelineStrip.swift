@@ -228,6 +228,10 @@ struct TimelineStrip: View {
         let plot = Self.plotHeight
         let nowIndex = player.nowIndex
         let gridNow = timeline.gridNow
+        // A window's ticks fall on the clock's hours, spaced for its length.
+        let window = timeline.window
+        let anchor = window?.anchor() ?? gridNow
+        func minutes(_ step: Int) -> Int { Int((Double(step - anchor) / 60).rounded()) }
 
         context.drawLayer { plotLayer in
             plotLayer.clip(to: Path(roundedRect: CGRect(x: 0, y: 0, width: size.width, height: plot), cornerRadius: 10))
@@ -260,7 +264,8 @@ struct TimelineStrip: View {
             }
             // The ruler.
             for (i, step) in steps.enumerated() {
-                let major = TimelinePhysics.isMajor(step, gridNow: gridNow)
+                if let window, minutes(step) % window.rulerMinutes != 0 { continue }
+                let major = window.map { minutes(step) % $0.majorMinutes == 0 } ?? TimelinePhysics.isMajor(step, gridNow: gridNow)
                 let height: CGFloat = major ? 13 : 7
                 let opacity = !timeline.isPlayable(step) ? 0.12 : major ? 0.5 : 0.28
                 let x = (CGFloat(i) + 0.5) * slot - 0.75
@@ -306,7 +311,7 @@ struct TimelineStrip: View {
         }
 
         // The axis.
-        for tick in TimelinePhysics.axisTicks(steps: steps, gridNow: gridNow) {
+        for tick in TimelinePhysics.axisTicks(steps: steps, gridNow: anchor, every: window?.axisMinutes ?? 60) {
             let label = context.resolve(Text(player.offsetLabel(tick.step))
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(theme.text2))
