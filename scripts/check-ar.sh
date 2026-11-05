@@ -12,6 +12,7 @@ xcrun swiftc -swift-version 6 -parse-as-library \
     meteocool/AR/StormVolume.swift meteocool/AR/Colormaps.swift meteocool/AR/GeoFrame.swift \
     meteocool/AR/StormFeed.swift meteocool/AR/StormScene.swift meteocool/AR/StormShaders.swift \
     meteocool/AR/MapLink.swift meteocool/AR/ScanHistory.swift meteocool/NativeMap/ThreeD/CellVolume.swift \
-    meteocool/AR/ARMarker.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/Point/PointRules.swift \
+    meteocool/AR/ARMarker.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/RadarWindow.swift \
+    meteocool/NativeMap/Point/PointRules.swift \
     tests/ARCheck.swift -o "$scratch/check-ar"
 "$scratch/check-ar"

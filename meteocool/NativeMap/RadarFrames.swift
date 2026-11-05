@@ -228,6 +228,8 @@ struct RadarTimeline: Sendable {
     /// The scan of each network's radar on the live step, DWD's as `de`
     /// (core's `liveRadarScans`): what a storm's volume is judged behind by.
     let liveScans: [String: Int]
+    /// The past window these steps are, nil live.
+    let window: RadarWindow?
 
     /// Steps after `now`: forecasts.
     func isForecast(_ step: Int) -> Bool { now.map { step > $0 } ?? false }
@@ -244,7 +246,8 @@ struct RadarTimeline: Sendable {
 
     init(steps: [Int], gridNow: Int, now: Int?, lastPlayable: Int?, layers: [Int: [RadarLayer]], dbz: [Int: Double],
          serverTime: Int, replay: Bool = false, product: RadarProduct = .hx, drawn: RadarProduct = .hx,
-         scanRange: (freshest: Int, stalest: Int)? = nil, nowcastDomains: [Int: [String]] = [:], liveScans: [String: Int] = [:]) {
+         scanRange: (freshest: Int, stalest: Int)? = nil, nowcastDomains: [Int: [String]] = [:], liveScans: [String: Int] = [:],
+         window: RadarWindow? = nil) {
         self.steps = steps
         self.gridNow = gridNow
         self.now = now
@@ -258,16 +261,25 @@ struct RadarTimeline: Sendable {
         self.scanRange = scanRange
         self.nowcastDomains = nowcastDomains
         self.liveScans = liveScans
+        self.window = window
     }
 
     /// Composes the series. `clock` is the device's time, which seeds the
     /// grid as in core. `network` is the one the series was asked for, whose
     /// nowcast gives the forecast steps' readings (core's `chartSeries`).
-    init(series: RadarSeries, clock: Int, network: String? = nil, product: RadarProduct = .hx) {
-        let grid = clock / Self.stepSeconds * Self.stepSeconds
+    ///
+    /// With a `window`, the series is that past window's: its steps are the
+    /// window's, its end stands where now does, nothing comes after it, and
+    /// every step, the last too, draws the frames measured for it (no
+    /// network's newest frame outright, as on the live step).
+    init(series: RadarSeries, clock: Int, network: String? = nil, product: RadarProduct = .hx, window: RadarWindow? = nil) {
+        let grid = window?.end ?? clock / Self.stepSeconds * Self.stepSeconds
         var frames: [Int: RadarFrame] = [:]
         for (key, frame) in series.frames {
-            if let step = Int(key), let frame { frames[step] = frame }
+            guard let step = Int(key), let frame else { continue }
+            // A window is observed steps only, and only its own.
+            if let window, !frame.isObservation || !window.contains(step) { continue }
+            frames[step] = frame
         }
         func byStep(_ raw: [String: RadarFrame]?) -> [Int: RadarFrame] {
             var out: [Int: RadarFrame] = [:]
@@ -284,9 +296,11 @@ struct RadarTimeline: Sendable {
             .dmax: byStep(series.products?["dmax"]),
         ]
 
-        let now = frames.filter { $0.value.isObservation && $0.value.valueTileId != nil }.keys.max()
+        let now = window?.end ?? frames.filter { $0.value.isObservation && $0.value.valueTileId != nil }.keys.max()
             ?? frames.filter { $0.value.valueTileId != nil && $0.key <= series.serverTime }.keys.max()
-        let lastPublished = frames.filter { $0.value.valueTileId != nil }.keys.max()
+        let lastPublished = window?.end ?? frames.filter { $0.value.valueTileId != nil }.keys.max()
+        // The step that shows each network's newest frame: live only.
+        let liveStep = window == nil ? now : nil
         // Held back to where the nowcast runs end when they are at most two
         // steps short of WN (`lastStepWithRuns`).
         var lastPlayable = lastPublished
@@ -300,7 +314,7 @@ struct RadarTimeline: Sendable {
         // The live step shows each network's newest composite, whatever step
         // it falls on, while it is fresh.
         var newest: [String: (step: Int, frame: RadarFrame)] = [:]
-        for code in Self.networks {
+        for code in Self.networks where window == nil {
             let limit = now ?? series.serverTime
             guard let latest = networkFrames[code]?.filter({ $0.key <= limit }).max(by: { $0.key < $1.key }),
                   series.serverTime - scan(latest.key, latest.value) < Self.networkFreshness else { continue }
@@ -315,6 +329,8 @@ struct RadarTimeline: Sendable {
         func fallsBehind(_ product: RadarProduct) -> Bool {
             guard product != .hx else { return false }
             guard let latest = newestFrame(product) else { return true }
+            // A window is not behind anything: its product is there or not.
+            if window != nil { return false }
             guard let hxScan else { return false }
             return hxScan - scan(latest.step, latest.frame) > product.allowedBehind
         }
@@ -322,13 +338,13 @@ struct RadarTimeline: Sendable {
 
         // The frame a product draws on an observed step (`stepFrame`).
         func productFrame(_ product: RadarProduct, at step: Int) -> RadarFrame? {
-            if step == now, let latest = newestFrame(product) { return latest.frame }
+            if step == liveStep, let latest = newestFrame(product) { return latest.frame }
             return productFrames[product]?[step]
         }
         // The column maximum around DMAX (`aroundFrame`).
         func aroundFrame(at step: Int) -> RadarFrame? {
             guard drawn == .dmax else { return nil }
-            if step == now, fallsBehind(.colmax) { return nil }
+            if step == liveStep, fallsBehind(.colmax) { return nil }
             return productFrame(.colmax, at: step)
         }
 
@@ -338,8 +354,8 @@ struct RadarTimeline: Sendable {
         var domains: [Int: [String]] = [:]
         var carried: [RadarLayer] = []
         let readingsRun = network.flatMap { nowcastFrames[$0] }.flatMap { $0.isEmpty ? nil : $0 }
-        var step = grid - 7200
-        while step <= grid + 7200 {
+        var step = window?.start ?? grid - 7200
+        while step <= (window?.end ?? grid + 7200) {
             steps.append(step)
             let frame = frames[step]
             let forecast = frame.map { !$0.isObservation } ?? (now.map { step > $0 } ?? false)
@@ -372,10 +388,10 @@ struct RadarTimeline: Sendable {
                         drawnLayers.append(layer)
                     } else {
                         for code in Self.networks {
-                            let network = step == now ? newest[code]?.frame : networkFrames[code]?[step]
+                            let network = step == liveStep ? newest[code]?.frame : networkFrames[code]?[step]
                             // On the live step DWD gives way to every network,
                             // which brings its own newest frame (core's `holes`).
-                            if step == now || network != nil { holes.append(code) }
+                            if step == liveStep || network != nil { holes.append(code) }
                             guard let network, let layer = Self.layer(code, network, maxZoom: 8, clip: .exclusive(code)) else { continue }
                             drawnLayers.append(layer)
                         }
@@ -421,7 +437,8 @@ struct RadarTimeline: Sendable {
         self.init(steps: steps, gridNow: grid, now: now, lastPlayable: lastPlayable, layers: layers, dbz: dbz,
                   serverTime: series.serverTime, replay: series.replay ?? false, product: product, drawn: drawn,
                   scanRange: range, nowcastDomains: domains,
-                  liveScans: newest.mapValues { scan($0.step, $0.frame) }.merging(hxScan.map { ["de": $0] } ?? [:]) { $1 })
+                  liveScans: window != nil ? [:] : newest.mapValues { scan($0.step, $0.frame) }.merging(hxScan.map { ["de": $0] } ?? [:]) { $1 },
+                  window: window)
     }
 
     private static func layer(_ code: String, _ frame: RadarFrame, maxZoom: Int, clip: RadarClip) -> RadarLayer? {
@@ -437,8 +454,10 @@ struct RadarTimeline: Sendable {
     }
 
     /// The player's label for a step, as core writes it (`formatOffset`):
-    /// "Now", "-2h", "+45m", "+1h30m", counted from the clock's step.
-    func offsetLabel(_ step: Int, now nowLabel: String) -> String {
+    /// "Now", "-2h", "+45m", "+1h30m", counted from the clock's step; in a
+    /// window, the step's clock time.
+    func offsetLabel(_ step: Int, now nowLabel: String, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        if let window { return window.label(step, timeZone: timeZone, locale: locale) }
         let minutes = Int((Double(step - gridNow) / 60).rounded())
         if minutes == 0 { return nowLabel }
         let sign = minutes < 0 ? "-" : "+"
