@@ -91,9 +91,11 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         Self.format(step, template: crossesMidnight(in: timeZone) ? "EEEHHmm" : "HHmm", timeZone: timeZone, locale: locale)
     }
 
-    /// The pill's date and time of a step ("5 Nov, 14:05").
+    /// The pill's date and time of a step, short enough for the top line
+    /// ("5 Nov 14:05", "Nov 5 14:05").
     static func dateTime(_ step: Int, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
-        format(step, template: "dMMMHHmm", timeZone: timeZone, locale: locale)
+        format(step, template: "dMMM", timeZone: timeZone, locale: locale) + " "
+            + format(step, template: "HHmm", timeZone: timeZone, locale: locale)
     }
 
     /// The whole window, as the picker sums it up ("5 Nov, 14:05 – 17:05").

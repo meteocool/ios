@@ -56,7 +56,8 @@ struct ArchiveCheck {
         // Where the reader is decides: three hours east, the same night is one day.
         precondition(!night.crossesMidnight(in: TimeZone(secondsFromGMT: 3 * 3600)!))
         let pill = RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: locale)
-        precondition(pill.contains("2") && pill.contains("Nov") && pill.contains("14:05"), pill)
+        precondition(pill == "2 Nov 14:05", pill)
+        precondition(RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: Locale(identifier: "en_US")) == "Nov 2 14:05")
         let summary = day.summary(timeZone: zone, locale: locale)
         precondition(summary.contains("14:00") && summary.contains("17:00"), summary)
         // The strip: ticks spaced for the length, counted from the reader's midnight.

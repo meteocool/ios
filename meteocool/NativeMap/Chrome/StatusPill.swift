@@ -46,9 +46,6 @@ struct StatusPill: View {
                                 .foregroundStyle(theme.accent)
                             Text(RadarWindow.dateTime(step))
                                 .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
-                            Image(systemName: "xmark.circle.fill")
-                                .scaledFont(13, weight: .semibold, relativeTo: .footnote)
-                                .foregroundStyle(theme.text2)
                         } else if case .time(let step) = state {
                             Text(Self.clock(step))
                                 .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
