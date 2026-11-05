@@ -4,8 +4,9 @@
 //
 //  A weather station tapped on the map (core's `StationDetails.svelte` and
 //  `StationHistory.svelte`): its name, state, height and when it measured;
-//  what it measured over the last day, three or seven, as small multiples
-//  over one clock; and the values of its newest answer.
+//  its newest values as the row of facts a place card carries; and what it
+//  measured over the last day, three or seven, as small multiples over one
+//  clock, laid out as Health and Weather lay out theirs.
 //
 
 import Charts
@@ -19,23 +20,38 @@ struct StationSheet: View {
 
     @State private var window = StationHistory.Window.day
     @State private var rows: [ObservationRow]?
+    @State private var span: ClosedRange<Double>?
     @State private var failed = false
+    /// The row the scrubber's line is on, down every panel at once.
+    @State private var scrubbed: Int?
 
-    /// The rows the sheet can show, in the control's order; each only when the station has it.
-    private static let latest: [(key: String, label: String, read: (Double) -> String)] = [
+    /// A fact: its value, and a second way of saying it under it.
+    struct Reading {
+        let value: String
+        var also: String?
+    }
+
+    /// The facts the sheet can show, in the control's order; each only when the station has it.
+    private static let latest: [(key: String, label: String, read: (Double) -> Reading)] = [
         ("wind_speed_m_s", "stations.parameter.wind", speed),
-        ("wind_direction_deg", "stations.parameter.wind_direction", { "\(Int($0.rounded()))°" }),
+        ("wind_direction_deg", "stations.parameter.wind_direction", heading),
         ("gust_m_s", "stations.parameter.gusts", speed),
-        ("gust_direction_deg", "stations.parameter.gust_direction", { "\(Int($0.rounded()))°" }),
-        ("temperature_c", "stations.parameter.temperature", { StationRules.formatValue(.temperature, $0, language: CoreStrings.language) + " °C" }),
-        ("precipitation_mm", "stations.parameter.precipitation", { StationRules.formatValue(.precipitation, $0, language: CoreStrings.language) + " mm" }),
-        ("humidity_pct", "stations.parameter.humidity", { StationRules.formatValue(.humidity, $0, language: CoreStrings.language) + " %" }),
-        ("pressure_msl_hpa", "stations.parameter.pressure", { StationRules.formatValue(.pressure, $0, language: CoreStrings.language) + " hPa" }),
+        ("gust_direction_deg", "stations.parameter.gust_direction", heading),
+        ("temperature_c", "stations.parameter.temperature", { Reading(value: StationRules.formatValue(.temperature, $0, language: CoreStrings.language) + " °C") }),
+        ("precipitation_mm", "stations.parameter.precipitation", { Reading(value: StationRules.formatValue(.precipitation, $0, language: CoreStrings.language) + " mm") }),
+        ("humidity_pct", "stations.parameter.humidity", { Reading(value: StationRules.formatValue(.humidity, $0, language: CoreStrings.language) + " %") }),
+        ("pressure_msl_hpa", "stations.parameter.pressure", { Reading(value: StationRules.formatValue(.pressure, $0, language: CoreStrings.language) + " hPa") }),
     ]
 
-    /// m/s as measured, and the knots a barb is drawn in.
-    nonisolated private static func speed(_ value: Double) -> String {
-        StationRules.formatValue(.wind, value, language: CoreStrings.language) + " m/s · \(Int(WindBarb.toKnots(value).rounded())) kt"
+    /// m/s as measured, and under it the knots a barb is drawn in.
+    nonisolated private static func speed(_ value: Double) -> Reading {
+        Reading(value: StationRules.formatValue(.wind, value, language: CoreStrings.language) + " m/s",
+                also: "\(Int(WindBarb.toKnots(value).rounded())) kt")
+    }
+
+    /// Where it comes from as a compass point, its degrees under it.
+    nonisolated private static func heading(_ value: Double) -> Reading {
+        Reading(value: CoreStrings.t("storm.compass.\(StationHistory.compassPoint(value))"), also: "\(Int(value.rounded()))°")
     }
 
     private var place: String {
@@ -48,6 +64,14 @@ struct StationSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                let facts = Self.latest.filter { station.values[$0.key] != nil }
+                if !facts.isEmpty {
+                    Section {
+                        factsRow(facts)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                }
                 Section {
                     Picker(CoreStrings.t("stations.history.window.group"), selection: $window) {
                         ForEach(StationHistory.Window.allCases, id: \.self) { window in
@@ -59,19 +83,6 @@ struct StationSheet: View {
                     history
                 } header: {
                     Text(CoreStrings.t("stations.history.title"))
-                }
-                Section(CoreStrings.t("stations.sheet.latest")) {
-                    let shown = Self.latest.filter { station.values[$0.key] != nil }
-                    if shown.isEmpty {
-                        Text(CoreStrings.t("stations.sheet.none")).foregroundStyle(.secondary)
-                    }
-                    ForEach(shown, id: \.key) { row in
-                        LabeledContent(CoreStrings.t(row.label), value: row.read(station.values[row.key]!))
-                            .monospacedDigit()
-                    }
-                }
-                Section {
-                    EmptyView()
                 } footer: {
                     Text(CoreStrings.t("stations.sheet.source"))
                 }
@@ -98,78 +109,172 @@ struct StationSheet: View {
         .accessibilityIdentifier("nativeMap.station.sheet")
     }
 
+    /// What it measures now, at a glance: label over value, the second way
+    /// of saying it under that, divided as a place card's facts are.
+    private func factsRow(_ facts: [(key: String, label: String, read: (Double) -> Reading)]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(Array(facts.enumerated()), id: \.element.key) { index, fact in
+                    let reading = fact.read(station.values[fact.key]!)
+                    if index > 0 { Divider().padding(.vertical, 4) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(CoreStrings.t(fact.label))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text(reading.value).font(.body.weight(.semibold)).monospacedDigit()
+                        if let also = reading.also {
+                            Text(also).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+        }
+        .scrollClipDisabled()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(CoreStrings.t("stations.sheet.latest"))
+        .accessibilityIdentifier("nativeMap.station.latest")
+    }
+
     @ViewBuilder
     private var history: some View {
-        if let rows {
+        if let rows, let span {
             let panels = StationHistory.panels(rows)
             if panels.isEmpty {
                 Text(CoreStrings.t("stations.history.none")).foregroundStyle(.secondary)
             } else {
-                let now = Date().timeIntervalSince1970 * 1000
-                let from = StationHistory.windowStart(window, now: now)
+                let times = rows.map(\.t)
                 ForEach(panels, id: \.key) { panel in
-                    StationPanelView(panel: panel, from: from, to: now)
+                    StationPanelView(panel: panel, span: span, times: times, window: window, scrubbed: $scrubbed)
                 }
             }
         } else if failed {
             Text(CoreStrings.t("stations.history.none")).foregroundStyle(.secondary)
         } else {
-            ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
         }
     }
 
     private func load() {
         rows = nil
         failed = false
-        // Up to the next minute: the service takes at most seven days, and a
-        // start rounded down to its second would be a moment over them.
-        let start = StationHistory.windowStart(window, now: Date().timeIntervalSince1970 * 1000) / 1000
-        let since = Date(timeIntervalSince1970: (start / 60).rounded(.up) * 60)
+        scrubbed = nil
+        let now = Date().timeIntervalSince1970 * 1000
+        let since = Date(timeIntervalSince1970: StationHistory.askSince(window, now: now) / 1000)
         var components = URLComponents(url: endpoints.data.appendingPathComponent("stations/\(station.id)/observations"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "since", value: ISO8601DateFormatter().string(from: since))]
         let asked = window
         fetch(components.url!) { data, _ in
             guard asked == window else { return }
-            if let decoded = data.flatMap(ObservationRow.decode) { rows = decoded } else { failed = true }
+            if let decoded = data.flatMap(ObservationRow.decode) {
+                span = StationHistory.windowStart(asked, now: now) ... now
+                rows = decoded
+            } else {
+                failed = true
+            }
         }
     }
 }
 
-/// One quantity over the window: its name with what summarises it, and its
-/// lines, bars or dots (core's panel).
+/// One quantity over the window (core's panel): its name; the figure it is
+/// read for, large, with what sums the period up beside it; and a plot the
+/// sheet's width with its scale on the trailing edge. While the scrubber's
+/// line is out, the figure is the line's, in the panel's ink.
 private struct StationPanelView: View {
     let panel: StationHistory.Panel
-    let from: Double
-    let to: Double
+    let span: ClosedRange<Double>
+    /// Every row's time, which the panels' points share.
+    let times: [Double]
+    let window: StationHistory.Window
+    @Binding var scrubbed: Int?
 
     private var title: String { CoreStrings.t("stations.history.panel.\(panel.key)") }
+    private var language: String { CoreStrings.language }
+    private let compass = { (point: String) in CoreStrings.t("storm.compass.\(point)") }
+
+    private var resting: StationHistory.Figure? { StationHistory.figure(panel, language: language, compass: compass) }
 
     private var summary: String {
-        panel.stats.map { stat in
-            let value = StationRules.formatNumber(stat.value, digits: panel.key == "sunshine" ? 1 : panel.digits, language: CoreStrings.language)
-            let unit = panel.key == "sunshine" ? "h" : panel.unit
-            return "\(CoreStrings.t("stations.history.stat.\(stat.key)")) \(stat.key == "change" && stat.value > 0 ? "+" : "")\(value) \(unit)"
+        StationHistory.summary(panel, figure: resting, language: language) { CoreStrings.t("stations.history.stat.\($0)") }
+    }
+
+    /// The line's figure, and beside it when that was and the context's value then.
+    private var reading: (figure: StationHistory.Figure, line: String)? {
+        guard let row = scrubbed, times.indices.contains(row) else { return nil }
+        let figure = StationHistory.value(panel, at: row).map { StationHistory.reading(panel, $0, language: language, compass: compass) }
+            ?? StationHistory.Figure(value: "–", unit: "")
+        var parts = [moment(times[row])]
+        for other in panel.series where other.style == .context {
+            let value = other.points.indices.contains(row) ? other.points[row].v : nil
+            parts.append("\(CoreStrings.t("stations.history.series.\(other.key)")) "
+                         + (value.map { StationHistory.unitted(StationRules.formatNumber($0, digits: panel.digits, language: language), panel.unit) } ?? "–"))
         }
-        .joined(separator: " · ")
+        return (figure, parts.joined(separator: " · "))
+    }
+
+    /// The clock, and the weekday over more than a day.
+    private func moment(_ t: Double) -> String {
+        let date = Date(timeIntervalSince1970: t / 1000)
+        let clock = Date.FormatStyle.dateTime.hour(.twoDigits(amPM: .omitted)).minute()
+        return window == .day ? date.formatted(clock) : date.formatted(clock.weekday(.abbreviated))
+    }
+
+    private var ink: Color {
+        switch panel.key {
+        case "temperature": return .red
+        case "sunshine": return .yellow
+        case "wind": return .orange
+        case "humidity": return .teal
+        default: return .accentColor
+        }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).scaledFont(13, weight: .semibold, relativeTo: .footnote)
-                Spacer()
-                Text(panel.unit).scaledFont(11, relativeTo: .caption2).foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.footnote.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
+                // The period's figure and the line's laid over each other, the
+                // one not in use hidden, so the chart never moves under them.
+                ZStack(alignment: .topLeading) {
+                    caption(resting, summary.isEmpty ? " " : summary, ink: .primary).opacity(reading == nil ? 1 : 0)
+                    if let reading { caption(reading.figure, reading.line, ink: ink) }
+                }
             }
-            if !summary.isEmpty {
-                Text(summary).scaledFont(12, relativeTo: .caption, digits: true).foregroundStyle(.secondary)
-            }
-            chart.frame(height: 90)
+            chart.frame(height: 114)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(CoreStrings.t("stations.history.aria", ["title": title, "unit": panel.unit]))
-        .accessibilityValue(summary)
+        .accessibilityValue([resting.map { StationHistory.unitted($0.value, $0.unit) }, summary.isEmpty ? nil : summary]
+            .compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("nativeMap.station.panel.\(panel.key)")
+    }
+
+    private func caption(_ figure: StationHistory.Figure?, _ summary: String, ink: Color) -> some View {
+        // The summary beside the figure on its baseline, or under it where a
+        // long language has no room for both.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) { figureText(figure, ink: ink); summaryText(summary).lineLimit(1) }
+            VStack(alignment: .leading, spacing: 0) { figureText(figure, ink: ink); summaryText(summary) }
+        }
+    }
+
+    @ViewBuilder
+    private func figureText(_ figure: StationHistory.Figure?, ink: Color) -> some View {
+        if let figure {
+            (Text(figure.value).font(.title2.weight(.semibold)).foregroundColor(ink)
+             + Text(figure.unit.isEmpty ? "" : " " + figure.unit).font(.footnote.weight(.medium)).foregroundColor(.secondary))
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+    }
+
+    private func summaryText(_ text: String) -> some View {
+        Text(text).font(.footnote).foregroundStyle(.secondary).monospacedDigit()
     }
 
     /// One mark to plot: when, how much, how it is drawn, and which run of
@@ -211,28 +316,46 @@ private struct StationPanelView: View {
         switch plot.style {
         case .bars:
             BarMark(x: .value("time", plot.date), y: .value("value", plot.value), width: .fixed(2))
-                .foregroundStyle(panel.key == "sunshine" ? Color.yellow : Color.blue)
+                .foregroundStyle(ink)
         case .dots:
             PointMark(x: .value("time", plot.date), y: .value("value", plot.value))
                 .symbolSize(6)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.primary.opacity(0.7))
         case .main:
             LineMark(x: .value("time", plot.date), y: .value("value", plot.value), series: .value("run", plot.run))
-                .foregroundStyle(colour)
-                .lineStyle(StrokeStyle(lineWidth: 2))
+                .foregroundStyle(ink)
+                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         case .context:
             LineMark(x: .value("time", plot.date), y: .value("value", plot.value), series: .value("run", plot.run))
-                .foregroundStyle(Color.secondary.opacity(0.7))
-                .lineStyle(StrokeStyle(lineWidth: 1.2))
+                .foregroundStyle(Color.primary.opacity(0.45))
+                .lineStyle(StrokeStyle(lineWidth: 1.25))
         }
     }
 
     private var chart: some View {
-        Chart(plots) { plot in mark(plot) }
-        .chartXScale(domain: Date(timeIntervalSince1970: from / 1000) ... Date(timeIntervalSince1970: to / 1000))
+        Chart {
+            ForEach(plots) { plot in mark(plot) }
+            if let row = scrubbed, times.indices.contains(row) {
+                let date = Date(timeIntervalSince1970: times[row] / 1000)
+                RuleMark(x: .value("time", date)).foregroundStyle(Color.primary.opacity(0.7)).lineStyle(StrokeStyle(lineWidth: 1))
+                ForEach(panel.series.filter { $0.style != .bars }, id: \.key) { series in
+                    if series.points.indices.contains(row), let value = series.points[row].v {
+                        PointMark(x: .value("time", date), y: .value("value", value))
+                            .symbolSize(36)
+                            .foregroundStyle(series.style == .context ? Color.primary : ink)
+                    }
+                }
+            } else if panel.key != "direction", let last = StationHistory.last(panel), let value = last.v {
+                // The newest value, where the line ends.
+                PointMark(x: .value("time", Date(timeIntervalSince1970: last.t / 1000)), y: .value("value", value))
+                    .symbolSize(36)
+                    .foregroundStyle(ink)
+            }
+        }
+        .chartXScale(domain: Date(timeIntervalSince1970: span.lowerBound / 1000) ... Date(timeIntervalSince1970: span.upperBound / 1000))
         .chartYScale(domain: yDomain)
         .chartYAxis {
-            AxisMarks(position: .leading, values: panel.fixed.map { AxisMarkValues.stride(by: $0.ticks.count > 1 ? $0.ticks[1] - $0.ticks[0] : $0.max) } ?? .automatic(desiredCount: 3)) { value in
+            AxisMarks(position: .trailing, values: panel.fixed.map { AxisMarkValues.stride(by: $0.ticks.count > 1 ? $0.ticks[1] - $0.ticks[0] : $0.max) } ?? .automatic(desiredCount: 3)) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if panel.key == "direction", let degrees = value.as(Double.self) {
@@ -245,15 +368,32 @@ private struct StationPanelView: View {
                 }
             }
         }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    // Sideways drags move the line, which stays where it is let
+                    // go; vertical ones are the sheet's. A tap puts it there,
+                    // or takes it away when tapped on.
+                    .simultaneousGesture(DragGesture(minimumDistance: 8).onChanged { drag in
+                        guard abs(drag.translation.width) > abs(drag.translation.height) else { return }
+                        scrub(to: drag.location.x, proxy, geometry)
+                    })
+                    .onTapGesture { location in
+                        let before = scrubbed
+                        scrub(to: location.x, proxy, geometry)
+                        if let before, let now = scrubbed, abs(now - before) <= 2 { scrubbed = nil }
+                    }
+            }
+        }
     }
 
-    private var colour: Color {
-        switch panel.key {
-        case "temperature": return .orange
-        case "humidity": return .teal
-        case "pressure": return .purple
-        default: return .accentColor
-        }
+    private func scrub(to x: CGFloat, _ proxy: ChartProxy, _ geometry: GeometryProxy) {
+        guard let plot = proxy.plotFrame else { return }
+        let origin = geometry[plot].origin.x
+        guard let date: Date = proxy.value(atX: x - origin),
+              let row = StationHistory.row(nearest: date.timeIntervalSince1970 * 1000, in: times), row != scrubbed else { return }
+        scrubbed = row
+        UISelectionFeedbackGenerator().selectionChanged()
     }
 
     /// The scale: fixed where the panel says, else the values', the bottom
@@ -303,22 +443,53 @@ struct StationTogglePill: View {
 struct StationPicker: View {
     @ObservedObject var model: NativeMapModel
     @ObservedObject var state: StationState
+    /// Switches the stations off, as an open radar's card closes it.
+    var hide: () -> Void = {}
+    /// Whether a tap swapped how long ago for the clock.
+    @State private var showClock = false
 
     var body: some View {
         let theme = ChromeTheme(dark: model.isDark)
-        VStack(alignment: .leading, spacing: 6) {
-            Picker(CoreStrings.t("stations.choice.group"), selection: $state.choice) {
-                ForEach(StationChoice.allCases, id: \.self) { choice in
-                    Text(CoreStrings.t("stations.choice.\(choice.rawValue)")).tag(choice)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Picker(CoreStrings.t("stations.choice.group"), selection: $state.choice) {
+                    ForEach(StationChoice.allCases, id: \.self) { choice in
+                        Text(CoreStrings.t("stations.choice.\(choice.rawValue)")).tag(choice)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("nativeMap.stations.choice")
+                // The way out, outside the parameters so it is always in reach.
+                Button(action: hide) {
+                    Image(systemName: "xmark")
+                        .scaledFont(13, weight: .semibold, relativeTo: .footnote)
+                        .foregroundStyle(theme.text3)
+                        .frame(width: 30, height: 30)
+                        .background(theme.tint, in: Circle())
+                        .hitTarget()
+                }
+                .buttonStyle(PressScale())
+                .accessibilityLabel(CoreStrings.t("stations.close"))
+                .accessibilityIdentifier("nativeMap.stations.close")
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("nativeMap.stations.choice")
-            Text(status)
-                .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
-                .foregroundStyle(theme.text2)
-                .padding(.leading, 4)
+            // How long ago what is on the map was measured, counting up: the
+            // question is how fresh it is. A tap swaps it for the clock.
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                Button { showClock.toggle() } label: {
+                    Text(shown(now: context.date))
+                        .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
+                        .foregroundStyle(state.observedAt == nil ? theme.text2 : theme.accent)
+                        .padding(.horizontal, 6)
+                        .frame(minHeight: 24)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressScale())
+                .disabled(state.observedAt == nil)
+                .accessibilityLabel(status(now: context.date))
+                .accessibilityValue(shown(now: context.date))
+                .accessibilityAddTraits(showClock ? .isSelected : [])
                 .accessibilityIdentifier("nativeMap.stations.status")
+            }
         }
         .padding(10)
         .chromeGlass(theme, in: RoundedRectangle(cornerRadius: ChromeTheme.trayRadius, style: .continuous), strong: true)
@@ -328,9 +499,26 @@ struct StationPicker: View {
         .accessibilityIdentifier("nativeMap.stations.picker")
     }
 
-    private var status: String {
+    private var clock: String? {
+        state.observedAt?.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute())
+    }
+
+    /// "12 min ago"; never "in 1 min" from a clock a little ahead of DWD's.
+    private func age(now: Date) -> String? {
+        guard let at = state.observedAt else { return nil }
+        let minutes = max(0, now.timeIntervalSince(at) / 60)
+        return CoreStrings.t("storm.ago", ["duration": StormRules.duration(minutes) { CoreStrings.t($0, $1) }])
+    }
+
+    private func shown(now: Date) -> String {
         guard state.answered else { return " " }
-        guard let at = state.observedAt else { return CoreStrings.t("stations.none") }
-        return CoreStrings.t("stations.observed", ["time": at.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute())])
+        guard state.observedAt != nil else { return CoreStrings.t("stations.none") }
+        return (showClock ? clock : age(now: now)) ?? "–"
+    }
+
+    private func status(now: Date) -> String {
+        guard state.answered else { return " " }
+        guard let clock, let age = age(now: now) else { return CoreStrings.t("stations.none") }
+        return CoreStrings.t("stations.observed", ["time": clock]) + ", " + age
     }
 }

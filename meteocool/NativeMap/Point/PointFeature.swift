@@ -180,16 +180,26 @@ final class PointFeature: NativeMapFeature {
     }
 
     func open(_ link: [String: String]) -> Bool {
-        guard let pair = PointLink.parsePair(link["point"]), let map else { return false }
-        let coordinate = CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude)
-        map.model.point = coordinate
-        map.radar.point = coordinate
+        guard let map else { return false }
+        if let pair = PointLink.parsePair(link["point"]) {
+            let coordinate = CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude)
+            map.model.point = coordinate
+            map.radar.point = coordinate
+        }
+        // The model comparison's drawer, on whichever map it was opened over;
+        // a storm's sheet is the one it would take, so not beside one.
+        let selection = link["storm"] != nil || link["cell"] != nil || link["cloud"] != nil
+        if let pair = PointLink.parsePair(link["compare"]), !selection {
+            openCompare(at: CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude), hours: 24)
+        }
         return false
     }
 
     func linkParameters() -> [String: String] {
-        guard let point = map?.model.point else { return [:] }
-        return ["point": PointLink.pair(latitude: point.latitude, longitude: point.longitude)]
+        var out: [String: String] = [:]
+        if let point = map?.model.point { out["point"] = PointLink.pair(latitude: point.latitude, longitude: point.longitude) }
+        if let at = compare?.at, map?.model.selectedStorm == nil { out["compare"] = PointLink.pair(latitude: at.latitude, longitude: at.longitude) }
+        return out
     }
 
     // MARK: - Model comparison

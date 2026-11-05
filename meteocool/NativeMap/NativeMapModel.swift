@@ -88,8 +88,17 @@ final class NativeMapModel: ObservableObject {
     /// What the storm key turned off (core's `hiddenStormMarks`), kept.
     @Published var hiddenStormMarks: Set<StormMarkToggle> = NativeMapModel.storedHiddenMarks() {
         didSet {
+            guard storingMarks else { return }
             NativeMapModel.defaults?.set(hiddenStormMarks.map(\.rawValue).sorted(), forKey: NativeMapModel.hiddenMarksKey)
         }
+    }
+    private var storingMarks = true
+
+    /// What a link put away, for this visit: the reader's own stay stored.
+    func holdHiddenMarks(_ marks: Set<StormMarkToggle>) {
+        storingMarks = false
+        hiddenStormMarks = marks
+        storingMarks = true
     }
 
     private static let hiddenMarksKey = "nativeMap.hiddenStormMarks"

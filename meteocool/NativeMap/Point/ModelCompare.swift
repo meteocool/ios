@@ -645,6 +645,8 @@ final class ModelCompareDrawer {
     }
 
     var isOpen: Bool { model != nil }
+    /// The point it is open for, for a link (`compare`).
+    var at: (latitude: Double, longitude: Double)? { model.map { ($0.latitude, $0.longitude) } }
 
     func open(latitude: Double, longitude: Double, hours: Int) {
         let model = ModelCompareModel(latitude: latitude, longitude: longitude, hours: hours)

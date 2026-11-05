@@ -40,7 +40,15 @@ final class SiteSweepState: ObservableObject {
     @Published var mode: SiteMode?
     /// The motion set by hand on the dial, kept (core's `srvMotion` setting).
     @Published var manual = SrvMotionRules.parse(SiteSweepState.defaults?.string(forKey: SiteSweepState.manualKey)) {
-        didSet { SiteSweepState.defaults?.set(SrvMotionRules.format(manual), forKey: SiteSweepState.manualKey) }
+        didSet { if storing { SiteSweepState.defaults?.set(SrvMotionRules.format(manual), forKey: SiteSweepState.manualKey) } }
+    }
+    private var storing = true
+
+    /// The motion a link set by hand, for this visit only.
+    func hold(_ linked: ManualMotion) {
+        storing = false
+        manual = linked
+        storing = true
     }
     /// The reader asked for their own motion over the selected storm's.
     @Published var prefersManual = false
@@ -249,7 +257,10 @@ final class SiteSweeps: NativeMapFeature {
     /// The open radar, for a link to the map on screen.
     func linkParameters() -> [String: String] {
         guard map?.model.capability == .radar, let mode = state?.mode else { return [:] }
-        return SiteSweepRules.toLink(mode)
+        var out = SiteSweepRules.toLink(mode)
+        // The motion SRV takes out, when it is the hand's: a storm's comes with the storm.
+        if mode.quantity == .srv, srv.source == .manual, let manual = state?.manual { out["motion"] = SrvMotionRules.format(manual) }
+        return out
     }
 
     /// Where a link to a radar opens when it does not say: its whole reach in view.

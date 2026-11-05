@@ -181,10 +181,22 @@ struct NativeMapCheck {
         precondition(NativeMapLink(search: "?t=20260924T1945Z") == nil)
         precondition(NativeMapLink.frameTime("20260231T1200Z") == nil && NativeMapLink.frameTime("20260924T2560Z") == nil)
         // overlays: a list, none, and a typo (core's deepLink.test.ts).
-        precondition(NativeMapLink.overlays("lightning,cells") == ["cells", "lightning"])
-        precondition(NativeMapLink.overlays("none") == [])
-        precondition(NativeMapLink.overlays("lightnin") == nil && NativeMapLink.overlays(nil) == nil)
-        precondition(NativeMapLink.overlaysValue([]) == "none" && NativeMapLink.overlaysValue(["mesocyclones", "cells"]) == "cells,mesocyclones")
+        // The old form: the ones on, the rest of the first three off, the newer ones the reader's.
+        precondition(NativeMapLink.overlayStates("lightning,cells") == ["cells": true, "lightning": true, "mesocyclones": false])
+        precondition(NativeMapLink.overlayStates("none") == ["cells": false, "lightning": false, "mesocyclones": false])
+        precondition(NativeMapLink.overlayStates("lightnin") == nil && NativeMapLink.overlayStates(nil) == nil)
+        // The new: each named on or off, the rest the reader's.
+        precondition(NativeMapLink.overlayStates("cells,lightning,-stations") == ["cells": true, "lightning": true, "stations": false])
+        precondition(NativeMapLink.overlayStates("cells,stations") == ["cells": true, "stations": true])
+        precondition(NativeMapLink.overlayStates("-tiers") == ["tiers": false])
+        precondition(NativeMapLink.overlaysValue(["stations": false, "cells": true, "sites": true]) == "cells,sites,-stations")
+        precondition(NativeMapLink.overlaysValue([:]) == nil)
+        // The storm marks put away.
+        precondition(NativeMapLink.hidden("path,weak") == ["weak", "path"] && NativeMapLink.hidden("none") == [])
+        precondition(NativeMapLink.hidden("wek") == nil && NativeMapLink.hidden(nil) == nil)
+        precondition(NativeMapLink.hiddenValue([]) == "none" && NativeMapLink.hiddenValue(["volume", "dwd"]) == "dwd,volume")
+        // A station's id.
+        precondition(NativeMapLink.validStation("02290") && !NativeMapLink.validStation("../x") && !NativeMapLink.validStation(""))
         // A storm core's volume (`cloud`): core's `deepLink.test.ts`, every naming both ways, nothing else.
         let oldest = "meteoradar/volumes/20260924T194500/R39853139.mcvx"
         precondition(NativeMapLink.cloudLink(oldest) == "20260924T194500/R39853139")

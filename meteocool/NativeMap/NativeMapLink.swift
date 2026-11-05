@@ -37,27 +37,76 @@ struct NativeMapLink: Equatable {
         (self.latitude, self.longitude, self.zoom, self.time) = (latitude, longitude, zoom, time)
     }
 
-    /// Every parameter of a link's search, first value of each.
-    /// The radar map's switchable overlays, in the order a link lists them.
-    static let overlayNames = ["cells", "lightning", "mesocyclones"]
+    /// The switchable overlays of either map, in the order a link lists
+    /// them: the radar map's storms, strikes, cyclones, radars' marks and
+    /// weather stations, and the 3D map's KONRAD3D tiers.
+    static let overlayNames = ["cells", "lightning", "mesocyclones", "sites", "stations", "tiers"]
 
-    /// A link's `overlays=`: the ones it names on, the rest off; "none" all
-    /// off; nil where it is absent or names nothing this app has (a typo,
-    /// not "all off").
-    static func overlays(_ text: String?) -> [String]? {
+    /// What a link could name before 2026-10-29, when it listed only the ones on.
+    static let firstOverlays = ["cells", "lightning", "mesocyclones"]
+
+    /// The overlays each map has, all of which a link from that map names.
+    static let mapOverlays: [String: [String]] = [
+        "radar": ["cells", "lightning", "mesocyclones", "sites", "stations"],
+        "cells3d": ["tiers"],
+    ]
+
+    /// A link's `overlays=` (core's `parseOverlays`): `cells,-stations` is the
+    /// storms on and the stations off, and one it does not name is the
+    /// reader's own. A list that could have been written before the minus
+    /// (only the first three, none off) is the old form: one of those three
+    /// it leaves out is off. `none` is the first three off. Nil where absent
+    /// or naming nothing this app has (a typo, not "all off").
+    static func overlayStates(_ text: String?) -> [String: Bool]? {
         guard let text else { return nil }
-        let named = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        if named == ["none"] { return [] }
-        let known = overlayNames.filter(named.contains)
+        let parts = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if parts == ["none"] { return Dictionary(uniqueKeysWithValues: firstOverlays.map { ($0, false) }) }
+        var named: [String: Bool] = [:]
+        for part in parts {
+            let off = part.hasPrefix("-")
+            let name = off ? String(part.dropFirst()) : part
+            if overlayNames.contains(name) { named[name] = !off }
+        }
+        guard !named.isEmpty else { return nil }
+        let old = parts.allSatisfy { !$0.hasPrefix("-") } && named.keys.allSatisfy(firstOverlays.contains)
+        var states: [String: Bool] = [:]
+        for overlay in overlayNames {
+            if let on = named[overlay] { states[overlay] = on } else if old, firstOverlays.contains(overlay) { states[overlay] = false }
+        }
+        return states
+    }
+
+    /// `cells,-stations`: each overlay the states name, in order; nil for none.
+    static func overlaysValue(_ states: [String: Bool]) -> String? {
+        let named = overlayNames.filter { states[$0] != nil }
+        return named.isEmpty ? nil : named.map { states[$0]! ? $0 : "-" + $0 }.joined(separator: ",")
+    }
+
+    /// The storm marks the key can put away, in the order a link lists them.
+    static let stormMarks = ["dwd", "meteocool", "weak", "moderate", "strong", "extreme",
+                             "live", "path", "join", "hail", "rotation", "forecast", "volume"]
+
+    /// `hide=weak,path`, or `none` for nothing put away; a list naming none
+    /// the key has is dropped.
+    static func hidden(_ text: String?) -> [String]? {
+        guard let text else { return nil }
+        let parts = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if parts == ["none"] { return [] }
+        let known = stormMarks.filter(parts.contains)
         return known.isEmpty ? nil : known
     }
 
-    /// The overlays on, as `overlays=` writes them: in order, "none" for none.
-    static func overlaysValue(_ on: [String]) -> String {
-        let known = overlayNames.filter(on.contains)
+    static func hiddenValue(_ marks: [String]) -> String {
+        let known = stormMarks.filter(marks.contains)
         return known.isEmpty ? "none" : known.joined(separator: ",")
     }
 
+    /// A weather station's id, DWD's `02290`: a plain word, safe in a path.
+    static func validStation(_ text: String) -> Bool {
+        (1 ... 16).contains(text.count) && text.unicodeScalars.allSatisfy { $0.isASCII && CharacterSet.alphanumerics.contains($0) }
+    }
+
+    /// Every parameter of a link's search, first value of each.
     static func parameters(_ search: String) -> [String: String] {
         let query = search.hasPrefix("?") ? String(search.dropFirst()) : search
         var out: [String: String] = [:]
