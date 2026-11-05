@@ -167,9 +167,13 @@ final class meteocoolUITests: XCTestCase {
             var previousIndex = 0
             for index in Array(0..<options.count) + Array((0..<options.count).reversed()) {
                 let label = table.staticTexts[options[index]]
-                for _ in 0..<8 {
+                // Short drags towards the row: at the largest sizes a swipe can
+                // carry a small sheet past it.
+                for _ in 0..<12 {
                     if label.isHittable { break }
-                    if index < previousIndex { table.swipeDown() } else { table.swipeUp() }
+                    let up = label.exists ? label.frame.midY > table.frame.midY : index >= previousIndex
+                    let from = table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.7 : 0.3))
+                    from.press(forDuration: 0.05, thenDragTo: table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.35 : 0.65)))
                 }
                 XCTAssertTrue(label.isHittable)
                 // Measures only the rows visible right before each selection.
@@ -375,8 +379,13 @@ final class meteocoolUITests: XCTestCase {
         let server = URL(string: "http://127.0.0.1:18765/")!
         do { _ = try await URLSession.shared.data(from: server.appendingPathComponent("requests")) }
         catch { throw XCTSkip("Start node tests/mobile-api-recorder.mjs for screenshots during a held drag") }
+        // The recorder screenshots this simulator, not just any booted one.
+        func onThisSimulator(_ url: URL) -> URL {
+            guard let udid = ProcessInfo.processInfo.environment["SIMULATOR_UDID"] else { return url }
+            return url.appending(queryItems: [URLQueryItem(name: "udid", value: udid)])
+        }
         func simulatorScreenshot() async throws -> UIImage {
-            let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("slider-screenshot"))
+            let (data, _) = try await URLSession.shared.data(from: onThisSimulator(server.appendingPathComponent("slider-screenshot")))
             return try XCTUnwrap(UIImage(data: data))
         }
         openNotificationSliderSettings()
@@ -411,7 +420,7 @@ final class meteocoolUITests: XCTestCase {
             let before = try labelPixels(await simulatorScreenshot())
             // Capture while the synthesized finger is held down at the destination.
             let capture = Task.detached {
-                let (data, _) = try await URLSession.shared.data(from: server.appendingPathComponent("slider-drag-screenshot"))
+                let (data, _) = try await URLSession.shared.data(from: onThisSimulator(server.appendingPathComponent("slider-drag-screenshot")))
                 return (data, Date())
             }
             let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
@@ -655,7 +664,8 @@ final class meteocoolUITests: XCTestCase {
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
         // A fresh simulator can open Settings at its root on the first visit.
         if !settings.staticTexts["Location"].waitForExistence(timeout: 3) {
-            let apps = settings.staticTexts["Apps"]
+            // On an iPad "Apps" is in the sidebar and titles the page too.
+            let apps = settings.staticTexts["Apps"].firstMatch
             for _ in 0..<6 {
                 if apps.isHittable { break }
                 settings.swipeUp()
@@ -666,8 +676,9 @@ final class meteocoolUITests: XCTestCase {
             XCTAssertTrue(search.waitForExistence(timeout: 5))
             search.tap()
             search.typeText("meteocool")
-            let entry = settings.staticTexts["meteocool"]
-            XCTAssertTrue(entry.waitForExistence(timeout: 5))
+            // The app's row, not the search field's text.
+            let entry = settings.cells.staticTexts["meteocool"].firstMatch
+            XCTAssertTrue(entry.waitForExistence(timeout: 15))
             entry.tap()
         }
         XCTAssertTrue(settings.staticTexts["Location"].waitForExistence(timeout: 10))
