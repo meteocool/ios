@@ -222,6 +222,77 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5))
     }
 
+    /// What staging's `/v3/archive` answers: 404 while it keeps nothing,
+    /// as until ng's archive is deployed there.
+    private func stagingArchiveStatus() -> Int? {
+        var status: Int?
+        let done = DispatchSemaphore(value: 0)
+        var request = URLRequest(url: URL(string: "https://api-next.meteocool.com/v3/archive")!)
+        request.timeoutInterval = 15
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            status = (response as? HTTPURLResponse)?.statusCode
+            done.signal()
+        }.resume()
+        _ = done.wait(timeout: .now() + 20)
+        return status
+    }
+
+    /// The archive: the tray's calendar opens the picker; Open puts the map
+    /// in a past window, with clock times on the strip and the way back to
+    /// live, which goes back to offsets from now.
+    func testArchiveOpensAPastWindow() throws {
+        let status = stagingArchiveStatus()
+        launch()
+        waitForSeries()
+        let archive = app.buttons["nativeMap.archive"].firstMatch
+        XCTAssertTrue(archive.waitForExistence(timeout: 10), "The tray's archive button")
+        archive.tap()
+        XCTAssertTrue(element("nativeMap.archive.sheet").waitForExistence(timeout: 10), "The archive's sheet")
+        if status == 404 {
+            XCTAssertTrue(element("nativeMap.archive.empty").waitForExistence(timeout: 20), "The sheet says the archive is empty")
+            throw XCTSkip("Staging's /v3/archive answers 404: the archive is not deployed there yet")
+        }
+        let open = app.buttons["nativeMap.archive.open"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 20), "Open, once the archive has answered")
+        XCTAssertTrue(open.isEnabled)
+        open.tap()
+        // The window's steps: clock times, never offsets from now.
+        let clock = { (value: String) in value.contains(":") && !value.hasPrefix("-") && !value.hasPrefix("+") }
+        XCTAssertTrue(waitForValue(timeline, timeout: 60, clock), "In the window: \(timeline.value ?? "")")
+        screenshot("archive window")
+        let back = element("nativeMap.backToNow")
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "The way back to live")
+        back.tap()
+        XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
+    }
+
+    /// A link to a past window (`from=`, `to=`, `t=`, as core writes it)
+    /// opens the map in it, on its frame. Three hours back: within the day
+    /// staging keeps even without the archive.
+    func testWindowLinkOpensThePast() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        let end = (Int(Date().timeIntervalSince1970) - 3 * 3600) / 300 * 300
+        func link(_ seconds: Int) -> String { formatter.string(from: Date(timeIntervalSince1970: TimeInterval(seconds))) }
+        launch(link: "?latLonZ=48.14,11.58,7&from=\(link(end - 3600))&to=\(link(end))&t=\(link(end - 1800))")
+        waitForSeries()
+        let clock = DateFormatter()
+        clock.dateFormat = "HH:mm"
+        let shown = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 1800)))
+        XCTAssertTrue(waitForValue(timeline, timeout: 60) { $0.hasSuffix(shown) }, "On the linked step \(shown): \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5), "The way back to live")
+        screenshot("archive link")
+        // Scrubbing stays inside the window: its first step at the far left.
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.4)).tap()
+        let first = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 3600)))
+        XCTAssertTrue(waitForValue(timeline) { $0.hasSuffix(first) }, "At the window's start \(first): \(timeline.value ?? "")")
+        // The pill leaves the window.
+        element("nativeMap.pill").tap()
+        XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
+    }
+
     /// A link to a point opens with its ring and its readings.
     func testPointLinkInspectsThePoint() {
         launch(link: "?latLonZ=48.14,11.58,8&point=48.20000,11.60000")
