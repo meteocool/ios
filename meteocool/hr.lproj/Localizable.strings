@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Svi unosi brišu se s poslužitelja, i oni tvojih mjesta. Kasnije ga možeš ponovno uključiti.";
 "storm_log_turn_off_confirm" = "Isključi";
 "storm_log_turn_off_failed" = "Dnevnik oluja nije moguće izbrisati pa je i dalje uključen. Pokušaj ponovno kasnije.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Arhiva";
+"native_map_archive_hint" = "Prikazuje kartu u nekom trenutku tijekom posljednjih mjesec dana.";
+"native_map_archive_open" = "Otvori";
+"native_map_archive_empty_title" = "Još ništa nije spremljeno";
+"native_map_archive_empty" = "Arhiva je prazna. Kad počne, radar, munje, oluje i postaje čuvaju se mjesec dana.";
+"native_map_archive_failed_title" = "Arhiva nije dostupna";
+"native_map_archive_failed" = "Arhiva nije dostupna.";
+"native_map_archive_retry" = "Pokušaj ponovno";
+"native_map_archive_day" = "Dan";
+"native_map_archive_start" = "Početak";
+"native_map_archive_length" = "Trajanje";
+"native_map_archive_hours" = "%d h";
+"native_map_archive_kept" = "Spremljeno od %1$@ do %2$@.";
+"native_map_archive_back" = "Natrag na uživo";
+"native_map_archive_refused" = "Arhiva nema to vrijeme.";

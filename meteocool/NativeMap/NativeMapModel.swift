@@ -77,6 +77,9 @@ final class NativeMapModel: ObservableObject {
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+    /// The past window the map is used in (the archive), nil live. Set
+    /// before its steps land; `RadarPlayer.window` is the strip's.
+    @Published var window: RadarWindow?
     /// The open storm's slice, turned in its panel, cut on the 3D map.
     let cut = StormCut()
     /// The radar open on the flat map in its own sweep (site mode).

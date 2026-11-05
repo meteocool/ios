@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Alla poster raderas från servern, även dina platsers. Du kan slå på den igen senare.";
 "storm_log_turn_off_confirm" = "Stäng av";
 "storm_log_turn_off_failed" = "Åskdagboken kunde inte raderas, så den är fortfarande på. Försök igen senare.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Arkiv";
+"native_map_archive_hint" = "Visar kartan vid en tidpunkt under den senaste månaden.";
+"native_map_archive_open" = "Öppna";
+"native_map_archive_empty_title" = "Inget sparat ännu";
+"native_map_archive_empty" = "Arkivet är tomt. När det börjar sparas radar, blixtar, oväder och stationer i en månad.";
+"native_map_archive_failed_title" = "Arkivet är inte tillgängligt";
+"native_map_archive_failed" = "Det gick inte att nå arkivet.";
+"native_map_archive_retry" = "Försök igen";
+"native_map_archive_day" = "Dag";
+"native_map_archive_start" = "Start";
+"native_map_archive_length" = "Längd";
+"native_map_archive_hours" = "%d h";
+"native_map_archive_kept" = "Sparat från %1$@ till %2$@.";
+"native_map_archive_back" = "Tillbaka till live";
+"native_map_archive_refused" = "Arkivet har inte den tiden.";

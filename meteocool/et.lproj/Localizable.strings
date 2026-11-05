@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Kõik kirjed kustutatakse serverist, ka sinu kohtade omad. Saad selle hiljem uuesti sisse lülitada.";
 "storm_log_turn_off_confirm" = "Lülita välja";
 "storm_log_turn_off_failed" = "Äikesepäevikut ei õnnestunud kustutada, seega on see endiselt sees. Proovi hiljem uuesti.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Arhiiv";
+"native_map_archive_hint" = "Näitab kaarti mõnel hetkel viimase kuu jooksul.";
+"native_map_archive_open" = "Ava";
+"native_map_archive_empty_title" = "Veel pole midagi talletatud";
+"native_map_archive_empty" = "Arhiiv on tühi. Kui see algab, hoitakse radarit, välke, torme ja jaamu kuu aega.";
+"native_map_archive_failed_title" = "Arhiiv pole kättesaadav";
+"native_map_archive_failed" = "Arhiiviga ei saadud ühendust.";
+"native_map_archive_retry" = "Proovi uuesti";
+"native_map_archive_day" = "Päev";
+"native_map_archive_start" = "Algus";
+"native_map_archive_length" = "Kestus";
+"native_map_archive_hours" = "%d h";
+"native_map_archive_kept" = "Talletatud %1$@ kuni %2$@.";
+"native_map_archive_back" = "Tagasi otsepilti";
+"native_map_archive_refused" = "Arhiivis pole seda aega.";

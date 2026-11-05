@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Kaikki merkinnät poistetaan palvelimelta, myös paikkojesi. Voit laittaa sen myöhemmin taas päälle.";
 "storm_log_turn_off_confirm" = "Laita pois";
 "storm_log_turn_off_failed" = "Ukkospäiväkirjaa ei voitu poistaa, joten se on yhä päällä. Yritä myöhemmin uudelleen.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Arkisto";
+"native_map_archive_hint" = "Näyttää kartan jonakin hetkenä viimeisen kuukauden ajalta.";
+"native_map_archive_open" = "Avaa";
+"native_map_archive_empty_title" = "Mitään ei ole vielä tallessa";
+"native_map_archive_empty" = "Arkisto on tyhjä. Kun se alkaa, tutka, salamat, myrskyt ja asemat säilytetään kuukauden.";
+"native_map_archive_failed_title" = "Arkisto ei ole käytettävissä";
+"native_map_archive_failed" = "Arkistoon ei saatu yhteyttä.";
+"native_map_archive_retry" = "Yritä uudelleen";
+"native_map_archive_day" = "Päivä";
+"native_map_archive_start" = "Alku";
+"native_map_archive_length" = "Kesto";
+"native_map_archive_hours" = "%d h";
+"native_map_archive_kept" = "Tallessa %1$@–%2$@.";
+"native_map_archive_back" = "Takaisin reaaliaikaan";
+"native_map_archive_refused" = "Arkistossa ei ole tätä aikaa.";
