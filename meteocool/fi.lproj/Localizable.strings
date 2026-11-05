@@ -374,10 +374,10 @@
 
 /* The archive: a past window on the native map */
 "native_map_archive" = "Arkisto";
-"native_map_archive_hint" = "Näyttää kartan jonakin hetkenä viimeisen kuukauden ajalta.";
+"native_map_archive_hint" = "Näyttää kartan hetkenä, joka on vielä tallessa arkistossa.";
 "native_map_archive_open" = "Avaa";
 "native_map_archive_empty_title" = "Mitään ei ole vielä tallessa";
-"native_map_archive_empty" = "Arkisto on tyhjä. Kun se alkaa, tutka, salamat, myrskyt ja asemat säilytetään kuukauden.";
+"native_map_archive_empty" = "Arkisto on tyhjä. Kun se alkaa, tutka, salamat, myrskyt ja asemat säilytetään.";
 "native_map_archive_failed_title" = "Arkisto ei ole käytettävissä";
 "native_map_archive_failed" = "Arkistoon ei saatu yhteyttä.";
 "native_map_archive_retry" = "Yritä uudelleen";

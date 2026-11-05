@@ -207,7 +207,7 @@ struct ArchiveButton: View {
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(NSLocalizedString("native_map_archive", value: "Archive", comment: ""))
-        .accessibilityHint(NSLocalizedString("native_map_archive_hint", value: "Shows the map at a time in the last month.", comment: ""))
+        .accessibilityHint(NSLocalizedString("native_map_archive_hint", value: "Shows the map at a time the archive still keeps.", comment: ""))
         .accessibilityAddTraits(open ? .isSelected : [])
         .accessibilityIdentifier("nativeMap.archive")
     }

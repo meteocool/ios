@@ -134,7 +134,7 @@ struct ArchivePicker: View {
             ContentUnavailableView {
                 Label(s("native_map_archive_empty_title", "Nothing Kept Yet"), systemImage: "calendar.badge.clock")
             } description: {
-                Text(s("native_map_archive_empty", "The archive is empty. Once it starts, the radar, lightning, storms and stations are kept for a month."))
+                Text(s("native_map_archive_empty", "The archive is empty. Once it starts, the radar, lightning, storms and stations are kept."))
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("nativeMap.archive.empty")

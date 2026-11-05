@@ -374,10 +374,10 @@
 
 /* The archive: a past window on the native map */
 "native_map_archive" = "Arkiv";
-"native_map_archive_hint" = "Viser kortet på et tidspunkt inden for den seneste måned.";
+"native_map_archive_hint" = "Viser kortet på et tidspunkt, som arkivet stadig gemmer.";
 "native_map_archive_open" = "Åbn";
 "native_map_archive_empty_title" = "Intet gemt endnu";
-"native_map_archive_empty" = "Arkivet er tomt. Når det begynder, gemmes radar, lyn, uvejr og stationer i en måned.";
+"native_map_archive_empty" = "Arkivet er tomt. Når det begynder, gemmes radar, lyn, uvejr og stationer.";
 "native_map_archive_failed_title" = "Arkivet er utilgængeligt";
 "native_map_archive_failed" = "Arkivet kunne ikke nås.";
 "native_map_archive_retry" = "Prøv igen";

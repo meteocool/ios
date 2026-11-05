@@ -374,10 +374,10 @@
 
 /* The archive: a past window on the native map */
 "native_map_archive" = "Arhiiv";
-"native_map_archive_hint" = "Näitab kaarti mõnel hetkel viimase kuu jooksul.";
+"native_map_archive_hint" = "Näitab kaarti hetkel, mida arhiiv veel hoiab.";
 "native_map_archive_open" = "Ava";
 "native_map_archive_empty_title" = "Veel pole midagi talletatud";
-"native_map_archive_empty" = "Arhiiv on tühi. Kui see algab, hoitakse radarit, välke, torme ja jaamu kuu aega.";
+"native_map_archive_empty" = "Arhiiv on tühi. Kui see algab, hoitakse radarit, välke, torme ja jaamu.";
 "native_map_archive_failed_title" = "Arhiiv pole kättesaadav";
 "native_map_archive_failed" = "Arhiiviga ei saadud ühendust.";
 "native_map_archive_retry" = "Proovi uuesti";

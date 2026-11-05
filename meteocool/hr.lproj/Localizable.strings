@@ -374,10 +374,10 @@
 
 /* The archive: a past window on the native map */
 "native_map_archive" = "Arhiva";
-"native_map_archive_hint" = "Prikazuje kartu u nekom trenutku tijekom posljednjih mjesec dana.";
+"native_map_archive_hint" = "Prikazuje kartu u trenutku koji arhiva još čuva.";
 "native_map_archive_open" = "Otvori";
 "native_map_archive_empty_title" = "Još ništa nije spremljeno";
-"native_map_archive_empty" = "Arhiva je prazna. Kad počne, radar, munje, oluje i postaje čuvaju se mjesec dana.";
+"native_map_archive_empty" = "Arhiva je prazna. Kad počne, radar, munje, oluje i postaje se čuvaju.";
 "native_map_archive_failed_title" = "Arhiva nije dostupna";
 "native_map_archive_failed" = "Arhiva nije dostupna.";
 "native_map_archive_retry" = "Pokušaj ponovno";

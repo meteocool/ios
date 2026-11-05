@@ -374,10 +374,10 @@
 
 /* The archive: a past window on the native map */
 "native_map_archive" = "Archief";
-"native_map_archive_hint" = "Toont de kaart op een moment in de afgelopen maand.";
+"native_map_archive_hint" = "Toont de kaart op een moment dat het archief nog bewaart.";
 "native_map_archive_open" = "Open";
 "native_map_archive_empty_title" = "Nog niets bewaard";
-"native_map_archive_empty" = "Het archief is leeg. Zodra het begint, worden radar, bliksem, onweersbuien en stations een maand bewaard.";
+"native_map_archive_empty" = "Het archief is leeg. Zodra het begint, worden radar, bliksem, onweersbuien en stations bewaard.";
 "native_map_archive_failed_title" = "Archief niet beschikbaar";
 "native_map_archive_failed" = "Het archief kon niet worden bereikt.";
 "native_map_archive_retry" = "Probeer opnieuw";
