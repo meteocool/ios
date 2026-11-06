@@ -190,9 +190,22 @@ final class PointFeature: NativeMapFeature {
         // a storm's sheet is the one it would take, so not beside one.
         let selection = link["storm"] != nil || link["cell"] != nil || link["cloud"] != nil
         if let pair = PointLink.parsePair(link["compare"]), !selection {
-            openCompare(at: CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude), hours: 24)
+            whenOnScreen { [weak self] in
+                self?.openCompare(at: CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude), hours: 24)
+            }
         }
         return false
+    }
+
+    /// Runs once the map is in a window: a link opens before it is, and a
+    /// phone's drawer is a sheet that cannot be presented from off screen.
+    private func whenOnScreen(tries: Int = 60, _ action: @escaping () -> Void) {
+        guard let map else { return }
+        if map.view.window != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: action)
+        } else if tries > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.whenOnScreen(tries: tries - 1, action) }
+        }
     }
 
     func linkParameters() -> [String: String] {

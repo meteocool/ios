@@ -1064,10 +1064,15 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Temp"].firstMatch.isSelected, "Temperatures, as the link says")
         XCTAssertNotEqual(element("nativeMap.stormKey.pill").value as? String ?? "", "", "A storm mark put away")
         element("nativeMap.productPill").tap()
-        XCTAssertTrue(element("nativeMap.product.colmax").waitForExistence(timeout: 5))
-        XCTAssertTrue(element("nativeMap.product.colmax").isSelected, "The link's product")
-        element("nativeMap.productPill").tap()
-        XCTAssertTrue(element("nativeMap.productMenu").waitForNonExistence(timeout: 5))
+        let menu = element("nativeMap.productMenu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        // The last row: under the sheet's first height until scrolled to.
+        let colmax = element("nativeMap.product.colmax")
+        for _ in 0 ..< 4 where !(colmax.exists && colmax.isHittable) { menu.swipeUp() }
+        XCTAssertTrue(colmax.waitForExistence(timeout: 5))
+        XCTAssertTrue(colmax.isSelected, "The link's product")
+        menu.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
         openLayers()
         func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
         XCTAssertEqual(value("lightning"), "0", "Off for the link")
