@@ -587,10 +587,16 @@ final class NativeMapUITests: XCTestCase {
                 if onScreen == nil { RunLoop.current.run(until: Date().addingTimeInterval(1)) }
             }
         }
-        let target = try XCTUnwrap(onScreen, "A storm in view")
-        app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.midX, dy: target.midY)).tap()
+        var target = try XCTUnwrap(onScreen, "A storm in view")
+        func tapStorm() { app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.midX, dy: target.midY)).tap() }
+        tapStorm()
         if UIDevice.current.userInterfaceIdiom == .pad {
-            // A wide screen opens the panel at once, beside the map.
+            // A wide screen opens the panel at once, beside the map. A storm
+            // the replay moved on from under the tap: found again and tapped.
+            for _ in 0 ..< 2 where !element("nativeMap.storm.details").waitForExistence(timeout: 5) {
+                if let again = stormInView() { target = again }
+                tapStorm()
+            }
             XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10))
             XCTAssertTrue(element("nativeMap.storm.title").exists)
             screenshot("storm panel")
