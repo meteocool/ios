@@ -51,6 +51,39 @@ struct RainForecast: Codable, Hashable, Sendable {
         /// The words for the rain the title is about; nil when dry.
         var intensity: String?
         var times: [String: Int]?
+
+        /// `template` with its times written out, as of `reference`: a clock
+        /// time for `{at:name}`, "in 15 min" for `{in:name}`. Nil when it names
+        /// a time it does not carry or a kind this app does not know.
+        func plain(_ template: String, relativeTo reference: Date, locale: Locale = .current,
+                   timeZone: TimeZone = .current) -> String? {
+            var text = ""
+            var rest = Substring(template)
+            while let open = rest.firstIndex(of: "{") {
+                guard let close = rest[open...].firstIndex(of: "}") else { return nil }
+                let token = rest[rest.index(after: open)..<close].split(separator: ":", maxSplits: 1).map(String.init)
+                guard token.count == 2, let seconds = times?[token[1]] else { return nil }
+                let date = Date(timeIntervalSince1970: TimeInterval(seconds))
+                switch token[0] {
+                case "at":
+                    var style = Date.FormatStyle(date: .omitted, time: .shortened).locale(locale)
+                    style.timeZone = timeZone
+                    text += String(rest[..<open]) + date.formatted(style)
+                case "in":
+                    // Whole minutes, as the Live Activity's countdown shows them.
+                    let minutes = (date.timeIntervalSince(reference) / 60).rounded()
+                    let formatter = RelativeDateTimeFormatter()
+                    formatter.locale = locale
+                    formatter.unitsStyle = .short
+                    formatter.dateTimeStyle = .named
+                    text += String(rest[..<open]) + formatter.localizedString(fromTimeInterval: max(minutes, 0) * 60)
+                default:
+                    return nil
+                }
+                rest = rest[rest.index(after: close)...]
+            }
+            return text + String(rest)
+        }
     }
 
     /// What the rain alerts call anything heavier than `above` dBZ.
@@ -127,6 +160,16 @@ struct RainForecast: Codable, Hashable, Sendable {
     /// The backend's headline for now: the one for this step, else the pushed one.
     var currentHeadline: Headline? {
         headlines?[String(start + observed * interval)] ?? headline
+    }
+
+    /// The headline as text that keeps, for the list of past alerts: `{at:name}`
+    /// as a clock time and `{in:name}` counted from `reference`, when it came.
+    /// Nil without a headline, or where `Headline.plain` cannot fill it in.
+    func alertText(at reference: Date, locale: Locale = .current, timeZone: TimeZone = .current) -> (title: String, body: String)? {
+        guard let headline = currentHeadline,
+              let title = headline.plain(headline.title, relativeTo: reference, locale: locale, timeZone: timeZone) else { return nil }
+        let body = headline.detail.flatMap { headline.plain($0, relativeTo: reference, locale: locale, timeZone: timeZone) } ?? ""
+        return (title, body)
     }
 
     /// The backend's words for `dbz`, if it sent any.

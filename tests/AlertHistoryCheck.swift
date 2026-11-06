@@ -51,6 +51,20 @@ enum AlertHistoryCheck {
         check(AlertHistory.unseen(alerts, since: nil) == 2, "never looked: every alert is new")
         check(AlertHistory.unseen(alerts, since: now.addingTimeInterval(-1800)) == 1, "one since the last look")
 
+        // A Live Activity's alert: one per activity, whether seen as it came
+        // or at a launch long after, and never the same as a notification.
+        let started = ReceivedAlert(title: "Heavy rain in 15 min", body: "", received: now.addingTimeInterval(-900),
+                                    request: ReceivedAlert.liveActivity("A1"))
+        let atLaunch = ReceivedAlert(title: "Heavy rain in 15 min", body: "", received: now.addingTimeInterval(-300),
+                                     request: ReceivedAlert.liveActivity("A1"))
+        check(started.isSame(as: atLaunch), "the same activity seen again later")
+        check(!started.isSame(as: ReceivedAlert(title: "Heavy rain in 15 min", body: "", received: now.addingTimeInterval(-900),
+                                                request: ReceivedAlert.liveActivity("A2"))), "another activity is another alert")
+        check(!started.isSame(as: ReceivedAlert(title: "Heavy rain in 15 min", body: "", received: now.addingTimeInterval(-900),
+                                                request: "n1")), "a notification with the same words is not the activity's")
+        let withActivity = AlertHistory.merged(alerts, adding: [started], now: now)
+        check(AlertHistory.merged(withActivity, adding: [atLaunch], now: now).count == alerts.count + 1, "one entry per activity")
+
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("alerts-\(UUID().uuidString).json")
         AlertHistory.add([first], now: now, to: file)
         AlertHistory.add([again, cabin], now: now, to: file)

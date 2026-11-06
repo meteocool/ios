@@ -14,6 +14,6 @@ xcrun --sdk iphonesimulator swiftc -swift-version 6 -D DEBUG -parse-as-library \
     -target arm64-apple-ios18.0-simulator \
     meteocool/lib/Environment.swift meteocool/lib/NetworkHelper.swift \
     meteocool/lib/LiveActivityManager.swift Shared/RainActivityAttributes.swift \
-    Shared/RainForecast.swift Shared/RadarImageStore.swift meteocool/AR/Colormaps.swift \
+    Shared/RainForecast.swift Shared/RadarImageStore.swift Shared/AlertHistory.swift meteocool/AR/Colormaps.swift \
     tests/LiveActivityManagerCheck.swift -o "$scratch/check-live-activity-sync"
 xcrun simctl spawn "$udid" "$scratch/check-live-activity-sync"

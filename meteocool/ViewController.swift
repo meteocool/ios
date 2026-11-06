@@ -284,6 +284,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                                                name: MeteocoolEnvironment.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(screenshotTaken),
                                                name: UIApplication.userDidTakeScreenshotNotification, object: nil)
+        // A Live Activity's alert was added to the past alerts: the bell's dot.
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshAlertsBadge),
+                                               name: AlertHistory.didChange, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -1087,7 +1090,7 @@ extension ViewController {
     }
 
     /// Reads the list again, with the delivered alerts, and draws the dot.
-    func refreshAlertsBadge() {
+    @objc func refreshAlertsBadge() {
         Task { [weak self] in
             let unseen = await PastAlertsViewController.unseen()
             self?.showAlertsBadge(unseen > 0)

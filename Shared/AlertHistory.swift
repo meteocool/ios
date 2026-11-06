@@ -45,6 +45,15 @@ struct ReceivedAlert: Codable, Hashable, Identifiable, Sendable {
                   replaces: content.userInfo["update"] as? Bool == true)
     }
 
+    /// The `request` of an alert that came as a Live Activity: with Live
+    /// Activities on, ng starts one in place of the rain notification, with
+    /// the alert on it, and neither the notification service extension nor
+    /// the delivered notifications see it. The app adds it from the activity
+    /// (`LiveActivityManager`), one per activity.
+    static let liveActivityPrefix = "live-activity:"
+
+    static func liveActivity(_ id: String) -> String { liveActivityPrefix + id }
+
     init(title: String, body: String, received: Date, place: String? = nil, request: String = UUID().uuidString,
          thread: String? = nil, replaces: Bool = false) {
         id = UUID()
@@ -60,7 +69,11 @@ struct ReceivedAlert: Codable, Hashable, Identifiable, Sendable {
     /// Whether `other` is the same alert, seen a second time: by the
     /// notification service extension and among the delivered ones.
     func isSame(as other: ReceivedAlert) -> Bool {
-        abs(received.timeIntervalSince(other.received)) < 120
+        // A Live Activity's alert is one per activity, however late it is seen.
+        if request.hasPrefix(Self.liveActivityPrefix) || other.request.hasPrefix(Self.liveActivityPrefix) {
+            return request == other.request
+        }
+        return abs(received.timeIntervalSince(other.received)) < 120
             && (request == other.request || (title == other.title && body == other.body))
     }
 }
@@ -68,6 +81,8 @@ struct ReceivedAlert: Codable, Hashable, Identifiable, Sendable {
 enum AlertHistory {
     /// As CLAUDE.md's shared state and the targets' entitlements have it.
     static let groupID = "group.org.frcy.app.meteocool"
+    /// Posted when the app added alerts outside the list (a Live Activity's).
+    static let didChange = Notification.Name("AlertHistoryDidChange")
     static let kept: TimeInterval = 14 * 24 * 3600
     static let limit = 200
 

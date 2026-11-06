@@ -62,7 +62,7 @@ import UIKit
         }
         Task {
             for await activity in Activity<RainActivityAttributes>.activityUpdates {
-                observe(activity)
+                observe(activity, arrivedNow: true)
             }
         }
         Task {
@@ -70,15 +70,17 @@ import UIKit
                 settingChanged()
             }
         }
-        Activity<RainActivityAttributes>.activities.forEach(observe)
+        Activity<RainActivityAttributes>.activities.forEach { observe($0, arrivedNow: false) }
     }
 
     /// Follows one activity's token and end. An activity the backend started
     /// arrives here too: iOS gives the app a moment in the background for
     /// its token, which is also the moment to save a radar image for it.
-    private func observe(_ activity: Activity<RainActivityAttributes>) {
+    /// `arrivedNow`: it came while the app runs, rather than before launch.
+    private func observe(_ activity: Activity<RainActivityAttributes>, arrivedNow: Bool) {
         guard observed.insert(activity.id).inserted else { return }
         let id = activity.id
+        remember(activity, arrivedNow: arrivedNow)
         Task {
             for await token in activity.pushTokenUpdates {
                 activityTokens[id] = Self.hex(token)
@@ -96,6 +98,25 @@ import UIKit
             }
         }
         refresh(force: true)
+    }
+
+    /// Adds the activity's alert to the past alerts. Only the backend starts
+    /// activities, and it starts each one with an alert in place of the rain
+    /// notification, which therefore never reaches the list by itself. The
+    /// alert's own words are not readable here; the activity's headline says
+    /// the rain as the alert does. One entry per activity, however often seen.
+    private func remember(_ activity: Activity<RainActivityAttributes>, arrivedNow: Bool) {
+        let state = activity.content.state
+        // Seen only at launch: about when the forecast it shows was made.
+        let received = arrivedNow ? Date() : min(Date(), state.now)
+        let words = state.alertText(at: received)
+            ?? (NSLocalizedString("live_activity_alert", value: "Rain on the way", comment: "past alert from a Live Activity"), "")
+        let alert = ReceivedAlert(title: words.title, body: words.body, received: received,
+                                  request: ReceivedAlert.liveActivity(activity.id))
+        Task.detached {
+            AlertHistory.add([alert])
+            await MainActor.run { NotificationCenter.default.post(name: AlertHistory.didChange, object: nil) }
+        }
     }
 
     /// Called when the setting, rain alerts or the system switch change.

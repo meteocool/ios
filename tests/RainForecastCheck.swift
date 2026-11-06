@@ -11,6 +11,22 @@ struct RainForecastCheck {
     }
 
     static func main() {
+        // A past alert's words from the headline: a clock time and a
+        // countdown from when it came, which stay as they were.
+        let berlin = TimeZone(identifier: "Europe/Berlin")!, english = Locale(identifier: "en_GB")
+        let came = Date(timeIntervalSince1970: 1_000_000_200)
+        var headed = forecast([0, 30], observed: 1)
+        headed.headline = .init(title: "Heavy rain {in:arrival}", detail: "Until {at:end}",
+                                times: ["arrival": 1_000_000_200 + 15 * 60 + 20, "end": 1_000_003_800])
+        let words = headed.alertText(at: came, locale: english, timeZone: berlin)
+        precondition(words?.title == "Heavy rain in 15 min" && words?.body == "Until 4:50", "\(String(describing: words))")
+        headed.headline?.times?["arrival"] = 1_000_000_100
+        precondition(headed.alertText(at: came, locale: english, timeZone: berlin)?.title == "Heavy rain now",
+                     "\(String(describing: headed.alertText(at: came, locale: english, timeZone: berlin)))")
+        headed.headline?.title = "Rain {in:unknown}"
+        precondition(headed.alertText(at: came) == nil, "a time it does not carry")
+        precondition(forecast([0], observed: 1).alertText(at: came) == nil, "no headline, no words")
+
         // Dry ahead.
         precondition(forecast([0, 0, 5, 0, 0, nil], observed: 2).phase == .dry)
         // Arrives two steps after now, lasts three steps.
