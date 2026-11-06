@@ -122,6 +122,14 @@ final class CloudHints: NativeMapFeature {
 
     func wake() { load() }
 
+    /// The cores are kept six hours: a past window has none.
+    func windowDidChange(_ window: RadarWindow?) {
+        guard window != nil else { return }
+        clouds = []
+        map?.model.volumes = []
+        redraw()
+    }
+
     /// The cores are rebuilt with each run, and with each network's.
     func socketEvent(_ name: String, _ data: Data) {
         if name == "cells" || name == "volumes" { load() }
@@ -171,7 +179,7 @@ final class CloudHints: NativeMapFeature {
     }
 
     private func load() {
-        guard let map, !loading else { return }
+        guard let map, !loading, map.model.window == nil else { return }
         loading = true
         map.fetch(map.endpoints.data.appendingPathComponent("cells/volumes")) { [weak self] data, _ in
             guard let self else { return }

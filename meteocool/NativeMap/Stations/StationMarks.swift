@@ -18,7 +18,15 @@ import UIKit
 final class StationState: ObservableObject {
     /// Which parameter they show, kept (core's `stationParameter`).
     @Published var choice = StationRules.parseChoice(StationState.defaults?.string(forKey: StationState.choiceKey)) {
-        didSet { StationState.defaults?.set(choice.rawValue, forKey: StationState.choiceKey) }
+        didSet { if storing { StationState.defaults?.set(choice.rawValue, forKey: StationState.choiceKey) } }
+    }
+    private var storing = true
+
+    /// What a link said the stations show, for this visit only.
+    func hold(_ linked: StationChoice) {
+        storing = false
+        choice = linked
+        storing = true
     }
     /// When the newest of the stations on the map measured; nil for none.
     @Published fileprivate(set) var observedAt: Date?
@@ -202,6 +210,16 @@ final class StationMarks: NativeMapFeature {
     private var generation = 0
     private var scrub: Timer?
     private var observers = Set<AnyCancellable>()
+    /// A question is out whose answer will replace `stations`.
+    private var asking = false
+    /// A linked station's sheet, waiting for the answer it is found in, and
+    /// how long it waits for one (core's `StationManager.find`).
+    private var pending: String?
+    private var patience: Timer?
+    static let patience: TimeInterval = 15
+    /// The station whose sheet is up, for a link to the map on screen.
+    private weak var sheet: UIViewController?
+    private var sheetStation: String?
 
     private var state: StationState? { map?.model.stations }
 
@@ -232,8 +250,15 @@ final class StationMarks: NativeMapFeature {
 
     func wake() { if shown { fetch() } }
 
+    /// Another time: asked about again once its first step is on screen.
+    func windowDidChange(_ window: RadarWindow?) {
+        at = nil
+        scrub?.invalidate()
+    }
+
     func tick() {
-        if shown, Date().timeIntervalSince(lastFetch) >= StationRules.refreshSeconds { fetch() }
+        // A past window's observations do not change.
+        if shown, map?.model.window == nil, Date().timeIntervalSince(lastFetch) >= StationRules.refreshSeconds { fetch() }
     }
 
     /// The frame on screen: greyed at once on a forecast frame; asked about
@@ -243,12 +268,14 @@ final class StationMarks: NativeMapFeature {
         let newest = map.player.timeline.now ?? 0
         let shownAt = step.time ?? 0
         let following = step.isLive
-        let nextStale = !following && StationRules.stale(shown: shownAt, newest: newest)
+        // In a past window every step is asked about, its end too.
+        let inWindow = step.window != nil && shownAt > 0
+        let nextStale = !following && !inWindow && StationRules.stale(shown: shownAt, newest: newest)
         if nextStale != stale {
             stale = nextStale
             restyle()
         }
-        let nextAt = following ? nil : StationRules.at(shown: shownAt, newest: newest)
+        let nextAt = inWindow ? shownAt : following ? nil : StationRules.at(shown: shownAt, newest: newest)
         scrub?.invalidate()
         scrub = Timer.scheduledTimer(withTimeInterval: StationRules.scrubDebounce, repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -280,9 +307,47 @@ final class StationMarks: NativeMapFeature {
     func didSelect(_ annotation: MKAnnotation) -> Bool {
         guard let mark = annotation as? StationAnnotation, let map else { return false }
         map.mapView.deselectAnnotation(annotation, animated: false)
+        present(mark.station)
+        return true
+    }
+
+    /// A link's `station`: its sheet once the stations' answer is in, with
+    /// the values the map has; one not in it has not reported lately, which
+    /// is said rather than left as a link that does nothing.
+    func open(_ link: [String: String]) -> Bool {
+        guard let id = link["station"], NativeMapLink.validStation(id),
+              link["storm"] == nil, link["cell"] == nil, link["cloud"] == nil else { return false }
+        pending = id
+        patience?.invalidate()
+        patience = Timer.scheduledTimer(withTimeInterval: Self.patience, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.resolvePending() }
+        }
+        if !asking, drawnChoice != nil, drawnChoice == state?.choice { resolvePending() }
+        return false
+    }
+
+    private func resolvePending() {
+        guard let id = pending, let map else { return }
+        pending = nil
+        patience?.invalidate()
+        if let station = stations.first(where: { $0.id == id }) {
+            present(station)
+        } else {
+            map.model.toast = CoreStrings.t("stations.toast.station_gone")
+        }
+    }
+
+    func linkParameters() -> [String: String] {
+        guard let id = sheetStation, sheet?.presentingViewController != nil,
+              map?.model.capability == .radar, map?.model.selectedStorm == nil else { return [:] }
+        return ["station": id]
+    }
+
+    private func present(_ station: ObservedStation) {
+        guard let map else { return }
         map.model.selectedStorm = nil
         var controller: UIViewController?
-        let sheet = StationSheet(station: mark.station, endpoints: map.endpoints, fetch: { [weak map] url, done in map?.fetch(url, done) },
+        let sheet = StationSheet(station: station, endpoints: map.endpoints, fetch: { [weak map] url, done in map?.fetch(url, done) },
                                  close: { controller?.dismiss(animated: true) })
         let host = UIHostingController(rootView: sheet)
         controller = host
@@ -290,34 +355,43 @@ final class StationMarks: NativeMapFeature {
         host.sheetPresentationController?.detents = [.medium(), .large()]
         host.sheetPresentationController?.prefersGrabberVisible = true
         host.sheetPresentationController?.largestUndimmedDetentIdentifier = .medium
+        self.sheet = host
+        sheetStation = station.id
         map.host?.presentOverMap(host)
-        return true
     }
 
     // MARK: - Fetching and drawing
 
     private func fetch() {
         guard let map, shown else { return }
+        // A window's stations are its steps', never today's.
+        if let window = map.model.window, !(at.map(window.contains) ?? false) { return }
         let choice = map.model.stations.choice
         generation += 1
         let generation = generation
         lastFetch = Date()
+        asking = true
         var components = URLComponents(url: map.endpoints.data.appendingPathComponent("stations/observations"), resolvingAgainstBaseURL: false)!
         components.queryItems = StationRules.parameters(choice).map { URLQueryItem(name: "parameter", value: $0) }
             + [URLQueryItem(name: "max_age_minutes", value: String(StationRules.maxAgeMinutes))]
             + (at.map { [URLQueryItem(name: "at", value: ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: TimeInterval($0))))] } ?? [])
         map.fetch(components.url!) { [weak self] data, status in
             guard let self, generation == self.generation, self.shown else { return }
+            self.asking = false
             // None served (a 404) is an empty overlay; anything else keeps
             // what is drawn, unless it was drawn for another choice.
             let answer = data.flatMap(ObservedStation.decode) ?? (status == 404 || self.drawnChoice != choice ? [] : nil)
-            guard let answer else { return }
+            guard let answer else {
+                self.resolvePending()
+                return
+            }
             self.stations = answer
             self.drawnChoice = choice
             self.draw()
             let newest = answer.compactMap { StationHistory.seconds($0.observedAt) }.max()
             self.state?.observedAt = newest.map { Date(timeIntervalSince1970: $0) }
             self.state?.answered = true
+            self.resolvePending()
         }
     }
 
@@ -370,6 +444,7 @@ final class StationMarks: NativeMapFeature {
     private func clear() {
         guard let map else { return }
         generation += 1
+        asking = false
         map.mapView.removeAnnotations(Array(marks.values))
         marks = [:]
         stations = []

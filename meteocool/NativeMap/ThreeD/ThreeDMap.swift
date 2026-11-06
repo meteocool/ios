@@ -612,6 +612,15 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         if framePending { pendingLink = link } else { place(link) }
     }
 
+    /// A link's earlier scan (`t` on the 3D map), picked once the newest is
+    /// known: the scan list is read off it.
+    private var scanWait: AnyCancellable?
+    func openScan(_ scan: Int) {
+        guard state.newestScan == nil else { return pickScan(scan) }
+        scanWait = state.$newestScan.compactMap { $0 }.first()
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.pickScan(scan) } }
+    }
+
     private func place(_ link: LinkCamera) {
         if let view = link.view, let map {
             camera = OrbitCamera.from(center: CLLocationCoordinate2D(latitude: view.latitude, longitude: view.longitude), zoom: view.zoom,
@@ -1454,8 +1463,11 @@ final class ThreeDMap: NativeMapFeature {
         let camera = ThreeDMapView.LinkCamera(view: link["latLonZ"].flatMap { NativeMapLink(search: "latLonZ=" + $0) },
                                               pitch: number("pitch").map { min(max($0, 0), 85) },
                                               bearing: number("bearing").map(CutAngle.normalise))
-        guard camera.view != nil || camera.pitch != nil || camera.bearing != nil else { return false }
-        (view ?? makeView(map)).applyLink(camera)
+        if camera.view != nil || camera.pitch != nil || camera.bearing != nil { (view ?? makeView(map)).applyLink(camera) }
+        // `t` is the earlier scan the storms are from; a tracked storm is about now.
+        if let scan = link["t"].flatMap(NativeMapLink.frameTime), link["storm"] == nil, link["cell"] == nil {
+            (view ?? makeView(map)).openScan(scan)
+        }
         // The storm, the cut, the point are other parts'.
         return false
     }

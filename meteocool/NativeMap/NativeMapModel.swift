@@ -77,6 +77,9 @@ final class NativeMapModel: ObservableObject {
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+    /// The past window the map is used in (the archive), nil live. Set
+    /// before its steps land; `RadarPlayer.window` is the strip's.
+    @Published var window: RadarWindow?
     /// The open storm's slice, turned in its panel, cut on the 3D map.
     let cut = StormCut()
     /// The radar open on the flat map in its own sweep (site mode).
@@ -88,8 +91,17 @@ final class NativeMapModel: ObservableObject {
     /// What the storm key turned off (core's `hiddenStormMarks`), kept.
     @Published var hiddenStormMarks: Set<StormMarkToggle> = NativeMapModel.storedHiddenMarks() {
         didSet {
+            guard storingMarks else { return }
             NativeMapModel.defaults?.set(hiddenStormMarks.map(\.rawValue).sorted(), forKey: NativeMapModel.hiddenMarksKey)
         }
+    }
+    private var storingMarks = true
+
+    /// What a link put away, for this visit: the reader's own stay stored.
+    func holdHiddenMarks(_ marks: Set<StormMarkToggle>) {
+        storingMarks = false
+        hiddenStormMarks = marks
+        storingMarks = true
     }
 
     private static let hiddenMarksKey = "nativeMap.hiddenStormMarks"

@@ -23,6 +23,8 @@ final class RadarEngine {
     var onSeries: ((RadarSeries) -> Void)?
     /// Called when the chosen product has no frame at all (`givesUpChoice`).
     var onGaveUp: ((RadarProduct) -> Void)?
+    /// Called when the archive refused a window (not kept, too long).
+    var onWindowRefused: ((RadarWindow) -> Void)?
     /// The radar is out of date: drawn fainter (`STALE_OPACITY`).
     var stale = false { didSet { updateOpacity() } }
     /// A storm is selected: the radar steps back (`INSPECT_OPACITY`).
@@ -52,7 +54,8 @@ final class RadarEngine {
     /// long-pressed point (that wins, as in core).
     var point: CLLocationCoordinate2D? {
         didSet {
-            guard let point else { return }
+            // A window has no readings: no point to load again for.
+            guard let point, window == nil else { return }
             // Against the series held, or the one on its way: a stream of
             // location fixes must not cancel the first request over and over.
             if (seriesPoint ?? requestedPoint).map({ CLLocation(latitude: $0.latitude, longitude: $0.longitude)
@@ -62,6 +65,9 @@ final class RadarEngine {
         }
     }
     private(set) var series: RadarSeries?
+    /// The past window shown, nil live; and the one the series held is of.
+    private(set) var window: RadarWindow?
+    private var seriesWindow: RadarWindow?
     private var seriesTask: URLSessionDataTask?
     private(set) var seriesLoaded = Date.distantPast
     private var seriesPoint: CLLocationCoordinate2D?
@@ -140,8 +146,9 @@ final class RadarEngine {
     }
 
     func tick() {
-        // The socket's pokes keep the series fresh; this is for when it is down.
-        if Date().timeIntervalSince(seriesLoaded) > 180 { load() }
+        // The socket's pokes keep the series fresh; this is for when it is
+        // down. A window's past does not change.
+        if window == nil, Date().timeIntervalSince(seriesLoaded) > 180 { load() }
         updateOpacity()
     }
 
@@ -174,6 +181,22 @@ final class RadarEngine {
         schedulePrepare()
     }
 
+    /// Opens a past window, on `time` or its first step; nil goes back to
+    /// live. The steps on screen stay until the new ones land.
+    func open(window next: RadarWindow?, at time: Int? = nil) {
+        if next == window {
+            if let time { show(time: time) }
+            return
+        }
+        window = next
+        pendingTime = time
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+        refreshAt = nil
+        if next == nil { player.leaveWindow() } else { player.awaitWindow() }
+        load()
+    }
+
     /// A link's frame (core's `t=`), once the steps are there.
     func show(time: Int?) {
         guard let time else { return player.showLive() }
@@ -183,6 +206,8 @@ final class RadarEngine {
     /// The socket's nudges about the radar; true when handled.
     @discardableResult
     func socketEvent(_ name: String, _ data: Data) -> Bool {
+        // They announce the live sky: nothing for a window.
+        if window != nil { return ["poke", "nowcast", "network"].contains(name) }
         switch name {
         case "poke":
             let refresh = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["refresh"] as? String
@@ -210,8 +235,9 @@ final class RadarEngine {
         let point = self.point
         let network = point.flatMap { coverage.network(at: MKMapPoint($0)) }
         let products = product.timeseriesProducts
-        let url = endpoints.timeseries(latitude: point?.latitude, longitude: point?.longitude,
-                                       network: network, products: products)
+        let window = self.window
+        let url = window.map { endpoints.timeseries(window: $0, network: network, products: products) }
+            ?? endpoints.timeseries(latitude: point?.latitude, longitude: point?.longitude, network: network, products: products)
         // The same question already on its way (a wake, a reconnect, a fix
         // a few metres on) is left to answer rather than asked again: asked
         // again and again, as a flapping socket would, it never answers.
@@ -228,7 +254,12 @@ final class RadarEngine {
             let series = Self.forTests(status == 200 ? data.flatMap { try? RadarSeries.decode($0) } : nil)
             let cancelled = (error as? URLError)?.code == .cancelled
             Task { @MainActor in
-                guard let self, !cancelled else { return }
+                guard let self, !cancelled, window == self.window else { return }
+                if series == nil, let window, let status, (400 ..< 500).contains(status) {
+                    // The archive does not have it: no use asking again.
+                    self.onWindowRefused?(window)
+                    return
+                }
                 guard let series else {
                     // Once more soon, then the ticker keeps trying (core's recovery: 1 s, 4 s, …).
                     self.seriesRetry = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
@@ -237,10 +268,12 @@ final class RadarEngine {
                     return
                 }
                 self.series = series
+                self.seriesWindow = window
                 self.seriesPoint = point
                 self.seriesNetwork = network
                 self.seriesProducts = products
-                let built = series.frames.values.compactMap { $0 }.filter(\.isObservation).map(\.processedTime)
+                // How fresh publishing is says nothing about a window.
+                let built = window != nil ? [] : series.frames.values.compactMap { $0 }.filter(\.isObservation).map(\.processedTime)
                 self.processedTimes = (built.max(), ConnectionRules.cadence(processedTimes: built))
                 self.compose()
                 self.onSeries?(series)
@@ -267,9 +300,10 @@ final class RadarEngine {
     }
 
     private func compose() {
-        guard let series else { return }
+        // A series of another window (or live) waits for its own.
+        guard let series, seriesWindow == window else { return }
         let timeline = RadarTimeline(series: series, clock: Int(Date().timeIntervalSince1970),
-                                     network: seriesNetwork, product: product)
+                                     network: seriesNetwork, product: product, window: window)
         player.setTimeline(timeline)
         updatePreloaded()
         if let time = pendingTime {

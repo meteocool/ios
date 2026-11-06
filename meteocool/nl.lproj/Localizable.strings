@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Alle items worden van de server verwijderd, ook die van je plaatsen. Je kunt het later weer aanzetten.";
 "storm_log_turn_off_confirm" = "Zet uit";
 "storm_log_turn_off_failed" = "Het onweerslogboek kon niet worden verwijderd en staat dus nog aan. Probeer het later opnieuw.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Archief";
+"native_map_archive_hint" = "Toont de kaart op een moment dat het archief nog bewaart.";
+"native_map_archive_open" = "Open";
+"native_map_archive_empty_title" = "Nog niets bewaard";
+"native_map_archive_empty" = "Het archief is leeg. Zodra het begint, worden radar, bliksem, onweersbuien en stations bewaard.";
+"native_map_archive_failed_title" = "Archief niet beschikbaar";
+"native_map_archive_failed" = "Het archief kon niet worden bereikt.";
+"native_map_archive_retry" = "Probeer opnieuw";
+"native_map_archive_day" = "Dag";
+"native_map_archive_start" = "Begin";
+"native_map_archive_length" = "Duur";
+"native_map_archive_hours" = "%d u";
+"native_map_archive_kept" = "Bewaard van %1$@ tot %2$@.";
+"native_map_archive_back" = "Terug naar live";
+"native_map_archive_refused" = "Dat tijdstip staat niet in het archief.";

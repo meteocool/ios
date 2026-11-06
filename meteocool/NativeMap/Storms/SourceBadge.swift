@@ -41,16 +41,3 @@ struct SourceBadge: View {
         .accessibilityIdentifier("nativeMap.storm.source.\(source.rawValue)")
     }
 }
-
-/// A selection's sources in a row, the lead one first.
-struct SourceBadges: View {
-    let sources: [StormSource]
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(sources.enumerated()), id: \.element) { index, source in
-                SourceBadge(source: source, secondary: index > 0)
-            }
-        }
-    }
-}

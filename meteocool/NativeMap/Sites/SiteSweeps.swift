@@ -40,7 +40,15 @@ final class SiteSweepState: ObservableObject {
     @Published var mode: SiteMode?
     /// The motion set by hand on the dial, kept (core's `srvMotion` setting).
     @Published var manual = SrvMotionRules.parse(SiteSweepState.defaults?.string(forKey: SiteSweepState.manualKey)) {
-        didSet { SiteSweepState.defaults?.set(SrvMotionRules.format(manual), forKey: SiteSweepState.manualKey) }
+        didSet { if storing { SiteSweepState.defaults?.set(SrvMotionRules.format(manual), forKey: SiteSweepState.manualKey) } }
+    }
+    private var storing = true
+
+    /// The motion a link set by hand, for this visit only.
+    func hold(_ linked: ManualMotion) {
+        storing = false
+        manual = linked
+        storing = true
     }
     /// The reader asked for their own motion over the selected storm's.
     @Published var prefersManual = false
@@ -132,7 +140,8 @@ final class SiteSweeps: NativeMapFeature {
     }
     private var marksShown: Bool {
         guard let map else { return false }
-        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom
+        // The sweeps are kept a day: a past window has no site mode.
+        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom && map.model.window == nil
     }
 
     func attach(to map: NativeMapContext) {
@@ -141,6 +150,7 @@ final class SiteSweeps: NativeMapFeature {
         map.mapView.register(BeamRingLabelView.self, forAnnotationViewWithReuseIdentifier: BeamRingLabelView.reuse)
         map.model.site.reader = { [weak self] coordinate in self?.readAt(coordinate) }
         map.model.site.opener = { [weak self] code in
+            guard self?.map?.model.window == nil else { return }
             // Site mode is the flat radar map's.
             if self?.map?.model.capability != .radar { self?.map?.setCapability(.radar) }
             self?.open(code)
@@ -226,6 +236,11 @@ final class SiteSweeps: NativeMapFeature {
         refreshOpenSite(code) { [weak self] in self?.redraw() }
     }
 
+    func windowDidChange(_ window: RadarWindow?) {
+        if window != nil { state?.close() }
+        updateMarks()
+    }
+
     func settingsDidChange() {
         guard let map else { return }
         if !map.isOn(.sites) { state?.close() }
@@ -237,7 +252,8 @@ final class SiteSweeps: NativeMapFeature {
     /// A link to a radar (`radar=`, `sweep=`, `tilt=`) opens it, on the
     /// radar map; with no view of its own, the radar's reach in view.
     func open(_ link: [String: String]) -> Bool {
-        guard let map, let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
+        guard let map, map.model.window == nil,
+              let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
         if map.model.capability != .radar { map.setCapability(.radar) }
         if link["latLonZ"] == nil, let site = RadarSites.site(mode.site) {
             map.place(NativeMapLink(latitude: site.lat, longitude: site.lon, zoom: Self.linkZoom), animated: false)
@@ -249,7 +265,10 @@ final class SiteSweeps: NativeMapFeature {
     /// The open radar, for a link to the map on screen.
     func linkParameters() -> [String: String] {
         guard map?.model.capability == .radar, let mode = state?.mode else { return [:] }
-        return SiteSweepRules.toLink(mode)
+        var out = SiteSweepRules.toLink(mode)
+        // The motion SRV takes out, when it is the hand's: a storm's comes with the storm.
+        if mode.quantity == .srv, srv.source == .manual, let manual = state?.manual { out["motion"] = SrvMotionRules.format(manual) }
+        return out
     }
 
     /// Where a link to a radar opens when it does not say: its whole reach in view.

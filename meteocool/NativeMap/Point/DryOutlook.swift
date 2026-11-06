@@ -27,7 +27,8 @@ final class DryOutlookDock {
     private let state = DryOutlookState()
     private let host: UIView
     private let openCompare: (CLLocationCoordinate2D, Int) -> Void
-    private var dismissed = false
+    /// Closed less than a day ago, across launches (core's `outlookDismissal.ts`).
+    private var dismissed = OutlookSnooze.snoozed()
     private var unavailable = false
     private var failedAt = Date.distantPast
     private var fetchedFor: String?
@@ -46,6 +47,7 @@ final class DryOutlookDock {
             self.openCompare(at, hours)
         }
         state.dismiss = { [weak self] in
+            OutlookSnooze.snooze()
             self?.dismissed = true
             self?.update()
         }
@@ -82,7 +84,6 @@ final class DryOutlookDock {
 
     func update() {
         guard let map else { return }
-        if !dryAtUser { dismissed = false }
         let wanted = showable && !dismissed
         state.dark = map.model.isDark
         if wanted, let location = map.model.userLocation?.coordinate { fetch(location) }
@@ -116,6 +117,8 @@ final class DryOutlookDock {
 
     func wake() {
         if unavailable, Date().timeIntervalSince(failedAt) >= Self.retry { unavailable = false }
+        // An app left open past the day is offered the strip again.
+        if dismissed, !OutlookSnooze.snoozed() { dismissed = false }
         // The answer is ten minutes good; a wake asks again after that.
         fetchedFor = nil
         update()
@@ -171,6 +174,7 @@ struct DryOutlookStrip: View {
                             .frame(width: 36, height: 30)
                     }
                     .accessibilityLabel(CoreStrings.t("close"))
+                    .accessibilityIdentifier("nativeMap.outlook.close")
                 }
                 .padding(.leading, 16)
                 .padding(.trailing, 4)

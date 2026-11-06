@@ -371,3 +371,20 @@
 "storm_log_turn_off_message" = "Visi įrašai ištrinami iš serverio, ir tavo vietų. Vėliau gali jį vėl įjungti.";
 "storm_log_turn_off_confirm" = "Išjungti";
 "storm_log_turn_off_failed" = "Nepavyko ištrinti audrų dienoraščio, todėl jis vis dar įjungtas. Bandyk vėliau.";
+
+/* The archive: a past window on the native map */
+"native_map_archive" = "Archyvas";
+"native_map_archive_hint" = "Rodo žemėlapį tuo metu, kurį archyvas dar saugo.";
+"native_map_archive_open" = "Atidaryti";
+"native_map_archive_empty_title" = "Dar niekas neišsaugota";
+"native_map_archive_empty" = "Archyvas tuščias. Kai jis pradės veikti, radaras, žaibai, audros ir stotys bus saugomi.";
+"native_map_archive_failed_title" = "Archyvas nepasiekiamas";
+"native_map_archive_failed" = "Nepavyko pasiekti archyvo.";
+"native_map_archive_retry" = "Bandyti dar kartą";
+"native_map_archive_day" = "Diena";
+"native_map_archive_start" = "Pradžia";
+"native_map_archive_length" = "Trukmė";
+"native_map_archive_hours" = "%d val.";
+"native_map_archive_kept" = "Saugoma nuo %1$@ iki %2$@.";
+"native_map_archive_back" = "Grįžti į tiesioginį";
+"native_map_archive_refused" = "Archyve šio laiko nėra.";

@@ -385,4 +385,78 @@ enum StationHistory {
 
     /// The compass point a direction tick is written as.
     static let directionTicks: [Double: String] = [0: "N", 90: "E", 180: "S", 270: "W", 360: "N"]
+
+    /// The point of eight a direction is nearest, as `storm.compass.<point>` names it.
+    static func compassPoint(_ degrees: Double) -> String {
+        ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][((Int((degrees / 45).rounded()) % 8) + 8) % 8]
+    }
+
+    /// How much later than its start a window's rows are asked from: the
+    /// service holds a week and refuses a longer one, and exactly seven days
+    /// is a little over by the time it arrives. A minute in loses no row.
+    static let askSlackMs = 60_000.0
+
+    static func askSince(_ window: Window, now: Double) -> Double { windowStart(window, now: now) + askSlackMs }
+
+    /// The newest value of the panel's own series.
+    static func last(_ panel: Panel) -> Point? {
+        panel.series.first { $0.style != .context }?.points.last { $0.v != nil }
+    }
+
+    /// The panel's own value at row `row`, nil where none was measured.
+    static func value(_ panel: Panel, at row: Int) -> Double? {
+        guard let points = panel.series.first(where: { $0.style != .context })?.points, points.indices.contains(row) else { return nil }
+        return points[row].v
+    }
+
+    /// A figure, large in a panel's caption, and the unit beside it.
+    struct Figure: Equatable {
+        let value: String
+        let unit: String
+    }
+
+    /// The figure a panel is read for: an amount's total over the period
+    /// (the rain that fell, the hours of sun), any other quantity's newest
+    /// value; a direction as its compass point, its degrees beside it.
+    static func figure(_ panel: Panel, language: String, compass: (String) -> String) -> Figure? {
+        if let total = panel.stats.first(where: { $0.key == "total" }) {
+            let hours = panel.key == "sunshine"
+            return Figure(value: StationRules.formatNumber(total.value, digits: hours ? 1 : panel.digits, language: language),
+                          unit: hours ? "h" : panel.unit)
+        }
+        guard let last = last(panel)?.v else { return nil }
+        return reading(panel, last, language: language, compass: compass)
+    }
+
+    /// A value of the panel's, as its figure writes it.
+    static func reading(_ panel: Panel, _ value: Double, language: String, compass: (String) -> String) -> Figure {
+        if panel.key == "direction" { return Figure(value: compass(compassPoint(value)), unit: "\(Int(value.rounded()))°") }
+        return Figure(value: StationRules.formatNumber(value, digits: panel.digits, language: language), unit: panel.unit)
+    }
+
+    /// "max 18,4 · min 7,0 · mean 9,9", less the total the figure says; in
+    /// the figure's unit, written once beside it, else each with its own.
+    static func summary(_ panel: Panel, figure: Figure?, language: String, label: (String) -> String) -> String {
+        let withUnit = figure?.unit != panel.unit
+        return panel.stats.filter { $0.key != "total" }.map { stat in
+            let hours = panel.key == "sunshine" && stat.key == "total"
+            let sign = stat.key == "change" && stat.value > 0 ? "+" : ""
+            let value = sign + StationRules.formatNumber(stat.value, digits: hours ? 1 : panel.digits, language: language)
+            return "\(label(stat.key)) " + (withUnit ? unitted(value, hours ? "h" : panel.unit) : value)
+        }
+        .joined(separator: " · ")
+    }
+
+    static func unitted(_ text: String, _ unit: String) -> String { unit == "°" ? text + "°" : "\(text) \(unit)" }
+
+    /// The row nearest a time, by the rows' own times.
+    static func row(nearest t: Double, in times: [Double]) -> Int? {
+        guard !times.isEmpty else { return nil }
+        var low = 0, high = times.count - 1
+        while low < high {
+            let middle = (low + high) / 2
+            if times[middle] < t { low = middle + 1 } else { high = middle }
+        }
+        return low > 0 && t - times[low - 1] < times[low] - t ? low - 1 : low
+    }
 }

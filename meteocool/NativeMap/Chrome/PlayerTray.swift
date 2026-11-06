@@ -14,6 +14,7 @@ struct TrayActions {
     var openProducts: () -> Void = {}
     var openStormKey: () -> Void = {}
     var toggleStations: () -> Void = {}
+    var openArchive: () -> Void = {}
 }
 
 /// The tray at the bottom of the radar map.
@@ -52,6 +53,7 @@ struct PlayerTray: View {
                     }
                 }
                 .padding(.horizontal, 4)
+                ArchiveButton(open: model.window != nil, theme: theme, action: actions.openArchive)
             }
         }
         .padding(.top, 6)
@@ -185,6 +187,29 @@ private struct ChipLabel: LabelStyle {
             configuration.icon.scaledFont(11, weight: .semibold, relativeTo: .caption2)
             configuration.title
         }
+    }
+}
+
+/// The archive: a past window to use the map in. Tinted while one is open.
+struct ArchiveButton: View {
+    let open: Bool
+    let theme: ChromeTheme
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "calendar")
+                .scaledFont(15, weight: .semibold, relativeTo: .subheadline)
+                .foregroundStyle(open ? theme.accent : theme.text)
+                .frame(width: ChromeTheme.control, height: ChromeTheme.control)
+                .background(open ? theme.accentTint : theme.tint, in: Circle())
+                .hitTarget()
+        }
+        .buttonStyle(PressScale())
+        .accessibilityLabel(NSLocalizedString("native_map_archive", value: "Archive", comment: ""))
+        .accessibilityHint(NSLocalizedString("native_map_archive_hint", value: "Shows the map at a time the archive still keeps.", comment: ""))
+        .accessibilityAddTraits(open ? .isSelected : [])
+        .accessibilityIdentifier("nativeMap.archive")
     }
 }
 
@@ -363,6 +388,9 @@ struct ProductPill: View {
                     Group {
                         if forecast {
                             Text(CoreStrings.t("chrome.radar_product.forecast_short"))
+                        } else if timeline.window != nil {
+                            // How old the scans are means nothing in the past.
+                            EmptyView()
                         } else if timeline.fellBack {
                             Text(CoreStrings.t("chrome.radar_product.fell_back_short")).foregroundStyle(theme.orangeInk)
                         } else {

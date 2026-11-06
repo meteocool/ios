@@ -254,12 +254,15 @@ http.createServer(async (request, response) => {
   }
   // XCTest screen captures wait for a gesture to finish. Read the simulator
   // framebuffer independently so a UI test can inspect a held-down drag.
-  if (request.url === '/slider-drag-screenshot' || request.url === '/slider-screenshot') {
+  // `?udid=` names the test's simulator: "booted" is any of them when several run.
+  const screenshotURL = new URL(request.url, 'http://127.0.0.1');
+  if (screenshotURL.pathname === '/slider-drag-screenshot' || screenshotURL.pathname === '/slider-screenshot') {
     const scratch = await mkdtemp(join(tmpdir(), 'meteocool-slider-'));
     try {
-      if (request.url === '/slider-drag-screenshot') await setTimeout(3000);
+      if (screenshotURL.pathname === '/slider-drag-screenshot') await setTimeout(3000);
       const path = join(scratch, 'screen.png');
-      await promisify(execFile)('xcrun', ['simctl', 'io', process.env.MC_TEST_SIMULATOR ?? 'booted', 'screenshot', '--type=png', path], {
+      const simulator = screenshotURL.searchParams.get('udid') || process.env.MC_TEST_SIMULATOR || 'booted';
+      await promisify(execFile)('xcrun', ['simctl', 'io', simulator, 'screenshot', '--type=png', path], {
         env: { ...process.env, DEVELOPER_DIR: process.env.DEVELOPER_DIR ?? '/Applications/Xcode.app/Contents/Developer' },
       });
       response.setHeader('Content-Type', 'image/png');

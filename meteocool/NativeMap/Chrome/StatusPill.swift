@@ -16,6 +16,8 @@ struct StatusPill: View {
     @ObservedObject var model: NativeMapModel
     @ObservedObject var monitor: ConnectionMonitor
     let open: () -> Void
+    /// In a past window the pill is the way back to live.
+    var leaveWindow: () -> Void = {}
     /// Bumped on every foreground or wake: a dimmed "Latest" brightens again.
     let wakes: Int
 
@@ -26,7 +28,7 @@ struct StatusPill: View {
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
     private var state: PillState {
         monitor.pillState(live: player.isLive, shownStep: player.step, replay: player.timeline.replay,
-                          radarStale: model.stale, hasTimeline: !player.timeline.steps.isEmpty)
+                          radarStale: model.stale, hasTimeline: !player.timeline.steps.isEmpty, archive: player.window != nil)
     }
 
     var body: some View {
@@ -36,9 +38,15 @@ struct StatusPill: View {
             if state == .none {
                 Color.clear.frame(width: 1, height: 44)
             } else {
-                Button(action: open) {
+                Button(action: isArchive(state) ? leaveWindow : open) {
                     HStack(spacing: 6) {
-                        if case .time(let step) = state {
+                        if case .archive(let step) = state {
+                            Image(systemName: "calendar")
+                                .scaledFont(12, weight: .semibold, relativeTo: .caption)
+                                .foregroundStyle(theme.accent)
+                            Text(RadarWindow.dateTime(step))
+                                .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
+                        } else if case .time(let step) = state {
                             Text(Self.clock(step))
                                 .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
                         } else {
@@ -56,8 +64,10 @@ struct StatusPill: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressScale())
-                .accessibilityLabel(isTime(state) ? Self.clock(player.step ?? 0) : title(state))
-                .accessibilityHint(CoreStrings.t("connection_details"))
+                .accessibilityLabel(accessibilityLabel(state))
+                .accessibilityHint(isArchive(state)
+                    ? NSLocalizedString("native_map_archive_back", value: "Back to Live", comment: "")
+                    : CoreStrings.t("connection_details"))
                 .accessibilityIdentifier("nativeMap.pill")
             }
         }
@@ -69,8 +79,24 @@ struct StatusPill: View {
     }
 
     private func isTime(_ state: PillState) -> Bool {
-        if case .time = state { return true }
+        switch state {
+        case .time, .archive: return true
+        default: return false
+        }
+    }
+
+    private func isArchive(_ state: PillState) -> Bool {
+        if case .archive = state { return true }
         return false
+    }
+
+    private func accessibilityLabel(_ state: PillState) -> String {
+        switch state {
+        case .archive(let step):
+            return NSLocalizedString("native_map_archive", value: "Archive", comment: "") + ", " + RadarWindow.dateTime(step)
+        case .time: return Self.clock(player.step ?? 0)
+        default: return title(state)
+        }
     }
 
     private func title(_ state: PillState) -> String {
@@ -82,7 +108,7 @@ struct StatusPill: View {
         case .slow: return CoreStrings.t("slow_connection")
         case .demo: return CoreStrings.t("demo")
         case .live: return CoreStrings.t("latest")
-        case .time, .none: return ""
+        case .time, .archive, .none: return ""
         }
     }
 

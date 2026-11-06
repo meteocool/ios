@@ -177,5 +177,36 @@ struct NativeMapStationsCheck {
             let points = [StationHistory.Point(t: 0, v: 1), StationHistory.Point(t: 600_000, v: 2), StationHistory.Point(t: 6_000_000, v: 3)]
             precondition(StationHistory.runs(points).map(\.count) == [2, 1])
         }
+        test("a week's rows are asked for from inside the seven days the service holds") {
+            let now = t0 + 200 * 3_600_000
+            precondition(now - StationHistory.askSince(.week, now: now) < 168 * 3_600_000)
+            precondition(StationHistory.askSince(.week, now: now) - StationHistory.windowStart(.week, now: now) < 10 * 60_000)
+        }
+        test("a caption leads with its figure: a total, else the newest value; the rest in its unit beside it") {
+            let compass = { (point: String) in point }
+            let label = { (key: String) in key }
+            let rain = StationHistory.panels([row(10, ["precipitation_mm": 0.3]), row(20, ["precipitation_mm": 1.2])])[0]
+            precondition(StationHistory.figure(rain, language: "en", compass: compass) == .init(value: "1.5", unit: "mm"))
+            precondition(StationHistory.summary(rain, figure: StationHistory.figure(rain, language: "en", compass: compass), language: "en", label: label) == "")
+            let sun = StationHistory.panels([row(10, ["sunshine_minutes": 10]), row(20, ["sunshine_minutes": 8])])[0]
+            precondition(StationHistory.figure(sun, language: "de", compass: compass) == .init(value: "0,3", unit: "h"))
+            let temperature = StationHistory.panels([row(10, ["temperature_c": 10]), row(20, ["temperature_c": 12.25]), row(30, [:])])[0]
+            let figure = StationHistory.figure(temperature, language: "en", compass: compass)
+            precondition(figure?.unit == "°C" && figure?.value.hasPrefix("12.") == true)
+            precondition(StationHistory.summary(temperature, figure: figure, language: "en", label: label).hasPrefix("max 12."))
+            precondition(!StationHistory.summary(temperature, figure: figure, language: "en", label: label).contains("°C"))
+            precondition(StationHistory.summary(temperature, figure: nil, language: "en", label: label).contains("°C"))
+            let pressure = StationHistory.panels([row(10, ["pressure_msl_hpa": 1013]), row(20, ["pressure_msl_hpa": 1014])])[0]
+            precondition(StationHistory.summary(pressure, figure: StationHistory.figure(pressure, language: "en", compass: compass), language: "en", label: label)
+                .hasSuffix("change +1.0"))
+            let direction = StationHistory.panels([row(10, ["wind_direction_deg": 224])]).first { $0.key == "direction" }!
+            precondition(StationHistory.figure(direction, language: "en", compass: compass) == .init(value: "SW", unit: "224°"))
+            precondition(StationHistory.compassPoint(350) == "N" && StationHistory.compassPoint(337.4) == "NW" && StationHistory.compassPoint(90) == "E")
+        }
+        test("the scrubber's row is the nearest") {
+            precondition(StationHistory.row(nearest: 14, in: [0, 10, 20]) == 1 && StationHistory.row(nearest: 16, in: [0, 10, 20]) == 2)
+            precondition(StationHistory.row(nearest: -5, in: [0, 10]) == 0 && StationHistory.row(nearest: 99, in: [0, 10]) == 1)
+            precondition(StationHistory.row(nearest: 1, in: []) == nil)
+        }
     }
 }

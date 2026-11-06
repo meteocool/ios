@@ -30,7 +30,7 @@ final class ClassTileOverlay: MKTileOverlay, @unchecked Sendable {
     }
 
     /// The tile set to draw; a new one forgets the old.
-    func set(base: URL, tilesId: String) {
+    func set(base: URL, tilesId: String?) {
         lock.withLock {
             self.base = base
             self.tilesId = tilesId
@@ -87,13 +87,25 @@ final class PrecipTypesMap: NativeMapFeature {
 
     func wake() { if added { load() } }
 
-    func tick() { if added { load() } }
+    func tick() { if added, map?.model.window == nil { load() } }
 
-    /// `GET /v3/radar/classification` (404 until a set has rendered).
+    func windowDidChange(_ window: RadarWindow?) { shownId = nil }
+
+    /// `GET /v3/radar/classification` (404 until a set has rendered); in a
+    /// past window, the set measured at the step the radar was on.
     private func load() {
         guard let map else { return }
-        map.fetch(map.endpoints.api.appendingPathComponent("v3/radar/classification")) { [weak self] data, _ in
-            guard let self, let map = self.map, let data, let frame = PrecipTypes.Frame.decode(data) else { return }
+        let at = map.model.window.map { window in window.clamp(map.player.step ?? window.end) }
+        map.fetch(map.endpoints.classification(at: at)) { [weak self] data, status in
+            guard let self, let map = self.map, at == map.model.window.map({ $0.clamp(map.player.step ?? $0.end) }) else { return }
+            if at != nil, status == 404 {
+                // Nothing measured then: no types drawn rather than today's.
+                self.shownId = nil
+                self.overlay.set(base: map.endpoints.tiles, tilesId: nil)
+                (map.mapView.renderer(for: self.overlay) as? MKTileOverlayRenderer)?.reloadData()
+                return
+            }
+            guard let data, let frame = PrecipTypes.Frame.decode(data) else { return }
             map.model.lastUpdated = Date(timeIntervalSince1970: TimeInterval(frame.processedTime))
             guard frame.tilesId != self.shownId else { return }
             self.shownId = frame.tilesId
@@ -128,19 +140,28 @@ final class StrikeOverlay: NSObject, MKOverlay, @unchecked Sendable {
     let boundingMapRect = MKMapRect.world
     private let lock = NSLock()
     private var current: [(point: MKMapPoint, ms: Double)] = []
+    private var shownAt: Double?
 
     var strikes: [(point: MKMapPoint, ms: Double)] {
         get { lock.withLock { current } }
         set { lock.withLock { current = newValue } }
     }
 
+    /// What the crosses are aged against, in milliseconds: a past window's
+    /// step on screen, nil for now.
+    var reference: Double? {
+        get { lock.withLock { shownAt } }
+        set { lock.withLock { shownAt = newValue } }
+    }
+
     /// A "+" of radius 8 pt and stroke 3 in the strike's age colour,
     /// newer over older (`crossFactory`).
-    static func draw(_ strikes: [(point: MKMapPoint, ms: Double)], in mapRect: MKMapRect, zoomScale: MKZoomScale, context: CGContext) {
+    static func draw(_ strikes: [(point: MKMapPoint, ms: Double)], in mapRect: MKMapRect, zoomScale: MKZoomScale, context: CGContext,
+                     reference: Double? = nil) {
         let px = 1 / Double(zoomScale)
         let r = 8 * px
         let area = mapRect.insetBy(dx: -2 * r, dy: -2 * r)
-        let now = Date().timeIntervalSince1970 * 1000
+        let now = reference ?? Date().timeIntervalSince1970 * 1000
         let visible = strikes.filter { area.contains($0.point) }
             .map { (point: $0.point, style: LightningRules.cross(ageMilliseconds: now - $0.ms)) }
             .sorted { $0.style.z < $1.style.z }
@@ -163,7 +184,7 @@ final class StrikeOverlay: NSObject, MKOverlay, @unchecked Sendable {
 final class StrikeRenderer: MKOverlayRenderer {
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         guard let overlay = overlay as? StrikeOverlay else { return }
-        StrikeOverlay.draw(overlay.strikes, in: mapRect, zoomScale: zoomScale, context: context)
+        StrikeOverlay.draw(overlay.strikes, in: mapRect, zoomScale: zoomScale, context: context, reference: overlay.reference)
     }
 }
 
@@ -195,9 +216,20 @@ final class LightningMap: NativeMapFeature {
     let chart = LightningChartState()
     private var chartHost: UIView?
     private var statsToken = 0
+    /// A past window's strikes, from the archive.
+    private var archive: ArchiveStrikeLoader?
+
+    /// The step a past window shows here: the one the radar was on.
+    private var windowStep: Int? {
+        guard let map, let window = map.model.window else { return nil }
+        return window.clamp(map.player.step ?? window.end)
+    }
 
     func attach(to map: NativeMapContext) {
         self.map = map
+        let archive = ArchiveStrikeLoader(map: map)
+        archive.onLoad = { [weak self] in self?.showArchive() }
+        self.archive = archive
         tiles.onTile = { [weak self] rect in
             guard let self, let map = self.map else { return }
             map.mapView.renderer(for: self.tiles)?.setNeedsDisplay(rect)
@@ -231,8 +263,9 @@ final class LightningMap: NativeMapFeature {
                 map.mapView.addOverlay(noaa, level: .aboveRoads)
                 map.mapView.addOverlay(tiles, level: .aboveLabels)
                 map.mapView.addOverlay(live, level: .aboveLabels)
-                // The rain under the strikes is the newest picture.
-                map.player.showLive()
+                // The rain under the strikes is the newest picture; in a
+                // past window, the step it was on.
+                if map.model.window == nil { map.player.showLive() }
                 chart.dismissed = false
                 startRedraw()
             } else {
@@ -247,7 +280,29 @@ final class LightningMap: NativeMapFeature {
 
     func wake() { if added { load(backfill: true) } }
 
-    func tick() { if added { load(backfill: false) } }
+    func tick() { if added, map?.model.window == nil { load(backfill: false) } }
+
+    func windowDidChange(_ window: RadarWindow?) {
+        archive?.clear()
+        book = LightningRules.StrikeBook()
+        live.reference = nil
+        // Live again: the tile set is asked for anew and drawn.
+        layer = nil
+        tiles.urlTemplate = nil
+        map?.mapView.renderer(for: tiles)?.setNeedsDisplay()
+        publish()
+    }
+
+    /// A past window's step: the half hour of strikes before it, aged
+    /// against it; no tile set, which is the newest hour's.
+    private func showArchive() {
+        guard added, let step = windowStep, let archive else { return }
+        live.reference = Double(step) * 1000
+        live.strikes = archive.strikes(at: step).map { strike in
+            (MKMapPoint(WebMercator.coordinate(x: strike.x, y: strike.y)), strike.milliseconds)
+        }
+        map?.mapView.renderer(for: live)?.setNeedsDisplay()
+    }
 
     func regionDidChange() { if added { stats() } }
 
@@ -276,6 +331,12 @@ final class LightningMap: NativeMapFeature {
     /// `GET /v3/lightning/layer`; a new set, then the strikes since its newest.
     private func load(backfill: Bool) {
         guard let map else { return }
+        if let step = windowStep {
+            map.model.lastUpdated = Date(timeIntervalSince1970: TimeInterval(step))
+            showArchive()
+            stats()
+            return
+        }
         map.fetch(map.endpoints.api.appendingPathComponent("v3/lightning/layer")) { [weak self] data, _ in
             guard let self, let map = self.map, let data, let layer = LightningRules.Layer.decode(data) else { return }
             map.model.lastUpdated = Date(timeIntervalSince1970: TimeInterval(layer.processedTime))
@@ -306,6 +367,7 @@ final class LightningMap: NativeMapFeature {
     }
 
     private func publish() {
+        guard map?.model.window == nil else { return showArchive() }
         book.prune(now: Date())
         live.strikes = book.strikes.values.map { strike in
             let coordinate = WebMercator.coordinate(x: strike.x, y: strike.y)
@@ -337,6 +399,8 @@ final class LightningMap: NativeMapFeature {
         var components = URLComponents(url: map.endpoints.api.appendingPathComponent("v3/lightning/stats"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "bbox", value: LightningRules.statsRing(minLon: extent.west, minLat: extent.south,
                                                                                              maxLon: extent.east, maxLat: extent.north))]
+            // A past window's half hour ends at its step.
+            + (windowStep.map { [URLQueryItem(name: "until", value: String($0))] } ?? [])
         guard let url = components.url else { return }
         map.fetch(url) { [weak self] data, _ in
             guard let self, mine == self.statsToken else { return }

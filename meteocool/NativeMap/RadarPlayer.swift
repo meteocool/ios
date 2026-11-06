@@ -69,23 +69,38 @@ final class RadarPlayer: ObservableObject {
     var reach: TimelinePhysics.Reach {
         TimelinePhysics.reach(steps: timeline.steps, last: lastIndex, only: only)
     }
-    /// On the newest observation: what core calls live.
-    var isLive: Bool { step != nil && step == timeline.now }
+    /// On the newest observation: what core calls live. Never in a window.
+    var isLive: Bool { timeline.window == nil && step != nil && step == timeline.now }
+    /// The past window on the strip, nil live.
+    var window: RadarWindow? { timeline.window }
 
     /// Whether play does anything here (`canPlay`): not outside the radar,
     /// and with no forecast only from the past.
     var canPlay: Bool {
         // With a radar open, anything of its own to move to.
         if let only { return only.contains { $0 != step } }
+        // A window plays round its own steps.
+        if timeline.window != nil { return !outOfRadar && timeline.steps.count > 1 }
         guard !outOfRadar, let now = nowIndex else { return false }
         return !noForecast || index < now
     }
 
     func setTimeline(_ next: RadarTimeline) {
         let previous = step
+        let wasWindow = timeline.window
         timeline = next
         loading = false
-        if !playing, followsLive || previous == nil, let now = nowIndex {
+        if let window = next.window {
+            // A window opens on its first step, and keeps the step on screen
+            // when it is the same window again (a wake, a product).
+            followsLive = false
+            if wasWindow == window, let previous, let same = next.steps.firstIndex(of: previous) {
+                index = same
+            } else {
+                pause()
+                index = 0
+            }
+        } else if !playing, followsLive || previous == nil || wasWindow != nil, let now = nowIndex {
             index = now
         } else if let previous, let same = next.steps.firstIndex(of: previous) {
             index = min(same, lastIndex)
@@ -112,11 +127,26 @@ final class RadarPlayer: ObservableObject {
         show(at)
     }
 
-    /// Back to the newest observation, following it.
+    /// Back to the newest observation, following it; in a window, to its end.
     func showLive() {
         pause()
         if let now = nowIndex { show(now) }
+        followsLive = timeline.window == nil
+    }
+
+    /// The window was left: the steps on their way are live ones, and the
+    /// player follows the newest as soon as they land.
+    func leaveWindow() {
+        pause()
         followsLive = true
+        loading = true
+    }
+
+    /// A window was asked for: the strip waits for its steps.
+    func awaitWindow() {
+        pause()
+        followsLive = false
+        loading = true
     }
 
     /// A finger landed on the strip: playback holds until it lifts.
@@ -165,7 +195,8 @@ final class RadarPlayer: ObservableObject {
     /// Back after five minutes or more on a past frame: live again.
     func returnedToForeground() {
         defer { leftAt = nil }
-        guard let leftAt, Date().timeIntervalSince(leftAt) >= Self.returnToLiveAfter, !isLive else { return }
+        // A window is the reader's choice, however long they were away.
+        guard timeline.window == nil, let leftAt, Date().timeIntervalSince(leftAt) >= Self.returnToLiveAfter, !isLive else { return }
         showLive()
     }
 
@@ -209,6 +240,8 @@ final class RadarPlayer: ObservableObject {
             return mine.first!
         }
         let start = 0
+        // A window: through it, and round to its start.
+        if timeline.window != nil { return index < lastIndex ? index + 1 : start }
         let gridNow = timeline.steps.firstIndex(of: timeline.gridNow) ?? (nowIndex ?? 0)
         if !noForecast {
             if index < lastIndex { return index + 1 }
@@ -223,13 +256,14 @@ final class RadarPlayer: ObservableObject {
 
     private func show(_ newIndex: Int) {
         index = newIndex
-        followsLive = newIndex == nowIndex && !playing
+        followsLive = newIndex == nowIndex && !playing && timeline.window == nil
         if let step { onStep?(step) }
     }
 
     /// A step's offset, as core writes it (`formatOffset`): "Now", "+45m",
-    /// "-1h30m", counted from the clock's step.
+    /// "-1h30m", counted from the clock's step; in a window, its clock time.
     func offsetLabel(_ step: Int) -> String {
+        if let window = timeline.window { return window.label(step) }
         let minutes = Int((Double(step - timeline.gridNow) / 60).rounded())
         if minutes == 0 { return CoreStrings.t("now") }
         let sign = minutes < 0 ? "-" : "+"

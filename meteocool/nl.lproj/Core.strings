@@ -584,6 +584,8 @@
 "settings.konrad_cells_hint" = "KONRAD3D is de detectie en tracking van onweerscellen in het radarnetwerk van de Duitse weerdienst (DWD). Wat getekend wordt, zijn geen realistische wolkenvolumes: elke cel is haar omtrek op de grond, gestapeld in lagen waarvan grootte en hoogte volgen uit enkele waarden die KONRAD3D per intensiteitsniveau levert. Ze gaan slecht samen met de radarvolumes van de 3D-kaart en komen minuten na de radar binnen; we raden aan dit uit te laten.";
 "settings.map" = "Kaart";
 "settings.map_3d" = "3D-kaart";
+"settings.meteocool_nowcast" = "meteocool-nowcast (experimenteel)";
+"settings.meteocool_nowcast_hint" = "Voorspelt de komende twee uur boven Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Kroatië, Denemarken, Nederland, Finland, Zweden en Noorwegen uit hun eigen radar, zoals meteocool die doortrekt. Duitsland houdt de verwachting van de Duitse weerdienst. Experimenteel: kan fout, te laat of afwezig zijn.";
 "settings.mode" = "Modus";
 "settings.mode_hint" = "Laadt de kaart opnieuw in de gekozen modus, met hetzelfde beeld. Elke modus heeft zijn eigen instellingen.";
 "settings.modes.demo" = "Demo";
@@ -658,6 +660,7 @@
 "stations.choice.pressure" = "Druk";
 "stations.choice.temperature" = "Temp.";
 "stations.choice.wind" = "Wind";
+"stations.close" = "Weerstations verbergen";
 "stations.history.aria" = "{title} over de periode, in {unit}";
 "stations.history.none" = "Geen verloop van dit station.";
 "stations.history.panel.direction" = "Windrichting";
@@ -692,10 +695,10 @@
 "stations.parameter.wind_direction" = "Windrichting";
 "stations.pill" = "Stations";
 "stations.sheet.latest" = "Nieuwste waarden";
-"stations.sheet.none" = "Geen waarden van dit station.";
 "stations.sheet.place" = "{state} · {height} m · gemeten {time}";
 "stations.sheet.source" = "Gegevens: Deutscher Wetterdienst (CC BY 4.0)";
 "stations.title" = "Weerstations";
+"stations.toast.station_gone" = "Dat station heeft de laatste tijd niets gemeld.";
 "stations.toggle" = "Weerstations tonen";
 "storm.ago" = "{duration} geleden";
 "storm.band.extreme" = "extreem";
