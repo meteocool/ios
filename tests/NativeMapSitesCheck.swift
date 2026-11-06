@@ -47,6 +47,8 @@ struct NativeMapSitesCheck {
         test("the setting keeps a manual motion as heading and km/h, and reads it back") {
             let motion = ManualMotion(headingDeg: 240, speedKmh: 55)
             precondition(M.format(motion) == "240,55" && M.parse("240,55") == motion)
+            // A link's: both numbers, the speed not below zero, or nothing.
+            precondition(M.linked("240,55") == motion && M.linked("45,-5") == nil && M.linked("-5,10") != nil && M.linked("north,10") == nil && M.linked(nil) == nil)
             for value: Any? in ["", "north", "45", "45,", ",30", "a,b", "1,2,3", nil, 7, true] {
                 precondition(M.parse(value) == M.defaultMotion, String(describing: value))
             }

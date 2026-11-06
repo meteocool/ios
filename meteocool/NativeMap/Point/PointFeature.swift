@@ -185,16 +185,39 @@ final class PointFeature: NativeMapFeature {
     }
 
     func open(_ link: [String: String]) -> Bool {
-        guard let pair = PointLink.parsePair(link["point"]), let map else { return false }
-        let coordinate = CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude)
-        map.model.point = coordinate
-        map.radar.point = coordinate
+        guard let map else { return false }
+        if let pair = PointLink.parsePair(link["point"]) {
+            let coordinate = CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude)
+            map.model.point = coordinate
+            map.radar.point = coordinate
+        }
+        // The model comparison's drawer, on whichever map it was opened over;
+        // a storm's sheet is the one it would take, so not beside one.
+        let selection = link["storm"] != nil || link["cell"] != nil || link["cloud"] != nil
+        if let pair = PointLink.parsePair(link["compare"]), !selection {
+            whenOnScreen { [weak self] in
+                self?.openCompare(at: CLLocationCoordinate2D(latitude: pair.latitude, longitude: pair.longitude), hours: 24)
+            }
+        }
         return false
     }
 
+    /// Runs once the map is in a window: a link opens before it is, and a
+    /// phone's drawer is a sheet that cannot be presented from off screen.
+    private func whenOnScreen(tries: Int = 60, _ action: @escaping () -> Void) {
+        guard let map else { return }
+        if map.view.window != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: action)
+        } else if tries > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.whenOnScreen(tries: tries - 1, action) }
+        }
+    }
+
     func linkParameters() -> [String: String] {
-        guard let point = map?.model.point else { return [:] }
-        return ["point": PointLink.pair(latitude: point.latitude, longitude: point.longitude)]
+        var out: [String: String] = [:]
+        if let point = map?.model.point { out["point"] = PointLink.pair(latitude: point.latitude, longitude: point.longitude) }
+        if let at = compare?.at, map?.model.selectedStorm == nil { out["compare"] = PointLink.pair(latitude: at.latitude, longitude: at.longitude) }
+        return out
     }
 
     // MARK: - Model comparison

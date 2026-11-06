@@ -584,6 +584,15 @@ enum SrvMotionRules {
         return ManualMotion(headingDeg: snapHeading(heading), speedKmh: clampSpeed(speed))
     }
 
+    /// A link's `motion=heading,km/h` (core's `parseMotion`): both numbers
+    /// and the speed not below zero, or nothing.
+    static func linked(_ text: String?) -> ManualMotion? {
+        let parts = (text ?? "").split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2, let heading = Double(parts[0]), let speed = Double(parts[1]),
+              heading.isFinite, speed.isFinite, speed >= 0 else { return nil }
+        return ManualMotion(headingDeg: snapHeading(heading), speedKmh: clampSpeed(speed))
+    }
+
     /// A manual motion as SRV takes it: m/s.
     static func motion(of manual: ManualMotion) -> StormMotion {
         StormMotion(speedMs: clampSpeed(manual.speedKmh) / 3.6, headingDeg: snapHeading(manual.headingDeg))

@@ -44,9 +44,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The dock stands on the radar's tray, or on another map's bar.
     private var dockOnTray: NSLayoutConstraint?
     private var dockOnOther: NSLayoutConstraint?
-    /// The bars above the tray, bottom up: core's strips, then the parts'
-    /// bars (a storm's hint), each hidden while it has nothing to say.
+    /// The bars above the tray, bottom up: an open radar's card, core's
+    /// strips, then the parts' bars (a storm's hint), each hidden while it
+    /// has nothing to say; the stations' picker over them all.
     private let dock = PassthroughStack()
+    /// Kept at the top of the dock: the stations' picker, which says how the
+    /// map is read, over the strips and hints about the map (core's
+    /// `StationPicker.svelte`).
+    private weak var dockTop: UIView?
     let monitor = ConnectionMonitor()
     let notices = NoticeState()
     let productScans = ProductScans()
@@ -258,9 +263,12 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                 }
             }
             .store(in: &observers)
-        // The stations' parameter, over the radar's controls when both are up.
-        let stationCard = addToDock(StationPicker(model: model, state: model.stations))
+        // The stations' parameter, over the radar's controls when both are up,
+        // and over every strip and hint added after it.
+        let stationCard = addToDock(StationPicker(model: model, state: model.stations,
+                                                  hide: { [weak self] in self?.setOn(.stations, false) }))
         stationCard.isHidden = true
+        dockTop = stationCard
         model.$layersOn.combineLatest(model.$capability)
             .map { on, capability in on.contains(.stations) && capability == .radar }
             .removeDuplicates()
@@ -477,7 +485,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         let host = UIHostingController(rootView: content.chromeTypeSize())
         host.view.backgroundColor = .clear
         host.sizingOptions = .intrinsicContentSize
-        dock.insertArrangedSubview(host.view, at: 0)
+        let under = dockTop.flatMap { dock.arrangedSubviews.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
+        dock.insertArrangedSubview(host.view, at: under)
         return host.view
     }
 
@@ -698,18 +707,43 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// over the reader's own settings, which it leaves as they were.
     private var linkOverrides: [NativeMapLayer: Bool] = [:]
 
-    /// The radar map's overlays as links name them.
-    private static let overlayLayers: [String: NativeMapLayer] = ["cells": .storms, "lightning": .lightning, "mesocyclones": .mesocyclones]
+    /// Either map's overlays as links name them.
+    private static let overlayLayers: [String: NativeMapLayer] = [
+        "cells": .storms, "lightning": .lightning, "mesocyclones": .mesocyclones,
+        "sites": .sites, "stations": .stations, "tiers": .cells3d,
+    ]
 
-    /// A link's overlays (`applyLinkedOverlays`): on the radar map a link that
-    /// names none means all of them; a storm or a cell turns storms on.
-    private func applyLinkedOverlays(_ parameters: [String: String]) {
-        let named = NativeMapLink.overlays(parameters["overlays"])
-        let onRadar = (parameters["layer"].flatMap(NativeMapModel.Capability.init) ?? model.capability) == .radar
-        if let on = named ?? (onRadar ? NativeMapLink.overlayNames : nil) {
-            for (name, layer) in Self.overlayLayers { linkOverrides[layer] = on.contains(name) }
+    /// Set while a link's choices are applied, so they are not stored.
+    private var holdingLink = false
+
+    /// The choices a link names that are settings (core's
+    /// `applyLinkedChoices`), held for this visit without being stored: the
+    /// overlays it names (the rest stay the reader's own), the product, the
+    /// storm marks put away, the stations' parameter, a hand's storm motion.
+    /// A storm or a cell turns storms on, a radar its marks, a station the
+    /// stations: each opens on a map that draws it.
+    private func applyLinkedChoices(_ parameters: [String: String]) {
+        let states = NativeMapLink.overlayStates(parameters["overlays"])
+        for (name, on) in states ?? [:] {
+            if let layer = Self.overlayLayers[name] { linkOverrides[layer] = on }
         }
+        let selection = parameters["storm"] != nil || parameters["cell"] != nil || parameters["cloud"] != nil
         if parameters["storm"] != nil || parameters["cell"] != nil { linkOverrides[.storms] = true }
+        if parameters["radar"] != nil { linkOverrides[.sites] = true }
+        let station = parameters["station"].flatMap { NativeMapLink.validStation($0) && !selection ? $0 : nil }
+        if station != nil { linkOverrides[.stations] = true }
+        holdingLink = true
+        if let product = parameters["product"].flatMap(RadarProduct.init(rawValue:)) { model.product = product }
+        holdingLink = false
+        if let hidden = NativeMapLink.hidden(parameters["hide"]) {
+            model.holdHiddenMarks(Set(hidden.compactMap(StormMarkToggle.init(rawValue:))))
+        }
+        if let parameter = parameters["stationParameter"].flatMap(StationChoice.init(rawValue:)), states?["stations"] == true || station != nil {
+            model.stations.hold(parameter)
+        }
+        if parameters["radar"] != nil, parameters["sweep"] == "srv", let motion = SrvMotionRules.linked(parameters["motion"]) {
+            model.site.hold(motion)
+        }
         applySettings()
     }
 
@@ -828,7 +862,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             .store(in: &observers)
         model.$product.dropFirst()
             .sink { [weak self] product in
-                self?.defaults?.set(product.rawValue, forKey: "nativeMap.radarProduct")
+                // A link's product is for this visit; the reader's own stays stored.
+                if self?.holdingLink == false { self?.defaults?.set(product.rawValue, forKey: "nativeMap.radarProduct") }
                 self?.radar.product = product
             }
             .store(in: &observers)
@@ -906,7 +941,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         if let layer = parameters["layer"], let capability = NativeMapModel.Capability(rawValue: layer) {
             setCapability(capability)
         }
-        applyLinkedOverlays(parameters)
+        applyLinkedChoices(parameters)
         let link = NativeMapLink(search: search)
         if let link {
             if placed { place(link, animated: true) } else { pendingView = link }
@@ -959,11 +994,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         var extra: [String: String] = model.capability == .radar ? [:] : ["layer": model.capability.rawValue]
         extra.merge(given) { _, new in new }
         for feature in features { extra.merge(feature.linkParameters()) { first, _ in first } }
-        // The overlays, only where they differ from all on: saying all on
-        // would override a reader who turned lightning off for good.
+        // Every overlay of the map on screen, on or off: a link says what the
+        // sender saw, so a receiver's own do not stand in for it.
+        if let names = NativeMapLink.mapOverlays[model.capability.rawValue] {
+            var states: [String: Bool] = [:]
+            for name in names { if let layer = Self.overlayLayers[name] { states[name] = isOn(layer) } }
+            extra["overlays"] = NativeMapLink.overlaysValue(states)
+        }
+        // The product, the storm key and the stations' parameter are the radar map's.
         if model.capability == .radar {
-            let on = NativeMapLink.overlayNames.filter { Self.overlayLayers[$0].map(isOn) ?? true }
-            if on.count != NativeMapLink.overlayNames.count { extra["overlays"] = NativeMapLink.overlaysValue(on) }
+            extra["product"] = model.product.rawValue
+            extra["hide"] = NativeMapLink.hiddenValue(model.hiddenStormMarks.map(\.rawValue))
+            if isOn(.stations) { extra["stationParameter"] = model.stations.choice.rawValue }
         }
         // The frame: not for a storm, which is about now, and not mid-play,
         // which would park the link on whichever frame it caught.

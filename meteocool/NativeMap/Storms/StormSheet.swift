@@ -344,8 +344,8 @@ struct StormHintBar: View {
                             .scaledFont(13, weight: .bold, relativeTo: .footnote)
                             .lineLimit(1)
                             .foregroundStyle(theme.text)
-                        // Whose tracking it is, the one its readings are from.
-                        if let source = store.selection.flatMap({ StormSelect.sourcesOf($0).first }) {
+                        // DWD's alone: a storm is meteocool's unless it says otherwise.
+                        if let source = store.selection.flatMap({ StormSelect.sourcesOf($0).first }), source == .dwd {
                             SourceBadge(source: source)
                         }
                     }

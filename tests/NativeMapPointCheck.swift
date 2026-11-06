@@ -243,6 +243,14 @@ struct NativeMapPointCheck {
     }
 
     static func outlook() {
+        // A closed outlook stays away for a day.
+        let closed = Date(timeIntervalSince1970: 1_800_000_000)
+        precondition(!OutlookSnooze.snoozed(closed: nil, now: closed))
+        precondition(OutlookSnooze.snoozed(closed: closed, now: closed))
+        precondition(OutlookSnooze.snoozed(closed: closed, now: closed.addingTimeInterval(OutlookSnooze.duration - 1)))
+        precondition(!OutlookSnooze.snoozed(closed: closed, now: closed.addingTimeInterval(OutlookSnooze.duration)))
+        precondition(!OutlookSnooze.snoozed(closed: closed.addingTimeInterval(60), now: closed))
+
         let flat = series(["a": Array(repeating: 0, count: 48)])
         precondition(Outlook.stepAt(flat.times, t0.addingTimeInterval(9.5 * hour)) == 9)
         precondition(Outlook.stepAt(flat.times, t0.addingTimeInterval(-hour)) == 0)

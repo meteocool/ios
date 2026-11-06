@@ -71,8 +71,9 @@ enum PointMenuLayout {
 enum PointLink {
     /// The parameters core owns, in the order it writes them; anything else
     /// (`share_lang`) goes first, in its own order.
-    static let order = ["layer", "latLonZ", "pitch", "bearing", "overlays", "t", "point", "storm", "cell", "details",
-                        "cloud", "cut", "shared"]
+    static let order = ["layer", "latLonZ", "pitch", "bearing", "overlays", "product", "hide", "stationParameter",
+                        "from", "to", "t", "point", "radar", "sweep", "tilt", "motion",
+                        "storm", "cell", "details", "cloud", "cut", "peel", "station", "compare", "shared"]
 
     /// A `layer=` value worth looking up (core's `LAYER`): a plain word.
     static func validLayer(_ text: String) -> Bool {
@@ -176,6 +177,29 @@ enum RadarExtents {
     /// means "no radar here".
     static func overlapsAny(minLon: Double, minLat: Double, maxLon: Double, maxLat: Double) -> Bool {
         boxes.contains { $0[0] <= maxLon && $0[2] >= minLon && $0[1] <= maxLat && $0[3] >= minLat }
+    }
+}
+
+/// How long the dry-day outlook stays away once closed (core's
+/// `lib/outlookDismissal.ts`): a day, across launches. Stored as the time it
+/// was closed, so a change to the length applies to closings on record.
+enum OutlookSnooze {
+    static let duration: TimeInterval = 24 * 3_600
+    static let key = "dryOutlookDismissedAt"
+
+    /// Whether a closing at `closed` still keeps the strip away at `now`. A
+    /// closing in the future is a clock that was wrong: the strip comes back.
+    static func snoozed(closed: Date?, now: Date) -> Bool {
+        guard let closed else { return false }
+        return closed <= now && now.timeIntervalSince(closed) < duration
+    }
+
+    static func snoozed(now: Date = Date(), defaults: UserDefaults? = UserDefaults(suiteName: "group.org.frcy.app.meteocool")) -> Bool {
+        snoozed(closed: defaults?.object(forKey: key) as? Date, now: now)
+    }
+
+    static func snooze(now: Date = Date(), defaults: UserDefaults? = UserDefaults(suiteName: "group.org.frcy.app.meteocool")) {
+        defaults?.set(now, forKey: key)
     }
 }
 

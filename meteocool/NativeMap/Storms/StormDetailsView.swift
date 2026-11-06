@@ -189,7 +189,9 @@ struct StormDetailsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(titleFont).tracking(-0.48).accessibilityIdentifier("nativeMap.storm.title")
                 if let place { Text(place).font(subtitleFont).foregroundStyle(.secondary) }
-                if !sources.isEmpty { SourceBadges(sources: sources).padding(.top, 2) }
+                // DWD's badge alone, as the hint bar has it; quieter when
+                // DWD is not where the readings come from.
+                if sources.contains(.dwd) { SourceBadge(source: .dwd, secondary: sources.first != .dwd).padding(.top, 2) }
             }
             Spacer(minLength: wide ? 76 : 98)
         }
