@@ -531,16 +531,6 @@ final class NativeMapUITests: XCTestCase {
         screenshot("model comparison")
         element("nativeMap.compare.close").tap()
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
-        // Closed, it stays away for a day, the next launch included.
-        let outlook = element("nativeMap.outlook")
-        XCTAssertTrue(outlook.waitForExistence(timeout: 10))
-        element("nativeMap.outlook.close").tap()
-        XCTAssertTrue(outlook.waitForNonExistence(timeout: 5))
-        app.terminate()
-        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
-        app.launch()
-        waitForSeries()
-        XCTAssertFalse(outlook.waitForExistence(timeout: 15), "Closed less than a day ago")
     }
 
     func testModelComparisonRetriesWhatFailed() {
@@ -596,6 +586,16 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.compare").waitForExistence(timeout: 10))
         element("nativeMap.compare.close").tap()
         XCTAssertTrue(element("nativeMap.compare").waitForNonExistence(timeout: 5))
+        // Closed, it stays away for a day, the next launch included.
+        let outlook = element("nativeMap.outlook")
+        XCTAssertTrue(outlook.waitForExistence(timeout: 10))
+        element("nativeMap.outlook.close").tap()
+        XCTAssertTrue(outlook.waitForNonExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        waitForSeries()
+        XCTAssertFalse(outlook.waitForExistence(timeout: 15), "Closed less than a day ago")
     }
 
     // MARK: - Storms
@@ -1542,8 +1542,10 @@ final class NativeMapUITests: XCTestCase {
         picker.tap()
         screenshot("3D scan menu")
         if picker.label.hasSuffix("not live") {
-            // Any row of that time, checked: the menu's face says the time too.
-            let rows = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picked))
+            // Any row of that time, checked: the menu's face says the time
+            // too (the rows may have moved on a scan since the tap).
+            let shown = picker.label.range(of: #"\d{2}:\d{2}"#, options: .regularExpression).map { String(picker.label[$0]) } ?? picked
+            let rows = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", shown))
             XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
             let checked = rows.matching(NSPredicate(format: "selected == true")).firstMatch
             XCTAssertTrue(checked.waitForExistence(timeout: 15),
@@ -1763,8 +1765,11 @@ final class NativeMapUITests: XCTestCase {
         let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 10), "The storm's share sheet")
         screenshot("storm share")
-        // Put away as a sheet is, by pulling it down.
-        let top = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        // Put away as a sheet is, by pulling it down: from its header on
+        // iOS 18, where it sits lower than on iOS 26.
+        let window = app.windows.firstMatch, header = app.buttons["header.closeButton"]
+        let edge = header.exists ? min(0.9, header.frame.midY / window.frame.height) : 0.45
+        let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: edge))
         top.press(forDuration: 0.05, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)))
         XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
         element("nativeMap.storm.close").tap()
@@ -2088,6 +2093,8 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(tilts.count, 5, "DWD scans a volume of tilts")
         tilts.element(boundBy: 1).tap()
         XCTAssertTrue(waitForValue(tilt) { !$0.hasPrefix("0.5° ") }, "Another tilt")
+        // The menu gone first: iOS 18 drops a tap while it closes.
+        XCTAssertTrue(tilts.firstMatch.waitForNonExistence(timeout: 5))
         // Storm-relative needs a storm to take the motion of.
         tray.buttons["Storm-relative"].firstMatch.tap()
         XCTAssertTrue(waitForLabel(note) { $0.hasPrefix("Select a storm") })
