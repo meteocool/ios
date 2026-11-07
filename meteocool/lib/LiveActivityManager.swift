@@ -100,21 +100,14 @@ import UIKit
         refresh(force: true)
     }
 
-    /// Adds the activity's alert to the past alerts. Only the backend starts
-    /// activities, and it starts each one with an alert in place of the rain
-    /// notification, which therefore never reaches the list by itself. The
-    /// alert's own words are not readable here; the activity's headline says
-    /// the rain as the alert does. One entry per activity, however often seen.
+    /// Adds the activity's alert to the past alerts, unless the widget
+    /// extension did as it drew the activity (`LiveActivityAlert`).
     private func remember(_ activity: Activity<RainActivityAttributes>, arrivedNow: Bool) {
-        let state = activity.content.state
+        let state = activity.content.state, id = activity.id
         // Seen only at launch: about when the forecast it shows was made.
         let received = arrivedNow ? Date() : min(Date(), state.now)
-        let words = state.alertText(at: received)
-            ?? (NSLocalizedString("live_activity_alert", value: "Rain on the way", comment: "past alert from a Live Activity"), "")
-        let alert = ReceivedAlert(title: words.title, body: words.body, received: received,
-                                  request: ReceivedAlert.liveActivity(activity.id))
         Task.detached {
-            AlertHistory.add([alert])
+            guard LiveActivityAlert.record(state, activityID: id, received: received) else { return }
             await MainActor.run { NotificationCenter.default.post(name: AlertHistory.didChange, object: nil) }
         }
     }

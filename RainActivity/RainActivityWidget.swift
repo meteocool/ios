@@ -7,10 +7,14 @@ import WidgetKit
 struct RainActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RainActivityAttributes.self) { context in
+            // Drawing is the one moment this process surely sees a new
+            // activity; iOS does not always wake the app for it.
+            let _ = LiveActivityAlert.record(context.state, activityID: context.activityID)
             ActivityContentView(forecast: context.state, stale: context.isStale)
                 .activityBackgroundTint(nil)
         } dynamicIsland: { context in
             let forecast = context.state
+            LiveActivityAlert.record(forecast, activityID: context.activityID)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     RadarThumbnail(side: 56)
