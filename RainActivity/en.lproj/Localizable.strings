@@ -43,3 +43,4 @@
 "widget_none" = "None";
 "widget_rain_minutes" = "Rain ahead";
 "widget_minutes %lld" = "%lld min";
+"live_activity_alert" = "Rain on the way";

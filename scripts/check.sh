@@ -22,6 +22,8 @@ xcrun swiftc Shared/AlertMute.swift Shared/AlertMute+Rain.swift Shared/RainForec
 xcrun swiftc Shared/AlertLanguage.swift tests/AlertLanguageCheck.swift -o "$scratch/check-language"
 "$scratch/check-language"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/RainForecastCheck.swift -o "$scratch/check-rain"
+xcrun swiftc Shared/LiveActivityAlert.swift Shared/AlertHistory.swift Shared/RainForecast.swift meteocool/AR/Colormaps.swift tests/LiveActivityAlertCheck.swift -o "$scratch/check-live-activity-alert"
+"$scratch/check-live-activity-alert"
 "$scratch/check-rain"
 xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarWindow.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/CoreStrings.swift meteocool/NativeMap/VectorTile.swift meteocool/NativeMap/Chrome/TimelinePhysics.swift meteocool/NativeMap/Chrome/ConnectionRules.swift meteocool/AR/Colormaps.swift tests/NativeMapCheck.swift -o "$scratch/check-native-map"
 xcrun swiftc meteocool/NativeMap/Point/PointRules.swift meteocool/NativeMap/Point/ReverseGeocoder.swift meteocool/NativeMap/Point/ModelCompareRules.swift meteocool/NativeMap/Point/LightningRules.swift meteocool/NativeMap/Point/FlashToBangRules.swift meteocool/NativeMap/Point/PrecipTypesRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapPointCheck.swift -o "$scratch/check-native-map-point"
