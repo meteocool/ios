@@ -1296,6 +1296,8 @@ extension ThreeDHUD {
             Text(name)
             if let when { Text(when) }
         }
+        // iOS 18 reads a menu row's title alone, without its subtitle.
+        .accessibilityLabel(when.map { "\(name), \($0)" } ?? name)
     }
 
     /// "Latest", or one of the last two hours' scans (`ScanPicker.svelte`):
