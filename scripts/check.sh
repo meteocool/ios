@@ -43,3 +43,6 @@ xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity
 "$scratch/check-widgets"
 xcrun swiftc meteocool/NativeMap/ThreeD/ThreeDMath.swift meteocool/NativeMap/ThreeD/ThreeDCamera.swift meteocool/NativeMap/ThreeD/ThreeDClouds.swift meteocool/NativeMap/ThreeD/ThreeDFraming.swift meteocool/NativeMap/ThreeD/ThreeDStyle.swift meteocool/NativeMap/ThreeD/CellVolume.swift meteocool/AR/StormVolume.swift meteocool/AR/Colormaps.swift tests/NativeMapThreeDCheck.swift -o "$scratch/check-native-map-3d"
 "$scratch/check-native-map-3d"
+
+xcrun swiftc meteocool/NativeMap/RadarPixels.swift meteocool/AR/Colormaps.swift tests/RadarPixelsCheck.swift -o "$scratch/check-radar-pixels"
+"$scratch/check-radar-pixels"

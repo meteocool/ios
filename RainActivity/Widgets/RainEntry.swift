@@ -16,13 +16,18 @@ struct PlaceRain: Identifiable {
 
     var problem: WidgetProblem? {
         if location == nil { return .noLocation }
-        if forecast == nil { return .noData }
+        guard let forecast, forecast.observed < forecast.dbz.count,
+              forecast.dbz.dropFirst(forecast.nowIndex).allSatisfy({ $0?.isFinite == true }) else { return .noData }
         return nil
     }
 
     func advanced(to date: Date) -> PlaceRain {
         PlaceRain(id: id, name: name, isCurrent: isCurrent, location: location,
-                  forecast: forecast?.advanced(to: date), fetched: fetched)
+                  forecast: forecast.flatMap { date < $0.end ? $0.advanced(to: date) : nil }, fetched: fetched)
+    }
+
+    func withoutForecast() -> PlaceRain {
+        PlaceRain(id: id, name: name, isCurrent: isCurrent, location: location, forecast: nil, fetched: nil)
     }
 
     /// The web map at this place, which a tap on the widget opens.
@@ -64,10 +69,14 @@ enum RainTimeline {
     }
 
     static func entries(places: [PlaceRain], map: MapSnapshot?, now: Date = Date(),
-                        spacing: TimeInterval = 300, count: Int = 7) -> [RainEntry] {
-        let dates = dates(from: now, spacing: spacing, count: count)
-            .filter { date in places.first?.forecast.map { date < $0.end } ?? (date == now) }
-        return (dates.isEmpty ? [now] : dates).map { date in
+                        spacing: TimeInterval = 300, count: Int = 7,
+                        environment: MeteocoolEnvironment? = nil) -> [RainEntry] {
+        let current = environment == nil || environment == MeteocoolEnvironment.stored(in: WidgetStore.defaults)
+        let places = current ? places : places.map { $0.withoutForecast() }
+        let map = current ? map : nil
+        let ends = places.compactMap { $0.forecast?.end }.filter { $0 > now }
+        let dates = dates(from: now, spacing: spacing, count: count).filter { $0 <= (ends.max() ?? now) }
+        return Set(dates + ends).sorted().map { date in
             let advanced = places.map { $0.advanced(to: date) }
             return RainEntry(date: date, places: advanced, map: map, relevance: relevance(of: advanced.first?.forecast))
         }
@@ -94,24 +103,27 @@ enum RainTimeline {
     // MARK: - Loading
 
     /// Each place's location, name and forecast.
-    static func load(_ places: [WidgetPlace], threshold: Double) async -> [PlaceRain] {
+    static func load(_ places: [WidgetPlace], threshold: Double,
+                     environment: MeteocoolEnvironment = MeteocoolEnvironment.stored(in: WidgetStore.defaults)) async -> [PlaceRain] {
         WidgetPlaceQuery.remember(places)
-        return await withTaskGroup(of: (Int, PlaceRain).self) { group in
+        let loaded = await withTaskGroup(of: (Int, PlaceRain).self) { group in
             for (index, place) in places.enumerated() {
-                group.addTask { (index, await load(place, threshold: threshold)) }
+                group.addTask { (index, await load(place, threshold: threshold, environment: environment)) }
             }
             var loaded: [(Int, PlaceRain)] = []
             for await result in group { loaded.append(result) }
             return loaded.sorted { $0.0 < $1.0 }.map(\.1)
         }
+        return environment == MeteocoolEnvironment.stored(in: WidgetStore.defaults)
+            ? loaded : loaded.map { $0.withoutForecast() }
     }
 
-    private static func load(_ place: WidgetPlace, threshold: Double) async -> PlaceRain {
+    private static func load(_ place: WidgetPlace, threshold: Double, environment: MeteocoolEnvironment) async -> PlaceRain {
         let location = place.coordinate?.location ?? WidgetStore.currentLocation()
         guard let location else {
             return PlaceRain(id: place.id, name: place.name, isCurrent: place.isCurrent, location: nil, forecast: nil, fetched: nil)
         }
-        async let forecast = WidgetStore.forecast(at: location, threshold: threshold)
+        async let forecast = WidgetStore.forecast(at: location, threshold: threshold, environment: environment)
         async let name = place.isCurrent ? townName(at: location) : place.name
         let result = await forecast
         return PlaceRain(id: place.id, name: await name ?? place.name, isCurrent: place.isCurrent,
@@ -144,13 +156,13 @@ enum RainTimeline {
     /// The radar map for the first place.
     static func map(for place: PlaceRain?, zoom: Double, wide: Bool, size: CGSize) async -> MapSnapshot? {
         guard let location = place?.location, size.width > 0, size.height > 0 else { return nil }
-        let scale = await MainActor.run { max(UITraitCollection.current.displayScale, 2) }
-        let pixels = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        // Bound decoded memory for the light and dark images, including portrait XL.
+        let pixels = CGSize(width: (size.width * 2).rounded(), height: (size.height * 2).rounded())
         return await WidgetStore.map(at: location, zoom: zoom, wide: wide, pixels: pixels)
     }
 
-    /// The gallery's entry: a made-up shower west of Munich, on a radar map
-    /// of a real one (demo's, 2026-10-06) kept in the extension for this.
+    /// The gallery uses a made-up forecast on a bundled demo radar map,
+    /// with an Apple basemap when the app's Native Map setting is on.
     static func sample(places: Int = 1) -> RainEntry {
         let names = [String(localized: "Current Location"), "Munich", "Hamburg", "Berlin", "Cologne", "Vienna"]
         let rain = (0..<max(places, 1)).map { index in
@@ -160,7 +172,8 @@ enum RainTimeline {
                              location: CLLocation(latitude: 48.0, longitude: 11.85), forecast: forecast, fetched: Date())
         }
         let card = PreviewCard(latitude: 48.0, longitude: 11.85, zoom: 9, wide: false)
-        let map = Bundle.main.url(forResource: "SampleRadar", withExtension: "jpg")
+        let resource = WidgetStore.defaults?.bool(forKey: "nativeMap") == true ? "SampleNativeRadar" : "SampleRadar"
+        let map = Bundle.main.url(forResource: resource, withExtension: "jpg")
             .flatMap { UIImage(contentsOfFile: $0.path) }
             .map { MapSnapshot(image: $0, rendered: Date(), card: card, location: CLLocationCoordinate2D(latitude: 48.0, longitude: 11.85)) }
         return RainEntry(date: Date(), places: rain, map: map, relevance: nil)

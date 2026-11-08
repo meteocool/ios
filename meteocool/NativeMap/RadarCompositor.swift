@@ -220,7 +220,7 @@ final class RadarCompositor: @unchecked Sendable {
     }
 
     /// The layers on one tile, in map points, onto a bitmap of the tile.
-    private static func compose(_ sources: [(RadarLayer, RadarTileKey, CGImage)], into rect: MKMapRect,
+    static func compose(_ sources: [(RadarLayer, RadarTileKey, CGImage)], into rect: MKMapRect,
                                 coverage: RadarCoverage) -> CGImage? {
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,

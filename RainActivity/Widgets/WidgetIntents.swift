@@ -17,12 +17,25 @@ struct RadarMapConfiguration: WidgetConfigurationIntent {
     @Parameter(title: "Intensity", default: .app)
     var intensity: IntensityChoice
 
+    @Parameter(title: "Locations Below Map", description: "Up to four locations on extra-large widgets.",
+               size: .init(min: 0, max: 4))
+    var places: [WidgetPlace]?
+
     static var parameterSummary: some ParameterSummary {
-        When(\.$overlay, .equalTo, .none) {
-            Summary {
-                \.$place
-                \.$area
-                \.$overlay
+        When(widgetFamily: .oneOf, [.systemSmall, .systemMedium, .systemLarge]) {
+            When(\.$overlay, .equalTo, .none) {
+                Summary {
+                    \.$place
+                    \.$area
+                    \.$overlay
+                }
+            } otherwise: {
+                Summary {
+                    \.$place
+                    \.$area
+                    \.$overlay
+                    \.$intensity
+                }
             }
         } otherwise: {
             Summary {
@@ -30,6 +43,7 @@ struct RadarMapConfiguration: WidgetConfigurationIntent {
                 \.$area
                 \.$overlay
                 \.$intensity
+                \.$places
             }
         }
     }

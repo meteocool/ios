@@ -11,8 +11,8 @@ struct RadarMapWidget: Widget {
             RadarMapView(entry: entry.entry, overlay: entry.overlay)
         }
         .configurationDisplayName("Radar Map")
-        .description("The rain radar around you or any place, and when rain comes next.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
+        .description("The rain radar around you or any place. Add up to four locations below the map on extra-large widgets.")
+        .supportedFamilies(RadarMapLayout.families)
         .contentMarginsDisabled()
     }
 }
@@ -22,7 +22,10 @@ struct RadarMapEntry: TimelineEntry {
     let overlay: MapOverlay
 
     var date: Date { entry.date }
-    var relevance: TimelineEntryRelevance? { overlay == .none ? nil : entry.relevance }
+    var relevance: TimelineEntryRelevance? {
+        guard overlay != .none || entry.places.count > 1 else { return nil }
+        return entry.places.compactMap { RainTimeline.relevance(of: $0.forecast) }.max { $0.score < $1.score }
+    }
 }
 
 struct RadarMapProvider: AppIntentTimelineProvider {
@@ -40,12 +43,15 @@ struct RadarMapProvider: AppIntentTimelineProvider {
     }
 
     private func load(_ configuration: RadarMapConfiguration, in context: Context) async -> [RadarMapEntry] {
-        let places = await RainTimeline.load([configuration.place ?? .current], threshold: configuration.intensity.threshold)
+        let environment = MeteocoolEnvironment.stored(in: WidgetStore.defaults)
+        let additional = RadarMapLayout.locations(configuration.places ?? [], family: context.family)
+        let places = await RainTimeline.load([configuration.place ?? .current] + additional,
+                                             threshold: configuration.intensity.threshold, environment: environment)
         // The medium and extra large widgets are about twice as wide as
         // they are tall, as is the service's wide card.
         let wide = context.family == .systemMedium || context.family == .systemExtraLarge
         let map = await RainTimeline.map(for: places.first, zoom: configuration.area.zoom, wide: wide, size: context.displaySize)
-        return RainTimeline.entries(places: places, map: map)
+        return RainTimeline.entries(places: places, map: map, environment: environment)
             .map { RadarMapEntry(entry: $0, overlay: configuration.overlay) }
     }
 }
@@ -56,6 +62,58 @@ struct RadarMapView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
+        RadarMapContent(entry: entry, overlay: overlay, family: family)
+    }
+}
+
+struct RadarMapContent: View {
+    let entry: RainEntry
+    let overlay: MapOverlay
+    let family: WidgetFamily
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let places = RadarMapLayout.locations(Array(entry.places.dropFirst()), family: family)
+        VStack(spacing: 0) {
+            map.layoutPriority(-1)
+
+            if !places.isEmpty {
+                locations(places)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .rainBackground()
+        .widgetURL(entry.main?.link(zoom: entry.map?.card.zoom ?? 10))
+    }
+
+    @ViewBuilder private func locations(_ places: [PlaceRain]) -> some View {
+        if family == .systemExtraLarge {
+            Grid(horizontalSpacing: 12, verticalSpacing: 0) {
+                GridRow { ForEach(Array(places.prefix(2))) { location($0) } }
+                if places.count > 2 {
+                    GridRow { ForEach(Array(places.dropFirst(2))) { location($0) } }
+                }
+            }
+        } else {
+            VStack(spacing: 0) { ForEach(places) { location($0) } }
+        }
+    }
+
+    @ViewBuilder private func location(_ place: PlaceRain) -> some View {
+        Group {
+            if let link = place.link() {
+                Link(destination: link) { PlaceRow(place: place, range: .nextHour) }
+                    .buttonStyle(.plain)
+            } else {
+                PlaceRow(place: place, range: .nextHour)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder private var map: some View {
         let place = entry.main
         ZStack {
             RadarMapImage(snapshot: entry.map, isCurrent: place?.isCurrent ?? true)
@@ -63,12 +121,12 @@ struct RadarMapView: View {
                 HStack(alignment: .top) {
                     if let place { MapChip { PlaceLabel(place: place) } }
                     Spacer(minLength: 4)
-                    if let rendered = entry.map?.rendered, family != .systemSmall || overlay == .none {
+                    if let rendered = entry.map?.rendered(for: colorScheme), family != .systemSmall || overlay == .none {
                         MapChip { Text(rendered, style: .time) }
                     }
                 }
                 Spacer(minLength: 0)
-                if let problem = place?.problem, problem == .noLocation || entry.map == nil {
+                if let problem = place?.problem, problem == .noLocation || entry.map == nil || overlay != .none {
                     MapPanel { ProblemView(problem: problem).fixedSize(horizontal: false, vertical: true) }
                 } else if overlay != .none, let forecast = place?.forecast {
                     MapPanel { panel(forecast) }
@@ -76,8 +134,6 @@ struct RadarMapView: View {
             }
             .padding(family == .systemSmall ? 8 : 10)
         }
-        .rainBackground()
-        .widgetURL(place?.link(zoom: entry.map?.card.zoom ?? 10))
     }
 
     @ViewBuilder private func panel(_ forecast: RainForecast) -> some View {

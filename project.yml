@@ -136,6 +136,14 @@ targets:
       # The widgets ask the API of the deployment the app is set to.
       - path: meteocool/lib/Environment.swift
       - path: meteocool/lib/NetworkHelper.swift
+      - path: meteocool/NativeMap/RadarFrames.swift
+      - path: meteocool/NativeMap/RadarWindow.swift
+      - path: meteocool/NativeMap/RadarCoverage.swift
+      - path: meteocool/NativeMap/RadarPixels.swift
+      - path: meteocool/NativeMap/RadarTileStore.swift
+      - path: meteocool/NativeMap/RadarCompositor.swift
+      - path: meteocool/NativeMap/NativeMapEndpoints.swift
+      - path: meteocool/NativeMap/radar-coverage.json
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).meteocool.RainActivity

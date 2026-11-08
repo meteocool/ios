@@ -15,8 +15,8 @@ import CoreGraphics
 /// The PNG is inflated and unfiltered here instead of through ImageIO: the
 /// bytes are values, not colours, and a colour-managed decoder may hand back
 /// some of them off by one, as WebKit did on iOS 18.4 (core's
-/// `lib/valuePng.ts`). Grey and palette-free only, the format the tile
-/// renderer writes.
+/// `lib/valuePng.ts`). Also accepts lossless grayscale palettes introduced
+/// by CDN optimization, expanding each index back to its original byte.
 ///
 /// No app dependencies here: `scripts/check.sh` compiles this file alone.
 enum GreyPNG {
@@ -32,6 +32,9 @@ enum GreyPNG {
         let signature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
         guard bytes.count > 8, Array(bytes[0 ..< 8]) == signature else { return nil }
         var width = 0, height = 0
+        var depth = 8
+        var indexed = false
+        var palette: [UInt8]?
         var idat = Data()
         var offset = 8
         while offset + 12 <= bytes.count {
@@ -48,9 +51,19 @@ enum GreyPNG {
                 }
                 width = be32(start)
                 height = be32(start + 4)
-                // 8-bit, greyscale, deflate, adaptive filtering, not interlaced.
-                guard bytes[start + 8] == 8, bytes[start + 9] == 0, bytes[start + 10] == 0,
-                      bytes[start + 11] == 0, bytes[start + 12] == 0 else { return nil }
+                // Grayscale or indexed grayscale; PNG packs shallow depths into bytes.
+                depth = Int(bytes[start + 8])
+                guard [1, 2, 4, 8].contains(depth), [0, 3].contains(bytes[start + 9]),
+                      bytes[start + 10] == 0, bytes[start + 11] == 0, bytes[start + 12] == 0 else { return nil }
+                indexed = bytes[start + 9] == 3
+            case "PLTE":
+                guard indexed, length > 0, length <= (1 << depth) * 3, length % 3 == 0 else { return nil }
+                var values: [UInt8] = []
+                for index in stride(from: start, to: start + length, by: 3) {
+                    guard bytes[index] == bytes[index + 1], bytes[index] == bytes[index + 2] else { return nil }
+                    values.append(bytes[index])
+                }
+                palette = values
             case "IDAT":
                 idat.append(contentsOf: bytes[start ..< start + length])
             case "IEND":
@@ -65,12 +78,30 @@ enum GreyPNG {
         // A zlib stream: two header bytes, then raw deflate, which is what
         // Foundation's `.zlib` inflates.
         guard let inflated = try? (idat.dropFirst(2) as NSData).decompressed(using: .zlib) as Data else { return nil }
-        let stride = width + 1
-        guard inflated.count >= stride * height else { return nil }
-        return unfilter([UInt8](inflated), width: width, height: height).map { Image(width: width, height: height, pixels: $0) }
+        let rowBytes = (width * depth + 7) / 8
+        guard inflated.count >= (rowBytes + 1) * height,
+              let raw = unfilter([UInt8](inflated), width: rowBytes, height: height) else { return nil }
+        if !indexed, depth == 8 { return Image(width: width, height: height, pixels: raw) }
+        if indexed, palette == nil { return nil }
+        var pixels: [UInt8] = []
+        pixels.reserveCapacity(width * height)
+        let mask = (1 << depth) - 1
+        for y in 0..<height {
+            for x in 0..<width {
+                let byte = Int(raw[y * rowBytes + x * depth / 8])
+                let value = (byte >> (8 - depth - x * depth % 8)) & mask
+                if let palette {
+                    guard value < palette.count else { return nil }
+                    pixels.append(palette[value])
+                } else {
+                    pixels.append(UInt8(value * 255 / mask))
+                }
+            }
+        }
+        return Image(width: width, height: height, pixels: pixels)
     }
 
-    /// Undoes the PNG row filters for one byte per pixel.
+    /// Undoes grayscale/indexed row filters, whose filter stride is one byte.
     private static func unfilter(_ raw: [UInt8], width: Int, height: Int) -> [UInt8]? {
         var out = [UInt8](repeating: 0, count: width * height)
         let stride = width + 1

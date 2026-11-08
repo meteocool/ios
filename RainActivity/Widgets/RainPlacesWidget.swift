@@ -45,8 +45,6 @@ struct RainPlacesProvider: AppIntentTimelineProvider {
         let limit = context.family == .systemLarge ? 6 : 3
         let chosen = configuration.places?.isEmpty == false ? configuration.places! : [.current]
         let places = await RainTimeline.load(Array(chosen.prefix(limit)), threshold: configuration.intensity.threshold)
-        // Entries end when the first place's forecast does; every place's
-        // forecast is fetched at the same time, so they all end together.
         return RainTimeline.entries(places: places, map: nil)
             .map { RainPlacesEntry(entry: $0, range: configuration.range) }
     }
@@ -84,13 +82,13 @@ struct RainPlacesView: View {
     }
 }
 
-private struct PlaceRow: View {
+struct PlaceRow: View {
     let place: PlaceRain
     let range: ForecastRange
 
     var body: some View {
         HStack(spacing: 10) {
-            if let forecast = place.forecast {
+            if let forecast = place.forecast, place.problem == nil {
                 let status = RainStatus(forecast: forecast)
                 Image(systemName: status.symbol)
                     .symbolRenderingMode(.palette)

@@ -70,6 +70,12 @@ struct WidgetCheck {
         let position = centre.position(of: CLLocationCoordinate2D(latitude: centre.latitude, longitude: centre.longitude))
         precondition(abs(position.x - 0.5) < 1e-6 && abs(position.y - 0.5) < 1e-6)
         precondition(centre.key == "47.81661,12.09964,9.5,wide")
+        let equator = PreviewCard(latitude: 0, longitude: 0, zoom: 8, wide: false)
+        let east = CLLocationCoordinate2D(latitude: 0, longitude: 0.17578125)
+        let point = equator.position(of: east, croppedTo: CGSize(width: 660, height: 1248),
+                                     displayedIn: CGSize(width: 330, height: 400))
+        precondition(abs(point.x - 184.5) < 1e-6 && abs(point.y - 200) < 1e-6,
+                     "Location marker must keep its position when rows crop the map: \(point)")
         print("Widget checks passed")
     }
 }

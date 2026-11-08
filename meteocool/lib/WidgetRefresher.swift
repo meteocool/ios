@@ -45,7 +45,7 @@ import WidgetKit
     /// The settings the widgets read, as one string to compare.
     private static var settings: String {
         let defaults = UserDefaults(suiteName: "group.org.frcy.app.meteocool")
-        return ["environment", "intensityValue", "radarColorMapping", "baseLayer", "withDBZ"]
+        return ["environment", "intensityValue", "radarColorMapping", "baseLayer", "withDBZ", "nativeMap", "nativeMap.radarProduct"]
             .map { "\(defaults?.object(forKey: $0) ?? "")" }.joined(separator: "|")
     }
 }

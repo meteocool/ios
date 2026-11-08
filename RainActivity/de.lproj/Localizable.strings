@@ -30,6 +30,9 @@
 "rain_chart" = "Regen an deinem Standort";
 
 /* Widgets */
+"Locations Below Map" = "Orte unter der Karte";
+"Up to four locations on extra-large widgets." = "Bis zu vier Orte auf extragroßen Widgets.";
+"The rain radar around you or any place. Add up to four locations below the map on extra-large widgets." = "Das Regenradar für deinen oder einen anderen Ort. Auf extragroßen Widgets kannst du bis zu vier Orte unter der Karte anzeigen.";
 "widget_no_precipitation" = "Kein Niederschlag erwartet";
 "widget_ends %@" = "bis %@";
 "widget_until_rain" = "Min. bis Regen";

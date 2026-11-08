@@ -43,6 +43,15 @@ struct PreviewCard: Hashable {
         return CGPoint(x: 0.5 + (point.x - centre.x) / size.width, y: 0.5 + (point.y - centre.y) / size.height)
     }
 
+    /// The marker after the provider crops the card and the view fills its remaining map area.
+    func position(of coordinate: CLLocationCoordinate2D, croppedTo image: CGSize, displayedIn frame: CGSize) -> CGPoint {
+        let fraction = position(of: coordinate)
+        let scale = max(image.width / size.width, image.height / size.height)
+            * max(frame.width / image.width, frame.height / image.height)
+        return CGPoint(x: frame.width / 2 + (fraction.x - 0.5) * size.width * scale,
+                       y: frame.height / 2 + (fraction.y - 0.5) * size.height * scale)
+    }
+
     private static func world(_ zoom: Double) -> Double { 256 * pow(2, zoom) }
 
     private static func project(latitude: Double, longitude: Double, world: Double) -> CGPoint {

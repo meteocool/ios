@@ -40,13 +40,14 @@ struct RainForecastProvider: AppIntentTimelineProvider {
     }
 
     private func load(_ configuration: RainForecastConfiguration, in context: Context) async -> [RainForecastEntry] {
-        let places = await RainTimeline.load([configuration.place ?? .current], threshold: configuration.intensity.threshold)
+        let environment = MeteocoolEnvironment.stored(in: WidgetStore.defaults)
+        let places = await RainTimeline.load([configuration.place ?? .current], threshold: configuration.intensity.threshold, environment: environment)
         var map: MapSnapshot?
         if configuration.showMap, let size = RainForecastView.mapSize(for: context.family, in: context.displaySize) {
             map = await RainTimeline.map(for: places.first, zoom: MapZoom.regional.zoom,
                                          wide: context.family == .systemLarge, size: size)
         }
-        return RainTimeline.entries(places: places, map: map)
+        return RainTimeline.entries(places: places, map: map, environment: environment)
             .map { RainForecastEntry(entry: $0, range: configuration.range, showMap: configuration.showMap) }
     }
 }
@@ -54,6 +55,7 @@ struct RainForecastProvider: AppIntentTimelineProvider {
 struct RainForecastView: View {
     let entry: RainForecastEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
 
     /// The large widget's map: the top 40 % or so, cropped from the wide card.
     nonisolated static let largeMapHeight: CGFloat = 150
@@ -112,7 +114,7 @@ struct RainForecastView: View {
                     HStack {
                         PlaceLabel(place: place).foregroundStyle(.secondary)
                         Spacer(minLength: 4)
-                        if let time = entry.entry.map?.rendered ?? place.fetched {
+                        if let time = entry.entry.map?.rendered(for: colorScheme) ?? place.fetched {
                             Text(time, style: .time).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
                         }
                     }

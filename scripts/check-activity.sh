@@ -20,6 +20,7 @@ cat RainActivity/RainActivityWidget.swift tests/RainActivityLayoutCheck.swift > 
 sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 xcrun --sdk iphonesimulator swiftc -parse-as-library -swift-version 6 -sdk "$sdk" \
     -target arm64-apple-ios18.0-simulator \
+    meteocool/NativeMap/{RadarFrames,RadarWindow,RadarCoverage,RadarPixels,RadarTileStore,RadarCompositor,NativeMapEndpoints}.swift \
     Shared/*.swift meteocool/AR/Colormaps.swift \
     meteocool/lib/Environment.swift meteocool/lib/NetworkHelper.swift \
     RainActivity/RainChart.swift RainActivity/Widgets/*.swift "$scratch/Check.swift" \
