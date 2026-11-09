@@ -147,6 +147,11 @@ enum StormLogCheck {
         check(order(.lightning) == ["mid-strong", "near", "old-strong", "new-weak"], "most strikes, ties newest first: \(order(.lightning))")
         check(StormLogRules.Sort(rawValue: "severity") == .severity && StormLogRules.Sort(rawValue: "bogus") == nil, "a stored order")
 
+        // The logbook's dot: what was logged since the log was last opened.
+        check(StormLogRules.unseen(log3, seen: nil) == 4, "never opened: every entry is new")
+        check(StormLogRules.unseen(log3, seen: log3.map(\.id)) == 0, "all seen")
+        check(StormLogRules.unseen(log3, seen: ["near", "old-strong", "gone"]) == 2, "two logged since, one seen entry gone")
+
         // Every language words the whole storm log, its opt-in page included.
         // Run from the repository's root, as scripts/check.sh does.
         let words = NSDictionary(contentsOfFile: "meteocool/en.lproj/Localizable.strings") as? [String: String] ?? [:]

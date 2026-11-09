@@ -21,12 +21,7 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
     }
 
     /// Reads the list again, adding the delivered alerts the notification
-    /// service extension did not see, and says how many are unseen.
-    static func unseen() async -> Int {
-        await refresh()
-        return AlertHistory.unseen(AlertHistory.load(), since: seen)
-    }
-
+    /// service extension did not see.
     static func refresh() async {
         let delivered = await UNUserNotificationCenter.current().deliveredNotifications()
         AlertHistory.add(delivered.map { ReceivedAlert(request: $0.request, received: $0.date) })
@@ -69,8 +64,7 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
         navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
-            let presenter = self?.presentingViewController as? ViewController
-            self?.dismiss(animated: true) { presenter?.refreshAlertsBadge() }
+            self?.dismiss(animated: true)
         })
         NotificationCenter.default.addObserver(self, selector: #selector(renderMute),
                                                name: NSNotification.Name("SettingsChanged"), object: nil)

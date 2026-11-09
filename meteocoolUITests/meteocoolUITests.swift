@@ -1032,10 +1032,10 @@ final class meteocoolUITests: XCTestCase {
         tap("Done")
     }
 
-    /// The logbook and AR beside the web map only in Experimental Features:
+    /// The logbook and AR on the web map only in Experimental Features:
     /// hidden in production, there as soon as the mode is picked, with no
-    /// restart, and gone again on the way back, where the bell closes up to
-    /// the logo.
+    /// restart, and gone again on the way back. The bell stays beside the
+    /// logo, the logbook under it.
     func testExperimentalControlsFollowTheMode() {
         app.terminate()
         app.launchArguments.removeAll { $0 == "-environment" || $0 == "staging" }
@@ -1051,10 +1051,9 @@ final class meteocoolUITests: XCTestCase {
                 XCTAssertTrue(settled, "\(name) \(experimental ? "shown" : "hidden")", file: file, line: line)
             }
             XCTAssertTrue(bell.isHittable, file: file, line: line)
+            XCTAssertLessThan(bell.frame.minX - logo.frame.maxX, 20, "The bell beside the logo", file: file, line: line)
             if experimental {
-                XCTAssertGreaterThan(bell.frame.minX, log.frame.maxX, "The bell after the logbook", file: file, line: line)
-            } else {
-                XCTAssertLessThan(bell.frame.minX - logo.frame.maxX, 20, "The bell closes up to the logo", file: file, line: line)
+                XCTAssertGreaterThan(log.frame.minY, logo.frame.maxY, "The logbook under the logo", file: file, line: line)
             }
         }
 

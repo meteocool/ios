@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Rastas išlydis";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Audrų dienoraštis";
+"storm_log_new" = "Naujos audros";
 "storm_log_unregistered" = "Audra įrašoma, kai ji praeina virš vietos, kuriai gauni įspėjimus apie lietų. Įjunk pranešimus ir visada leisk naudoti vietą.";
 "storm_log_failed" = "Nepavyko įkelti audrų dienoraščio.";
 "storm_log_retry" = "Bandyti dar kartą";

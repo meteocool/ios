@@ -48,9 +48,6 @@ enum AlertHistoryCheck {
                                      calendar: calendar)
         check(days.count == 2 && days[0].alerts.count == 2 && days[1].alerts[0].request == "y", "grouped by day, newest first")
 
-        check(AlertHistory.unseen(alerts, since: nil) == 2, "never looked: every alert is new")
-        check(AlertHistory.unseen(alerts, since: now.addingTimeInterval(-1800)) == 1, "one since the last look")
-
         // A Live Activity's alert: one per activity, whether seen as it came
         // or at a launch long after, and never the same as a notification.
         let started = ReceivedAlert(title: "Heavy rain in 15 min", body: "", received: now.addingTimeInterval(-900),

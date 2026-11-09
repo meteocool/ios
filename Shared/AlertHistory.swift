@@ -153,11 +153,6 @@ enum AlertHistory {
         return byDay.keys.sorted(by: >).map { day in (day, byDay[day, default: []].sorted { $0.received > $1.received }) }
     }
 
-    /// How many alerts came since the user last looked.
-    static func unseen(_ alerts: [ReceivedAlert], since seen: Date?) -> Int {
-        alerts.filter { $0.received > (seen ?? .distantPast) }.count
-    }
-
     private static func read(_ url: URL) -> [ReceivedAlert] {
         guard let data = try? Data(contentsOf: url) else { return [] }
         return (try? JSONDecoder().decode([ReceivedAlert].self, from: data)) ?? []
