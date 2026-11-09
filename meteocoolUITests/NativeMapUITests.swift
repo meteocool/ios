@@ -1913,8 +1913,9 @@ final class NativeMapUITests: XCTestCase {
 
     /// The logbook, AR and flash to bang only in Experimental Features:
     /// hidden in production, there as soon as the mode is picked, with no
-    /// restart, and gone again on the way back. Without the logbook the bell
-    /// closes up to the logo, and the status pill keeps clear of the row.
+    /// restart, and gone again on the way back. The bell stays beside the
+    /// logo, the logbook sits under it, and the status pill keeps clear of
+    /// both.
     func testExperimentalFeaturesComeAndGoWithTheMode() {
         app.launchEnvironment["MC_USER_LOCATION"] = "48.14,11.58"
         launch(link: "?latLonZ=48.14,11.58,9", production: true)
@@ -1930,12 +1931,12 @@ final class NativeMapUITests: XCTestCase {
                 XCTAssertTrue(settled, "\(name) \(experimental ? "shown" : "hidden")", file: file, line: line)
             }
             XCTAssertTrue(bell.isHittable, file: file, line: line)
-            let gap = bell.frame.minX - logo.frame.maxX
+            XCTAssertLessThan(bell.frame.minX - logo.frame.maxX, 20, "The bell beside the logo", file: file, line: line)
             if experimental {
-                XCTAssertGreaterThan(log.frame.minX, logo.frame.maxX, file: file, line: line)
-                XCTAssertGreaterThan(bell.frame.minX, log.frame.maxX, "The bell after the logbook", file: file, line: line)
-            } else {
-                XCTAssertLessThan(gap, 20, "The bell closes up to the logo", file: file, line: line)
+                XCTAssertGreaterThan(log.frame.minY, logo.frame.maxY, "The logbook under the logo", file: file, line: line)
+                XCTAssertLessThan(log.frame.minX, logo.frame.midX, "The logbook in the logo's column", file: file, line: line)
+                XCTAssertGreaterThanOrEqual(flash.frame.minY, log.frame.maxY, "Flash to bang under the logbook", file: file, line: line)
+                XCTAssertFalse(log.frame.intersects(pill.frame), "The logbook clear of the pill", file: file, line: line)
             }
             XCTAssertGreaterThanOrEqual(pill.frame.minX, bell.frame.maxX, "The pill keeps clear of the row", file: file, line: line)
         }

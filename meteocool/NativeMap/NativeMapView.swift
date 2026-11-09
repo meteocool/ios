@@ -39,8 +39,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private var bottomChrome: UIView?
     private var stripsChrome: UIView?
     private var otherChrome: UIView?
-    /// Keeps the status pill clear of the logo's row (`logoRowWidth`).
-    private var pillClearOfLogo: NSLayoutConstraint?
     /// The dock stands on the radar's tray, or on another map's bar.
     private var dockOnTray: NSLayoutConstraint?
     private var dockOnOther: NSLayoutConstraint?
@@ -308,8 +306,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         centred.priority = .defaultLow
         pill.setContentCompressionResistancePriority(.required, for: .horizontal)
         let clear = pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
-                                                  constant: Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures))
-        pillClearOfLogo = clear
+                                                  constant: Self.logoRowWidth)
         NSLayoutConstraint.activate([
             centred,
             clear,
@@ -325,13 +322,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     /// How far the app's row of discs beside the logo reaches in from the
-    /// safe area, with a gutter after it: 12 pt in, then the logo, the
-    /// logbook (in the Experimental Features mode only) and the bell, 52 pt
-    /// each with 8 pt after each.
-    static func logoRowWidth(experimental: Bool) -> CGFloat {
-        let discs: CGFloat = experimental ? 3 : 2
-        return 12 + discs * (52 + 8) + ChromeTheme.gutter
-    }
+    /// safe area, with a gutter after it: 12 pt in, then the logo and the
+    /// bell, 52 pt each with 8 pt after each. The logbook is under the logo.
+    static let logoRowWidth: CGFloat = 12 + 2 * (52 + 8) + ChromeTheme.gutter
+
+    /// Where the app's left column has room under the logo and the logbook
+    /// (the Experimental Features mode's, as the flash-to-bang disc is): 12 pt
+    /// in from the top, then two 52 pt discs with 10 pt after each.
+    static let leftColumnTop: CGFloat = 12 + 2 * (52 + 10)
 
     /// The tray, strips and "Back to now" are the radar map's; other maps
     /// and a storm's sheet put them away.
@@ -799,8 +797,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             socket.setHost(next.api)
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
-        // The logbook beside the logo comes and goes with the mode.
-        pillClearOfLogo?.constant = Self.logoRowWidth(experimental: MeteocoolEnvironment.current.hasExperimentalFeatures)
         let on = Set(NativeMapLayer.allCases.filter(isOn))
         if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }

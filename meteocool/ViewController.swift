@@ -49,22 +49,18 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var arButtonBackdrop: UIView?
     /// Sends a link to what the map shows; see `shareMap`.
     let shareButton = UIButton(type: .system)
-    /// Opens the storm log, the storms that passed the phone: a pill beside
+    /// Opens the storm log, the storms that passed the phone: a disc under
     /// the logo, in the Experimental Features mode only.
     let stormLogButton = UIButton(type: .system)
     /// The pill's glass element (iOS 26) or blur capsule (before), hidden with the logo.
     private var stormLogBackdrop: UIView?
     /// Opens the past alerts, the rain alerts this phone received: the bell
-    /// beside the logbook, or beside the logo without it.
+    /// beside the logo.
     let alertsButton = UIButton(type: .system)
     private var alertsBackdrop: UIView?
     /// Data Licenses, the web map's small print: under the control column,
     /// where core keeps its credits. The native map has its own.
     let dataLicencesButton = UIButton(type: .system)
-    /// Before iOS 26, where the bell sits: right of the logbook, or right of
-    /// the logo while the logbook is hidden. One of the two is active.
-    private var alertsAfterLog: NSLayoutConstraint?
-    private var alertsAfterLogo: NSLayoutConstraint?
     /// Counts the logo's taps for its confetti; see `logoTapped`.
     private var logoTaps = TapRun(taps: 3, within: 1)
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
@@ -778,7 +774,8 @@ extension ViewController {
     }
 
     /// Moves the logo off the opaque plate in the `Logo Button` artwork and
-    /// onto a glass disc, with the storm log's pill beside it.
+    /// onto a glass disc, with the bell beside it and the storm log's disc
+    /// under it, clear of the status pill on the top line.
     /// The disc matches the glass control column on the other side of the
     /// screen. `TribbleButton` got the same change, because a painted slab
     /// next to real glass looks out of place. The disc and the pill share a
@@ -812,12 +809,18 @@ extension ViewController {
         bell.contentView.addSubview(alertsButton)
         alertsBackdrop = bell
 
-        let row = UIStackView(arrangedSubviews: [glass, pill, bell])
+        let row = UIStackView(arrangedSubviews: [glass, bell])
         row.axis = .horizontal
         row.spacing = 8
-        row.translatesAutoresizingMaskIntoConstraints = false
+        // The logbook under the logo, as the flash-to-bang disc is under it in
+        // turn; the stack closes up while it is hidden.
+        let column = UIStackView(arrangedSubviews: [row, pill])
+        column.axis = .vertical
+        column.alignment = .leading
+        column.spacing = 10
+        column.translatesAutoresizingMaskIntoConstraints = false
         let container = LiquidGlass.container(spacing: 10)
-        container.contentView.addSubview(row)
+        container.contentView.addSubview(column)
         view.addSubview(container)
 
         NSLayoutConstraint.activate([
@@ -825,10 +828,10 @@ extension ViewController {
             glass.heightAnchor.constraint(equalToConstant: 52),
             pill.widthAnchor.constraint(equalToConstant: 52),
             pill.heightAnchor.constraint(equalToConstant: 52),
-            row.topAnchor.constraint(equalTo: container.contentView.topAnchor),
-            row.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor),
-            row.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor),
-            row.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor),
+            column.topAnchor.constraint(equalTo: container.contentView.topAnchor),
+            column.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor),
+            column.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor),
+            column.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor),
             container.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
             container.topAnchor.constraint(equalTo: blur.bottomAnchor, constant: 12),
             logo.centerXAnchor.constraint(equalTo: glass.contentView.centerXAnchor),
@@ -1006,7 +1009,7 @@ extension ViewController {
 // MARK: - Storm log
 
 extension ViewController {
-    /// The pill beside the logo: a logbook, opening the storms that passed the phone.
+    /// The disc under the logo: a logbook, opening the storms that passed the phone.
     fileprivate func configureStormLogButton() {
         stormLogButton.setImage(UIImage(systemName: "book", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
         stormLogButton.accessibilityLabel = NSLocalizedString("storm_log_title", value: "Storm Log", comment: "")
@@ -1014,35 +1017,29 @@ extension ViewController {
         stormLogButton.addAction(UIAction { [weak self] _ in self?.openStormLog() }, for: .touchUpInside)
     }
 
-    /// Before iOS 26 the logbook and the bell are blurred discs beside the
-    /// logo artwork. The bell moves up to the logo while the logbook is hidden.
+    /// Before iOS 26 the logbook and the bell are blurred discs: the bell
+    /// beside the logo artwork, the logbook under it.
     fileprivate func installClassicStormLogButton() {
-        let log = classicDisc(for: stormLogButton, rightOf: logo)
-        let bell = classicDisc(for: alertsButton, rightOf: log.disc)
-        stormLogBackdrop = log.disc
-        alertsBackdrop = bell.disc
-        alertsAfterLog = bell.leading
-        alertsAfterLogo = bell.disc.leadingAnchor.constraint(equalTo: logo.trailingAnchor, constant: 8)
+        let log = classicDisc(for: stormLogButton)
+        let bell = classicDisc(for: alertsButton)
+        stormLogBackdrop = log
+        alertsBackdrop = bell
+        NSLayoutConstraint.activate([
+            bell.leadingAnchor.constraint(equalTo: logo.trailingAnchor, constant: 8),
+            bell.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
+            // Centred on the flash-to-bang disc's column (12 pt in, 52 pt wide).
+            log.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12 + 26),
+            log.topAnchor.constraint(equalTo: logo.bottomAnchor, constant: 8),
+        ])
     }
 
-    /// Shows the storm log's pill in the Experimental Features mode only,
-    /// and closes up the row of discs beside the logo without it.
+    /// Shows the storm log's disc in the Experimental Features mode only.
     fileprivate func refreshStormLogButton() {
         let shown = MeteocoolEnvironment.current.hasExperimentalFeatures
         stormLogBackdrop?.isHidden = !shown || !covers.isEmpty
-        // On iOS 26 the row is a stack view, which closes up on its own.
-        if let alertsAfterLog, let alertsAfterLogo {
-            if shown {
-                alertsAfterLogo.isActive = false
-                alertsAfterLog.isActive = true
-            } else {
-                alertsAfterLog.isActive = false
-                alertsAfterLogo.isActive = true
-            }
-        }
     }
 
-    private func classicDisc(for button: UIButton, rightOf anchor: UIView) -> (disc: UIView, leading: NSLayoutConstraint) {
+    private func classicDisc(for button: UIButton) -> UIView {
         let disc = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
         disc.layer.cornerRadius = 22
         disc.clipsToBounds = true
@@ -1051,18 +1048,15 @@ extension ViewController {
         button.tintColor = .label
         disc.contentView.addSubview(button)
         view.addSubview(disc)
-        let leading = disc.leadingAnchor.constraint(equalTo: anchor.trailingAnchor, constant: 8)
         NSLayoutConstraint.activate([
             disc.widthAnchor.constraint(equalToConstant: 44),
             disc.heightAnchor.constraint(equalToConstant: 44),
-            leading,
-            disc.centerYAnchor.constraint(equalTo: logo.centerYAnchor),
             button.leadingAnchor.constraint(equalTo: disc.contentView.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: disc.contentView.trailingAnchor),
             button.topAnchor.constraint(equalTo: disc.contentView.topAnchor),
             button.bottomAnchor.constraint(equalTo: disc.contentView.bottomAnchor),
         ])
-        return (disc, leading)
+        return disc
     }
 
     /// The storm log, in the Experimental Features mode only.

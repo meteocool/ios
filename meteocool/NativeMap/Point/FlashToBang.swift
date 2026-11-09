@@ -54,11 +54,11 @@ final class FlashToBang: NativeMapFeature {
         state.close = { [weak self] in self?.close() }
         state.showStrike = { [weak self] in self?.showStrike() }
 
-        // Under the logo, in the app's left column.
+        // Under the logo and the logbook, in the app's left column.
         let button = map.addChrome(FlashToBangButton(state: state))
         NSLayoutConstraint.activate([
             button.leadingAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            button.topAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.topAnchor, constant: 12 + 52 + 10),
+            button.topAnchor.constraint(equalTo: map.view.safeAreaLayoutGuide.topAnchor, constant: NativeMapView.leftColumnTop),
         ])
         button.isHidden = true
         self.button = button
@@ -332,7 +332,7 @@ private enum FlashText {
 
 // MARK: - Views
 
-/// The disc that opens the panel, under the logo.
+/// The disc that opens the panel, under the logo and the logbook.
 struct FlashToBangButton: View {
     @ObservedObject var state: FlashToBangState
 
