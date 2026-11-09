@@ -222,6 +222,21 @@ enum StormLogRules {
     /// The list's order, a `Sort`'s raw value.
     static let sortKey = "stormLogSort"
 
+    // MARK: New
+
+    /// The entries' ids when the user last opened the log, a `[String]`: what
+    /// ng logged since, in the background or not, puts a dot on the logbook.
+    /// Ids rather than a time, as the bell had, because ng may log a passage
+    /// a while after it started.
+    static let seenKey = "stormLogSeen"
+
+    /// How many entries the user has not seen yet; every one while the log
+    /// was never opened.
+    static func unseen(_ passages: [StormPassage], seen: [String]?) -> Int {
+        let seen = Set(seen ?? [])
+        return passages.filter { !seen.contains($0.id) }.count
+    }
+
     // MARK: Map
 
     /// The track's positions as (latitude, longitude), any malformed one left out.

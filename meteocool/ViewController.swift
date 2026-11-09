@@ -54,6 +54,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     let stormLogButton = UIButton(type: .system)
     /// The pill's glass element (iOS 26) or blur capsule (before), hidden with the logo.
     private var stormLogBackdrop: UIView?
+    /// The logbook's dot, for storms logged since the log was last opened.
+    private let stormLogDot = UIView()
+    private var stormLogUnseen = false
     /// Opens the past alerts, the rain alerts this phone received: the bell
     /// beside the logo.
     let alertsButton = UIButton(type: .system)
@@ -186,6 +189,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             installClassicARButton()
             installClassicStormLogButton()
         }
+        installStormLogDot()
         configureLogo()
         installDataLicencesButton()
         refreshExperimentalFeatures()
@@ -280,9 +284,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
                                                name: MeteocoolEnvironment.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(screenshotTaken),
                                                name: UIApplication.userDidTakeScreenshotNotification, object: nil)
-        // A Live Activity's alert was added to the past alerts: the bell's dot.
-        NotificationCenter.default.addObserver(self, selector: #selector(refreshAlertsBadge),
-                                               name: AlertHistory.didChange, object: nil)
+        // The log was opened: every entry is seen.
+        NotificationCenter.default.addObserver(self, selector: #selector(stormLogSeen),
+                                               name: StormLogViewController.didSee, object: nil)
         SharedLocationUpdater.addObserver(observer: self)
         self.willEnterForeground()
     }
@@ -448,7 +452,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     }
 
     @objc func didBecomeActive(){
-        refreshAlertsBadge()
+        refreshStormLogBadge()
         if let location = backgroundLocation {
             backgroundLocation = nil
             notify(location: location)
@@ -896,6 +900,7 @@ extension ViewController {
         logo.isHidden = hidden
         glassLogo?.isHidden = hidden
         stormLogBackdrop?.isHidden = hidden || !MeteocoolEnvironment.current.hasExperimentalFeatures
+        updateStormLogDot()
         alertsBackdrop?.isHidden = hidden
     }
 
@@ -1017,6 +1022,61 @@ extension ViewController {
         stormLogButton.addAction(UIAction { [weak self] _ in self?.openStormLog() }, for: .touchUpInside)
     }
 
+    /// A red dot at the book's top corner, in a ring of the background's
+    /// colour so it stands out on the glass and the map in either appearance,
+    /// as the system's badges do. VoiceOver reads "New Storms" with it.
+    /// Over the disc rather than in it: the glass lightens its content in
+    /// dark mode, which turns the red pink.
+    fileprivate func installStormLogDot() {
+        let red = UIView()
+        red.backgroundColor = .systemRed
+        red.layer.cornerRadius = 5
+        red.translatesAutoresizingMaskIntoConstraints = false
+        stormLogDot.backgroundColor = .systemBackground
+        stormLogDot.layer.cornerRadius = 7
+        stormLogDot.isUserInteractionEnabled = false
+        stormLogDot.isAccessibilityElement = false
+        stormLogDot.translatesAutoresizingMaskIntoConstraints = false
+        stormLogDot.accessibilityIdentifier = "map.stormLog.new"
+        stormLogDot.addSubview(red)
+        view.addSubview(stormLogDot)
+        NSLayoutConstraint.activate([
+            stormLogDot.widthAnchor.constraint(equalToConstant: 14),
+            stormLogDot.heightAnchor.constraint(equalToConstant: 14),
+            stormLogDot.centerXAnchor.constraint(equalTo: stormLogButton.centerXAnchor, constant: 13),
+            stormLogDot.centerYAnchor.constraint(equalTo: stormLogButton.centerYAnchor, constant: -11),
+            red.widthAnchor.constraint(equalToConstant: 10),
+            red.heightAnchor.constraint(equalToConstant: 10),
+            red.centerXAnchor.constraint(equalTo: stormLogDot.centerXAnchor),
+            red.centerYAnchor.constraint(equalTo: stormLogDot.centerYAnchor),
+        ])
+        showStormLogBadge(false)
+    }
+
+    private func showStormLogBadge(_ unseen: Bool) {
+        stormLogUnseen = unseen
+        stormLogButton.accessibilityValue = unseen ? NSLocalizedString("storm_log_new", value: "New Storms", comment: "") : nil
+        updateStormLogDot()
+    }
+
+    /// Shown with the logbook only, which the mode and covers hide.
+    fileprivate func updateStormLogDot() {
+        stormLogDot.isHidden = !stormLogUnseen || stormLogBackdrop?.isHidden != false
+    }
+
+    /// Reads the log again and draws the dot for what ng logged since the
+    /// user last opened it, in the background or not.
+    @objc func refreshStormLogBadge() {
+        Task { [weak self] in
+            let unseen = await StormLogViewController.unseen()
+            self?.showStormLogBadge(unseen > 0)
+        }
+    }
+
+    @objc private func stormLogSeen() {
+        showStormLogBadge(false)
+    }
+
     /// Before iOS 26 the logbook and the bell are blurred discs: the bell
     /// beside the logo artwork, the logbook under it.
     fileprivate func installClassicStormLogButton() {
@@ -1037,6 +1097,8 @@ extension ViewController {
     fileprivate func refreshStormLogButton() {
         let shown = MeteocoolEnvironment.current.hasExperimentalFeatures
         stormLogBackdrop?.isHidden = !shown || !covers.isEmpty
+        updateStormLogDot()
+        refreshStormLogBadge()
     }
 
     private func classicDisc(for button: UIButton) -> UIView {
@@ -1065,43 +1127,17 @@ extension ViewController {
         StormLogViewController.open(from: self)
     }
 
-    /// The bell: a red dot on it for alerts since the list was last opened,
-    /// as Better Rain Alarm's bell shows them.
+    /// The bell, opening the alerts this phone received. The list marks the
+    /// new ones; the bell itself has no dot (the logbook does).
     fileprivate func configureAlertsButton() {
         alertsButton.accessibilityLabel = NSLocalizedString("past_alerts_title", value: "Past Alerts", comment: "")
         alertsButton.accessibilityIdentifier = "map.alerts"
         alertsButton.addAction(UIAction { [weak self] _ in self?.openPastAlerts() }, for: .touchUpInside)
-        showAlertsBadge(false)
-    }
-
-    private func showAlertsBadge(_ unseen: Bool) {
-        let large = UIImage.SymbolConfiguration(scale: .large)
-        let image = unseen
-            ? UIImage(systemName: "bell.badge", withConfiguration: large.applying(UIImage.SymbolConfiguration(paletteColors: [.systemRed, .label])))
-            : UIImage(systemName: "bell", withConfiguration: large)
-        alertsButton.setImage(image, for: .normal)
-        alertsButton.accessibilityValue = unseen ? NSLocalizedString("past_alerts_new", value: "New", comment: "") : nil
-    }
-
-    /// Reads the list again, with the delivered alerts, and draws the dot.
-    @objc func refreshAlertsBadge() {
-        Task { [weak self] in
-            let unseen = await PastAlertsViewController.unseen()
-            self?.showAlertsBadge(unseen > 0)
-        }
+        alertsButton.setImage(UIImage(systemName: "bell", withConfiguration: UIImage.SymbolConfiguration(scale: .large)), for: .normal)
     }
 
     func openPastAlerts() {
-        let list = UINavigationController(rootViewController: PastAlertsViewController())
-        list.presentationController?.delegate = self
-        present(list, animated: true)
-    }
-}
-
-extension ViewController: UIAdaptivePresentationControllerDelegate {
-    /// The list marks the alerts seen; the dot goes once it is put away.
-    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        refreshAlertsBadge()
+        present(UINavigationController(rootViewController: PastAlertsViewController()), animated: true)
     }
 }
 

@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Pronađeni udar";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Dnevnik oluja";
+"storm_log_new" = "Nove oluje";
 "storm_log_unregistered" = "Oluja se bilježi kad prijeđe preko lokacije za koju primaš upozorenja na kišu. Uključi obavijesti i uvijek dopusti lokaciju.";
 "storm_log_failed" = "Dnevnik oluja nije moguće učitati.";
 "storm_log_retry" = "Pokušaj ponovno";

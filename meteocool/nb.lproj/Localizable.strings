@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Funnet nedslag";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Tordenværslogg";
+"storm_log_new" = "Nye tordenvær";
 "storm_log_unregistered" = "Tordenvær logges når det passerer over posisjonen du får regnvarsling for. Slå på varsler og tillat posisjonen alltid.";
 "storm_log_failed" = "Tordenværsloggen kunne ikke lastes inn.";
 "storm_log_retry" = "Prøv igjen";

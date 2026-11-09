@@ -121,8 +121,10 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
         load()
     }
 
+    private var token: String? { Self.registeredToken }
+
     /// The token the phone registered with, this launch's or the last one stored.
-    private var token: String? {
+    private static var registeredToken: String? {
         #if DEBUG && targetEnvironment(simulator)
         // The loopback recorder's synthetic token, as `NotificationManager` registers with.
         if NetworkHelper.simulatorTestAPI != nil { return String(repeating: "a", count: 64) }
@@ -154,7 +156,25 @@ final class StormLogViewController: UIViewController, UITableViewDataSource, UIT
             guard let self, !Task.isCancelled else { return }
             self.tableView.refreshControl?.endRefreshing()
             self.state = log.map { .loaded($0.entries) } ?? .failed
+            if let log { Self.markSeen(log.entries) }
         }
+    }
+
+    /// Posted once the list has shown every entry: the logbook's dot goes.
+    static let didSee = Notification.Name("StormLogDidSee")
+
+    private static func markSeen(_ passages: [StormPassage]) {
+        defaults?.set(passages.map(\.id), forKey: StormLogRules.seenKey)
+        NotificationCenter.default.post(name: didSee, object: nil)
+    }
+
+    /// Reads the log and says how many entries came since it was last
+    /// opened; none while it is off, about to be wiped, or unreadable.
+    static func unseen() async -> Int {
+        guard MeteocoolEnvironment.current.hasExperimentalFeatures, isEnabled,
+              defaults?.bool(forKey: StormLogRules.wipePendingKey) != true,
+              let token = registeredToken, let log = await fetch(token: token) else { return 0 }
+        return StormLogRules.unseen(log.entries, seen: defaults?.stringArray(forKey: StormLogRules.seenKey))
     }
 
     /// The log, or nil when it could not be read. Never cached on the phone.

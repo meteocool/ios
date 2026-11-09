@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Gevonden inslag";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Onweerslogboek";
+"storm_log_new" = "Nieuw onweer";
 "storm_log_unregistered" = "Onweer wordt vastgelegd als het over de locatie trekt waarvoor je regenmeldingen krijgt. Zet meldingen aan en sta de locatie altijd toe.";
 "storm_log_failed" = "Het onweerslogboek kon niet worden geladen.";
 "storm_log_retry" = "Probeer opnieuw";

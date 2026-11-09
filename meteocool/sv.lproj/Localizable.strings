@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Matchat nedslag";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Åskdagbok";
+"storm_log_new" = "Nya åskväder";
 "storm_log_unregistered" = "Åskväder loggas när de passerar över platsen du får regnvarningar för. Slå på notiser och tillåt alltid platsen.";
 "storm_log_failed" = "Åskdagboken kunde inte läsas in.";
 "storm_log_retry" = "Försök igen";

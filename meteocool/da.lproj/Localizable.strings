@@ -323,6 +323,7 @@
 "native_map_flash_bang_strike" = "Fundet nedslag";
 /* Storm log: list, entry, turning it on and off, sorting */
 "storm_log_title" = "Uvejrsdagbog";
+"storm_log_new" = "Nyt uvejr";
 "storm_log_unregistered" = "Uvejr logges, når et passerer over den placering, du får regnvarsler for. Slå notifikationer til, og tillad altid placeringen.";
 "storm_log_failed" = "Uvejrsdagbogen kunne ikke indlæses.";
 "storm_log_retry" = "Prøv igen";
