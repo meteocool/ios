@@ -11,7 +11,13 @@ extension RainForecast {
         guard interval > 0 else { return self }
         let index = Int(floor((date.timeIntervalSince1970 - TimeInterval(start)) / TimeInterval(interval)))
         var moved = self
-        moved.observed = min(max(observed, index), dbz.count)
+        moved.dbz = Array(dbz.prefix(endIndex))
+        if moved.dbz.count < dbz.count {
+            // Backend timing may treat the absent tail as a dry spell.
+            moved.headline = nil
+            moved.headlines = nil
+        }
+        moved.observed = min(max(observed, index), moved.dbz.count)
         return moved
     }
 
@@ -23,8 +29,10 @@ extension RainForecast {
         return window
     }
 
-    /// When the forecast runs out.
-    var end: Date { date(at: dbz.count) }
+    /// Empty slots beyond the available forecast do not extend its lifetime.
+    var end: Date { date(at: endIndex) }
+
+    private var endIndex: Int { (dbz.lastIndex { $0 != nil } ?? -1) + 1 }
 
     /// Minutes of rain at or above the threshold in the next `steps` steps.
     func rainMinutes(ahead steps: Int) -> Int {

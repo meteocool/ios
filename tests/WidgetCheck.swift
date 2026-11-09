@@ -12,11 +12,32 @@ struct WidgetCheck {
         let forecast = RainForecast(start: start, interval: 300, dbz: [0, 0, 0, 0, 25, 30, 22, 8, 0, 0, nil],
                                     observed: 2, threshold: 20)
 
+        let available = forecast.advanced(to: forecast.now)
+        precondition(available.dbz.count == 10 && available.phase == forecast.phase,
+                     "An absent forecast tail must not hide known upcoming rain")
+        precondition(forecast.end == Date(timeIntervalSince1970: 1_000_003_200),
+                     "The forecast must expire before its absent tail")
+        var gaps = forecast
+        gaps.dbz[4] = nil
+        precondition(gaps.advanced(to: gaps.now).dbz[4] == nil,
+                     "An internal gap must remain unknown")
+        gaps.dbz = [nil, nil]
+        precondition(gaps.advanced(to: gaps.now).dbz.isEmpty,
+                     "An entirely absent forecast must not become dry readings")
+        gaps.dbz = [0, 25, 25, nil, nil]
+        let ongoing = gaps.advanced(to: gaps.now)
+        precondition(ongoing.phase == .raining(end: nil),
+                     "An absent tail cannot prove that ongoing rain stops")
+        gaps.headline = .init(title: "Rain until {at:end}", times: ["end": start + 3 * 300])
+        gaps.headlines = [String(start + gaps.observed * 300): gaps.headline!]
+        precondition(gaps.advanced(to: gaps.now).currentHeadline == nil,
+                     "Backend wording inferred from the absent tail must not promise a rain end")
+
         // Now moves with the clock, a step at a time, and never back.
         precondition(forecast.advanced(to: Date(timeIntervalSince1970: TimeInterval(start + 2 * 300 + 10))).observed == 2)
         precondition(forecast.advanced(to: Date(timeIntervalSince1970: TimeInterval(start + 3 * 300 + 299))).observed == 3)
         precondition(forecast.advanced(to: Date(timeIntervalSince1970: TimeInterval(start))).observed == 2)
-        precondition(forecast.advanced(to: Date(timeIntervalSince1970: TimeInterval(start + 99 * 300))).observed == 11)
+        precondition(forecast.advanced(to: Date(timeIntervalSince1970: TimeInterval(start + 99 * 300))).observed == 10)
         // Rain two steps away becomes rain now once now has moved to it.
         let later = forecast.advanced(to: forecast.date(at: 5))
         precondition(later.phase == .raining(end: later.date(at: 7)), "\(later.phase)")
@@ -26,12 +47,12 @@ struct WidgetCheck {
         let window = forecast.advanced(to: forecast.date(at: 4)).window(past: 1, ahead: 3)
         precondition(window.observed == 2 && window.dbz == [0, 0, 25, 30, 22] && window.start == start + 2 * 300, "\(window)")
         precondition(forecast.rainMinutes(ahead: 6) == 15)
-        precondition(forecast.end == forecast.date(at: 11))
+        precondition(forecast.end == forecast.date(at: 10))
 
         // The backend's headlines follow now as it moves; past them, none.
         let json = """
         {"frames": {"1000000200": {"dbz": 0, "source": "observation"}, "1000000500": {"dbz": 30, "source": "observation"},
-                    "1000000800": {"dbz": 45, "source": "nowcast_phys"}, "1000001100": null},
+                    "1000000800": {"dbz": 45, "source": "nowcast_phys"}, "1000001100": {"dbz": 0, "source": "nowcast_phys"}},
          "headlines": {"1000000800": {"title": "Rain until {at:end}", "detail": null, "intensity": "Rain",
                                       "times": {"end": 1000001100}},
                        "1000001100": {"title": "No precipitation expected", "detail": null, "intensity": null,

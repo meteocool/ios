@@ -22,7 +22,7 @@ xcrun --sdk iphonesimulator swiftc -parse-as-library -swift-version 6 -sdk "$sdk
     meteocool/NativeMap/{RadarFrames,RadarWindow,RadarCoverage,RadarPixels,RadarTileStore,RadarCompositor,NativeMapEndpoints}.swift \
     Shared/*.swift meteocool/AR/Colormaps.swift \
     meteocool/lib/Environment.swift meteocool/lib/NetworkHelper.swift \
-    RainActivity/RainChart.swift RainActivity/Widgets/{RadarMapWidget,RadarMapLayout,RadarMapImage,NativeWidgetMap,RainPlacesWidget,RainEntry,WidgetParts,WidgetStore,WidgetPlace,WidgetOptions,WidgetIntents,PreviewCard,RainForecast+Widgets}.swift \
+    RainActivity/RainChart.swift RainActivity/Widgets/{RadarMapWidget,RadarMapLayout,RadarMapImage,NativeWidgetMap,RainPlacesWidget,RainClockWidget,RainEntry,WidgetParts,WidgetStore,WidgetPlace,WidgetOptions,WidgetIntents,PreviewCard,RainForecast+Widgets}.swift \
     tests/WidgetReviewCheck.swift tests/NativeWidgetMapCheck.swift tests/RadarMapLayoutCheck.swift \
     -o "$app/RadarWidgetCheck"
 cat > "$app/Info.plist" <<'PLIST'
@@ -47,7 +47,7 @@ for language in en de; do
     locale="en_US"
     if [ "$language" = de ]; then locale="de_DE"; fi
     xcrun simctl launch --console --terminate-running-process "$udid" \
-        org.meteocool.radar-widget-check -AppleLanguages "($language)" -AppleLocale "$locale" "${native_args[@]}"
+        org.meteocool.radar-widget-check -AppleLanguages "($language)" -AppleLocale "$locale" ${native_args[@]+"${native_args[@]}"}
 done
 container="$(xcrun simctl get_app_container "$udid" org.meteocool.radar-widget-check data)"
 for language in en de; do

@@ -57,7 +57,7 @@ struct RainClockView: View {
     var body: some View {
         Group {
             if let place = entry.entry.main {
-                if let forecast = place.forecast {
+                if let forecast = place.forecast, place.problem == nil {
                     content(place: place, forecast: forecast)
                 } else if let problem = place.problem {
                     switch family {
@@ -145,6 +145,7 @@ struct RainDial: View {
             let fullColour = renderingMode == .fullColor
             for offset in 0..<steps {
                 let index = first + offset
+                guard forecast.dbz.indices.contains(index), forecast.dbz[index]?.isFinite == true else { continue }
                 let dbz = forecast.value(at: index)
                 let counts = dbz >= forecast.threshold
                 let start = -90 + Double(offset) * sweep + gap / 2

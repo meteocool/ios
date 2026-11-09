@@ -73,6 +73,10 @@ enum NativeWidgetMap {
         guard let snapshot = try? await snapshotter.start(), let base = snapshot.image.cgImage,
               !Task.isCancelled else { return nil }
         timeout.cancel()
+        // MapKit can return the device's scale despite the requested scale.
+        let outputScale = min(1, 1200 / Double(max(base.width, base.height)))
+        let outputWidth = Int((Double(base.width) * outputScale).rounded())
+        let outputHeight = Int((Double(base.height) * outputScale).rounded())
 
         // Derive the projection from MapKit's actual output, which can adjust
         // the requested extent. Use it for both the radar and the place marker.
@@ -87,17 +91,17 @@ enum NativeWidgetMap {
         // Without the clipping document, adjacent countries would be missing.
         guard !coverage.domains.isEmpty else { return nil }
         let frame = RadarFrameRef(layers: layers, coverage: coverage)
-        let z = frame.zoom(for: RadarTileKey.zoom(forScale: Double(base.width) / visible.width))
+        let z = frame.zoom(for: RadarTileKey.zoom(forScale: Double(outputWidth) / visible.width))
         let tiles = frame.tiles(z: z, in: visible)
         guard !tiles.isEmpty, tiles.count <= 36,
               let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(data: nil, width: base.width, height: base.height,
-                                      bitsPerComponent: 8, bytesPerRow: base.width * 4, space: space,
+              let context = CGContext(data: nil, width: outputWidth, height: outputHeight,
+                                      bitsPerComponent: 8, bytesPerRow: outputWidth * 4, space: space,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        context.draw(base, in: CGRect(x: 0, y: 0, width: base.width, height: base.height))
+        context.draw(base, in: CGRect(x: 0, y: 0, width: outputWidth, height: outputHeight))
         context.interpolationQuality = .none
         let palette = RadarLUT(palette: style.colormap)
-        let pixelScale = Double(base.width) / snapshot.image.size.width
+        let pixelScale = Double(outputWidth) / snapshot.image.size.width
         for tile in tiles {
             let area = RadarTileKey.mapRect(z: z, x: tile.x, y: tile.y)
             var sources: [(RadarLayer, RadarTileKey, CGImage)] = []
@@ -121,7 +125,7 @@ enum NativeWidgetMap {
             let a = snapshot.point(for: area.origin.coordinate)
             let b = snapshot.point(for: MKMapPoint(x: area.maxX, y: area.maxY).coordinate)
             context.setAlpha(0.75)
-            context.draw(image, in: CGRect(x: a.x * pixelScale, y: Double(base.height) - b.y * pixelScale,
+            context.draw(image, in: CGRect(x: a.x * pixelScale, y: Double(outputHeight) - b.y * pixelScale,
                                            width: (b.x - a.x) * pixelScale, height: (b.y - a.y) * pixelScale))
         }
         guard !Task.isCancelled, let image = context.makeImage(), let png = UIImage(cgImage: image).pngData() else { return nil }

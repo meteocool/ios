@@ -53,6 +53,50 @@ struct RadarMapLayoutCheck: App {
         if !missingText.contains(String(localized: "widget_no_data")) {
             failures.append("A location with a missing current reading must show unavailable")
         }
+        let now = Int(sample.main!.forecast!.now.timeIntervalSince1970)
+        let partialJSON = """
+        {"frames":{"\(now-300)":{"source":"observation","dbz":0},
+         "\(now)":{"source":"nowcast_phys","dbz":0},
+         "\(now+300)":{"source":"nowcast_phys","dbz":25},
+         "\(now+600)":{"source":"nowcast_phys","dbz":25},"\(now+900)":null}}
+        """
+        let partial = RainForecast.fromTimeseries(Data(partialJSON.utf8), threshold: 20)!
+        let munich = PlaceRain(id: "munich", name: "Munich", isCurrent: true, location: location,
+                               forecast: partial, fetched: Date())
+        let partialTimeline = RainTimeline.entries(places: [munich], map: snapshot, now: partial.now)
+        precondition(partialTimeline.first!.main!.problem == nil,
+                     "A decoded forecast with an absent tail must still show upcoming rain")
+        precondition(partialTimeline.last!.date == Date(timeIntervalSince1970: TimeInterval(now + 900))
+                     && partialTimeline.last!.main!.forecast == nil,
+                     "The timeline must expire at the last available reading")
+        let partialRenderer = ImageRenderer(content: PlaceRow(place: partialTimeline.first!.main!, range: .nextHour)
+            .frame(width: 330, height: 80).background(.white))
+        let partialImage = partialRenderer.uiImage!
+        try! partialImage.pngData()!.write(to: directory.appendingPathComponent("partial-forecast-row.png"))
+        try! VNImageRequestHandler(cgImage: partialImage.cgImage!).perform([request])
+        let partialText = request.results!.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+        if !partialText.contains("Munich") || partialText.contains(String(localized: "widget_no_data")) {
+            failures.append("Upcoming rain must remain visible in the Places row: \(partialText)")
+        }
+        var dryDial = partial.advanced(to: partial.now)
+        dryDial.dbz = Array(repeating: 0, count: 13)
+        var partialDial = dryDial
+        partialDial.dbz = Array(partialDial.dbz.prefix(3))
+        func dial(_ forecast: RainForecast) -> UIImage {
+            ImageRenderer(content: RainDial(forecast: forecast, steps: 12, now: partial.now, lineWidth: 13, gap: 1.2)
+                .frame(width: 180, height: 180).background(.white)).uiImage!
+        }
+        if dial(partialDial).pngData() == dial(dryDial).pngData() {
+            failures.append("The Rain Clock must distinguish absent forecast segments from known dry weather")
+        }
+        func clock(_ place: PlaceRain) -> UIImage {
+            let entry = RainClockEntry(entry: RainEntry(date: partial.now, places: [place]), span: .hour)
+            return ImageRenderer(content: RainClockView(entry: entry)
+                .frame(width: 170, height: 170).background(.white)).uiImage!
+        }
+        if clock(missingPlace).pngData() != clock(missingPlace.withoutForecast()).pngData() {
+            failures.append("The Rain Clock must show the same unavailable state for missing current data and no forecast")
+        }
         let unavailableCenter = PlaceRain(id: "center", name: "Map Center", isCurrent: false, location: location,
                                           forecast: nil, fetched: nil)
         let validRow = PlaceRain(id: "row", name: "Alpha", isCurrent: false, location: location,
