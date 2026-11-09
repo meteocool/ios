@@ -61,9 +61,11 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// beside the logo.
     let alertsButton = UIButton(type: .system)
     private var alertsBackdrop: UIView?
-    /// Data Licenses, the web map's small print: under the control column,
-    /// where core keeps its credits. The native map has its own.
+    /// Data Licenses, the web map's small print: bottom right, just above
+    /// core's bottom panel (`bottomBarWatch`). The native map has its own.
     let dataLicencesButton = UIButton(type: .system)
+    /// Keeps Data Licenses on the top edge of core's bottom panel.
+    private var dataLicencesBottom: NSLayoutConstraint?
     /// Counts the logo's taps for its confetti; see `logoTapped`.
     private var logoTaps = TapRun(taps: 3, within: 1)
     /// The share button's blur disc before iOS 26. On iOS 26 it is one of the
@@ -606,6 +608,12 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
             if let share = MapShare(json: String(action.dropFirst("share:".count)), mapHost: MeteocoolEnvironment.current.webURL.host) {
                 presentShare(share)
             }
+            return
+        }
+
+        if message.name == "scriptHandler", action.hasPrefix("bottomBarTop:") {
+            let value = action.dropFirst("bottomBarTop:".count)
+            placeDataLicences(aboveBarAt: Double(value).map { CGFloat($0) * webView.scrollView.zoomScale })
             return
         }
 
@@ -1227,6 +1235,7 @@ extension ViewController {
         controller.removeAllUserScripts()
         controller.addUserScript(GeolocationBridge.userScript)
         controller.addUserScript(MapRecovery.graphicsWatch)
+        controller.addUserScript(Self.bottomBarWatch)
         let capabilities = arAvailable ? "{ share: true, ar: true }" : "{ share: true }"
         controller.addUserScript(WKUserScript(
             source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, \(capabilities));",
@@ -1377,19 +1386,21 @@ extension ViewController {
         }
     }
 
-    /// Small print, right-aligned under the control column (and the AR
-    /// button's place before iOS 26): opens Data Licences.
+    /// Small print, bottom right above core's bottom panel, where the page
+    /// reports it (`bottomBarWatch`): opens Data Licences.
     fileprivate func installDataLicencesButton() {
         var configuration = UIButton.Configuration.plain()
         configuration.title = NSLocalizedString("data_licences", comment: "licence")
         configuration.baseForegroundColor = .secondaryLabel
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 4, trailing: 4)
         configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var attributes = attributes
             attributes.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(for: .systemFont(ofSize: 10, weight: .medium))
             return attributes
         }
         dataLicencesButton.configuration = configuration
+        // The text on the panel's edge; the rest of the tap area above it.
+        dataLicencesButton.contentVerticalAlignment = .bottom
         // A halo, so it reads over the radar as well as the map.
         dataLicencesButton.layer.shadowColor = UIColor.systemBackground.cgColor
         dataLicencesButton.layer.shadowOpacity = 0.8
@@ -1403,12 +1414,71 @@ extension ViewController {
         dataLicencesButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(dataLicencesButton)
         let column: UIView = glassControls ?? arButtonBackdrop ?? shareButtonBackdrop ?? trippleButton
+        // Until the page reports its panel: over the home indicator's margin.
+        let bottom = dataLicencesButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8)
+        dataLicencesBottom = bottom
         NSLayoutConstraint.activate([
-            dataLicencesButton.topAnchor.constraint(equalTo: column.bottomAnchor, constant: 4),
+            bottom,
             dataLicencesButton.trailingAnchor.constraint(equalTo: column.trailingAnchor, constant: 4),
             dataLicencesButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             dataLicencesButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
         ])
+    }
+
+    /// Moves Data Licenses onto the top edge of core's bottom panel, `top`
+    /// points from the web view's top; nil when no panel is shown.
+    fileprivate func placeDataLicences(aboveBarAt top: CGFloat?) {
+        guard let bottom = dataLicencesBottom else { return }
+        bottom.isActive = false
+        let constraint: NSLayoutConstraint
+        if let top, top > 0, top < webView.bounds.height {
+            // The button's 44 pt tap area ends at the panel, never over it.
+            constraint = dataLicencesButton.bottomAnchor.constraint(equalTo: webView.topAnchor, constant: top)
+        } else {
+            constraint = dataLicencesButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8)
+        }
+        constraint.isActive = true
+        dataLicencesBottom = constraint
+    }
+
+    /// Reports the top of core's bottom panel (the timeline player or the
+    /// last-updated tray) as `bottomBarTop:<px>`, or `bottomBarTop:none`
+    /// while neither is shown, whenever it moves. Measured the way core's
+    /// Map.svelte measures what the trays occlude.
+    static var bottomBarWatch: WKUserScript {
+        let source = """
+        (() => {
+          let last = null, frame = 0;
+          const report = () => {
+            frame = 0;
+            const tops = [...document.querySelectorAll(".bottomToolbar, .timeslider")]
+              .filter((node) => node.getClientRects().length > 0)
+              .map((node) => node.getBoundingClientRect().top);
+            const value = tops.length ? String(Math.round(Math.min(...tops))) : "none";
+            if (value === last) return;
+            last = value;
+            window.webkit?.messageHandlers?.scriptHandler?.postMessage("bottomBarTop:" + value);
+          };
+          const schedule = () => { if (!frame) frame = requestAnimationFrame(report); };
+          const resize = new ResizeObserver(schedule);
+          let observed = new Set();
+          const sync = () => {
+            const nodes = new Set(document.querySelectorAll(".bottomToolbar, .timeslider"));
+            observed.forEach((node) => { if (!nodes.has(node)) resize.unobserve(node); });
+            nodes.forEach((node) => { if (!observed.has(node)) resize.observe(node); });
+            observed = nodes;
+            schedule();
+          };
+          const start = () => {
+            new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "style"] });
+            addEventListener("resize", schedule);
+            document.addEventListener("transitionend", schedule, true);
+            sync();
+          };
+          if (document.body) start(); else addEventListener("DOMContentLoaded", start);
+        })();
+        """
+        return WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     }
 
     /// Before iOS 26: a blurred disc of its own under the `TribbleButton`.
