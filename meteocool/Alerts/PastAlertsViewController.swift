@@ -5,7 +5,8 @@
 //  The rain alerts this phone received in the last two weeks, by day and
 //  newest first, behind the map's bell (Shared/AlertHistory.swift), as Better
 //  Rain Alarm lists them. Alerts that came since the list was last opened
-//  have a dot.
+//  have a dot. A swipe deletes one alert; the toolbar mutes the alerts, as
+//  Settings does (AlertMuteManager).
 //
 
 import UIKit
@@ -34,6 +35,13 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var days: [(day: Date, alerts: [ReceivedAlert])] = []
     private let seenBefore = PastAlertsViewController.seen ?? .distantPast
+    /// While "until the rain is over" looks for the rain to mute.
+    private var muting = false
+    private let muteItem: UIBarButtonItem = {
+        let item = UIBarButtonItem()
+        item.accessibilityIdentifier = "muteAlerts"
+        return item
+    }()
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -64,6 +72,9 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
             let presenter = self?.presentingViewController as? ViewController
             self?.dismiss(animated: true) { presenter?.refreshAlertsBadge() }
         })
+        NotificationCenter.default.addObserver(self, selector: #selector(renderMute),
+                                               name: NSNotification.Name("SettingsChanged"), object: nil)
+        renderMute()
         render(AlertHistory.load())
         Task { [weak self] in
             await Self.refresh()
@@ -91,9 +102,59 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
         tableView.reloadData()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setToolbarHidden(false, animated: false)
+    }
+
+    /// The toolbar's Mute Alerts: "Muted until …" while muted, with a menu
+    /// of the mute's lengths and Unmute.
+    @objc private func renderMute() {
+        let mute = SharedAlertMute.current
+        let title = NSLocalizedString("mute_alerts", comment: "dataPushNotification")
+        // Updated in place: a new item while its menu closes would open it again.
+        muteItem.title = mute.map(AlertMuteManager.describe) ?? title
+        muteItem.menu = SharedAlertMute.menu { [weak self] length in self?.mute(length) }
+        muteItem.isEnabled = !muting
+        muteItem.accessibilityLabel = title
+        muteItem.accessibilityValue = mute.map(AlertMuteManager.describe) ?? NSLocalizedString("mute_off", comment: "settings")
+        if toolbarItems == nil { toolbarItems = [.flexibleSpace(), muteItem, .flexibleSpace()] }
+    }
+
+    private func mute(_ length: AlertMute.Length) {
+        muting = true
+        renderMute()
+        Task {
+            let outcome = await SharedAlertMute.mute(length)
+            muting = false
+            renderMute()
+            if let alert = AlertMuteManager.alert(for: outcome) { present(alert, animated: true) }
+        }
+    }
+
+    /// Deletes one alert, here and from Notification Center, where `refresh`
+    /// would find it again.
+    private func delete(at indexPath: IndexPath) {
+        let alert = days[indexPath.section].alerts[indexPath.row]
+        AlertHistory.remove(alert.id)
+        if !alert.request.hasPrefix(ReceivedAlert.liveActivityPrefix) {
+            UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [alert.request])
+        }
+        days[indexPath.section].alerts.remove(at: indexPath.row)
+        if days[indexPath.section].alerts.isEmpty {
+            days.remove(at: indexPath.section)
+            tableView.deleteSections(IndexSet(integer: indexPath.section), with: .automatic)
+        } else {
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+        }
+        if days.isEmpty { render([]) }
+    }
+
     private func confirmClear() {
         let title = Self.text("past_alerts_clear_all", "Clear Past Alerts")
-        let sheet = UIAlertController(title: title, message: nil, preferredStyle: .actionSheet)
+        // The sheet explains what clearing means; its red button says what it does.
+        let message = Self.text("past_alerts_clear_message", "Alerts are stored only on this phone. Clear all?")
+        let sheet = UIAlertController(title: nil, message: message, preferredStyle: .actionSheet)
         sheet.addAction(UIAlertAction(title: title, style: .destructive) { [weak self] _ in
             AlertHistory.clear()
             self?.render([])
@@ -136,6 +197,15 @@ final class PastAlertsViewController: UIViewController, UITableViewDataSource, U
         cell.contentConfiguration = content
         cell.accessibilityLabel = new ? "\(alert.title), \(time), \(Self.text("past_alerts_new", "New"))" : "\(alert.title), \(time)"
         return cell
+    }
+
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let delete = UIContextualAction(style: .destructive, title: Self.text("past_alerts_delete", "Delete")) { [weak self] _, _, done in
+            self?.delete(at: indexPath)
+            done(true)
+        }
+        delete.image = UIImage(systemName: "trash")
+        return UISwipeActionsConfiguration(actions: [delete])
     }
 }
 

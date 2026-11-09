@@ -103,3 +103,51 @@ import CoreLocation
         return CLLocationCoordinate2D(latitude: defaults.double(forKey: "lat"), longitude: defaults.double(forKey: "lon"))
     }
 }
+
+// MARK: - Mute Alerts, as Settings and the past alerts offer it
+
+extension AlertMuteManager {
+    /// The mute's lengths, the current one ticked, and Unmute while muted.
+    func menu(_ mute: @escaping (AlertMute.Length) -> Void) -> UIMenu {
+        let muted = current
+        let lengths: [(AlertMute.Length, String)] = [(.day, "mute_day"), (.week, "mute_week"), (.rain, "mute_rain")]
+        var sections = [UIMenu(options: .displayInline, children: lengths.map { length, key in
+            UIAction(title: NSLocalizedString(key, comment: "settings"), state: muted?.length == length ? .on : .off) { _ in
+                mute(length)
+            }
+        })]
+        if muted != nil {
+            sections.append(UIMenu(options: .displayInline, children: [
+                UIAction(title: NSLocalizedString("mute_unmute", comment: "settings")) { [weak self] _ in self?.unmute() },
+            ]))
+        }
+        return UIMenu(title: muted.map(Self.describe) ?? "", children: sections)
+    }
+
+    /// "Muted until …": when the alerts come back.
+    static func describe(_ mute: AlertMute) -> String {
+        guard mute.length != .rain else {
+            if mute.openEnded { return NSLocalizedString("mute_until_rain", comment: "settings") }
+            return String(format: NSLocalizedString("mute_until_rain_about", comment: "settings"),
+                          mute.until.formatted(date: .omitted, time: .shortened))
+        }
+        let until = Calendar.current.isDateInToday(mute.until)
+            ? mute.until.formatted(date: .omitted, time: .shortened)
+            : mute.until.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+        return String(format: NSLocalizedString("mute_until", comment: "settings"), until)
+    }
+
+    /// Why a mute did not take, nil when it did.
+    static func alert(for outcome: Outcome) -> UIAlertController? {
+        let keys: (title: String, message: String)
+        switch outcome {
+        case .muted: return nil
+        case .noRain: keys = ("mute_no_rain_title", "mute_no_rain")
+        case .noForecast: keys = ("mute_no_forecast_title", "mute_no_forecast")
+        }
+        let alert = UIAlertController(title: NSLocalizedString(keys.title, comment: "settings"),
+                                      message: NSLocalizedString(keys.message, comment: "settings"), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: NSLocalizedString("mute_ok", comment: "settings"), style: .default))
+        return alert
+    }
+}

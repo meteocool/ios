@@ -132,6 +132,14 @@ enum AlertHistory {
         return Array(alerts.prefix(limit))
     }
 
+    /// Removes one alert, swiped away in the list.
+    static func remove(_ id: ReceivedAlert.ID, from file: URL = file) {
+        var error: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: file, options: .forMerging, error: &error) { url in
+            write(read(url).filter { $0.id != id }, to: url)
+        }
+    }
+
     static func clear(_ file: URL = file) {
         var error: NSError?
         NSFileCoordinator().coordinate(writingItemAt: file, options: .forDeleting, error: &error) { url in

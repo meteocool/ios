@@ -69,6 +69,9 @@ enum AlertHistoryCheck {
         AlertHistory.add([first], now: now, to: file)
         AlertHistory.add([again, cabin], now: now, to: file)
         check(AlertHistory.load(from: file).map(\.request) == ["r3", "r1"], "the file round-trips")
+        let swiped = AlertHistory.load(from: file)[0]
+        AlertHistory.remove(swiped.id, from: file)
+        check(AlertHistory.load(from: file).map(\.request) == ["r1"], "removing one alert keeps the others")
         AlertHistory.clear(file)
         check(AlertHistory.load(from: file).isEmpty, "cleared")
         print("AlertHistoryCheck passed")

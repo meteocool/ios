@@ -476,7 +476,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let title = UILabel()
         title.text = dataPushNotification[3]
         let detail = UILabel()
-        detail.text = mute.map(Self.describe)
+        detail.text = mute.map(AlertMuteManager.describe)
         detail.isHidden = mute == nil
 
         var configuration = UIButton.Configuration.plain()
@@ -492,18 +492,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let button = UIButton(configuration: configuration)
         button.isEnabled = !muting
         button.showsMenuAsPrimaryAction = true
-        let lengths: [(AlertMute.Length, String)] = [(.day, "mute_day"), (.week, "mute_week"), (.rain, "mute_rain")]
-        var sections = [UIMenu(options: .displayInline, children: lengths.map { length, key in
-            UIAction(title: NSLocalizedString(key, comment: "settings"), state: mute?.length == length ? .on : .off) { [weak self] _ in
-                self?.mute(length)
-            }
-        })]
-        if mute != nil {
-            sections.append(UIMenu(options: .displayInline, children: [
-                UIAction(title: NSLocalizedString("mute_unmute", comment: "settings")) { _ in SharedAlertMute.unmute() },
-            ]))
-        }
-        button.menu = UIMenu(children: sections)
+        button.menu = SharedAlertMute.menu { [weak self] length in self?.mute(length) }
         button.accessibilityLabel = title.text
         button.accessibilityValue = detail.text ?? configuration.title
         button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
@@ -513,19 +502,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         return cell
     }
 
-    /// "Muted until …": when the alerts come back.
-    private static func describe(_ mute: AlertMute) -> String {
-        guard mute.length != .rain else {
-            if mute.openEnded { return NSLocalizedString("mute_until_rain", comment: "settings") }
-            return String(format: NSLocalizedString("mute_until_rain_about", comment: "settings"),
-                          mute.until.formatted(date: .omitted, time: .shortened))
-        }
-        let until = Calendar.current.isDateInToday(mute.until)
-            ? mute.until.formatted(date: .omitted, time: .shortened)
-            : mute.until.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
-        return String(format: NSLocalizedString("mute_until", comment: "settings"), until)
-    }
-
     private func mute(_ length: AlertMute.Length) {
         muting = true
         settingsTable.reloadData()
@@ -533,16 +509,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let outcome = await SharedAlertMute.mute(length)
             muting = false
             settingsTable.reloadData()
-            let keys: (title: String, message: String)
-            switch outcome {
-            case .muted: return
-            case .noRain: keys = ("mute_no_rain_title", "mute_no_rain")
-            case .noForecast: keys = ("mute_no_forecast_title", "mute_no_forecast")
-            }
-            let alert = UIAlertController(title: NSLocalizedString(keys.title, comment: "settings"),
-                                          message: NSLocalizedString(keys.message, comment: "settings"), preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: NSLocalizedString("mute_ok", comment: "settings"), style: .default))
-            present(alert, animated: true)
+            if let alert = AlertMuteManager.alert(for: outcome) { present(alert, animated: true) }
         }
     }
 
