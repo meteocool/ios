@@ -84,6 +84,8 @@ struct RainActivityLayoutCheck: App {
             precondition(!expected.isEmpty, "Title reference must render")
             for (size, width, height) in sizes {
                 for large in [false, true] {
+                    // The phone's appearance. CarPlay and the watch draw the
+                    // small layout on a dark tile either way.
                     for dark in [true, false] {
                         let id = "\(name)-\(size)-\(large ? "large" : "normal")-\(dark ? "dark" : "light")"
                         let view = ActivityContentView(forecast: state, stale: stale)
@@ -92,7 +94,7 @@ struct RainActivityLayoutCheck: App {
                             .environment(\.dynamicTypeSize, large ? .xxxLarge : .large)
                             .environment(\.colorScheme, dark ? .dark : .light)
                             .frame(width: width, height: height)
-                            .background(dark ? Color.black : Color.white)
+                            .background(Color.black)
                             .clipped()
                         let image = render(view)
                         try! image.pngData()!.write(to: directory.appendingPathComponent("\(id).png"))
