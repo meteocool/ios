@@ -68,6 +68,11 @@ private struct ActivityContentView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
+            // CarPlay draws this on a dark tile but hands it the phone's
+            // appearance, which left black text on black in light mode.
+            // Dark on a dark tint, as on the watch, whatever the phone's.
+            .environment(\.colorScheme, .dark)
+            .activityBackgroundTint(.black)
         } else {
             lockScreen
         }
