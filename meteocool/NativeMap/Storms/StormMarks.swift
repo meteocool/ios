@@ -418,6 +418,8 @@ final class StormMarks: NativeMapFeature {
         if !visible || step.isForecast {
             store.show(.hidden)
         } else if step.isLive || step.time == nil {
+            // A new scan on the live step: the storms' ages count from it.
+            if store.frame == .now { redraw() }
             store.show(.now)
         } else if let time = step.time {
             store.show(.at(Double(time) * 1000))
@@ -551,7 +553,7 @@ final class StormMarks: NativeMapFeature {
             return
         }
         let now = Date().timeIntervalSince1970 * 1000
-        let reference = store.at ?? now
+        let reference = StormPulse.reference(at: store.at, newestScan: map.player.timeline.now, clock: now)
         drawn = StormDrawing.drawStorms(store.held, now: reference, reference: reference, selection: store.selection, at: store.at,
                                         hidden: map.model.hiddenStormMarks)
         let picked = StormDrawing.selectedMark(store.selection)

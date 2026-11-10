@@ -1043,6 +1043,18 @@ struct NativeMapStormsCheck {
             precondition(!D.covers(nil, D.Extent(west: 1, south: 1, east: 9, north: 9)))
             precondition(D.padExtent(D.Extent(west: 0, south: 0, east: 4, north: 2), 0.25) == D.Extent(west: -1, south: -0.5, east: 5, north: 2.5))
         }
+        test("in the present, storms age from the newest scan, not the clock") {
+            let clock = T0
+            let scan = Int(T0 / 1000) - 5 * 60
+            precondition(StormPulse.reference(at: nil, newestScan: scan, clock: clock) == Double(scan) * 1000)
+            precondition(StormPulse.reference(at: nil, newestScan: nil, clock: clock) == clock)
+            precondition(StormPulse.reference(at: nil, newestScan: Int(T0 / 1000) + 300, clock: clock) == clock, "never ahead of the clock")
+            precondition(StormPulse.reference(at: T0 - 600_000, newestScan: scan, clock: clock) == T0 - 600_000, "a past frame keeps its own")
+            // The tracker's newest run, 12 minutes behind the clock and 7 behind the scan: live.
+            let seen = storm(sid("S")) { $0.lastSeen = at(-12) }
+            let reference = StormPulse.reference(at: nil, newestScan: scan, clock: clock)
+            precondition(D.drawStorms([seen], now: reference, reference: reference, selection: nil, at: nil).pings.count == 1)
+        }
         test("age opacity is bucketed to 1, 0.6, 0.4 and 0.2") {
             precondition([0.0, 19, 20, 39, 40, 59, 60, 300].map(D.ageOpacity) == [1, 1, 0.6, 0.6, 0.4, 0.4, 0.2, 0.2])
         }
