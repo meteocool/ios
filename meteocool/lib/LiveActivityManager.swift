@@ -71,6 +71,7 @@ import UIKit
             }
         }
         Activity<RainActivityAttributes>.activities.forEach { observe($0, arrivedNow: false) }
+        dismissEnded()
     }
 
     /// Follows one activity's token and end. An activity the backend started
@@ -94,6 +95,7 @@ import UIKit
                 activityTokens[id] = nil
                 observed.remove(id)
                 sync()
+                if state == .ended { dismissEnded() }
                 break
             }
         }
@@ -129,6 +131,7 @@ import UIKit
     }
 
     @objc private func applicationBecameActive() {
+        dismissEnded()
         syncRetries = 0
         sync()
     }
@@ -248,6 +251,21 @@ import UIKit
         for activity in activities {
             let id = activity.id
             Task { await Self.end(id, content: nil, dismissalPolicy: immediately ? .immediate : .default) }
+        }
+        dismissEnded()
+    }
+
+    /// Takes every ended activity off the lock screen at once.
+    ///
+    /// iOS ends an activity itself after eight hours of rain and leaves it on
+    /// the lock screen for up to four more, saying the rain of a forecast long
+    /// gone. Its token is dead by then, so the backend cannot reach it, and a
+    /// switch of deployment no longer knows it. The backend's own end
+    /// dismisses at once; this does the same for every other end.
+    private func dismissEnded() {
+        for activity in Activity<RainActivityAttributes>.activities where activity.activityState == .ended {
+            let id = activity.id
+            Task { await Self.end(id, content: nil, dismissalPolicy: .immediate) }
         }
     }
 
