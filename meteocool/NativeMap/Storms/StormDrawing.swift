@@ -350,6 +350,15 @@ enum StormPulse {
     static let liveMinutes = 10.0
     static func isLive(_ minutes: Double) -> Bool { minutes <= liveMinutes }
 
+    /// The moment storms' ages count from (ms): the frame on screen, or in
+    /// the present the newest scan, as a past step counts from its own. The
+    /// tracker finishes a scan minutes after its time, so counted from the
+    /// clock the storms it had just seen were already ten minutes old, no
+    /// longer live, and hidden zoomed out.
+    static func reference(at: Double?, newestScan: Int?, clock: Double) -> Double {
+        at ?? newestScan.map { min(Double($0) * 1000, clock) } ?? clock
+    }
+
     /// From this zoom on, storms no longer live are drawn.
     static let endedMinZoom = 10.0
     /// Web Mercator's metres per point at zoom 0.
