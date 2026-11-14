@@ -38,10 +38,16 @@ extension URLSession {
 
 final class LocationManagerSpy: CLLocationManager {
     var stops = 0
-    override var authorizationStatus: CLAuthorizationStatus { .authorizedAlways }
+    var status: CLAuthorizationStatus = .authorizedAlways
+    override var authorizationStatus: CLAuthorizationStatus { status }
     override func stopUpdatingLocation() { stops += 1 }
     override func startMonitoringSignificantLocationChanges() {}
     override func stopMonitoringSignificantLocationChanges() {}
+}
+
+@MainActor final class LocationObserverSpy: NSObject, LocationObserver {
+    var locations: [CLLocation] = []
+    func notify(location: CLLocation) { locations.append(location) }
 }
 
 // Completes each request after 0.5 s, so the second queued fix expires while
@@ -90,6 +96,28 @@ final class DelayedTransport: URLProtocol, @unchecked Sendable {
         updater.postLocation(location: fix(age: 0), pressure: -1)
         try await Task.sleep(for: .seconds(0.8))
         precondition(DelayedTransport.requests == 2, "A fresh fix must still be sent after skipping stale work")
-        print("CarPlay ownership and delayed location queue checks passed")
+
+        let defaults = updater.userDefaults!
+        let keys = ["lat", "lon", "accuracy", "locationTime"]
+        let saved = keys.map { defaults.object(forKey: $0) }
+        defer {
+            for (key, value) in zip(keys, saved) { defaults.set(value, forKey: key) }
+        }
+        let observer = LocationObserverSpy()
+        updater.addObserver(observer: observer)
+        SharedNotificationManager.canRegister = false
+        manager.status = .denied
+        let late = CLLocation(latitude: 49, longitude: 12)
+        updater.locationManager(manager, didUpdateLocations: [late])
+        precondition(observer.locations.isEmpty, "A late fix after revocation must not reach maps or CarPlay")
+        precondition(keys.indices.allSatisfy { index in
+            (defaults.object(forKey: keys[index]) as? NSNumber) == (saved[index] as? NSNumber)
+        }, "A late fix after revocation must not overwrite widget location storage")
+
+        manager.status = .authorizedWhenInUse
+        updater.locationManager(manager, didUpdateLocations: [late])
+        precondition(observer.locations.count == 1, "Authorized fixes must still reach observers when rain alerts are off")
+        precondition(defaults.double(forKey: "lat") == 49 && defaults.double(forKey: "lon") == 12)
+        print("CarPlay ownership, delayed queue and revoked location checks passed")
     }
 }

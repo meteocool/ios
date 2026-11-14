@@ -32,20 +32,27 @@ enum WebCache {
     }
 
     /// Measures the cache off the main thread and clears it when it is over `limit`.
-    @MainActor static func trimIfNeeded() {
-        guard let directory else { return }
+    @discardableResult
+    @MainActor static func trimIfNeeded() -> Task<Void, Never>? {
+        guard let directory else { return nil }
         var task = UIBackgroundTaskIdentifier.invalid
         task = UIApplication.shared.beginBackgroundTask(withName: "WebCache.trim") {
+            guard task != .invalid else { return }
             UIApplication.shared.endBackgroundTask(task)
+            task = .invalid
         }
-        let id = task
-        Task { @MainActor in
+        guard task != .invalid else { return nil }
+        return Task { @MainActor in
             let size = await Task.detached(priority: .utility) { allocatedSize(of: directory) }.value
+            guard task != .invalid else { return }
             if size > limit {
                 NSLog("WebCache: \(size / 1024 / 1024) MB is over the limit, clearing")
                 await WKWebsiteDataStore.default().removeData(ofTypes: dataTypes, modifiedSince: .distantPast)
             }
-            UIApplication.shared.endBackgroundTask(id)
+            if task != .invalid {
+                UIApplication.shared.endBackgroundTask(task)
+                task = .invalid
+            }
         }
     }
 

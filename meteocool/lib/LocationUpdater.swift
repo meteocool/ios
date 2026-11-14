@@ -231,7 +231,8 @@ import CoreLocation
             background = false
         }
 
-        if let location = locations.last, location.horizontalAccuracy >= 0,
+        if authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse,
+           let location = locations.last, location.horizontalAccuracy >= 0,
            abs(location.timestamp.timeIntervalSinceNow) < 300 {
             if SharedNotificationManager.canRegister && (background || decideSignificantChange(old: self.lastPostedLocation, new: location)) {
                 // take pressure measurement and send json request
