@@ -59,7 +59,8 @@ final class StormStore: ObservableObject {
     /// The box the held storms were asked for.
     private var fetched: StormDrawing.Extent?
     private var token = 0
-    private var lastSeenAtDetail: [String: String] = [:]
+    /// Each storm's newest detail, so one reopened shows its history at once.
+    private var detailCache = StormSelect.DetailCache()
     private var detailInFlight: String?
     private var familyRoot: String?
     private var familyIncomplete = false
@@ -201,10 +202,15 @@ final class StormStore: ObservableObject {
             return
         }
         if let id = selection.id {
-            let seen = selection.summary?.properties.lastSeen ?? ""
-            if selection.detail == nil || (lastSeenAtDetail[id].map { seen > $0 } ?? false) {
-                fetchDetail(id, key: "detail:\(id)@\(seen)")
+            if let detail = selection.detail { detailCache.remember(detail) }
+            if let reopened = detailCache.reopened(selection) {
+                // Reopened: the history it had, at once; the change brings
+                // this back, to ask for a newer detail if the list has one.
+                self.selection = reopened
+                return
             }
+            let seen = selection.summary?.properties.lastSeen ?? ""
+            if detailCache.wantsFetch(selection) { fetchDetail(id, key: "detail:\(id)@\(seen)") }
         } else if let cell = selection.cell {
             resolveSeed(cell)
         }
@@ -224,10 +230,14 @@ final class StormStore: ObservableObject {
         let asked = StormSelect.selectionKey(selection)
         map.fetch(map.endpoints.data.appendingPathComponent("storms/\(id)")) { [weak self] data, status in
             guard let self else { return }
-            self.detailInFlight = nil
+            if self.detailInFlight == key { self.detailInFlight = nil }
+            let detail = data.flatMap(StormJSON.detail)
+            // Kept whatever is open now: a storm left before its detail
+            // landed shows it when tapped again. One that failed is asked
+            // again the next time it is opened.
+            if let detail { self.detailCache.remember(detail) }
             guard StormSelect.selectionKey(self.selection) == asked else { return }
-            if let data, let detail = StormJSON.detail(data), let next = StormSelect.withDetail(self.selection, detail) {
-                self.lastSeenAtDetail[id] = detail.storm.properties.lastSeen
+            if let detail, let next = StormSelect.withDetail(self.selection, detail) {
                 self.selection = next
                 self.revision += 1
             } else if status == 404, self.selection?.summary == nil {

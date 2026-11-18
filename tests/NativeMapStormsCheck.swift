@@ -2,8 +2,8 @@ import Foundation
 
 /// Checks the native map's storm rules (`meteocool/NativeMap/Storms`) with
 /// core's own tests, one for one: `scripts/tests/stormMarks.test.ts`,
-/// `stormSelection.test.ts`, `stormStore.test.ts`, `cellKnownVolume.test.ts`,
-/// `cellSelection.test.ts`, `cellPlacement.test.ts`, `cellRecency.test.ts`,
+/// `stormSelection.test.ts`, `stormResolver.test.ts`, `stormStore.test.ts`,
+/// `cellKnownVolume.test.ts`, `cellSelection.test.ts`, `cellPlacement.test.ts`, `cellRecency.test.ts`,
 /// `cellStatus.test.ts`, `cellLineage.test.ts`, `cellPulse.test.ts`,
 /// `timeTicks.test.ts`, `swipeAway.test.ts` and `mesocyclones.test.ts`,
 /// then the native extras.
@@ -23,6 +23,7 @@ struct NativeMapStormsCheck {
     static func main() {
         stormMarks()
         stormSelection()
+        stormResolver()
         stormStore()
         cellKnownVolume()
         cellSelection()
@@ -310,6 +311,23 @@ struct NativeMapStormsCheck {
             precondition(StormSelect.sourcesOf(StormSelect.withCell(nil, cell("K1"))) == [.dwd])
             precondition(StormSelect.sourcesOf(StormSelect.withVolume(nil, volume("v1"))) == [.meteocool])
         }
+        test("a newer detail without history keeps the older one's") {
+            let of = storm(A)
+            let older = detail(of, konrad3d: [cell("C1")], tracks: [trackerTrack("t1", [feature("core-1", -5), feature("core-2", 0)])])
+            let kept = S.keepHistory(detail(of), older)
+            precondition(kept.tracks.first?.features.count == 2)
+            precondition(kept.konrad3d.first?.code == "C1")
+            // Through the selection too: the panel's history does not empty on a refresh.
+            let open = S.withDetail(S.fromStorm(of), older)!
+            precondition(S.withDetail(open, detail(of))!.detail?.tracks.count == 1)
+        }
+        test("a newer detail with history replaces the older one's, and another storm's is never mixed in") {
+            let older = detail(storm(A), tracks: [trackerTrack("t1", [feature("core-1", -5)])])
+            let newer = detail(storm(A), tracks: [trackerTrack("t1", [feature("core-1", -5), feature("core-2", 0)])])
+            precondition(S.keepHistory(newer, older) == newer)
+            let other = detail(storm(B))
+            precondition(S.keepHistory(other, older) == other)
+        }
 
         test("a storm tapped on the map is selected by its id, with nothing else known yet") {
             let s = S.fromStorm(storm(A))
@@ -490,6 +508,62 @@ struct NativeMapStormsCheck {
             let seed = S.withCell(nil, cell("C1") { $0.firstSeen = at(-20) })
             precondition(S.existedBy(seed, minute(-10)) && !S.existedBy(seed, minute(-25)))
             precondition(!S.existedBy(S.withVolume(nil, volume("v")), minute(0)))
+        }
+    }
+
+    // MARK: - stormResolver.test.ts (its detail cache: `StormSelect.DetailCache`)
+
+    /// Reopening a storm must bring its detail back, whether or not the
+    /// backend is asked again.
+    static func stormResolver() {
+        let A = sid("A"), B = sid("B")
+        typealias S = StormSelect
+        func full(_ id: String) -> StormDetail {
+            detail(storm(id), tracks: [trackerTrack("\(id)-t", [feature("\(id)-1", -10), feature("\(id)-2", -5), feature("\(id)-3", 0)])])
+        }
+        test("a storm reopened in the same cycle gets its detail back") {
+            var cache = S.DetailCache()
+            let open = S.withDetail(S.fromStorm(storm(A)), full(A))!
+            cache.remember(open.detail!)
+            // Closed, then tapped again before the storm has moved on.
+            let again = cache.reopened(S.fromStorm(storm(A)))!
+            precondition(again.detail?.tracks.first?.features.count == 3)
+            precondition(!cache.wantsFetch(again), "nothing newer to ask for")
+        }
+        test("a storm left before its detail landed gets it when tapped again") {
+            var cache = S.DetailCache()
+            // A's detail lands while B is open: kept all the same.
+            cache.remember(full(A))
+            precondition(cache.reopened(S.fromStorm(storm(B))) == nil)
+            precondition(cache.reopened(S.fromStorm(storm(A)))?.detail?.storm.id == A)
+        }
+        test("a detail that failed to load is asked for again") {
+            let cache = S.DetailCache()
+            let reopened = S.fromStorm(storm(A))
+            precondition(cache.reopened(reopened) == nil)
+            precondition(cache.wantsFetch(reopened))
+        }
+        test("a refresh that comes back without history keeps the history already shown") {
+            var cache = S.DetailCache()
+            cache.remember(full(A))
+            cache.remember(detail(storm(A)))
+            precondition(cache.byId[A]?.tracks.first?.features.count == 3)
+            let open = S.withDetail(S.fromStorm(storm(A)), full(A))!
+            precondition(S.withDetail(open, detail(storm(A)))?.detail?.tracks.first?.features.count == 3)
+        }
+        test("a reopened storm keeps the list's newer header, which asks for a newer detail") {
+            var cache = S.DetailCache()
+            cache.remember(full(A))
+            let newer = storm(A) { $0.lastSeen = at(5) }
+            let again = cache.reopened(S.fromStorm(newer))!
+            precondition(again.summary == newer && again.detail?.tracks.first?.features.count == 3)
+            precondition(cache.wantsFetch(again))
+        }
+        test("an older detail never replaces a newer one held") {
+            var cache = S.DetailCache()
+            cache.remember(detail(storm(A) { $0.lastSeen = at(5) }))
+            cache.remember(full(A))
+            precondition(cache.byId[A]?.storm.properties.lastSeen == at(5))
         }
     }
 
