@@ -68,6 +68,9 @@ struct StormDrawingResult: Equatable, Sendable {
     /// The joins, drawn underneath.
     var links: [StormMark] = []
     var pings: [StormPing] = []
+    /// Every storm still being seen where it is drawn: what a mesocyclone is
+    /// matched against (`MesocycloneRules`).
+    var live: [LiveStorm] = []
 }
 
 enum StormDrawing {
@@ -201,6 +204,7 @@ enum StormDrawing {
                     let history = max(0, (StormTime.ms(p.lastSeen) - StormTime.ms(p.bornAt)) / 60_000)
                     result.pings.append(StormPing(storm: p.id, severity: severity, coordinates: storm.geometry, historyMinutes: history))
                 }
+                if live { result.live.append(LiveStorm(storm: p.id, coordinates: storm.geometry)) }
                 // Only the selected storm's outline is known, and only in the present.
                 if p.id == selected, at == nil, let outline = StormSelect.outlineOf(selection) {
                     result.marks.append(mark(.outline, "\(p.id):outline", .polygon(outline)))

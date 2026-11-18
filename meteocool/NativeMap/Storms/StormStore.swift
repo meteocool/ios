@@ -3,8 +3,8 @@
 //  meteocool
 //
 //  The storms the map holds and the one selected: core's `selectedStorm`,
-//  `stormDetails`, `lib/stormResolver.ts` and the family walk of
-//  `StormDetails.svelte`.
+//  `stormDetails`, `lib/stormResolver.ts`, `lib/StormManager.ts` (fetching
+//  half) and the family walk of `StormDetails.svelte`.
 //
 
 import Foundation

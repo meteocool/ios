@@ -5,7 +5,8 @@ import Foundation
 /// `stormSelection.test.ts`, `stormStore.test.ts`, `cellKnownVolume.test.ts`,
 /// `cellSelection.test.ts`, `cellPlacement.test.ts`, `cellRecency.test.ts`,
 /// `cellStatus.test.ts`, `cellLineage.test.ts`, `cellPulse.test.ts`,
-/// `timeTicks.test.ts` and `swipeAway.test.ts`, then the native extras.
+/// `timeTicks.test.ts`, `swipeAway.test.ts` and `mesocyclones.test.ts`,
+/// then the native extras.
 @main
 struct NativeMapStormsCheck {
     static var count = 0
@@ -32,6 +33,7 @@ struct NativeMapStormsCheck {
         cellPulse()
         timeTicks()
         swipeAway()
+        mesocyclones()
         cloudHints()
         decoding()
         extras()
@@ -1113,6 +1115,38 @@ struct NativeMapStormsCheck {
             precondition(layout.edges.count == 2 && a.isSelf && a.peak == "55 dBZ")
             precondition(layout.nowX != nil && layout.width >= layout.nowX! + 12)
             precondition(layout.height == 8 + 2 * StormRules.nodeH + 10 + StormRules.axisH)
+        }
+    }
+
+    // MARK: - mesocyclones.test.ts
+
+    static func mesocyclones() {
+        typealias M = MesocycloneRules
+        // A tap on a mesocyclone opens the storm it turns in: the tracked one
+        // nearest it, if any is near enough to be its own.
+        let storms = [
+            LiveStorm(storm: "far", coordinates: LonLat(10.0, 50.0)),
+            LiveStorm(storm: "near", coordinates: LonLat(10.3, 50.0)),
+            LiveStorm(storm: "nearer", coordinates: LonLat(10.36, 50.01)),
+        ]
+        test("a mesocyclone is the nearest tracked storm's") {
+            precondition(M.stormAt(storms, lon: 10.37, lat: 50.0) == "nearer")
+            precondition(M.stormAt(storms, lon: 10.01, lat: 50.0) == "far")
+        }
+        test("a mesocyclone no storm is near belongs to none") {
+            // 0.3° of longitude at 50° north is about 21 km.
+            precondition(M.stormAt(Array(storms.prefix(1)), lon: 10.3, lat: 50.0) == nil)
+            precondition(M.stormAt([], lon: 10.3, lat: 50.0) == nil)
+            precondition(M.stormWithinM < 21_000)
+        }
+        test("a stronger mesocyclone is a larger ring to tap") {
+            precondition(M.radiusPx(5) > M.radiusPx(1))
+            precondition(M.radiusPx(1) >= 10)
+        }
+        test("a live storm is one a mesocyclone can be matched to, where it is drawn") {
+            let A = sid("A"), B = sid("B")
+            let d = StormDrawing.drawStorms([storm(A), storm(B) { $0.lastSeen = at(-15) }], now: T0, reference: T0, selection: nil, at: nil)
+            precondition(d.live == [LiveStorm(storm: A, coordinates: LonLat(10.1, 50.05))])
         }
     }
 

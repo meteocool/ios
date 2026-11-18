@@ -2,8 +2,8 @@
 //  StormMarks.swift
 //  meteocool
 //
-//  Tracked storms on the native map: core's `StormManager` (drawing half),
-//  `layers/cells.ts` and `layers/cellPulse.ts`.
+//  Tracked storms on the native map: core's `lib/StormManager.ts` (drawing
+//  half), `layers/cells.ts` and `layers/cellPulse.ts`.
 //
 
 import Combine
@@ -244,6 +244,7 @@ final class StormDiscView: MKAnnotationView {
         ring.zPosition = -1
         accessibilityLabel = storm.label
         accessibilityIdentifier = "nativeMap.storm.\(storm.id)"
+        accessibilityTraits = look.picked ? [.button, .selected] : .button
     }
 }
 
@@ -452,6 +453,15 @@ final class StormMarks: NativeMapFeature {
         case is StormLeadAnnotation: return mapView.dequeueReusableAnnotationView(withIdentifier: StormLeadView.reuse, for: annotation)
         default: return nil
         }
+    }
+
+    /// A tap on a mesocyclone's ring: the tracked storm it turns in, as
+    /// drawn (`MesocycloneRules`), as though that storm were tapped.
+    func openStorm(atMesocyclone coordinate: CLLocationCoordinate2D) -> Bool {
+        guard visible, store.frame != .hidden,
+              let id = MesocycloneRules.stormAt(drawn.live, lon: coordinate.longitude, lat: coordinate.latitude) else { return false }
+        store.tapped(id)
+        return true
     }
 
     func didSelect(_ annotation: MKAnnotation) -> Bool {

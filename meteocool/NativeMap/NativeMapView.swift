@@ -148,7 +148,9 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             guard StormSelect.knowsSeverity(selection) else { return CoreStrings.t("storm.storm_label.unclassed") }
             return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
-        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StationMarks(), sites, storms, CloudHints(),
+        // A tap on a mesocyclone opens the storm it turns in.
+        let mesocyclones = MesocycloneMarks(openStorm: { [weak storms] at in storms?.openStorm(atMesocyclone: at) ?? false })
+        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), mesocyclones, StationMarks(), sites, storms, CloudHints(),
                 PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
     }
 

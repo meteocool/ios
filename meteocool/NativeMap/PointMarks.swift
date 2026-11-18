@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  Lightning strikes and mesocyclones on the native map: core's
-//  `layers/lightning.ts` and `layers/mesocyclones.ts`.
+//  `layers/lightning.ts` and `layers/mesocyclones.ts`, and a tap on a
+//  mesocyclone opening its storm (`App.svelte`'s `mesocycloneStorm`).
 //
 
 import Foundation
@@ -258,6 +259,8 @@ final class MesocycloneView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         displayPriority = .required
         canShowCallout = true
+        isAccessibilityElement = true
+        accessibilityIdentifier = "nativeMap.mesocyclone"
         update()
     }
 
@@ -266,26 +269,34 @@ final class MesocycloneView: MKAnnotationView {
 
     override var annotation: MKAnnotation? { didSet { update() } }
 
-    /// Size by intensity from core's `mesocycloneStyle`.
+    /// Size by intensity (`MesocycloneRules`), which a tap measures against too.
     private func update() {
         guard let meso = annotation as? MesocycloneAnnotation, let icon = Self.icon else { return }
-        let i = meso.intensity
-        let size: CGFloat = i > 4 ? 55 : i > 3 ? 46 : i > 2 ? 38 : i > 1 ? 30 : 22
-        let scaled = CGSize(width: size * 0.2 / 40 * icon.size.width, height: size * 0.2 / 40 * icon.size.height)
+        let scale = CGFloat(MesocycloneRules.scale(meso.intensity))
+        let scaled = CGSize(width: scale * icon.size.width, height: scale * icon.size.height)
         image = UIGraphicsImageRenderer(size: scaled).image { _ in icon.draw(in: CGRect(origin: .zero, size: scaled)) }
+        accessibilityLabel = meso.title
     }
 }
 
 /// The mesocyclones of the last half hour: the socket always sends the
-/// whole list (core's `MesoCycloneManager`).
+/// whole list (core's `MesoCycloneManager`). A tap on one opens the tracked
+/// storm it turns in, where one is near; elsewhere it says what it is.
 @MainActor
 final class MesocycloneMarks: NativeMapFeature {
+    /// Opens the storm a mesocyclone at a place turns in; false with none
+    /// near it, or with the storms not drawn.
+    private let openStorm: (CLLocationCoordinate2D) -> Bool
     private weak var map: NativeMapContext?
     private var mapView: MKMapView? { map?.mapView }
     private var shown: [MesocycloneAnnotation] = []
     private var all: [MesocycloneAnnotation] = []
     private var visible = false {
         didSet { if visible != oldValue { show() } }
+    }
+
+    init(openStorm: @escaping (CLLocationCoordinate2D) -> Bool = { _ in false }) {
+        self.openStorm = openStorm
     }
 
     func attach(to map: NativeMapContext) {
@@ -306,15 +317,34 @@ final class MesocycloneMarks: NativeMapFeature {
             ? mapView.dequeueReusableAnnotationView(withIdentifier: MesocycloneView.reuse, for: annotation) : nil
     }
 
+    /// The ring as drawn takes the tap (its view is its whole square, hollow
+    /// middle and all), and opens the storm it turns in; a ring no storm is
+    /// near shows its callout.
+    func didSelect(_ annotation: MKAnnotation) -> Bool {
+        guard let meso = annotation as? MesocycloneAnnotation, openStorm(meso.coordinate) else { return false }
+        mapView?.deselectAnnotation(annotation, animated: false)
+        return true
+    }
+
     func wake() {
         // Live only: a past window's come with its steps.
         guard let map, map.model.window == nil else { return }
+        #if DEBUG
+        // UI tests bring their own (`MC_MESOCYCLONES`, the list as the feed
+        // sends it): the demo replays none.
+        if let fixture = ProcessInfo.processInfo.environment["MC_MESOCYCLONES"] {
+            return load(Data(fixture.utf8))
+        }
+        #endif
         map.fetch(map.endpoints.mesocyclones) { [weak self] data, _ in
             if let data { self?.load(data) }
         }
     }
 
     func socketEvent(_ name: String, _ data: Data) {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MC_MESOCYCLONES"] != nil { return }
+        #endif
         if name == "mesocyclones" { load(data) }
     }
 

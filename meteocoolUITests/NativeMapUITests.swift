@@ -688,6 +688,34 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(hint.waitForNonExistence(timeout: 5))
     }
 
+    /// A tap on a mesocyclone opens the storm it turns in: the tracked one
+    /// nearest it. One detection 4 km east of the demo's storm and 3 km
+    /// north, as EPSG:3857 metres the way the feed files them: too far off
+    /// for a tap on it to be a tap on the storm's own mark.
+    func testMesocycloneTapOpensTheStormItTurnsIn() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        let x = storm.lon * .pi * 6_378_137 / 180
+        let y = log(tan(.pi / 4 + storm.lat * .pi / 360)) * 6_378_137
+        let scale = 1 / cos(storm.lat * .pi / 180)
+        app.launchEnvironment["MC_MESOCYCLONES"] = "[{\"intensity\":3,\"lon\":\(x + 4000 * scale),\"lat\":\(y + 3000 * scale)}]"
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),10", demo: true)
+        waitForSeries()
+        let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+        let meso = element("nativeMap.mesocyclone")
+        XCTAssertTrue(meso.waitForExistence(timeout: 15), "The mesocyclone on the map")
+        meso.tap()
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let hint = element("nativeMap.storm.hint")
+            XCTAssertTrue(hint.waitForExistence(timeout: 10), "The storm it turns in, picked")
+            element("nativeMap.storm.hint.details").tap()
+        }
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10), "Its panel")
+        let picked = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01' AND selected == true"))
+        XCTAssertEqual(picked.count, 1, "One storm opened")
+        screenshot("mesocyclone storm")
+    }
+
     // MARK: - Storm cores
 
     /// The demo deployment's answer at `path`, as JSON.
