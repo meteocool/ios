@@ -1066,6 +1066,42 @@ struct NativeMapStormsCheck {
             let b = answer.features[1].properties
             precondition(b.severity == 0 && !b.hail && b.tracks.isEmpty && b.path == .point(LonLat(2, 48)) && b.mergedInto != nil)
         }
+        test("a storm carries its rating, notability and group; one from an older backend has none") {
+            let json = """
+            {"type":"FeatureCollection","features":[
+             {"type":"Feature","id":"A","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"A","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]},"rating":1.42,"notable":true,"group":"01M6MG0000CEVENNES0000000A"}},
+             {"type":"Feature","id":"B","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"B","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]},"rating":null,"notable":false,"group":null}},
+             {"type":"Feature","id":"C","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"C","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]}}}]}
+            """
+            let storms = StormJSON.storms(Data(json.utf8))!.features.map(\.properties)
+            precondition(storms[0].rating == 1.42 && storms[0].notable == true && storms[0].group == "01M6MG0000CEVENNES0000000A")
+            precondition(storms[1].rating == nil && storms[1].notable == false && storms[1].group == nil)
+            precondition(storms[2].rating == nil && storms[2].notable == nil && storms[2].group == nil)
+        }
+        test("a group list decodes its outlines and storms; whatever else was served is read, not refused") {
+            let json = """
+            {"type":"FeatureCollection","features":[
+             {"type":"Feature","id":"G","geometry":{"type":"MultiPolygon","coordinates":[[[[4,45],[4.1,45],[4.1,45.1],[4,45]]]]},
+              "properties":{"id":"G","born_at":"2026-11-18T23:15:00Z","last_seen":"2026-11-18T23:15:00Z",
+              "storms":["A","B"],"severity":2,"peak_dbz":54.0,"rating":1.4244}},
+             {"type":"Feature","id":"E","geometry":{"type":"MultiPolygon","coordinates":[]},
+              "properties":{"id":"E","born_at":"2026-11-18T23:15:00Z","last_seen":"2026-11-18T23:15:00Z","storms":["C","D"],"severity":0}},
+             {"type":"Feature","id":"S","geometry":{"type":"Point","coordinates":[4,45]},"properties":{"id":"S","status":"active"}}]}
+            """
+            let groups = StormJSON.groups(Data(json.utf8))!
+            precondition(groups.count == 3)
+            precondition(groups[0].id == "G" && groups[0].geometryType == "MultiPolygon" && groups[0].properties?.storms == ["A", "B"])
+            precondition(groups[0].properties?.severity == 2 && groups[0].properties?.rating == 1.4244)
+            precondition(groups[1].coordinates == .list([]))
+            precondition(groups[2].geometryType == "Point" && groups[2].properties?.storms == nil)
+            precondition(StormJSON.groups(Data("{\"detail\":\"Not Found\"}".utf8)) == [])
+        }
         test("a detail's KONRAD3D track decodes its series, forecast and structure") {
             let json = """
             {"storm":{"type":"Feature","id":"S","geometry":{"type":"Point","coordinates":[5.36,50.52]},
