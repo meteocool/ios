@@ -770,6 +770,23 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(disc.isSelected, "The quiet storm opened")
         XCTAssertFalse((disc.value as? String ?? "").contains("quiet"), "Drawn in full while open")
         screenshot("quiet storm opened")
+        // Its panel names its system, when the demo groups it with others.
+        if UIDevice.current.userInterfaceIdiom == .phone, element("nativeMap.storm.hint.details").waitForExistence(timeout: 5) {
+            element("nativeMap.storm.hint.details").tap()
+        }
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10))
+        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
+        let storms = (demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any])?["features"] as? [[String: Any]] ?? []
+        let groups = (demoJSON("storms/groups?bbox=-10,35,30,60&since=\(since)") as? [String: Any])?["features"] as? [[String: Any]] ?? []
+        let group = storms.compactMap { $0["properties"] as? [String: Any] }.first { $0["id"] as? String == target.id }?["group"] as? String
+        let size = groups.first { $0["id"] as? String == group }.flatMap { ($0["properties"] as? [String: Any])?["storms"] as? [Any] }?.count ?? 0
+        if size >= 2 {
+            let system = element("nativeMap.storm.readings").descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS[c] 'system' AND label CONTAINS 'storms'")).firstMatch
+            for _ in 0 ..< 3 where !system.exists { element("nativeMap.storm.details").swipeUp() }
+            XCTAssertTrue(system.waitForExistence(timeout: 10), "The panel names its system of \(size)")
+            screenshot("quiet storm system")
+        }
     }
 
     /// A backend from before ratings and groups, whose `/storms/groups`
