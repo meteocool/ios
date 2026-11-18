@@ -43,9 +43,31 @@ class LinkTableViewCell: UITableViewCell{
 class StepperTableViewCell: UITableViewCell{
     @IBOutlet weak var stepperSliderInfoLabel: UILabel!
     @IBOutlet weak var stepperSliderValueLabel: UILabel!
+    let slider = UISlider()
+    private let sliderLayout = UILayoutGuide()
+
     override func awakeFromNib() {
         super.awakeFromNib()
-        MainActor.assumeIsolated { layoutSettingsCell(self, labels: [stepperSliderInfoLabel, stepperSliderValueLabel], bottom: false) }
+        MainActor.assumeIsolated {
+            layoutSettingsCell(self, labels: [stepperSliderInfoLabel, stepperSliderValueLabel], bottom: false)
+            contentView.addLayoutGuide(sliderLayout)
+            contentView.addSubview(slider)
+            NSLayoutConstraint.activate([
+                sliderLayout.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
+                sliderLayout.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
+                sliderLayout.topAnchor.constraint(equalTo: stepperSliderValueLabel.bottomAnchor, constant: 8),
+                sliderLayout.heightAnchor.constraint(equalToConstant: 50),
+                sliderLayout.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            ])
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        contentView.layoutIfNeeded()
+        // Reapply the resolved frame after presentation, even if its size stayed the same.
+        slider.frame = sliderLayout.layoutFrame
+        slider.setNeedsLayout()
     }
 }
 
@@ -197,6 +219,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         NotificationCenter.default.addObserver(self, selector: #selector(SettingsViewController.willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // The sheet's presentation transform can invalidate the slider geometry calculated during its animation.
+        stepperSliderCellThreshold?.setNeedsLayout()
+        stepperSliderCellTime?.setNeedsLayout()
+    }
+
     //Return Back with Done
     @IBAction func doneSettings(_ sender: Any){
         self.dismiss(animated: true,completion:nil)
@@ -293,8 +322,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             case 1: //Intensity, Threshold
                 if !thresholdSliderLoad{
                     stepperSliderCellThreshold = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
-                    let stepperSliderViewThreshold = UISlider()
-                    pin(stepperSliderViewThreshold, steps: intensity.count, in: stepperSliderCellThreshold)
+                    let stepperSliderViewThreshold = stepperSliderCellThreshold.slider
+                    configure(stepperSliderViewThreshold, steps: intensity.count)
                     stepperSliderViewThreshold.tag = 5
                     stepperSliderViewThreshold.accessibilityLabel = dataPushNotification[indexPath.row]
                     stepperSliderViewThreshold.value = Float(userDefaults?.integer(forKey: "intensityValue") ?? 1)
@@ -310,8 +339,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             case 2: //Time before
                 if !timeSliderLoad{
                     stepperSliderCellTime = tableView.dequeueReusableCell(withIdentifier: "stepperSliderCell") as? StepperTableViewCell
-                    let stepperSliderViewTime = UISlider()
-                    pin(stepperSliderViewTime, steps: 9, in: stepperSliderCellTime)
+                    let stepperSliderViewTime = stepperSliderCellTime.slider
+                    configure(stepperSliderViewTime, steps: 9)
                     stepperSliderViewTime.tag = 9
                     stepperSliderViewTime.accessibilityLabel = dataPushNotification[indexPath.row]
                     stepperSliderViewTime.value = Float(userDefaults?.integer(forKey: "timeBeforeValue") ?? 2)
@@ -393,13 +422,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         
     }
     
-    /// Pins a step slider inside its cell with Auto Layout and gives it adaptive colors.
-    ///
-    /// - A frame derived from the table width overflows an inset-grouped cell.
-    /// - Fixed light-mode colors are invisible in dark mode.
-    /// - A plain continuous slider only buzzes at its two ends; each step
-    ///   should tick, as the old StepSlider did.
-    private func pin(_ slider: UISlider, steps: Int, in cell: StepperTableViewCell) {
+    private func configure(_ slider: UISlider, steps: Int) {
         slider.maximumValue = Float(steps - 1)
         if #available(iOS 26.0, *) {
             // Native stops snap and tick on every step.
@@ -413,15 +436,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         tap.delegate = self
         tap.cancelsTouchesInView = false
         slider.addGestureRecognizer(tap)
-        slider.translatesAutoresizingMaskIntoConstraints = false
-        cell.contentView.addSubview(slider)
-        NSLayoutConstraint.activate([
-            slider.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
-            slider.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
-            slider.topAnchor.constraint(equalTo: cell.stepperSliderValueLabel.bottomAnchor, constant: 8),
-            slider.heightAnchor.constraint(equalToConstant: 50),
-            slider.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
-        ])
 
         slider.maximumTrackTintColor = .tertiarySystemFill
         slider.minimumTrackTintColor = .tintColor

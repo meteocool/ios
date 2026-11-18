@@ -131,6 +131,8 @@ targets:
         excludes:
           - "**/.DS_Store"
       - path: Shared
+      # The app and widgets both read group defaults and cached-file timestamps.
+      - path: meteocool/PrivacyInfo.xcprivacy
       # The radar palettes, generated from core for the AR view.
       - path: meteocool/AR/Colormaps.swift
       # The widgets ask the API of the deployment the app is set to.

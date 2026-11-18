@@ -63,3 +63,8 @@ they are also licensed AGPL-3.0.
 ## Integration verification
 
 Run `bash scripts/check.sh` for the standalone checks. Native UI has no Swift package dependencies.
+
+With an iOS simulator booted, run `bash scripts/check-location.sh <UDID>` for
+location delivery and CarPlay ownership, and `bash scripts/check-web-cache.sh <UDID>`
+for background cache-cleanup lifetimes. These checks use controlled OS/transport
+boundaries and do not send registrations to a live backend.

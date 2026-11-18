@@ -351,18 +351,21 @@ final class meteocoolUITests: XCTestCase {
         tap("map.settings")
     }
 
-    func testNotificationSliderTrackTaps() {
+    func testNotificationSliderTrackTaps() throws {
+        app.launchArguments += ["-AppleInterfaceStyle", "Light"]
         openNotificationSliderSettings()
-        for (title, values) in [("Intensity Threshold", ["Drizzle", "Rain", "Heavy rain"]),
-                                ("Notification Timeframe", ["5 min", "25 min", "45 min"])] {
+        for (title, values, ticks, selected) in [("Intensity Threshold", ["Drizzle", "Rain", "Heavy rain"], 5, 2),
+                                                 ("Notification Timeframe", ["5 min", "20 min", "45 min"], 9, 3)] {
             let slider = app.sliders[title]
             XCTAssertTrue(slider.waitForExistence(timeout: 5))
             let cell = app.tables.cells.containing(.slider, identifier: title).firstMatch
             // Alternate ends so every tap starts away from the thumb.
-            for (position, expected) in [(0.95, values[2]), (0.05, values[0]), (0.5, values[1])] {
+            for (position, expected, step) in [(0.95, values[2], ticks - 1), (0.05, values[0], 0),
+                                                (Double(selected) / Double(ticks - 1), values[1], selected)] {
                 slider.coordinate(withNormalizedOffset: CGVector(dx: position, dy: 0.5)).tap()
                 XCTAssertEqual(slider.value as? String, expected)
                 XCTAssertTrue(cell.staticTexts[expected].exists)
+                try assertSliderPixels(slider, step: step, ticks: ticks)
             }
         }
         app.terminate()
@@ -370,8 +373,91 @@ final class meteocoolUITests: XCTestCase {
         app.launch()
         tap("map.settings")
         XCTAssertEqual(app.sliders["Intensity Threshold"].value as? String, "Rain")
-        XCTAssertEqual(app.sliders["Notification Timeframe"].value as? String, "25 min")
+        XCTAssertEqual(app.sliders["Notification Timeframe"].value as? String, "20 min")
+        try assertSliderPixels(app.sliders["Intensity Threshold"], step: 2, ticks: 5)
+        try assertSliderPixels(app.sliders["Notification Timeframe"], step: 3, ticks: 9)
         screenshot("Notification slider track taps persisted")
+    }
+
+    // Accessibility values can be correct while UIKit draws the handle and ticks elsewhere.
+    private func assertSliderPixels(_ slider: XCUIElement, step: Int, ticks: Int,
+                                    file: StaticString = #filePath, line: UInt = #line) throws {
+        let image = try XCTUnwrap(slider.screenshot().image.cgImage, file: file, line: line)
+        let width = image.width, height = image.height
+        let scale = CGFloat(width) / slider.frame.width
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        try pixels.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue), file: file, line: line)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        var blueRows = [IndexSet](repeating: [], count: width)
+        var grayRows = [IndexSet](repeating: [], count: width)
+        var trackRows = IndexSet()
+        for y in 0..<height {
+            var trackPixels = 0
+            for x in 0..<width {
+                let offset = (y * width + x) * 4
+                let r = Int(pixels[offset]), g = Int(pixels[offset + 1]), b = Int(pixels[offset + 2])
+                if b > 150 && b > r + 60 && g > r + 30 { blueRows[x].insert(y) }
+                if (100...220).contains(r) && max(r, max(g, b)) - min(r, min(g, b)) < 15 { grayRows[x].insert(y) }
+                if r < 248 { trackPixels += 1 }
+            }
+            // Both parts of the track contrast with the white cell, even at either endpoint.
+            if trackPixels > width / 2 { trackRows.insert(y) }
+        }
+        let trackTop = try XCTUnwrap(trackRows.first, "Missing rendered track", file: file, line: line)
+        let trackBottom = try XCTUnwrap(trackRows.last, file: file, line: line)
+        let trackY = CGFloat(trackTop + trackBottom) / 2
+        // The handle is taller than the track, so its columns remain distinguishable from the fill.
+        let handle = blueRows.indices.filter { CGFloat(blueRows[$0].count) > 8 * scale }
+        let left = try XCTUnwrap(handle.first, "Missing rendered slider handle", file: file, line: line)
+        let right = try XCTUnwrap(handle.last, file: file, line: line)
+        let middle = blueRows[(left + right) / 2]
+        let top = try XCTUnwrap(middle.first, file: file, line: line)
+        let bottom = try XCTUnwrap(middle.last, file: file, line: line)
+        XCTAssertEqual(CGFloat(top + bottom) / 2, trackY, accuracy: 2 * scale,
+                       "\(slider.label) handle is off the track", file: file, line: line)
+        let halfHandle = CGFloat(right - left + 1) / 2
+        func center(_ index: Int) -> CGFloat {
+            halfHandle + (CGFloat(width) - 2 * halfHandle) * CGFloat(index) / CGFloat(ticks - 1)
+        }
+        XCTAssertEqual(CGFloat(left + right) / 2, center(step), accuracy: 4 * scale,
+                       "\(slider.label) handle does not match its selected value", file: file, line: line)
+        let inset = Int(3 * scale)
+        XCTAssertTrue(blueRows[inset..<max(inset, left)].allSatisfy { CGFloat($0.count) >= 2 * scale },
+                      "\(slider.label) fill is disconnected from its handle", file: file, line: line)
+        XCTAssertTrue(blueRows[min(width, right + inset)..<width].allSatisfy { CGFloat($0.count) < 2 * scale },
+                      "\(slider.label) fill extends past its handle", file: file, line: line)
+
+        if #available(iOS 26.0, *) {
+            let dots = visibleTickCenters(grayRows, excluding: (left - inset)...(right + inset), scale: scale)
+            let visibleSteps = (0..<ticks).filter { $0 != step }
+            XCTAssertEqual(dots.count, visibleSteps.count, "\(slider.label) visible tick count", file: file, line: line)
+            guard dots.count == visibleSteps.count else { return }
+            for (dot, tick) in zip(dots, visibleSteps) {
+                XCTAssertEqual(dot.x, center(tick), accuracy: 2 * scale,
+                               "\(slider.label) tick \(tick) is misplaced horizontally", file: file, line: line)
+                // Native 3 pt dots on iOS 26 and 27 sit 8.5 pt below the track center.
+                XCTAssertEqual(dot.y, trackY + 8.5 * scale, accuracy: 2 * scale,
+                               "\(slider.label) tick \(tick) is misplaced vertically", file: file, line: line)
+            }
+        }
+    }
+
+    private func visibleTickCenters(_ gray: [IndexSet], excluding thumbAndShadow: ClosedRange<Int>,
+                                    scale: CGFloat) -> [CGPoint] {
+        let columns = IndexSet(gray.indices.filter { !thumbAndShadow.contains($0) && !gray[$0].isEmpty })
+        let dotSize = (1.5 * scale)...(5 * scale)
+        var centers: [CGPoint] = []
+        for xs in columns.rangeView where dotSize.contains(CGFloat(xs.count)) {
+            let x = CGFloat(xs.lowerBound + xs.upperBound - 1) / 2
+            for ys in gray[Int(x)].rangeView where dotSize.contains(CGFloat(ys.count)) {
+                centers.append(CGPoint(x: x, y: CGFloat(ys.lowerBound + ys.upperBound - 1) / 2))
+            }
+        }
+        return centers
     }
 
     @MainActor
@@ -419,8 +505,9 @@ final class meteocoolUITests: XCTestCase {
             // XCTest/simctl rendering and color-profile differences.
             let before = try labelPixels(await simulatorScreenshot())
             // Capture while the synthesized finger is held down at the destination.
+            let captureURL = onThisSimulator(server.appendingPathComponent("slider-drag-screenshot"))
             let capture = Task.detached {
-                let (data, _) = try await URLSession.shared.data(from: onThisSimulator(server.appendingPathComponent("slider-drag-screenshot")))
+                let (data, _) = try await URLSession.shared.data(from: captureURL)
                 return (data, Date())
             }
             let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
