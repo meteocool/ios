@@ -140,6 +140,8 @@ final class StormAnnotation: NSObject, MKAnnotation {
         var dark: Bool
         /// DWD's storm: a diamond, where meteocool's is a circle.
         var dwd = false
+        /// Not one the backend marks: a small dot (`StormDrawing.stormLook`).
+        var quiet = false
     }
 
     let id: String
@@ -159,7 +161,8 @@ final class StormAnnotation: NSObject, MKAnnotation {
 
 /// The disc: radius by severity, a diamond for DWD's storms (core's
 /// `DIAMOND_REACH`), outlined red for hail, a ↻ or ✦ badge, and for a live
-/// storm the stepping dashed ring under it.
+/// storm the stepping dashed ring under it. A quiet storm is a small pale
+/// dot, with no badge and no ring, still there to be tapped.
 final class StormDiscView: MKAnnotationView {
     static let reuse = "storm"
     let ring = CAShapeLayer()
@@ -183,11 +186,14 @@ final class StormDiscView: MKAnnotationView {
 
     override var annotation: MKAnnotation? { didSet { update() } }
 
+    /// A quiet storm's dot: how far it reaches, points (core's `QUIET_RADIUS`).
+    static let quietRadius: CGFloat = 3
+
     func update() {
         guard let storm = annotation as? StormAnnotation else { return }
         let look = storm.look
         let s = CGFloat(max(0, min(look.severity, 3)))
-        let radius = (look.picked ? 8 : 6) + 2 * s
+        let radius = look.quiet ? Self.quietRadius : (look.picked ? 8 : 6) + 2 * s
         let badge = look.meso ? "↻" : look.hail ? "✦" : nil
         let side = max(radius * (look.dwd ? 2.6 : 2) + 8, CGFloat(StormPulse.ringRadius * 2 + StormPulse.ringWidth) + 4)
         let height = side + (badge == nil ? 0 : 36)
@@ -208,6 +214,18 @@ final class StormDiscView: MKAnnotationView {
                 disc.lineJoinStyle = .round
             } else {
                 disc = UIBezierPath(arcCenter: centre, radius: radius, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
+            }
+            if look.quiet {
+                // Paler, cased in the basemap's colour rather than white, so
+                // it does not light up on the dark map; the shape still tells
+                // DWD's from meteocool's.
+                colour.withAlphaComponent(0.6 * o).setFill()
+                disc.fill()
+                let casing = StormStyle.casing(dark: look.dark)
+                casing.withAlphaComponent(casing.cgColor.alpha * o).setStroke()
+                disc.lineWidth = 1
+                disc.stroke()
+                return
             }
             colour.withAlphaComponent((look.picked ? 1 : 0.75) * o).setFill()
             disc.fill()
@@ -245,6 +263,10 @@ final class StormDiscView: MKAnnotationView {
         accessibilityLabel = storm.label
         accessibilityIdentifier = "nativeMap.storm.\(storm.id)"
         accessibilityTraits = look.picked ? [.button, .selected] : .button
+        #if DEBUG
+        // How it is drawn, for UI tests.
+        accessibilityValue = look.quiet ? "quiet" : nil
+        #endif
     }
 }
 
@@ -592,7 +614,7 @@ final class StormMarks: NativeMapFeature {
             guard case .point(let at) = mark.geometry else { continue }
             let look = StormAnnotation.Look(severity: mark.severity, hail: mark.hail, meso: mark.meso, picked: mark.storm == picked,
                                             opacity: mark.storm == picked ? 1 : StormDrawing.ageOpacity(mark.ageMinutes),
-                                            live: live.contains(mark.storm), dark: dark, dwd: mark.source == .dwd)
+                                            live: live.contains(mark.storm), dark: dark, dwd: mark.source == .dwd, quiet: mark.quiet)
             let coordinate = CLLocationCoordinate2D(latitude: at.lat, longitude: at.lon)
             if let old = discs[mark.storm], old.look == look, old.coordinate.latitude == at.lat, old.coordinate.longitude == at.lon {
                 wanted[mark.storm] = old

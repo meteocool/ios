@@ -279,6 +279,47 @@ struct NativeMapStormsCheck {
             precondition(StormDrawing.stormAsOf(ended, T0 - 25 * 60_000)!.properties.status == "active")
             precondition(StormDrawing.stormAsOf(ended, T0)!.properties.status == "ended")
         }
+        test("a storm the backend calls notable is drawn in full") {
+            precondition(StormDrawing.stormLook(storm(A) { $0.notable = true }, selected: nil) == .full)
+        }
+        test("a storm with no notable field, from a backend before it, is drawn in full as before") {
+            let older = storm(A)
+            precondition(older.properties.notable == nil)
+            precondition(StormDrawing.stormLook(older, selected: nil) == .full)
+            let d = draw([storm(A) { $0.hail = true }])
+            precondition(kinds(d.marks, A) == ["path", "position"])
+            precondition(d.marks.first { $0.kind == .position }?.hail == true)
+            precondition(!d.marks.contains { $0.quiet })
+            precondition(d.pings.map(\.storm) == [A])
+        }
+        test("a storm that is not notable is a quiet dot: its position alone, with no badge or ring") {
+            precondition(StormDrawing.stormLook(storm(A) { $0.notable = false }, selected: nil) == .quiet)
+            let d = draw([storm(A) { $0.notable = false; $0.hail = true; $0.meso = true }])
+            precondition(kinds(d.marks, A) == ["position"])
+            let dot = d.marks[0]
+            precondition(dot.quiet && !dot.hail && !dot.meso)
+            precondition(d.pings.isEmpty)
+        }
+        test("a quiet storm, selected, is drawn in full") {
+            let quiet = storm(A) { $0.notable = false }
+            precondition(StormDrawing.stormLook(quiet, selected: A) == .full)
+            let d = draw([quiet], selection: StormSelect.fromStorm(quiet))
+            precondition(kinds(d.marks, A) == ["path", "position"])
+            precondition(!d.marks.contains { $0.quiet })
+            precondition(d.pings.map(\.storm) == [A])
+        }
+        test("no join is drawn to or from a quiet storm") {
+            let merged = storm(B, { $0.status = "merged"; $0.mergedInto = A; $0.lastSeen = at(-5) }, path: [[9.8, 49.9], [9.95, 50]])
+            precondition(draw([merged, storm(A) { $0.notable = false }]).links.isEmpty)
+            var quietMerged = merged
+            quietMerged.properties.notable = false
+            let fromQuiet = draw([quietMerged, storm(A)])
+            precondition(fromQuiet.links.isEmpty)
+            // Taken by the storm it merged into, a quiet one has nothing left to draw.
+            precondition(kinds(fromQuiet.marks, B).isEmpty)
+            let branch = storm(B, { $0.bornAt = at(-40); $0.splitFrom = A; $0.notable = false }, path: [[10.12, 50.05], [10.2, 50.1]])
+            precondition(draw([storm(A), branch]).links.isEmpty)
+        }
         test("an earlier frame draws no forecast, even for the selected storm") {
             let of = storm(A) { $0.primaryProduct = "dwd/konrad3d"; $0.primaryTrack = "C1"; $0.bornAt = at(-60) }
             let selection = StormSelect.withDetail(StormSelect.fromStorm(of), detail(of, konrad3d: [cell("C1") { $0.forecast = forecast }]))
@@ -310,6 +351,15 @@ struct NativeMapStormsCheck {
         test("a seed cell is DWD's, a box of sky meteocool's") {
             precondition(StormSelect.sourcesOf(StormSelect.withCell(nil, cell("K1"))) == [.dwd])
             precondition(StormSelect.sourcesOf(StormSelect.withVolume(nil, volume("v1"))) == [.meteocool])
+        }
+        test("a core whose parent is not served on its own leaves the storm the boxes of its other cores") {
+            let of = storm(A)
+            let selection = S.withDetail(S.fromStorm(of), detail(of, tracks: [trackerTrack("t1", [
+                feature("c1", 0) { $0.parent = "envelope-unserved" }, feature("c2", 0) { $0.parent = "patch-now" },
+            ])]))!
+            precondition(S.newestPatches(selection).sorted() == ["envelope-unserved", "patch-now"])
+            precondition(S.volumeOfStorm([volume("box") { $0.feature = "patch-now" }], selection)?.path == "box")
+            precondition(S.volumeOfStorm([volume("other") { $0.feature = "patch-elsewhere" }], selection) == nil)
         }
         test("a newer detail without history keeps the older one's") {
             let of = storm(A)

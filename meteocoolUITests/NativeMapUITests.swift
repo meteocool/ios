@@ -716,6 +716,61 @@ final class NativeMapUITests: XCTestCase {
         screenshot("mesocyclone storm")
     }
 
+    /// The storms' discs on screen, by id, with their frames and values (a
+    /// debug build's value says "quiet" for a quiet dot), from one snapshot.
+    private func stormDiscs() -> [(id: String, frame: CGRect, value: String)] {
+        var discs: [(id: String, frame: CGRect, value: String)] = []
+        func collect(_ node: XCUIElementSnapshot) {
+            if node.identifier.hasPrefix("nativeMap.storm.01") {
+                discs.append((String(node.identifier.dropFirst("nativeMap.storm.".count)), node.frame, node.value as? String ?? ""))
+            }
+            node.children.forEach(collect)
+        }
+        if let snapshot = try? app.snapshot() { collect(snapshot) }
+        return discs
+    }
+
+    /// Only the storms the backend calls notable are marked in full; the
+    /// rest are quiet dots, which still open, and are drawn in full while
+    /// they are.
+    func testQuietStormsAreDotsThatStillOpen() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        var quiet: (id: String, frame: CGRect, value: String)?
+        for zoom in [8, 9] where quiet == nil {
+            launch(link: "?latLonZ=\(storm.lat),\(storm.lon),\(zoom)", demo: true)
+            waitForSeries()
+            let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+            XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+            let screen = app.windows.firstMatch.frame
+            let deadline = Date().addingTimeInterval(10)
+            while quiet == nil, Date() < deadline {
+                let all = stormDiscs()
+                let tags = markFrames().tags
+                quiet = all.first { disc in
+                    disc.value.contains("quiet")
+                        && disc.frame.midX > screen.width * 0.08 && disc.frame.midX < screen.width * 0.8
+                        && disc.frame.midY > screen.height * 0.17 && disc.frame.midY < screen.height * 0.65
+                        && !tags.contains { $0.insetBy(dx: -6, dy: -6).intersects(disc.frame) }
+                        && !all.contains { $0.id != disc.id && $0.frame.insetBy(dx: -4, dy: -4).intersects(disc.frame) }
+                }
+                if quiet == nil { RunLoop.current.run(until: Date().addingTimeInterval(1)) }
+            }
+            if quiet == nil {
+                XCTAssertTrue(stormDiscs().contains { !$0.value.contains("quiet") }, "The notable storms marked in full")
+                app.terminate()
+            }
+        }
+        let target = try XCTUnwrap(quiet, "A quiet storm in view")
+        XCTAssertTrue(stormDiscs().contains { !$0.value.contains("quiet") }, "The notable storms marked in full")
+        app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.frame.midX, dy: target.frame.midY)).tap()
+        let disc = element("nativeMap.storm.\(target.id)")
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline, !(disc.exists && disc.isSelected) { RunLoop.current.run(until: Date().addingTimeInterval(0.3)) }
+        XCTAssertTrue(disc.isSelected, "The quiet storm opened")
+        XCTAssertFalse((disc.value as? String ?? "").contains("quiet"), "Drawn in full while open")
+        screenshot("quiet storm opened")
+    }
+
     // MARK: - Storm cores
 
     /// The demo deployment's answer at `path`, as JSON.

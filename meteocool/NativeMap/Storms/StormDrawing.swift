@@ -4,7 +4,10 @@
 //
 //  What the map draws for the storms in view, as plain marks in degrees:
 //  core's `lib/stormMarks.ts`, `lib/cellGeometry.ts` and `lib/cellPulse.ts`,
-//  rule for rule. MapKit only sees the result (`StormMarks`).
+//  rule for rule. MapKit only sees the result (`StormMarks`). Only the
+//  storms that matter are marked in full; the backend says which
+//  (`notable`), and every other storm is a quiet dot, still there to be
+//  tapped, and drawn in full once it is selected (`stormLook`).
 //
 
 import Foundation
@@ -45,6 +48,8 @@ struct StormMark: Equatable, Sendable {
     var tip: LonLat?
     /// Whose tracking it is: a DWD storm's position is a diamond, meteocool's a circle.
     var source: StormSource = .meteocool
+    /// A storm not marked in full: a small dot, with no badge (`stormLook`).
+    var quiet = false
 }
 
 /// What the map key can turn off of the storm marks (core's
@@ -121,6 +126,22 @@ enum StormDrawing {
         return copy
     }
 
+    /// How a storm is drawn: in `full`, as every storm was before the
+    /// backend rated them (path, position, badge, live ring, joins), or
+    /// `quiet`, a small dot where it is now and nothing else.
+    enum Look: Equatable, Sendable {
+        case full, quiet
+    }
+
+    /// Full for a storm the backend calls notable, and for one from a backend
+    /// that does not say: without `notable`, every storm is marked as it
+    /// always was. The selected storm is always shown in full, so what its
+    /// panel is about is on the map.
+    static func stormLook(_ storm: Storm, selected: String?) -> Look {
+        if storm.properties.id == selected { return .full }
+        return storm.properties.notable == false ? .quiet : .full
+    }
+
     /// Whether a storm is drawn: active, or seen within the active window;
     /// the selected one always.
     static func isDrawn(_ storm: Storm, reference: Double, selected: String?) -> Bool {
@@ -182,6 +203,7 @@ enum StormDrawing {
         func liveOf(_ storm: Storm) -> Bool {
             storm.properties.status == "active" && StormPulse.isLive(ageMinutes(storm.properties.lastSeen, reference))
         }
+        func quietOf(_ storm: Storm) -> Bool { stormLook(storm, selected: selected) == .quiet }
 
         for storm in drawing {
             let p = storm.properties
@@ -189,14 +211,21 @@ enum StormDrawing {
             // Merged into a storm on the map: that one carries on.
             let taken = p.status == "merged" && target != nil && p.id != selected
             let live = liveOf(storm)
+            let quiet = quietOf(storm)
             let severity = clampSeverity(p.severity)
             let age = ageMinutes(p.lastSeen, now)
             let source = StormSelect.source(storm)
             func mark(_ kind: StormMark.Kind, _ id: String, _ geometry: StormMark.Geometry) -> StormMark {
-                StormMark(kind: kind, id: id, storm: p.id, geometry: geometry, severity: severity, hail: p.hail && !hidden.contains(.hail),
-                          meso: p.meso && !hidden.contains(.rotation), ageMinutes: age, live: live, source: source)
+                StormMark(kind: kind, id: id, storm: p.id, geometry: geometry, severity: severity,
+                          hail: p.hail && !hidden.contains(.hail) && !quiet, meso: p.meso && !hidden.contains(.rotation) && !quiet,
+                          ageMinutes: age, live: live, source: source, quiet: quiet)
             }
             let path = pathOf(storm)
+            // A quiet storm is its position alone: no path, ring, outline or join.
+            if quiet {
+                if !taken { result.marks.append(mark(.position, p.id, .point(storm.geometry))) }
+                continue
+            }
             if path.count > 1 && !hidden.contains(.path) { result.marks.append(mark(.path, "\(p.id):path", .line(path))) }
             if !taken {
                 result.marks.append(mark(.position, p.id, .point(storm.geometry)))
@@ -210,7 +239,7 @@ enum StormDrawing {
                     result.marks.append(mark(.outline, "\(p.id):outline", .polygon(outline)))
                 }
             }
-            if let target, !hidden.contains(.join) {
+            if let target, !hidden.contains(.join), !quietOf(target) {
                 let start = path[path.count - 1]
                 let t = target.properties
                 result.links.append(StormMark(kind: .link, id: "\(p.id)>\(t.id)", storm: t.id, fromStorm: p.id,
@@ -220,7 +249,7 @@ enum StormDrawing {
                                               source: StormSelect.source(target)))
             }
             // A branch of a split, joined to where its parent was then.
-            if let parent = p.splitFrom.flatMap({ byId[$0] }), !hidden.contains(.join) {
+            if let parent = p.splitFrom.flatMap({ byId[$0] }), !hidden.contains(.join), !quietOf(parent) {
                 let start = path[0]
                 let then = stormAsOf(parent, StormTime.ms(p.bornAt)) ?? parent
                 var link = mark(.link, "\(parent.properties.id)>\(p.id)", .line([nearestOn(pathOf(then), start), start]))
