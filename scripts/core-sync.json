@@ -1,0 +1,15 @@
+{
+  "core": "06ea743498d7198c170cac9601ceac370d0f4dcc",
+  "pending": {
+    "28dfc36a": "feat(radar): draw every network's echo tops and VIL",
+    "98cc02c7": "feat(map): draw the rain's motion as arrows, behind a setting"
+  },
+  "webOnly": {
+    "src/sw.ts": "the web app's service worker",
+    "src/browserCheck.js": "browser support check",
+    "src/vite-env.d.ts": "build tooling",
+    "src/entrypoints/*": "the web app's entry points",
+    "scripts/tests/register.mjs": "test tooling"
+  },
+  "unported": {}
+}
