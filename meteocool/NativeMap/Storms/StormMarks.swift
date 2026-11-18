@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  Tracked storms on the native map: core's `lib/StormManager.ts` (drawing
-//  half), `layers/cells.ts` and `layers/cellPulse.ts`.
+//  half), `layers/cells.ts`, `layers/cellPulse.ts` and the systems'
+//  outlines of `layers/stormGroups.ts`.
 //
 
 import Combine
@@ -125,6 +126,61 @@ final class StormMapRenderer: MKOverlayRenderer {
         path.addLines(between: points.map(StormOverlay.point))
         path.closeSubpath()
         return path
+    }
+}
+
+/// The storms that are one system, as one outline round the area they
+/// share (core's `layers/stormGroups.ts`), shared with MapKit's drawing
+/// threads.
+final class StormGroupOverlay: NSObject, MKOverlay, @unchecked Sendable {
+    struct Scene {
+        /// Each outline, with how far it has faded in.
+        var outlines: [(outline: GroupOutline, fade: Double)] = []
+        /// The accent, resolved for the basemap and the contrast setting.
+        var accent = UIColor.systemBlue.cgColor
+        var dark = false
+    }
+
+    let coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+    let boundingMapRect = MKMapRect.world
+    private let lock = NSLock()
+    private var current = Scene()
+
+    var scene: Scene {
+        get { lock.withLock { current } }
+        set { lock.withLock { current = newValue } }
+    }
+}
+
+/// Content on the map, not chrome, and the quietest thing about a storm: a
+/// thin line in the system accent with a wash of it a few percent strong.
+/// The radar's ramp runs from green through yellow and red to purple, and
+/// the storms' marks are drawn in it; a blue that is none of those stays
+/// apart from both. Over the radar and its sweeps, under the lightning and
+/// the storms; nothing on it is tapped.
+final class StormGroupRenderer: MKOverlayRenderer {
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let scene = (overlay as? StormGroupOverlay)?.scene else { return }
+        let px = 1 / zoomScale
+        let reach = mapRect.insetBy(dx: -4 * px, dy: -4 * px)
+        context.setLineJoin(.round)
+        context.setLineWidth(1.5 * px)
+        for (outline, fade) in scene.outlines where fade > 0 {
+            let path = CGMutablePath()
+            for polygon in outline.polygons {
+                for ring in polygon where ring.count > 2 {
+                    path.addLines(between: ring.map(StormOverlay.point))
+                    path.closeSubpath()
+                }
+            }
+            guard path.boundingBox.intersects(CGRect(x: reach.minX, y: reach.minY, width: reach.width, height: reach.height)) else { continue }
+            context.addPath(path)
+            context.setFillColor(scene.accent.copy(alpha: (scene.dark ? 0.07 : 0.05) * fade) ?? scene.accent)
+            context.fillPath(using: .evenOdd)
+            context.addPath(path)
+            context.setStrokeColor(scene.accent.copy(alpha: (scene.dark ? 0.8 : 0.7) * fade) ?? scene.accent)
+            context.strokePath()
+        }
     }
 }
 
@@ -322,6 +378,7 @@ final class StormMarks: NativeMapFeature {
     let store = StormStore()
     private weak var map: NativeMapContext?
     private let overlay = StormOverlay()
+    private let groupOverlay = StormGroupOverlay()
     private var added = false
     private var discs: [String: StormAnnotation] = [:]
     private var labels: [StormLeadAnnotation] = []
@@ -427,7 +484,14 @@ final class StormMarks: NativeMapFeature {
         guard let map else { return }
         if visible != added {
             added = visible
-            if visible { map.mapView.addOverlay(overlay, level: .aboveLabels) } else { map.mapView.removeOverlay(overlay) }
+            if visible {
+                // The systems over the radar and its sweeps, under the labels,
+                // the lightning and the storms.
+                map.mapView.addOverlay(groupOverlay, level: .aboveRoads)
+                map.mapView.addOverlay(overlay, level: .aboveLabels)
+            } else {
+                map.mapView.removeOverlays([groupOverlay, overlay])
+            }
         }
         // The 3D map keeps the storm it opened.
         if !visible, map.model.capability != .cells3d { store.selection = nil }
@@ -466,7 +530,8 @@ final class StormMarks: NativeMapFeature {
     }
 
     func renderer(for overlay: MKOverlay) -> MKOverlayRenderer? {
-        overlay === self.overlay ? StormMapRenderer(overlay: overlay) : nil
+        if overlay === groupOverlay { return StormGroupRenderer(overlay: overlay) }
+        return overlay === self.overlay ? StormMapRenderer(overlay: overlay) : nil
     }
 
     func view(for annotation: MKAnnotation, in mapView: MKMapView) -> MKAnnotationView? {
@@ -578,10 +643,12 @@ final class StormMarks: NativeMapFeature {
         let mapView = map.mapView
         guard visible, store.frame != .hidden else {
             overlay.scene = .init()
+            groupOverlay.scene = .init()
             mapView.removeAnnotations(Array(discs.values) + labels)
             discs = [:]
             labels = []
             mapView.renderer(for: overlay)?.setNeedsDisplay()
+            mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
             return
         }
         let now = Date().timeIntervalSince1970 * 1000
@@ -603,6 +670,9 @@ final class StormMarks: NativeMapFeature {
             return true
         }
         let dark = map.model.isDark
+        let outlines = StormGroupRules.groupOutlines(store.groups, reference)
+        groupOverlay.scene = StormGroupOverlay.Scene(outlines: outlines.map { ($0, 1) }, accent: Self.accent(dark: dark), dark: dark)
+        mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
         let lines = (drawn.links + drawn.marks).filter { $0.kind != .position && shown($0) }
         overlay.scene = StormOverlay.Scene(marks: lines, picked: picked, dark: dark)
         mapView.renderer(for: overlay)?.setNeedsDisplay()
@@ -628,6 +698,15 @@ final class StormMarks: NativeMapFeature {
         mapView.addAnnotations(new)
         discs = wanted
         updateLabels(now: now, picked: picked, dark: dark)
+    }
+
+    /// The system accent for the basemap, with Increase Contrast's variant.
+    private static func accent(dark: Bool) -> CGColor {
+        let traits = UITraitCollection { traits in
+            traits.userInterfaceStyle = dark ? .dark : .light
+            traits.accessibilityContrast = UIAccessibility.isDarkerSystemColorsEnabled ? .high : .normal
+        }
+        return UIColor.systemBlue.resolvedColor(with: traits).cgColor
     }
 
     /// The lead labels of the selected storm's forecast rings, counted from

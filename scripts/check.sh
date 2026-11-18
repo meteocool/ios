@@ -31,7 +31,7 @@ xcrun swiftc meteocool/NativeMap/Point/PointRules.swift meteocool/NativeMap/Poin
 "$scratch/check-native-map"
 xcrun swiftc meteocool/NativeMap/RadarWindow.swift meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/NativeMapLink.swift meteocool/NativeMap/Chrome/TimelinePhysics.swift tests/ArchiveCheck.swift -o "$scratch/check-archive"
 "$scratch/check-archive"
-xcrun swiftc meteocool/NativeMap/Storms/StormData.swift meteocool/NativeMap/Storms/StormSelection.swift meteocool/NativeMap/Storms/StormDrawing.swift meteocool/NativeMap/Storms/StormRules.swift meteocool/NativeMap/Storms/CloudHintRules.swift meteocool/NativeMap/Storms/CutAngle.swift meteocool/NativeMap/MesocycloneRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapStormsCheck.swift -o "$scratch/check-native-map-storms"
+xcrun swiftc meteocool/NativeMap/Storms/StormData.swift meteocool/NativeMap/Storms/StormSelection.swift meteocool/NativeMap/Storms/StormDrawing.swift meteocool/NativeMap/Storms/StormRules.swift meteocool/NativeMap/Storms/CloudHintRules.swift meteocool/NativeMap/Storms/CutAngle.swift meteocool/NativeMap/Storms/StormGroupRules.swift meteocool/NativeMap/MesocycloneRules.swift meteocool/NativeMap/CoreStrings.swift tests/NativeMapStormsCheck.swift -o "$scratch/check-native-map-storms"
 mkdir "$scratch/sweeps"
 for quantity in DBZH VRADH; do gunzip -c "tests/fixtures/sweeps/$quantity.mcsw" > "$scratch/sweeps/$quantity.mcsw"; done
 xcrun swiftc meteocool/NativeMap/Sites/SiteSweepRules.swift meteocool/NativeMap/Storms/RadarSites.swift tests/NativeMapSitesCheck.swift -o "$scratch/check-native-map-sites"

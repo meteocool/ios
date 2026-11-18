@@ -24,6 +24,9 @@ final class StormStore: ObservableObject {
 
     /// The storms of the last `/storms` answer.
     @Published private(set) var held: [Storm] = []
+    /// The groups of them that are one system, from `/storms/groups` for
+    /// the same box and window; none from a backend without groups.
+    @Published private(set) var groups: [StormSystem] = []
     @Published var selection: StormSelection? {
         didSet {
             if selection == nil { details = false }
@@ -59,6 +62,9 @@ final class StormStore: ObservableObject {
     /// The box the held storms were asked for.
     private var fetched: StormDrawing.Extent?
     private var token = 0
+    /// When the backend last had no groups (ms), so it is not asked again on
+    /// every pan; nil for never.
+    private var groupsAbsentAt: Double?
     /// Each storm's newest detail, so one reopened shows its history at once.
     private var detailCache = StormSelect.DetailCache()
     private var detailInFlight: String?
@@ -82,8 +88,17 @@ final class StormStore: ObservableObject {
 
     // MARK: - Fetching
 
+    /// One `reload`'s two answers, applied together once both are in.
+    private final class Answer {
+        var storms: [Storm]?
+        var groups: [StormSystem]?
+    }
+
     /// Fetches `/storms` for the view when it left the box fetched, or when
-    /// told to (`StormManager.reload`).
+    /// told to (`StormManager.reload`); with it `/storms/groups` for the
+    /// same box and window, beside the storms and never in their way: a
+    /// failure is no groups, and a backend without them is not asked again
+    /// for a while (`StormGroupRules`).
     func reload(force: Bool = false) {
         guard let map, frame != .hidden, let view = Self.extent(of: map.mapView.visibleMapRect) else { return }
         let world = StormDrawing.worldExtent(view)
@@ -92,21 +107,57 @@ final class StormStore: ObservableObject {
         token += 1
         let mine = token
         let (since, until) = Self.span(window)
+        let answer = Answer()
+        func apply() {
+            guard mine == token, let storms = answer.storms, let groups = answer.groups else { return }
+            fetched = padded
+            held = storms
+            self.groups = groups
+            refreshSelection()
+            revision += 1
+        }
+        var older: Int?
+        #if DEBUG
+        // UI tests stand in for a backend from before ratings and groups
+        // (`MC_OLDER_STORMS`, the status its `/storms/groups` answers).
+        older = ProcessInfo.processInfo.environment["MC_OLDER_STORMS"].flatMap(Int.init)
+        #endif
+        if let older {
+            if StormGroupRules.absent.contains(older) { groupsAbsentAt = Date().timeIntervalSince1970 * 1000 }
+            answer.groups = []
+        } else if StormGroupRules.asksForGroups(groupsAbsentAt, now: Date().timeIntervalSince1970 * 1000) {
+            let url = map.endpoints.stormGroups(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
+                                                since: since, until: until)
+            map.fetch(url) { [weak self] data, status in
+                guard let self else { return }
+                if data == nil, let status, StormGroupRules.absent.contains(status) {
+                    self.groupsAbsentAt = Date().timeIntervalSince1970 * 1000
+                }
+                answer.groups = data.flatMap(StormJSON.groups) ?? []
+                apply()
+            }
+        } else {
+            answer.groups = []
+        }
         let url = map.endpoints.storms(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
                                        since: since, until: until)
-        map.fetch(url) { [weak self] data, status in
-            guard let self, mine == self.token else { return }
+        map.fetch(url) { data, status in
             if let data, let collection = StormJSON.storms(data) {
-                self.fetched = padded
-                self.held = collection.features
-                self.refreshSelection()
-                self.revision += 1
+                answer.storms = collection.features
+                if older != nil {
+                    for index in answer.storms!.indices {
+                        answer.storms![index].properties.rating = nil
+                        answer.storms![index].properties.notable = nil
+                        answer.storms![index].properties.group = nil
+                    }
+                }
             } else if status == 404 {
                 // No storms served: not an error.
-                self.fetched = padded
-                self.held = []
-                self.revision += 1
+                answer.storms = []
+            } else {
+                return
             }
+            apply()
         }
     }
 
@@ -124,6 +175,7 @@ final class StormStore: ObservableObject {
         token += 1
         fetched = nil
         held = []
+        groups = []
         selection = nil
         revision += 1
     }

@@ -762,6 +762,7 @@ final class NativeMapUITests: XCTestCase {
         }
         let target = try XCTUnwrap(quiet, "A quiet storm in view")
         XCTAssertTrue(stormDiscs().contains { !$0.value.contains("quiet") }, "The notable storms marked in full")
+        screenshot("quiet storms and systems")
         app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.frame.midX, dy: target.frame.midY)).tap()
         let disc = element("nativeMap.storm.\(target.id)")
         let deadline = Date().addingTimeInterval(10)
@@ -769,6 +770,27 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(disc.isSelected, "The quiet storm opened")
         XCTAssertFalse((disc.value as? String ?? "").contains("quiet"), "Drawn in full while open")
         screenshot("quiet storm opened")
+    }
+
+    /// A backend from before ratings and groups, whose `/storms/groups`
+    /// answers 404 or 422: every storm marked as before, no outline, and
+    /// nothing said about it.
+    func testOlderBackendMarksEveryStormAsBefore() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        for status in ["404", "422"] {
+            app.launchEnvironment["MC_OLDER_STORMS"] = status
+            launch(link: "?latLonZ=\(storm.lat),\(storm.lon),8", demo: true)
+            waitForSeries()
+            let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+            XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+            RunLoop.current.run(until: Date().addingTimeInterval(2))
+            let all = stormDiscs()
+            XCTAssertGreaterThan(all.count, 1, status)
+            XCTAssertFalse(all.contains { $0.value.contains("quiet") }, "\(status): every storm marked in full")
+            XCTAssertFalse(element("nativeMap.toast").exists, "\(status): nothing said about it")
+            screenshot("older backend \(status)")
+            app.terminate()
+        }
     }
 
     // MARK: - Storm cores

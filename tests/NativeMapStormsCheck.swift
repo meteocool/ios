@@ -3,9 +3,10 @@ import Foundation
 /// Checks the native map's storm rules (`meteocool/NativeMap/Storms`) with
 /// core's own tests, one for one: `scripts/tests/stormMarks.test.ts`,
 /// `stormSelection.test.ts`, `stormResolver.test.ts`, `stormStore.test.ts`,
-/// `cellKnownVolume.test.ts`, `cellSelection.test.ts`, `cellPlacement.test.ts`, `cellRecency.test.ts`,
-/// `cellStatus.test.ts`, `cellLineage.test.ts`, `cellPulse.test.ts`,
-/// `timeTicks.test.ts`, `swipeAway.test.ts` and `mesocyclones.test.ts`,
+/// `cellKnownVolume.test.ts`, `cellSelection.test.ts`,
+/// `cellPlacement.test.ts`, `cellRecency.test.ts`, `cellStatus.test.ts`,
+/// `cellLineage.test.ts`, `cellPulse.test.ts`, `timeTicks.test.ts`,
+/// `swipeAway.test.ts`, `stormGroups.test.ts` and `mesocyclones.test.ts`,
 /// then the native extras.
 @main
 struct NativeMapStormsCheck {
@@ -34,6 +35,7 @@ struct NativeMapStormsCheck {
         cellPulse()
         timeTicks()
         swipeAway()
+        stormGroups()
         mesocyclones()
         cloudHints()
         decoding()
@@ -98,6 +100,22 @@ struct NativeMapStormsCheck {
 
     static func detail(_ of: Storm, konrad3d: [TrackProperties] = [], tracks: [TrackerTrack] = []) -> StormDetail {
         StormDetail(storm: of, konrad3d: konrad3d, tracks: tracks)
+    }
+
+    /// A group of storms as `/storms/groups` lists it: a square round
+    /// `[lon, lat]`, as a MultiPolygon.
+    static func group(_ id: String, _ storms: [String], _ change: (inout StormSystemProperties) -> Void = { _ in },
+                      at center: LonLat = LonLat(10, 50)) -> StormSystem {
+        let (lon, lat) = (center.lon, center.lat)
+        let ring: [[Double]] = [[lon - 0.1, lat - 0.1], [lon + 0.1, lat - 0.1], [lon + 0.1, lat + 0.1], [lon - 0.1, lat + 0.1], [lon - 0.1, lat - 0.1]]
+        var p = StormSystemProperties(id: id, bornAt: at(-60), lastSeen: at(0), storms: storms, severity: 1, peakDbz: 50, rating: 1.5)
+        change(&p)
+        return StormSystem(id: id, geometryType: "MultiPolygon", coordinates: coordinates([[ring]]), properties: p)
+    }
+
+    /// Nested arrays of numbers as a geometry's coordinates.
+    static func coordinates(_ polygons: [[[[Double]]]]) -> GeoCoordinates {
+        .list(polygons.map { .list($0.map { .list($0.map { .list($0.map(GeoCoordinates.number)) }) }) })
     }
 
     /// Names the message and what was put into it, as core's tests do.
@@ -1275,6 +1293,89 @@ struct NativeMapStormsCheck {
             precondition(layout.edges.count == 2 && a.isSelf && a.peak == "55 dBZ")
             precondition(layout.nowX != nil && layout.width >= layout.nowX! + 12)
             precondition(layout.height == 8 + 2 * StormRules.nodeH + 10 + StormRules.axisH)
+        }
+    }
+
+    // MARK: - stormGroups.test.ts
+
+    /// Storms that are one system: which groups the map outlines, how many
+    /// storms a storm's panel says its system has, and what a backend
+    /// without groups comes to.
+    static func stormGroups() {
+        let A = sid("A"), B = sid("B"), C = sid("C")
+        let G = "01JGROUPGROUPGROUPGROUPGRP"
+        typealias R = StormGroupRules
+        test("a group of two storms is one outline, its polygons in [lon, lat]") {
+            let outline = R.groupOutlines([group(G, [A, B]) { $0.severity = 2 }], T0)[0]
+            precondition(outline.id == G && outline.storms == 2 && outline.severity == 2)
+            precondition(outline.polygons.count == 1)
+            precondition(outline.polygons[0][0][0] == LonLat(9.9, 49.9))
+        }
+        test("every polygon of a group's MultiPolygon is kept, holes and all") {
+            var two = group(G, [A, B])
+            let square: [[Double]] = [[9.9, 49.9], [10.1, 49.9], [10.1, 50.1], [9.9, 50.1], [9.9, 49.9]]
+            let hole: [[Double]] = [[10, 50], [10.01, 50], [10.01, 50.01], [10, 50]]
+            let far: [[Double]] = [[11, 51], [11.1, 51], [11.1, 51.1], [11, 51]]
+            two.coordinates = coordinates([[square, hole], [far]])
+            let outline = R.groupOutlines([two], T0)[0]
+            precondition(outline.polygons.count == 2)
+            precondition(outline.polygons[0].count == 2)
+        }
+        test("a group of fewer than two storms is not outlined") {
+            precondition(R.groupOutlines([group(G, [A])], T0).isEmpty)
+        }
+        test("a group with no area is not outlined, and a broken ring is left out") {
+            var point = group(G, [A, B])
+            point.geometryType = "Point"
+            point.coordinates = .list([.number(10), .number(50)])
+            var empty = group(G, [A, B])
+            empty.coordinates = .list([])
+            var short = group(G, [A, B])
+            short.coordinates = coordinates([[[[10, 50], [10.1, 50]]]])
+            precondition(R.groupOutlines([point, empty, short], T0).isEmpty)
+        }
+        test("a storm listing served where groups were asked for draws nothing") {
+            let json = """
+            {"type":"FeatureCollection","features":[{"type":"Feature","id":"A","geometry":{"type":"Point","coordinates":[10,50]},
+             "properties":{"id":"A","born_at":"2026-10-12T13:00:00Z","last_seen":"2026-10-12T14:00:00Z","status":"active",
+             "path":{"type":"Point","coordinates":[10,50]}}}]}
+            """
+            precondition(R.groupOutlines(StormJSON.groups(Data(json.utf8))!, T0).isEmpty)
+        }
+        test("in the present a group still going is outlined, and one gone for longer than a storm stays active is not") {
+            precondition(R.groupShownAt(group(G, [A, B]) { $0.lastSeen = at(-15) }, T0))
+            precondition(!R.groupShownAt(group(G, [A, B]) { $0.lastSeen = at(-25) }, T0))
+        }
+        test("on an earlier frame a group is outlined only when born by then and its outline not long after") {
+            let g = group(G, [A, B]) { $0.bornAt = at(-90); $0.lastSeen = at(0) }
+            precondition(R.groupShownAt(g, T0 - 20 * 60_000))
+            precondition(!R.groupShownAt(g, T0 - 60 * 60_000), "its outline is an hour on from then")
+            precondition(!R.groupShownAt(g, T0 - 100 * 60_000), "not yet born")
+        }
+        test("a storm's system is as many storms as its group lists") {
+            precondition(R.systemSize(storm(A) { $0.group = G }, groups: [group(G, [B, A, C])], held: []) == 3)
+        }
+        test("a storm in no group, or with no group field, has no system") {
+            precondition(R.systemSize(storm(A), groups: [group(G, [A, B])], held: []) == nil)
+            precondition(R.systemSize(storm(A) { $0.group = nil }, groups: [group(G, [A, B])], held: []) == nil)
+            precondition(R.systemSize(nil, groups: [], held: []) == nil)
+        }
+        test("without the group's outline, a storm's system is the storms held that share its group") {
+            let held = [storm(A) { $0.group = G }, storm(B) { $0.group = G }, storm(C) { $0.group = "other" }]
+            precondition(R.systemSize(held[0], groups: [], held: held) == 2)
+        }
+        test("a group of one is no system") {
+            let alone = storm(A) { $0.group = G }
+            precondition(R.systemSize(alone, groups: [], held: [alone]) == nil)
+            precondition(R.systemSize(alone, groups: [group(G, [A])], held: [alone]) == nil)
+        }
+        test("a 404 and a 422 both mean the backend has no groups") {
+            precondition(R.absent == [404, 422])
+        }
+        test("a backend that had no groups is not asked again until the recheck is due") {
+            precondition(R.asksForGroups(nil, now: T0))
+            precondition(!R.asksForGroups(T0, now: T0 + 60_000))
+            precondition(R.asksForGroups(T0, now: T0 + R.recheckMs))
         }
     }
 
