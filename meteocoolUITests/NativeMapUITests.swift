@@ -1143,10 +1143,19 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         screenshot("core opened from its tag")
-        // A detour: closing the core goes back to the flat map.
+        // A detour: closing the core leaves the reader on the 3D map, and
+        // the button under the top line takes them back to the radar.
+        let back = app.buttons["nativeMap.3d.back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "The way back to the main map")
+        XCTAssertEqual(back.label, "Back to main map")
         element("nativeMap.storm.close").tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        XCTAssertTrue(element("nativeMap.3d").exists, "Still on the 3D map")
+        screenshot("3D map with its way back")
+        back.tap()
         XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(back.exists, "No way back from the main map")
     }
 
     /// The flat map opened at `core`: where to tap a "3D" tag in view, clear
@@ -1232,6 +1241,12 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(dial.waitForExistence(timeout: 30), "The slice dial")
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         screenshot("storm cut on the 3D map")
+        // Back to the main map with the storm still open, on the flat map's sheet.
+        let back = app.buttons["nativeMap.3d.back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10), "The storm stays open")
     }
 
     /// A KONRAD3D cell measured in three layers, as `/cells/tracks/{code}`
@@ -2145,6 +2160,8 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=30&bearing=-135", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.3d.north").exists)
+        // Opened by a link, not a detour: nothing to go back to.
+        XCTAssertFalse(app.buttons["nativeMap.3d.back"].exists)
         // Tilted and turned as the link says.
         let canvas = element("nativeMap.3d.canvas")
         XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("30,-135") }, "The link's camera: \(canvas.value as? String ?? "")")

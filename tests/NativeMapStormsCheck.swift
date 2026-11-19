@@ -1615,22 +1615,24 @@ struct NativeMapStormsCheck {
                          cloud("c", "00:00", system: "T2", peak: 35), cloud("d", "00:00", peak: 30), cloud("e", "00:00", peak: 31)]
             precondition(CloudHintRules.onePerStorm(tiles).map(\.path) == ["b", "c", "d", "e"])
         }
-        test("a wide zoom keeps one tag per neighbourhood, current before stale, then the strongest") {
+        test("every zoom keeps one tag per neighbourhood, current before stale, then the strongest") {
             func tag(_ path: String, peak: Double, stale: Bool = false, lon: Double) -> CloudHintRules.Tag {
                 CloudHintRules.Tag(cloud: cloud(path, "00:00", peak: peak, lon: lon), stale: stale)
             }
-            // 0.2° of longitude at 54° N is about 13 km: 23 px at zoom 7, under its 67.
+            // 0.2° of longitude is 18 px at zoom 7, well under 160.
             let near = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.2), tag("far", peak: 30, lon: 10)]
             precondition(CloudHintRules.thin(near, zoom: 7).map(\.cloud.path) == ["strong", "far"])
             precondition(CloudHintRules.thin(near, zoom: 7.9).map(\.cloud.path) == ["strong", "far"], "the level's spacing, not the zoom's")
             let behind = [tag("old", peak: 60, stale: true, lon: 8), tag("new", peak: 40, lon: 8.2)]
             precondition(CloudHintRules.thin(behind, zoom: 7).map(\.cloud.path) == ["new"])
-            // From zoom 9 only overlap counts: 13 km is 92 px there, clear of a 34 px pill.
-            precondition(CloudHintRules.thin(near, zoom: 9).map(\.cloud.path) == ["strong", "weak", "far"])
-            // Two pills a kilometre apart overlap until zoom 12 or so.
+            // The same spacing zoomed in: 146 px at zoom 10, still too close;
+            // 291 px at zoom 11, and both keep their tag.
+            precondition(CloudHintRules.thin(near, zoom: 10.9).map(\.cloud.path) == ["strong", "far"])
+            precondition(CloudHintRules.thin(near, zoom: 11).map(\.cloud.path) == ["strong", "weak", "far"])
+            // Two cores a kilometre apart share a tag until zoom 14.
             let touching = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.015)]
-            precondition(CloudHintRules.thin(touching, zoom: 9.5).map(\.cloud.path) == ["strong"])
-            precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong", "weak"])
+            precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong"])
+            precondition(CloudHintRules.thin(touching, zoom: 14).map(\.cloud.path) == ["strong", "weak"])
         }
     }
 

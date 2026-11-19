@@ -350,6 +350,25 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 
+        // The way back from a detour to the 3D map, under the top line's
+        // middle: the line itself is the status pill's.
+        let backFrom3D = addChrome(BackFrom3D(model: model, back: { [weak self] in self?.backFrom3D() }))
+        backFrom3D.isHidden = true
+        NSLayoutConstraint.activate([
+            backFrom3D.centerXAnchor.constraint(equalTo: centerXAnchor),
+            backFrom3D.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Self.topLineHeight + ChromeTheme.gutter),
+        ])
+        model.$detour.map { $0 != nil }.combineLatest(model.$capability.map { $0 == .cells3d })
+            .map { $0 && $1 }
+            .removeDuplicates()
+            .sink { [weak backFrom3D] shown in
+                DispatchQueue.main.async {
+                    backFrom3D?.isHidden = !shown
+                    backFrom3D?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
+
         let toast = addChrome(ToastHost(model: model, state: chromeState))
         NSLayoutConstraint.activate([
             toast.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -363,6 +382,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// safe area, with a gutter after it: 12 pt in, then the logo and the
     /// bell, 52 pt each with 8 pt after each. The logbook is under the logo.
     static let logoRowWidth: CGFloat = 12 + 2 * (52 + 8) + ChromeTheme.gutter
+
+    /// Where the top line ends: 12 pt in from the top, then the logo's
+    /// 52 pt disc (core's `--mc-top-stack` and `--mc-control-lg`).
+    static let topLineHeight: CGFloat = 12 + 52
 
     /// Where the app's left column has room under the logo and the logbook
     /// (the Experimental Features mode's, as the flash-to-bang disc is): 12 pt
@@ -453,6 +476,28 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                                             close: { [weak self] in self?.dismissSheet() },
                                                             explain: { [weak self] in self?.openExplainer() }))
         presentSheet(menu, detents: [.medium(), .large()])
+    }
+
+    /// Back from a detour to the 3D map, to the map and the view it came
+    /// from (core's `backFrom3D`, `returnFrom3D`), when the reader asks with
+    /// `BackFrom3D`. A storm open at the time stays open, on the flat map.
+    func backFrom3D() {
+        guard model.capability == .cells3d, let origin = model.detour else { return }
+        model.detour = nil
+        setCapability(origin.capability)
+        // After the tray is back: the camera's centre is the middle of the
+        // map above it, as when it was saved.
+        // MapKit centres the camera inside the map's margins, which the tray
+        // sets as it comes back; set again once it has, or the view lands
+        // half a tray off.
+        if let camera = origin.camera {
+            for delay in [0.0, 0.35] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.layoutIfNeeded()
+                    self?.mapView.setCamera(camera, animated: false)
+                }
+            }
+        }
     }
 
     /// The open radar's own page (core's `RadarInfo`), from the tray's "i".

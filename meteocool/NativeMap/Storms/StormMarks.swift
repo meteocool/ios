@@ -461,14 +461,10 @@ final class StormMarks: NativeMapFeature {
                     self?.redraw()
                 }
                 self?.sheet?.update()
-                self?.endDetour()
             }
         }
         let c = store.$details.sink { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.sheet?.update()
-                self?.endDetour()
-            }
+            DispatchQueue.main.async { self?.sheet?.update() }
         }
         // Another part cleared the selection (a hold on the map, the model
         // comparison): the store follows. Only a storm's id is mirrored, so a
@@ -496,29 +492,6 @@ final class StormMarks: NativeMapFeature {
             DispatchQueue.main.async { self?.redraw() }
         }) {
             observers.append(hidden)
-        }
-    }
-
-    /// A storm opened on the 3D map from the flat one, closed: back to the
-    /// map and the view it came from (core's `returnFrom3D`). Closing means
-    /// its panel going, which on a phone can leave it selected.
-    private func endDetour() {
-        guard let map, map.model.capability == .cells3d, let origin = map.model.detour,
-              store.selection == nil || !store.details else { return }
-        map.model.detour = nil
-        map.setCapability(origin.capability)
-        // After the tray is back: the camera's centre is the middle of the
-        // map above it, as when it was saved.
-        // MapKit centres the camera inside the map's margins, which the tray
-        // sets as it comes back; set again once it has, or the view lands
-        // half a tray off.
-        if let camera = origin.camera {
-            for delay in [0.0, 0.35] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak map] in
-                    map?.view.layoutIfNeeded()
-                    map?.mapView.setCamera(camera, animated: false)
-                }
-            }
         }
     }
 

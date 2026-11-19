@@ -61,10 +61,11 @@ final class NativeMapModel: ObservableObject {
     /// (`openStormIn3D`).
     var focus3D: ThreeDFocus?
     /// The map and view a storm was opened on the 3D map from (core's
-    /// `open3d.ts` origin): closing that storm goes back. The view is
-    /// dropped once the 3D map is moved, and the whole of it once another
-    /// map is picked.
-    var detour: (capability: Capability, camera: MKMapCamera?)?
+    /// `lib/open3d.ts` origin, `detourOrigin`): while there is one, the 3D
+    /// map offers a button back to it (`BackFrom3D`). The view is dropped
+    /// once the 3D map is moved, and the whole of it once another map is
+    /// picked.
+    @Published var detour: (capability: Capability, camera: MKMapCamera?)?
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?
