@@ -683,7 +683,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func windowRefused() {
-        model.toast = NSLocalizedString("native_map_archive_refused", value: "The archive does not keep that time.", comment: "")
+        model.toast = CoreStrings.t("chrome.archive.refused")
         leaveWindow()
     }
 

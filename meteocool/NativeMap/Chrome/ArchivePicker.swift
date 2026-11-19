@@ -2,11 +2,12 @@
 //  ArchivePicker.swift
 //  meteocool
 //
-//  The archive's sheet: which past window the map is used in (ng's
-//  `doc/archive.md`, "How the window is chosen").
+//  The archive's sheet: which past window the map is used in (core's
+//  `ArchivePicker.svelte`, ng's `doc/archive.md`).
 //
 
 import SwiftUI
+import UIKit
 
 /// What the archive keeps, and the day, start and length chosen in it.
 @MainActor
@@ -20,26 +21,24 @@ final class ArchivePickerState: ObservableObject {
     }
 
     @Published private(set) var phase = Phase.loading
-    /// The day; only its date counts.
-    @Published var day = Date()
-    /// The start; only its time of day counts, on the five-minute grid.
-    @Published var start = Date() {
-        didSet {
-            let snapped = Self.snapped(start)
-            if snapped != start { start = snapped }
-        }
+    /// The day: its midnight. Another day keeps the start's time of day,
+    /// inside what that day has.
+    @Published var day = Date() {
+        didSet { if day != oldValue { minute = clamped(minute) } }
     }
-    @Published var hours = 3
+    /// The start, in minutes after the day's midnight, on the five-minute grid.
+    @Published var minute = 0
+    @Published var hours = RadarWindow.defaultHours
 
     private let url: URL
     private let fetch: (URL, @escaping @MainActor (Data?, Int?) -> Void) -> Void
     private let current: RadarWindow?
+    private let calendar = Calendar.current
 
     init(url: URL, fetch: @escaping (URL, @escaping @MainActor (Data?, Int?) -> Void) -> Void, current: RadarWindow?) {
         self.url = url
         self.fetch = fetch
         self.current = current
-        if let current { choose(current) }
     }
 
     func load() {
@@ -47,44 +46,67 @@ final class ArchivePickerState: ObservableObject {
         fetch(url) { [weak self] data, status in
             guard let self else { return }
             if let coverage = data.flatMap(ArchiveCoverage.decode) {
-                if self.current == nil, case .loading = self.phase, let latest = RadarWindow(ending: coverage.until, hours: 3) {
-                    // The newest three hours, until the reader picks.
-                    self.choose(coverage.window(start: latest.start, hours: 3) ?? latest)
-                }
+                // Where it starts: the window open now, or the last few hours kept.
+                let seed = coverage.seed(open: self.current)
+                self.hours = seed.hours
                 self.phase = .ready(coverage)
+                self.start = Date(timeIntervalSince1970: TimeInterval(seed.start))
             } else {
                 self.phase = status == 404 ? .empty : .failed
             }
         }
     }
 
-    /// The window chosen, kept inside what the archive holds.
+    private var coverage: ArchiveCoverage? {
+        if case .ready(let coverage) = phase { return coverage }
+        return nil
+    }
+
+    /// The days that can be chosen, first to last (every one between is kept).
+    var days: ClosedRange<Date>? {
+        guard let days = coverage?.days(calendar: calendar), let first = days.first, let last = days.last else { return nil }
+        // To the last day's end: the calendar keeps the time of day it was on.
+        return Date(timeIntervalSince1970: TimeInterval(first)) ... Date(timeIntervalSince1970: TimeInterval(last + 86_399))
+    }
+
+    /// The minutes of the chosen day a window may start at.
+    var minutes: ClosedRange<Int> {
+        coverage?.startMinutes(day: midnight, calendar: calendar) ?? 0 ... 1435
+    }
+
+    private var midnight: Int { Int(calendar.startOfDay(for: day).timeIntervalSince1970) }
+
+    private func clamped(_ minute: Int) -> Int { min(max(minute, minutes.lowerBound), minutes.upperBound) }
+
+    /// The start as a date, for the system's time picker; setting it keeps
+    /// the day and snaps to the grid.
+    var start: Date {
+        get { calendar.date(byAdding: .minute, value: minute, to: calendar.startOfDay(for: day)) ?? day }
+        set {
+            day = calendar.startOfDay(for: newValue)
+            let parts = calendar.dateComponents([.hour, .minute], from: newValue)
+            minute = clamped(((parts.hour ?? 0) * 60 + (parts.minute ?? 0)) / 5 * 5)
+        }
+    }
+
+    /// The earliest and latest start on the chosen day.
+    var startRange: ClosedRange<Date> {
+        let midnight = calendar.startOfDay(for: day)
+        let first = calendar.date(byAdding: .minute, value: minutes.lowerBound, to: midnight) ?? midnight
+        let last = calendar.date(byAdding: .minute, value: minutes.upperBound, to: midnight) ?? midnight
+        return first ... max(first, last)
+    }
+
+    /// The window the choices make, kept inside the archive; nil where none can be.
     var window: RadarWindow? {
-        guard case .ready(let coverage) = phase else { return nil }
-        let calendar = Calendar.current
-        var parts = calendar.dateComponents([.year, .month, .day], from: day)
-        let time = calendar.dateComponents([.hour, .minute], from: start)
-        parts.hour = time.hour
-        parts.minute = time.minute
-        guard let date = calendar.date(from: parts) else { return nil }
-        return coverage.window(start: Int(date.timeIntervalSince1970), hours: hours)
-    }
-
-    private func choose(_ window: RadarWindow) {
-        let date = Date(timeIntervalSince1970: TimeInterval(window.start))
-        day = date
-        start = date
-        hours = RadarWindow.lengths.min { abs(Double($0) - window.hours) < abs(Double($1) - window.hours) } ?? 3
-    }
-
-    private static func snapped(_ date: Date) -> Date {
-        let seconds = Int(date.timeIntervalSince1970)
-        let on = RadarWindow.grid(seconds + RadarWindow.stepSeconds / 2)
-        return seconds == on ? date : Date(timeIntervalSince1970: TimeInterval(on))
+        coverage?.pick(start: Int(start.timeIntervalSince1970), hours: hours)
     }
 }
 
-/// A day the archive covers, a start time and a length, and Open.
+/// A day the archive keeps on the system's calendar, a start on its time
+/// picker on the five-minute grid, a length, and Open. core draws its own
+/// month and drum wheels (`ArchiveCalendar.svelte`, `Wheel.svelte`) because
+/// the web has neither; here they are the system's.
 struct ArchivePicker: View {
     @ObservedObject var state: ArchivePickerState
     let open: (RadarWindow) -> Void
@@ -92,14 +114,10 @@ struct ArchivePicker: View {
     let live: (() -> Void)?
     let close: () -> Void
 
-    private func s(_ key: String, _ english: String) -> String {
-        NSLocalizedString(key, value: english, comment: "")
-    }
-
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle(s("native_map_archive", "Archive"))
+                .navigationTitle(CoreStrings.t("chrome.archive.title"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -109,7 +127,7 @@ struct ArchivePicker: View {
                     }
                     if case .ready = state.phase {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button(s("native_map_archive_open", "Open")) {
+                            Button(CoreStrings.t("chrome.archive.open")) {
                                 if let window = state.window { open(window) }
                             }
                             .disabled(state.window == nil)
@@ -128,64 +146,112 @@ struct ArchivePicker: View {
     private var content: some View {
         switch state.phase {
         case .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(CoreStrings.t("chrome.archive.loading")).font(.footnote).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .empty:
             ContentUnavailableView {
-                Label(s("native_map_archive_empty_title", "Nothing Kept Yet"), systemImage: "calendar.badge.clock")
+                Label(CoreStrings.t("chrome.archive.title"), systemImage: "calendar.badge.clock")
             } description: {
-                Text(s("native_map_archive_empty", "The archive is empty. Once it starts, the radar, lightning, storms and stations are kept."))
+                Text(CoreStrings.t("chrome.archive.empty"))
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("nativeMap.archive.empty")
         case .failed:
             ContentUnavailableView {
-                Label(s("native_map_archive_failed_title", "Archive Unavailable"), systemImage: "wifi.exclamationmark")
+                Label(CoreStrings.t("chrome.archive.title"), systemImage: "wifi.exclamationmark")
             } description: {
-                Text(s("native_map_archive_failed", "The archive could not be reached."))
+                Text(CoreStrings.t("chrome.archive.failed"))
             } actions: {
-                Button(s("native_map_archive_retry", "Try Again")) { state.load() }
+                Button(CoreStrings.t("chrome.archive.retry")) { state.load() }
                     .buttonStyle(.bordered)
             }
-        case .ready(let coverage):
-            form(coverage)
+        case .ready:
+            form
         }
     }
 
-    private func form(_ coverage: ArchiveCoverage) -> some View {
-        let first = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: TimeInterval(coverage.since)))
-        let last = Date(timeIntervalSince1970: TimeInterval(coverage.until))
-        return Form {
+    private var form: some View {
+        Form {
             Section {
-                DatePicker(s("native_map_archive_day", "Day"), selection: $state.day, in: first ... last, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .accessibilityIdentifier("nativeMap.archive.day")
+                if let days = state.days {
+                    DatePicker(CoreStrings.t("chrome.archive.day"), selection: $state.day, in: days, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .accessibilityIdentifier("nativeMap.archive.day")
+                }
+            } header: {
+                Text(CoreStrings.t("chrome.archive.lede")).textCase(nil)
             }
             Section {
-                DatePicker(s("native_map_archive_start", "Start"), selection: $state.start, displayedComponents: .hourAndMinute)
-                    .accessibilityIdentifier("nativeMap.archive.start")
-                Picker(s("native_map_archive_length", "Length"), selection: $state.hours) {
+                LabeledContent(CoreStrings.t("chrome.archive.start")) {
+                    StartPicker(date: Binding(get: { state.start }, set: { state.start = $0 }), range: state.startRange,
+                                label: CoreStrings.t("chrome.archive.start"))
+                }
+                Picker(CoreStrings.t("chrome.archive.length"), selection: $state.hours) {
                     ForEach(RadarWindow.lengths, id: \.self) { hours in
-                        Text(String(format: s("native_map_archive_hours", "%d h"), hours)).tag(hours)
+                        Text(CoreStrings.t("chrome.archive.hours", ["hours": hours])).tag(hours)
                     }
                 }
                 .accessibilityIdentifier("nativeMap.archive.length")
             } footer: {
                 if let window = state.window {
-                    Text(window.summary())
+                    Text(summary(window))
                         .accessibilityIdentifier("nativeMap.archive.summary")
                 }
             }
-            Section {
-                Text(String(format: s("native_map_archive_kept", "Kept from %1$@ to %2$@."),
-                            RadarWindow.dateTime(coverage.since), RadarWindow.dateTime(coverage.until)))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                if let live {
-                    Button(s("native_map_archive_back", "Back to Live"), action: live)
+            if let live {
+                Section {
+                    Button(CoreStrings.t("chrome.archive.back_to_live"), action: live)
                         .accessibilityIdentifier("nativeMap.archive.live")
                 }
             }
         }
+    }
+
+    /// "Thu 5 Nov, 14:05 to 17:05, 37 frames".
+    private func summary(_ window: RadarWindow) -> String {
+        CoreStrings.t("chrome.archive.summary", [
+            "from": RadarWindow.dateTime(window.start, weekday: true),
+            "to": StatusPill.clock(window.end),
+            "steps": window.steps.count,
+        ])
+    }
+}
+
+/// The system's time picker on the five-minute grid, between the day's
+/// first and last start: SwiftUI's own has no minute interval.
+private struct StartPicker: UIViewRepresentable {
+    @Binding var date: Date
+    let range: ClosedRange<Date>
+    let label: String
+
+    func makeUIView(context: Context) -> UIDatePicker {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .time
+        picker.preferredDatePickerStyle = .compact
+        picker.minuteInterval = RadarWindow.stepSeconds / 60
+        picker.accessibilityLabel = label
+        picker.accessibilityIdentifier = "nativeMap.archive.start"
+        picker.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
+        picker.setContentHuggingPriority(.required, for: .horizontal)
+        return picker
+    }
+
+    func updateUIView(_ picker: UIDatePicker, context: Context) {
+        context.coordinator.date = $date
+        picker.minimumDate = range.lowerBound
+        picker.maximumDate = range.upperBound
+        if picker.date != date { picker.date = date }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(date: $date) }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var date: Binding<Date>
+        init(date: Binding<Date>) { self.date = date }
+        @objc func changed(_ picker: UIDatePicker) { date.wrappedValue = picker.date }
     }
 }

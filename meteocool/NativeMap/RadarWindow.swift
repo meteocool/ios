@@ -2,7 +2,8 @@
 //  RadarWindow.swift
 //  meteocool
 //
-//  A past window on the native map: the archive (ng's `doc/archive.md`).
+//  A past window on the native map: the archive (ng's `doc/archive.md`,
+//  core's `lib/archive.ts`).
 //
 
 import Foundation
@@ -17,8 +18,13 @@ struct RadarWindow: Equatable, Hashable, Sendable {
     static let stepSeconds = 300
     /// The most steps the timeline route serves at once.
     static let maxSteps = 1000
-    /// The lengths the picker offers, in hours.
+    /// The lengths the picker offers, in hours (`WINDOW_HOURS`).
     static let lengths = [1, 3, 6, 12, 24]
+    /// The length the picker starts on (`DEFAULT_WINDOW_HOURS`).
+    static let defaultHours = 3
+    /// The length the picker shows for a window open now: the first offered
+    /// that holds it.
+    var pickerHours: Int { Self.lengths.first { Double($0) >= hours.rounded() } ?? Self.defaultHours }
     /// How long a window a link's past frame opens, ending at that frame.
     static let linkHours = 2
 
@@ -195,15 +201,53 @@ struct ArchiveCoverage: Decodable, Equatable, Sendable {
         return coverage
     }
 
-    /// The window the picker opens for a start and a length: kept inside
-    /// what the archive holds, moved back rather than cut short where it
-    /// would run past the newest step.
-    func window(start: Int, hours: Int) -> RadarWindow? {
-        let length = hours * 3600
-        let first = max(since, min(RadarWindow.grid(start), until))
-        let last = min(first + length, until)
-        return RadarWindow(start: max(since, last - length), end: last)
+    /// The window a reader picked (`pickWindow`): from `start`, `hours`
+    /// long, kept inside what the archive covers. One running past the
+    /// newest step ends there; one starting before the oldest starts there.
+    /// Nil when nothing of it is kept.
+    func pick(start: Int, hours: Int) -> RadarWindow? {
+        let first = RadarWindow.grid(start)
+        let from = max(first, since), to = min(first + hours * 3600, until)
+        guard to > from else { return nil }
+        return RadarWindow(start: from, end: to)
     }
+
+    /// Where the picker starts (`seed`): the window open now, or the last
+    /// few hours the archive has; never before its oldest step.
+    func seed(open: RadarWindow?) -> (start: Int, hours: Int) {
+        let start = open?.start ?? RadarWindow.grid(until - RadarWindow.defaultHours * 3600)
+        return (max(start, since), open?.pickerHours ?? RadarWindow.defaultHours)
+    }
+
+    /// The days the picker offers, each its midnight in `calendar`, oldest
+    /// first: every day with anything kept (`coverageDays`).
+    func days(calendar: Calendar) -> [Int] {
+        var days: [Int] = []
+        let last = calendar.startOfDay(for: Self.date(until))
+        var day = calendar.startOfDay(for: Self.date(since))
+        while day <= last {
+            days.append(Int(day.timeIntervalSince1970))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = calendar.startOfDay(for: next)
+        }
+        return days
+    }
+
+    /// The minutes of the day a window may start at on `day` (its midnight
+    /// in `calendar`), on the grid (`startMinutes`): the whole day, cut at
+    /// the archive's ends on its first and last day.
+    func startMinutes(day: Int, calendar: Calendar) -> ClosedRange<Int> {
+        func minuteOf(_ seconds: Int) -> Int {
+            let parts = calendar.dateComponents([.hour, .minute], from: Self.date(seconds))
+            return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        }
+        func midnight(_ seconds: Int) -> Int { Int(calendar.startOfDay(for: Self.date(seconds)).timeIntervalSince1970) }
+        let first = midnight(since) == day ? Int((Double(minuteOf(since)) / 5).rounded(.up)) * 5 : 0
+        let last = midnight(until) == day ? minuteOf(until) / 5 * 5 : 1435
+        return first ... max(first, last)
+    }
+
+    private static func date(_ seconds: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(seconds)) }
 }
 
 /// The strikes a past window draws (`/v3/lightning/strikes`, at most three

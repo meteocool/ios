@@ -275,6 +275,17 @@ final class NativeMapUITests: XCTestCase {
         let open = app.buttons["nativeMap.archive.open"].firstMatch
         XCTAssertTrue(open.waitForExistence(timeout: 20), "Open, once the archive has answered")
         XCTAssertTrue(open.isEnabled)
+        // The system's calendar, start and length, in core's words; it starts
+        // on the last three hours kept, 37 frames.
+        XCTAssertTrue(element("nativeMap.archive.day").exists, "The day")
+        // Up to its large detent: the start and length are under the calendar.
+        element("nativeMap.archive.sheet").swipeUp()
+        XCTAssertTrue(element("nativeMap.archive.start").waitForExistence(timeout: 5), "The start")
+        XCTAssertTrue(element("nativeMap.archive.length").exists, "The length")
+        let summary = element("nativeMap.archive.summary")
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertTrue(summary.label.hasSuffix(", 37 frames"), "Three hours: \(summary.label)")
+        screenshot("archive picker")
         open.tap()
         // The window's steps: clock times, never offsets from now.
         let clock = { (value: String) in value.contains(":") && !value.hasPrefix("-") && !value.hasPrefix("+") }

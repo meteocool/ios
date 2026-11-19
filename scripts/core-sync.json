@@ -16,7 +16,9 @@
     "scripts/tests/gpuBudget.test.ts": "tests lib/gpuBudget.ts, web only",
     "src/lib/gpuTiles.ts": "the WebGL frame layer's texture cache; the native map keeps put-together pictures in RadarCompositor",
     "scripts/tests/gpuTiles.test.ts": "tests lib/gpuTiles.ts, web only",
-    "src/layers/radarDrawing.ts": "chooses between the web's WebGL frame layer and its tile layers"
+    "src/layers/radarDrawing.ts": "chooses between the web's WebGL frame layer and its tile layers",
+    "src/components/ArchiveCalendar.svelte": "the web's month calendar of the archive's days; the native picker is the system's graphical DatePicker bounded to them (ArchivePicker.swift)",
+    "src/components/Wheel.svelte": "the web's iOS-style drum wheel; the native picker's start is the system's time picker on the five-minute grid and its length a system Picker (ArchivePicker.swift)"
   },
   "unported": {
     "src/layers/radarFrames.ts": "the WebGL2 frame layer. Its switching whole, same-step stand-ins, rest and previews are ported (RadarEngine, RadarOverlay, lib/frameSwitch.ts, lib/previewTiles.ts); its crossfade in value across a step's 450 ms (radarCrossfade, CROSSFADE_MS) is not: the native map colours tiles before putting a step together, and MapKit's tile-by-tile overlay redraws cannot dissolve every animation frame without a GPU renderer"

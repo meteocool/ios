@@ -195,7 +195,8 @@ private struct ChipLabel: LabelStyle {
     }
 }
 
-/// The archive: a past window to use the map in. Tinted while one is open.
+/// The archive: a past window to use the map in (core's `ArchivePill`).
+/// Tinted while one is open.
 struct ArchiveButton: View {
     let open: Bool
     let theme: ChromeTheme
@@ -211,8 +212,8 @@ struct ArchiveButton: View {
                 .hitTarget()
         }
         .buttonStyle(PressScale())
-        .accessibilityLabel(NSLocalizedString("native_map_archive", value: "Archive", comment: ""))
-        .accessibilityHint(NSLocalizedString("native_map_archive_hint", value: "Shows the map at a time the archive still keeps.", comment: ""))
+        .accessibilityLabel(CoreStrings.t("chrome.archive.title"))
+        .accessibilityHint(CoreStrings.t("chrome.archive.choose"))
         .accessibilityAddTraits(open ? .isSelected : [])
         .accessibilityIdentifier("nativeMap.archive")
     }
