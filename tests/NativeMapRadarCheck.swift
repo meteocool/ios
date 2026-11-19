@@ -18,6 +18,7 @@ struct NativeMapRadarCheck {
         playbackLoop()
         playbackGate()
         frameSwitch()
+        previewTiles()
         print("NativeMapRadarCheck passed")
     }
 
@@ -373,5 +374,78 @@ struct NativeMapRadarCheck {
         let settled: Set<String> = ["a", "b"]
         precondition(F.settled(["a", "b"], ready: settled.contains) && !F.settled(["a", "b", "c"], ready: settled.contains))
         precondition(F.settled([String](), ready: { _ in false }), "a step with nothing in view")
+    }
+
+    // MARK: - Previews (previewTiles.test.ts)
+
+    static func previewTiles() {
+        typealias R = PreviewTileRules
+        // A view is previewed from three zooms up, or as far up as the pyramid goes.
+        precondition(R.previewZoom(8, minZ: 3) == 5 && R.previewZoom(5, minZ: 3) == 3 && R.previewZoom(4, minZ: 3) == 3)
+        precondition(R.previewZoom(3, minZ: 3) == nil, "at the top a preview would be the step's own tiles")
+        // A preview from nearer than three zooms up is thinned to the same resolution.
+        precondition(R.previewScale(8, zoom: 5) == 1 && R.previewScale(5, zoom: 3) == 2 && R.previewScale(4, zoom: 3) == 4)
+
+        // A tile of 512 pixels covering 0..512 both ways: a map unit a pixel, north at 512.
+        let tile: R.Box = [0, 0, 512, 512]
+        // The crop is every block the view touches and one around them, inside the tile.
+        let crop = R.cropFor(tile, size: 512, view: [100, 392, 200, 472])
+        precondition(crop == R.Crop(x: 64, y: 0, width: 192, height: 160), "\(String(describing: crop))")
+        precondition(R.cropExtent(tile, size: 512, crop: crop!) == [64, 352, 256, 512])
+        // A view past the tile's edge is cropped at the edge, and one that misses it has no crop.
+        precondition(R.cropFor(tile, size: 512, view: [-300, -300, 40, 40]) == R.Crop(x: 0, y: 416, width: 96, height: 96))
+        precondition(R.cropFor(tile, size: 512, view: [600, 0, 700, 100]) == nil)
+        precondition(R.cropFor(tile, size: 512, view: [512, 0, 700, 100]) == nil, "touching is not meeting")
+        // A view that moves within its blocks asks for the same crop.
+        let a = R.cropFor(tile, size: 512, view: [100, 392, 200, 472])!, b = R.cropFor(tile, size: 512, view: [110, 400, 215, 478])!
+        precondition(a.name() == b.name() && a.name() != a.name(scale: 2))
+        // Ground lies within a piece's give or take a rounding.
+        precondition(R.covers([0, 0, 100, 100], [10, 10, 100.00001, 90]) && !R.covers([0, 0, 100, 100], [10, 10, 101, 90]))
+
+        func piece(_ key: String, _ frame: String, _ at: (Int, Int, Int), _ ground: R.Box, cost: Int = 100) -> PreviewPiece<Int> {
+            PreviewPiece(key: key, frame: frame, z: at.0, x: at.1, y: at.2, covers: ground, image: 1, cost: cost)
+        }
+        // Only the plan's pieces are taken in; an earlier plan's stay while there is room.
+        var store = PreviewStore<Int>(capacity: 10_000)
+        precondition(!store.put(piece("a", "f1", (3, 4, 2), tile)), "not in any plan")
+        store.plan(["a", "b"])
+        precondition(store.put(piece("a", "f1", (3, 4, 2), tile)) && store.put(piece("b", "f2", (3, 4, 2), tile)) && store.count == 2)
+        // The map moved: the step on screen may have only its old piece to be drawn from.
+        store.plan(["b"])
+        precondition(store.find("f1", z: 3, x: 4, y: 2)?.key == "a")
+        precondition(!store.put(piece("a", "f1", (3, 4, 2), tile)), "no longer taken in")
+        store.clear()
+        precondition(store.count == 0 && store.bytes == 0)
+        precondition(!store.put(piece("b", "f2", (3, 4, 2), tile)), "nothing is taken in until the next plan")
+
+        // The plan's pieces take the room of the earlier plans', the oldest first.
+        var full = PreviewStore<Int>(capacity: 200)
+        full.plan(["old1", "old2"])
+        full.put(piece("old1", "f1", (3, 4, 2), tile))
+        full.put(piece("old2", "f2", (3, 4, 2), tile))
+        full.plan(["new1", "new2", "new3"])
+        precondition(full.put(piece("new1", "f3", (3, 4, 2), tile)) && !full.has("old1") && full.has("old2"))
+        precondition(full.put(piece("new2", "f4", (3, 4, 2), tile)) && !full.has("old2"))
+        precondition(!full.put(piece("new3", "f5", (3, 4, 2), tile)), "the plan's own are not pushed out")
+        precondition(full.bytes == 200)
+
+        // A step's piece is found from any tile under it whose ground it covers.
+        var found = PreviewStore<Int>(capacity: 10_000)
+        found.plan(["a"])
+        // Coarse tile 3/4/2, cropped to its western half; tile 6/32/16 is three zooms under it.
+        found.put(piece("a", "f1", (3, 4, 2), [0, 0, 256, 512]))
+        precondition(found.covering("f1", z: 6, x: 32, y: 16, ground: [10, 10, 60, 60])?.key == "a")
+        precondition(found.covering("f1", z: 6, x: 32, y: 16, ground: [240, 10, 300, 60]) == nil, "past the crop")
+        precondition(found.covering("f1", z: 6, x: 32, y: 16, ground: [240, 10, 300, 60], partly: true)?.key == "a", "part of it will do where asked")
+        precondition(found.covering("f1", z: 6, x: 32, y: 16, ground: [256, 10, 300, 60], partly: true) == nil, "touching is not covering any")
+        precondition(found.covering("f2", z: 6, x: 32, y: 16, ground: [10, 10, 60, 60]) == nil, "another step")
+        precondition(found.covering("f1", z: 6, x: 40, y: 16, ground: [10, 10, 60, 60]) == nil, "under another coarse tile")
+
+        // A newer crop of a step's coarse tile replaces the last.
+        var newer = PreviewStore<Int>(capacity: 10_000)
+        newer.plan(["a", "a2"])
+        newer.put(piece("a", "f1", (3, 4, 2), [0, 0, 256, 512]))
+        newer.put(piece("a2", "f1", (3, 4, 2), [128, 0, 384, 512]))
+        precondition(!newer.has("a") && newer.find("f1", z: 3, x: 4, y: 2)?.key == "a2" && newer.bytes == 100)
     }
 }

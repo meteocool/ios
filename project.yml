@@ -145,6 +145,7 @@ targets:
       - path: meteocool/NativeMap/ColumnValues.swift
       - path: meteocool/NativeMap/RadarTileStore.swift
       - path: meteocool/NativeMap/RadarCompositor.swift
+      - path: meteocool/NativeMap/PreviewTileRules.swift
       - path: meteocool/NativeMap/NativeMapEndpoints.swift
       - path: meteocool/NativeMap/radar-coverage.json
     settings:

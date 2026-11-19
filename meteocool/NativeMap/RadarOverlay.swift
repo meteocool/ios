@@ -16,6 +16,7 @@ final class RadarScene: @unchecked Sendable {
     private var current = RadarFrameRef.none
     private var before: RadarFrameRef?
     private var drawnZoom: Int?
+    private var hasRested = true
 
     init(compositor: RadarCompositor) {
         self.compositor = compositor
@@ -36,6 +37,14 @@ final class RadarScene: @unchecked Sendable {
             current = frame
             return true
         }
+    }
+
+    /// Whether the step on screen's own tiles are asked for: not while a hand
+    /// on the timeline may only be passing over it, where its preview stands
+    /// in (core's `REST_MS`).
+    var rested: Bool {
+        get { lock.withLock { hasRested } }
+        set { lock.withLock { hasRested = newValue } }
     }
 
     /// The tile zoom MapKit last drew at, which preparing follows.
@@ -83,18 +92,24 @@ final class RadarRenderer: MKOverlayRenderer {
             case .empty:
                 break
             case .pending:
-                compositor.build(frame, z: z, x: x, y: y)
-                drawStandIn(z: z, x: x, y: y, zoom: zoom, frame: frame, previous: previous, context: context)
+                let ground = rect.intersection(mapRect).intersection(frame.bounds)
+                let preview = ground.isNull ? nil : compositor.preview(frame, z: z, x: x, y: y, ground: ground)
+                // A step the needle may only be passing over: its preview stands in, and its tiles wait.
+                if scene.rested || preview == nil { compositor.build(frame, z: z, x: x, y: y) }
+                drawStandIn(z: z, x: x, y: y, zoom: zoom, frame: frame, previous: previous, preview: preview, ground: ground,
+                            context: context)
             }
         }
     }
 
     /// Something to show while a picture waits for its tiles, of the same
     /// time where there is any (core's `lib/frameSwitch.ts`): a coarser
-    /// picture of this step, a few zooms up; zooming out, the finer ones;
-    /// only then the step before's.
+    /// picture of this step, a few zooms up but no further than its preview,
+    /// which is sharper; then its preview, blurred; zooming out, the finer
+    /// pictures; a preview cut for the view before, for what it has; only
+    /// then the step before's.
     private func drawStandIn(z: Int, x: Int, y: Int, zoom: Int, frame: RadarFrameRef, previous: RadarFrameRef?,
-                             context: CGContext) {
+                             preview: (image: CGImage?, rect: MKMapRect, z: Int)?, ground: MKMapRect, context: CGContext) {
         let compositor = scene.compositor
         let tile = RadarTileKey.mapRect(z: z, x: x, y: y)
         func picture(_ of: RadarFrameRef, _ at: FrameSwitchRules.Tile) -> RadarCompositor.Result {
@@ -112,12 +127,25 @@ final class RadarRenderer: MKOverlayRenderer {
             RadarCompositor.drawTile(image, in: RadarTileKey.mapRect(z: at.z, x: at.x, y: at.y), context: context)
             context.restoreGState()
         }
+        func blur(_ piece: (image: CGImage?, rect: MKMapRect, z: Int)) {
+            guard let image = piece.image else { return }
+            context.saveGState()
+            context.clip(to: CGRect(x: tile.minX, y: tile.minY, width: tile.width, height: tile.height))
+            context.interpolationQuality = .medium
+            RadarCompositor.drawTile(image, in: piece.rect, context: context)
+            context.restoreGState()
+        }
         let here = FrameSwitchRules.Tile(z: z, x: x, y: y)
-        if let up = FrameSwitchRules.ancestor(of: here, minZ: RadarLayer.minZoom, depth: FrameSwitchRules.ancestorReach, has: ready) {
+        let part = preview == nil && !ground.isNull ? scene.compositor.preview(frame, z: z, x: x, y: y, ground: ground, partly: true) : nil
+        let above = preview ?? part
+        let depth = above.map { max(2, z - $0.z - 1) } ?? FrameSwitchRules.ancestorReach
+        if let up = FrameSwitchRules.ancestor(of: here, minZ: RadarLayer.minZoom, depth: depth, has: ready) {
             return draw(frame, up)
         }
+        if let preview { return blur(preview) }
         let children = FrameSwitchRules.children(of: here, maxZ: frame.deepest, has: ready)
         if !children.isEmpty { return children.forEach { draw(frame, $0) } }
+        if let part { return blur(part) }
         // The step before, where this one has nothing yet (it waited as
         // long as it may, `RadarEngine.linger`).
         guard let previous else { return }
