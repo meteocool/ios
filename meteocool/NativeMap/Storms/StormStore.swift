@@ -52,6 +52,38 @@ final class StormStore: ObservableObject {
     @Published private(set) var named: (name: String, area: String?)?
     /// Bumped when marks must be drawn again: an answer, a frame, a selection.
     @Published private(set) var revision = 0
+
+    /// What a bump of `revision` was, for how the marks change
+    /// (`StormEasing`): a new answer and a step of the player ease, a change
+    /// of what is viewed applies at once, and a window opened or left drops
+    /// what was drawn.
+    enum Change: Equatable {
+        case update
+        /// A step of the player, this long (ms) after the one before it.
+        case step(gapMs: Double)
+        case view
+        case drop
+    }
+
+    /// The changes since the marks last drew, as one: dropping wins, then
+    /// applying at once.
+    private var pendingChange: Change?
+    /// When the player last stepped (ms of uptime).
+    private var lastStepMs: Double?
+
+    private func changed(_ change: Change) {
+        switch (pendingChange, change) {
+        case (.drop?, _), (.view?, .update), (.view?, .step): break
+        default: pendingChange = change
+        }
+        revision += 1
+    }
+
+    /// What the marks are to draw, once: nil when nothing has changed.
+    func takeChange() -> Change? {
+        defer { pendingChange = nil }
+        return pendingChange
+    }
     /// A link's slice, for the storm it is opening (`cut`).
     var linkCut: Double?
     /// A past window: every storm that overlapped it, rewound to the step
@@ -114,7 +146,7 @@ final class StormStore: ObservableObject {
             held = storms
             self.groups = groups
             refreshSelection()
-            revision += 1
+            changed(.update)
         }
         var older: Int?
         #if DEBUG
@@ -177,7 +209,7 @@ final class StormStore: ObservableObject {
         held = []
         groups = []
         selection = nil
-        revision += 1
+        changed(.drop)
     }
 
     /// Socket `storms`, or a wake: fetch again, and the selection's detail.
@@ -209,7 +241,9 @@ final class StormStore: ObservableObject {
             }
         }
         if next == .now { reload() }
-        revision += 1
+        let nowMs = ProcessInfo.processInfo.systemUptime * 1000
+        changed(.step(gapMs: lastStepMs.map { nowMs - $0 } ?? .infinity))
+        lastStepMs = nowMs
     }
 
     // MARK: - Taps
@@ -291,7 +325,7 @@ final class StormStore: ObservableObject {
             guard StormSelect.selectionKey(self.selection) == asked else { return }
             if let detail, let next = StormSelect.withDetail(self.selection, detail) {
                 self.selection = next
-                self.revision += 1
+                self.changed(.view)
             } else if status == 404, self.selection?.summary == nil {
                 self.map?.model.toast = CoreStrings.t("storm.toast.storm_gone")
                 self.selection = nil

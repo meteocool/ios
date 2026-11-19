@@ -4,7 +4,8 @@
 //
 //  Tracked storms on the native map: core's `lib/StormManager.ts` (drawing
 //  half), `layers/cells.ts`, `layers/cellPulse.ts` and the systems'
-//  outlines of `layers/stormGroups.ts`.
+//  outlines of `layers/stormGroups.ts`; changes eased by
+//  `lib/stormEasing.ts` (`StormEasing`).
 //
 
 import Combine
@@ -36,8 +37,17 @@ enum StormStyle {
 
 /// The marks drawn as lines and shapes, shared with MapKit's drawing threads.
 final class StormOverlay: NSObject, MKOverlay, @unchecked Sendable {
-    struct Scene {
-        var marks: [StormMark] = []
+    /// A mark as a transition draws it (`StormEasing`).
+    struct Shown: Equatable {
+        var mark: StormMark
+        /// How far it has faded in, 0 to 1; 1 at rest.
+        var fade: Double = 1
+        /// Fading out for good: not tapped.
+        var leaving = false
+    }
+
+    struct Scene: Equatable {
+        var marks: [Shown] = []
         var picked: String?
         var dark = false
     }
@@ -67,20 +77,25 @@ final class StormMapRenderer: MKOverlayRenderer {
         let casing = StormStyle.casing(dark: scene.dark)
         context.setLineCap(.round)
         context.setLineJoin(.round)
-        for mark in scene.marks {
+        for shown in scene.marks where shown.fade > 0 {
+            let mark = shown.mark
             let picked = mark.storm == scene.picked || (mark.kind == .link && mark.fromStorm == scene.picked)
-            let o = StormDrawing.ageOpacity(mark.ageMinutes)
+            // The age fade and the transition's together, in tenths as core
+            // buckets them (`opacityOf`); the selected storm's by the
+            // transition alone.
+            let fade = StormDrawing.jsRound(shown.fade * 10) / 10
+            let o = StormDrawing.jsRound(StormDrawing.ageOpacity(mark.ageMinutes) * fade * 10) / 10
             let colour = StormStyle.colour(mark.severity)
             let s = CGFloat(mark.severity)
             switch (mark.kind, mark.geometry) {
             case (.path, .line(let line)):
                 let path = Self.line(line)
                 let width = (picked ? 3 : 2) + s
-                stroke(path, colour: casing.withAlphaComponent(casing.cgColor.alpha * (picked ? 1 : o)), width: (width + 4) * px, in: context)
-                stroke(path, colour: colour.withAlphaComponent(picked ? 1 : o), width: width * px, in: context)
+                stroke(path, colour: casing.withAlphaComponent(casing.cgColor.alpha * (picked ? fade : o)), width: (width + 4) * px, in: context)
+                stroke(path, colour: colour.withAlphaComponent(picked ? fade : o), width: width * px, in: context)
             case (.link, .line(let line)):
                 context.setLineDash(phase: 0, lengths: [1 * px, 6 * px])
-                stroke(Self.line(line), colour: colour.withAlphaComponent(picked ? 0.95 : 0.7 * o),
+                stroke(Self.line(line), colour: colour.withAlphaComponent(picked ? 0.95 * fade : 0.7 * o),
                        width: ((picked ? 2.5 : 1.5) + 0.5 * s) * px, in: context)
                 context.setLineDash(phase: 0, lengths: [])
             case (.outline, .polygon(let ring)):
@@ -90,16 +105,16 @@ final class StormMapRenderer: MKOverlayRenderer {
                 guard picked else { continue }
                 let path = Self.ring(ring)
                 context.setLineDash(phase: 0, lengths: [7 * px, 5 * px])
-                stroke(path, colour: casing, width: 4 * px, in: context)
-                stroke(path, colour: colour.withAlphaComponent(0.95), width: 2 * px, in: context)
+                stroke(path, colour: casing.withAlphaComponent(casing.cgColor.alpha * fade), width: 4 * px, in: context)
+                stroke(path, colour: colour.withAlphaComponent(0.95 * fade), width: 2 * px, in: context)
                 context.setLineDash(phase: 0, lengths: [])
             case (.forecast, .point(let at)):
                 guard picked else { continue }
                 let c = StormOverlay.point(at)
                 let dot = CGRect(x: c.x - 3 * px, y: c.y - 3 * px, width: 6 * px, height: 6 * px)
-                context.setFillColor(colour.withAlphaComponent(0.95).cgColor)
+                context.setFillColor(colour.withAlphaComponent(0.95 * fade).cgColor)
                 context.fillEllipse(in: dot)
-                context.setStrokeColor(casing.cgColor)
+                context.setStrokeColor(casing.withAlphaComponent(casing.cgColor.alpha * fade).cgColor)
                 context.setLineWidth(1.5 * px)
                 context.strokeEllipse(in: dot)
             default:
@@ -133,9 +148,15 @@ final class StormMapRenderer: MKOverlayRenderer {
 /// share (core's `layers/stormGroups.ts`), shared with MapKit's drawing
 /// threads.
 final class StormGroupOverlay: NSObject, MKOverlay, @unchecked Sendable {
+    struct Shown: Equatable {
+        var outline: GroupOutline
+        /// How far it has faded in, 0 to 1; 1 at rest.
+        var fade: Double = 1
+    }
+
     struct Scene {
         /// Each outline, with how far it has faded in.
-        var outlines: [(outline: GroupOutline, fade: Double)] = []
+        var outlines: [Shown] = []
         /// The accent, resolved for the basemap and the contrast setting.
         var accent = UIColor.systemBlue.cgColor
         var dark = false
@@ -165,7 +186,10 @@ final class StormGroupRenderer: MKOverlayRenderer {
         let reach = mapRect.insetBy(dx: -4 * px, dy: -4 * px)
         context.setLineJoin(.round)
         context.setLineWidth(1.5 * px)
-        for (outline, fade) in scene.outlines where fade > 0 {
+        for shown in scene.outlines where shown.fade > 0 {
+            let outline = shown.outline
+            // In tenths, as core's styles are cached.
+            let fade = StormDrawing.jsRound(shown.fade * 10) / 10
             let path = CGMutablePath()
             for polygon in outline.polygons {
                 for ring in polygon where ring.count > 2 {
@@ -200,14 +224,22 @@ final class StormAnnotation: NSObject, MKAnnotation {
         var quiet = false
     }
 
+    /// The storm it is.
     let id: String
-    let coordinate: CLLocationCoordinate2D
-    let look: Look
+    /// Moved while its storm slides (`StormEasing`); MapKit follows.
+    @objc dynamic var coordinate: CLLocationCoordinate2D
+    var look: Look
+    /// How far it has faded in, 0 to 1; 1 at rest.
+    var fade: Double
+    /// Fading out for good: not tapped, not read out.
+    var leaving: Bool
 
-    init(id: String, coordinate: CLLocationCoordinate2D, look: Look) {
+    init(id: String, coordinate: CLLocationCoordinate2D, look: Look, fade: Double = 1, leaving: Bool = false) {
         self.id = id
         self.coordinate = coordinate
         self.look = look
+        self.fade = fade
+        self.leaving = leaving
     }
 
     var label: String {
@@ -316,12 +348,15 @@ final class StormDiscView: MKAnnotationView {
         ring.lineDashPattern = [NSNumber(value: Double(5 * scale)), NSNumber(value: Double(4 * scale))]
         ring.isHidden = !look.live
         ring.zPosition = -1
+        alpha = CGFloat(storm.fade)
+        isUserInteractionEnabled = !storm.leaving
+        isAccessibilityElement = !storm.leaving
         accessibilityLabel = storm.label
-        accessibilityIdentifier = "nativeMap.storm.\(storm.id)"
+        accessibilityIdentifier = storm.leaving ? nil : "nativeMap.storm.\(storm.id)"
         accessibilityTraits = look.picked ? [.button, .selected] : .button
         #if DEBUG
-        // How it is drawn, for UI tests.
-        accessibilityValue = look.quiet ? "quiet" : nil
+        // How it is drawn, for UI tests: quiet, or ringed as still being seen.
+        accessibilityValue = look.quiet ? "quiet" : look.live ? "live" : nil
         #endif
     }
 }
@@ -388,7 +423,8 @@ final class StormMarks: NativeMapFeature {
     private var labelTimer: Timer?
     private var moving = false
     private var sheet: StormSheet?
-    private var revision = -1
+    /// What the selection was when last drawn.
+    private var drawnFor = ""
 
     func attach(to map: NativeMapContext) {
         self.map = map
@@ -405,14 +441,25 @@ final class StormMarks: NativeMapFeature {
 
     /// Redraws when the store changes what is drawn.
     private func observe() {
-        let a = store.$revision.sink { [weak self] _ in DispatchQueue.main.async { self?.redraw() } }
+        let a = store.$revision.sink { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, let change = self.store.takeChange() else { return }
+                self.redraw(change)
+            }
+        }
         let b = store.$selection.sink { [weak self] selection in
             DispatchQueue.main.async {
                 self?.map?.model.selectedStorm = selection?.id
                 let opened = selection.map(OpenedStorm.init)
                 if self?.map?.model.opened != opened { self?.map?.model.opened = opened }
                 if self?.map?.model.stormOpen != (selection != nil) { self?.map?.model.stormOpen = selection != nil }
-                self?.redraw()
+                // Only a change of storm, cell or forecast redraws: a newer
+                // copy of the same storm comes with an answer, which eases.
+                let key = "\(StormSelect.selectionKey(selection))|\(selection?.cell?.code ?? "")|\(selection?.summary == nil ? 0 : 1)"
+                if self?.drawnFor != key {
+                    self?.drawnFor = key
+                    self?.redraw()
+                }
                 self?.sheet?.update()
                 self?.endDetour()
             }
@@ -506,7 +553,7 @@ final class StormMarks: NativeMapFeature {
             store.show(.hidden)
         } else if step.isLive || step.time == nil {
             // A new scan on the live step: the storms' ages count from it.
-            if store.frame == .now { redraw() }
+            if store.frame == .now { redraw(.update) }
             store.show(.now)
         } else if let time = step.time {
             store.show(.at(Double(time) * 1000))
@@ -516,7 +563,8 @@ final class StormMarks: NativeMapFeature {
     func regionDidChange() {
         moving = false
         store.reload()
-        redraw()
+        // A zoom lays the rings out anew; a pan leaves the marks as they are.
+        if laidAt != resolution { redraw() }
     }
 
     func wake() { store.refresh() }
@@ -637,18 +685,49 @@ final class StormMarks: NativeMapFeature {
 
     private var resolution: Double { StormPulse.resolution(zoom: map?.zoomLevel ?? 6) }
 
-    /// Builds core's marks for the frame on screen and puts them on the map.
-    private func redraw() {
+    /// The storm marks' transition and the systems' outlines', running or
+    /// settled on what is drawn (`StormEasing`).
+    private var markEasings: [Easing<StormMark>] = []
+    private var outlineEasings: [Easing<GroupOutline>] = []
+    /// When the running transition began (s of media time), nil with none.
+    private var easingSince: CFTimeInterval?
+    private lazy var ticker = FrameTicker { [weak self] in self?.frame() }
+    /// How long a transition lasts, ms; UI tests slow it down to watch one
+    /// (`MC_STORM_EASE_MS`).
+    private let easeMs: Double = {
+        #if DEBUG
+        if let ms = ProcessInfo.processInfo.environment["MC_STORM_EASE_MS"].flatMap(Double.init) { return ms }
+        #endif
+        return StormEasing.durationMs
+    }()
+    /// Counts transitions, so what starts leaving in one has keys of its own.
+    private var seq = 0
+    /// Whether anything has been drawn since the storms were last dropped:
+    /// a first drawing appears at once.
+    private var drawnOnce = false
+    /// What every mark of a drawing is drawn against.
+    private var context = (picked: String?.none, dark: false, live: Set<String>())
+    /// The resolution the marks were laid out for: a pan alone leaves them.
+    private var laidAt: Double?
+
+    /// What decides how a mark looks: a change of it cross-fades.
+    private static func lookOf(_ mark: StormMark) -> String {
+        mark.kind == .position || mark.kind == .path
+            ? "\(mark.kind):\(mark.quiet):\(mark.severity):\(mark.hail):\(mark.meso):\(mark.source)"
+            : "\(mark.kind):\(mark.severity):\(mark.source)"
+    }
+
+    /// Builds core's marks for the frame on screen and puts them on the map:
+    /// eased from what is drawn for a new answer or scan, and for a step of
+    /// the player unless it came hard on the one before; at once for a change
+    /// of what is viewed (a selection, the map key, a zoom), and for
+    /// everything under Reduce Motion.
+    private func redraw(_ change: StormStore.Change = .view) {
         guard let map else { return }
         let mapView = map.mapView
-        guard visible, store.frame != .hidden else {
-            overlay.scene = .init()
-            groupOverlay.scene = .init()
-            mapView.removeAnnotations(Array(discs.values) + labels)
-            discs = [:]
-            labels = []
-            mapView.renderer(for: overlay)?.setNeedsDisplay()
-            mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
+        guard visible, store.frame != .hidden, change != .drop else {
+            dropDrawing()
+            if change == .drop { redraw() }
             return
         }
         let now = Date().timeIntervalSince1970 * 1000
@@ -657,6 +736,7 @@ final class StormMarks: NativeMapFeature {
                                         hidden: map.model.hiddenStormMarks)
         let picked = StormDrawing.selectedMark(store.selection)
         let resolution = self.resolution
+        laidAt = resolution
         let showsEnded = StormPulse.showsEnded(resolution)
         crowded = StormPulse.crowdedOut(drawn.pings.map { ping in
             let p = StormOverlay.point(ping.coordinates)
@@ -669,35 +749,141 @@ final class StormMarks: NativeMapFeature {
             if !mark.live, !showsEnded, mark.storm != picked, mark.fromStorm != picked { return false }
             return true
         }
-        let dark = map.model.isDark
-        let outlines = StormGroupRules.groupOutlines(store.groups, reference)
-        groupOverlay.scene = StormGroupOverlay.Scene(outlines: outlines.map { ($0, 1) }, accent: Self.accent(dark: dark), dark: dark)
-        mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
-        let lines = (drawn.links + drawn.marks).filter { $0.kind != .position && shown($0) }
-        overlay.scene = StormOverlay.Scene(marks: lines, picked: picked, dark: dark)
-        mapView.renderer(for: overlay)?.setNeedsDisplay()
+        context = (picked, map.model.isDark, Set(drawn.pings.map(\.storm)))
+        // Joins first, so the tracks and their marks draw over them.
+        let marks = (drawn.links + drawn.marks).filter(shown).map { mark in
+            EaseDrawn(key: mark.id, look: Self.lookOf(mark), moves: mark.kind == .position || mark.kind == .path,
+                      shape: EaseShape(mark.geometry), value: mark)
+        }
+        let outlines = StormGroupRules.groupOutlines(store.groups, reference).map { outline in
+            EaseDrawn(key: outline.id, look: "", moves: false, shape: .multiPolygon(outline.polygons), value: outline)
+        }
 
-        // Discs: kept where nothing changed, so playback does not flicker them.
-        let live = Set(drawn.pings.map(\.storm))
+        var stepGap: Double?
+        if case .step(let gap) = change { stepGap = gap }
+        let ease = change != .view
+            && StormEasing.eases(reducedMotion: UIAccessibility.isReduceMotionEnabled, drawnBefore: drawnOnce, stepGap: stepGap)
+        drawnOnce = true
+        // Taken over from wherever a running transition has got to.
+        let t = easingSince.map { (CACurrentMediaTime() - $0) * 1000 / easeMs } ?? 1
+        seq += 1
+        if ease {
+            markEasings = StormEasing.plan(StormEasing.showingAt(markEasings, t), marks, seq: seq)
+            outlineEasings = StormEasing.plan(StormEasing.showingAt(outlineEasings, t), outlines, seq: seq)
+        } else {
+            markEasings = StormEasing.settledOn(marks)
+            outlineEasings = StormEasing.settledOn(outlines)
+        }
+        if ease && (StormEasing.animates(markEasings) || StormEasing.animates(outlineEasings)) {
+            easingSince = CACurrentMediaTime()
+            show(at: 0)
+            ticker.start()
+        } else {
+            stopEasing()
+            show(at: 1)
+        }
+        updateLabels(now: now, picked: picked, dark: context.dark)
+    }
+
+    /// One frame of the running transition.
+    private func frame() {
+        guard let since = easingSince else { return ticker.stop() }
+        let t = (CACurrentMediaTime() - since) * 1000 / easeMs
+        if t >= 1 { return settle() }
+        show(at: StormEasing.easeOut(t))
+    }
+
+    /// End the running transition: everything where it was going, what was leaving gone.
+    private func settle() {
+        markEasings = StormEasing.settledOn(markEasings.filter { !$0.leaving }.map(\.item))
+        outlineEasings = StormEasing.settledOn(outlineEasings.filter { !$0.leaving }.map(\.item))
+        stopEasing()
+        show(at: 1)
+    }
+
+    private func stopEasing() {
+        easingSince = nil
+        ticker.stop()
+    }
+
+    /// Puts the transitions on the map `e` of the way through (eased already):
+    /// the lines and outlines redrawn when they changed, the discs moved and
+    /// faded where they are.
+    private func show(at e: Double) {
+        guard let mapView = map?.mapView else { return }
+        let (picked, dark, live) = context
+        var lines: [StormOverlay.Shown] = []
         var wanted: [String: StormAnnotation] = [:]
-        for mark in drawn.marks where mark.kind == .position && shown(mark) {
+        var added: [StormAnnotation] = []
+        for easing in markEasings {
+            let fade = easing.fromAlpha + (easing.toAlpha - easing.fromAlpha) * e
+            var mark = easing.item.value
+            if easing.from != easing.to { mark.geometry = StormEasing.shapeAt(easing.from, easing.to, e).markGeometry }
+            guard mark.kind == .position else {
+                // In tenths, as core's styles read it: a frame where no tenth
+                // changed and nothing moved redraws nothing.
+                lines.append(StormOverlay.Shown(mark: mark, fade: Self.tenths(fade), leaving: easing.leaving))
+                continue
+            }
             guard case .point(let at) = mark.geometry else { continue }
             let look = StormAnnotation.Look(severity: mark.severity, hail: mark.hail, meso: mark.meso, picked: mark.storm == picked,
                                             opacity: mark.storm == picked ? 1 : StormDrawing.ageOpacity(mark.ageMinutes),
                                             live: live.contains(mark.storm), dark: dark, dwd: mark.source == .dwd, quiet: mark.quiet)
             let coordinate = CLLocationCoordinate2D(latitude: at.lat, longitude: at.lon)
-            if let old = discs[mark.storm], old.look == look, old.coordinate.latitude == at.lat, old.coordinate.longitude == at.lon {
-                wanted[mark.storm] = old
+            // Kept from one drawing to the next, so playback does not flicker
+            // them and a live ring stays the same ring while its storm slides.
+            if let disc = discs[easing.key] {
+                if disc.coordinate.latitude != at.lat || disc.coordinate.longitude != at.lon { disc.coordinate = coordinate }
+                let restyled = disc.look != look || disc.leaving != easing.leaving
+                let faded = disc.fade != fade
+                disc.look = look
+                disc.leaving = easing.leaving
+                disc.fade = fade
+                if let view = mapView.view(for: disc) as? StormDiscView {
+                    if restyled { view.update() } else if faded { view.alpha = CGFloat(fade) }
+                }
+                wanted[easing.key] = disc
             } else {
-                wanted[mark.storm] = StormAnnotation(id: mark.storm, coordinate: coordinate, look: look)
+                let disc = StormAnnotation(id: mark.storm, coordinate: coordinate, look: look, fade: fade, leaving: easing.leaving)
+                wanted[easing.key] = disc
+                added.append(disc)
             }
         }
-        let gone = discs.filter { wanted[$0.key] !== $0.value }.map(\.value)
-        let new = wanted.filter { discs[$0.key] !== $0.value }.map(\.value)
-        mapView.removeAnnotations(gone)
-        mapView.addAnnotations(new)
+        mapView.removeAnnotations(discs.filter { wanted[$0.key] == nil }.map(\.value))
+        mapView.addAnnotations(added)
         discs = wanted
-        updateLabels(now: now, picked: picked, dark: dark)
+
+        let scene = StormOverlay.Scene(marks: lines, picked: picked, dark: dark)
+        if scene != overlay.scene {
+            overlay.scene = scene
+            mapView.renderer(for: overlay)?.setNeedsDisplay()
+        }
+        let systems = outlineEasings.map { easing in
+            StormGroupOverlay.Shown(outline: easing.item.value, fade: Self.tenths(easing.fromAlpha + (easing.toAlpha - easing.fromAlpha) * e))
+        }
+        let accent = Self.accent(dark: dark)
+        if systems != groupOverlay.scene.outlines || groupOverlay.scene.dark != dark || groupOverlay.scene.accent != accent {
+            groupOverlay.scene = StormGroupOverlay.Scene(outlines: systems, accent: accent, dark: dark)
+            mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
+        }
+    }
+
+    private static func tenths(_ fade: Double) -> Double { StormDrawing.jsRound(fade * 10) / 10 }
+
+    /// Drop everything drawn and any transition, so the next drawing appears at once.
+    private func dropDrawing() {
+        guard let mapView = map?.mapView else { return }
+        stopEasing()
+        markEasings = []
+        outlineEasings = []
+        drawnOnce = false
+        overlay.scene = .init()
+        groupOverlay.scene = .init()
+        mapView.removeAnnotations(Array(discs.values) + labels)
+        discs = [:]
+        labels = []
+        mapView.renderer(for: overlay)?.setNeedsDisplay()
+        mapView.renderer(for: groupOverlay)?.setNeedsDisplay()
     }
 
     /// The system accent for the basemap, with Increase Contrast's variant.
@@ -724,7 +910,10 @@ final class StormMarks: NativeMapFeature {
         labelTimer?.invalidate()
         guard !labels.isEmpty else { return }
         labelTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.redraw() }
+            Task { @MainActor in
+                guard let self else { return }
+                self.updateLabels(now: Date().timeIntervalSince1970 * 1000, picked: self.context.picked, dark: self.context.dark)
+            }
         }
     }
 
@@ -769,7 +958,8 @@ final class StormMarks: NativeMapFeature {
             let pairs = zip(s, s.dropFirst()).map { ($0, $1) } + (closed ? [(s[s.count - 1], s[0])] : [])
             return pairs.contains { Self.distance(point, $0.0, $0.1) <= tolerance }
         }
-        for mark in overlay.scene.marks.reversed() {
+        // Not a mark fading out for good: what it was is gone.
+        for mark in overlay.scene.marks.reversed().filter({ !$0.leaving }).map(\.mark) {
             let hit: Bool
             switch mark.geometry {
             case .line(let line): hit = near(line, closed: false)
@@ -787,4 +977,30 @@ final class StormMarks: NativeMapFeature {
         let t = length == 0 ? 0 : max(0, min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length))
         return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
     }
+}
+
+/// Calls back on every frame the screen draws while started, for a
+/// transition of the marks.
+@MainActor
+private final class FrameTicker: NSObject {
+    private var link: CADisplayLink?
+    private let tick: @MainActor () -> Void
+
+    init(_ tick: @escaping @MainActor () -> Void) {
+        self.tick = tick
+    }
+
+    func start() {
+        guard link == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(fire))
+        link.add(to: .main, forMode: .common)
+        self.link = link
+    }
+
+    func stop() {
+        link?.invalidate()
+        link = nil
+    }
+
+    @objc private func fire() { tick() }
 }

@@ -604,14 +604,17 @@ final class NativeMapUITests: XCTestCase {
     /// the tests' view of southern France (44° N, 3.5° E at zoom 7), else
     /// anywhere. Its replay moves on, and a tie on the newest picked a storm
     /// off Ireland.
-    private func demoStormFeature() -> [String: Any]? {
+    private func demoStormFeature(active: Bool = false) -> [String: Any]? {
         let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
         guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
               let storms = answer["features"] as? [[String: Any]] else { return nil }
         func properties(_ storm: [String: Any]) -> [String: Any] { storm["properties"] as? [String: Any] ?? [:] }
         func point(_ storm: [String: Any]) -> [Double] { (storm["geometry"] as? [String: Any])?["coordinates"] as? [Double] ?? [] }
         let newest = storms.compactMap { properties($0)["last_seen"] as? String }.max()
-        let latest = storms.filter { properties($0)["last_seen"] as? String == newest && point($0).count >= 2 }
+        let latest = storms.filter { storm in
+            properties(storm)["last_seen"] as? String == newest && point(storm).count >= 2
+                && (!active || properties(storm)["status"] as? String == "active")
+        }
         let near = latest.filter { abs(point($0)[1] - 44) < 1.5 && abs(point($0)[0] - 3.5) < 2 }
         return (near.isEmpty ? latest : near).max { (properties($0)["peak_dbz"] as? Double ?? 0) < (properties($1)["peak_dbz"] as? Double ?? 0) }
     }
@@ -693,7 +696,10 @@ final class NativeMapUITests: XCTestCase {
     /// north, as EPSG:3857 metres the way the feed files them: too far off
     /// for a tap on it to be a tap on the storm's own mark.
     func testMesocycloneTapOpensTheStormItTurnsIn() throws {
-        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        let feature = try XCTUnwrap(demoStormFeature(active: true), "The demo lists storms")
+        let id = try XCTUnwrap((feature["properties"] as? [String: Any])?["id"] as? String)
+        let point = try XCTUnwrap((feature["geometry"] as? [String: Any])?["coordinates"] as? [Double])
+        let storm = (lat: point[1], lon: point[0])
         let x = storm.lon * .pi * 6_378_137 / 180
         let y = log(tan(.pi / 4 + storm.lat * .pi / 360)) * 6_378_137
         let scale = 1 / cos(storm.lat * .pi / 180)
@@ -702,9 +708,16 @@ final class NativeMapUITests: XCTestCase {
         waitForSeries()
         let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
         XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+        // Only a storm still being seen takes a mesocyclone: the demo's
+        // newest storms now and then lag its newest scan by more than that.
+        let disc = element("nativeMap.storm.\(id)")
+        guard waitForValue(disc, timeout: 15, { $0.contains("live") }) else {
+            throw XCTSkip("The demo's storm \(id) is not live on the map now (\(disc.value ?? "none"))")
+        }
         let meso = element("nativeMap.mesocyclone")
         XCTAssertTrue(meso.waitForExistence(timeout: 15), "The mesocyclone on the map")
         meso.tap()
+        screenshot("mesocyclone tapped")
         if UIDevice.current.userInterfaceIdiom == .phone {
             let hint = element("nativeMap.storm.hint")
             XCTAssertTrue(hint.waitForExistence(timeout: 10), "The storm it turns in, picked")
@@ -808,6 +821,37 @@ final class NativeMapUITests: XCTestCase {
             screenshot("older backend \(status)")
             app.terminate()
         }
+    }
+
+    /// A step back eases the storms: one that moved slides to where it was
+    /// then rather than jumping there. The transition is slowed down to be
+    /// watched (`MC_STORM_EASE_MS`).
+    func testAStepBackSlidesTheStorms() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        app.launchEnvironment["MC_STORM_EASE_MS"] = "6000"
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),9", demo: true)
+        waitForSeries()
+        let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+        // Settled on the first answer, drawn at once.
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        func centres() -> [String: CGPoint] {
+            Dictionary(stormDiscs().map { ($0.id, CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }) { first, _ in first }
+        }
+        let before = centres()
+        // Ten minutes back: one step, long after the last.
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5 - 10.0 / 240, dy: 0.4)).tap()
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("-") }, "Stepped back: \(timeline.value ?? "")")
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        let midway = centres()
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        let after = centres()
+        let slid = midway.keys.filter { id in
+            guard let a = before[id], let m = midway[id], let b = after[id], hypot(b.x - a.x, b.y - a.y) > 4 else { return false }
+            // On its way: off where it was and short of where it went.
+            return hypot(m.x - a.x, m.y - a.y) > 1 && hypot(b.x - m.x, b.y - m.y) > 1
+        }
+        XCTAssertFalse(slid.isEmpty, "A storm caught sliding (\(before.count) before, \(after.count) after)")
     }
 
     // MARK: - Storm cores

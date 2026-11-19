@@ -6,8 +6,8 @@ import Foundation
 /// `cellKnownVolume.test.ts`, `cellSelection.test.ts`,
 /// `cellPlacement.test.ts`, `cellRecency.test.ts`, `cellStatus.test.ts`,
 /// `cellLineage.test.ts`, `cellPulse.test.ts`, `timeTicks.test.ts`,
-/// `swipeAway.test.ts`, `stormGroups.test.ts` and `mesocyclones.test.ts`,
-/// then the native extras.
+/// `swipeAway.test.ts`, `stormGroups.test.ts`, `stormEasing.test.ts` and
+/// `mesocyclones.test.ts`, then the native extras.
 @main
 struct NativeMapStormsCheck {
     static var count = 0
@@ -36,6 +36,7 @@ struct NativeMapStormsCheck {
         timeTicks()
         swipeAway()
         stormGroups()
+        stormEasing()
         mesocyclones()
         cloudHints()
         decoding()
@@ -1380,6 +1381,171 @@ struct NativeMapStormsCheck {
             precondition(R.asksForGroups(nil, now: T0))
             precondition(!R.asksForGroups(T0, now: T0 + 60_000))
             precondition(R.asksForGroups(T0, now: T0 + R.recheckMs))
+        }
+    }
+
+    // MARK: - stormEasing.test.ts
+
+    /// How the storms change from one drawing to the next: which changes are
+    /// eased, what slides and what fades, and an update arriving mid-way
+    /// taking over from what is drawn rather than queueing behind it.
+    static func stormEasing() {
+        typealias E = StormEasing
+        func point(_ lon: Double, _ lat: Double) -> EaseShape { .point(LonLat(lon, lat)) }
+        func line(_ points: [Double]...) -> EaseShape { .line(points.map { LonLat($0[0], $0[1]) }) }
+        func mark(_ key: String, _ shape: EaseShape, _ look: String = "a") -> EaseDrawn<String> {
+            var moves = false
+            if case .point = shape { moves = true }
+            if case .line = shape { moves = true }
+            return EaseDrawn(key: key, look: look, moves: moves, shape: shape, value: key)
+        }
+        func at(_ easings: [Easing<String>], _ t: Double) -> [EaseShowing<String>] { E.showingAt(easings, t) }
+        func byKey(_ showing: [EaseShowing<String>], _ key: String) -> EaseShowing<String>? { showing.first { $0.key == key } }
+        func lon(_ shape: EaseShape?) -> Double {
+            guard case .point(let p)? = shape else { preconditionFailure("not a point") }
+            return p.lon
+        }
+        /// About 1 km of longitude at 45° N.
+        let KM = 1 / (111.32 * cos(45 * Double.pi / 180))
+
+        test("a new answer is eased, a step only when it comes long enough after the last, and nothing with reduced motion") {
+            precondition(E.eases(reducedMotion: false, drawnBefore: true))
+            precondition(E.eases(reducedMotion: false, drawnBefore: true, stepGap: E.minGapMs))
+            precondition(E.eases(reducedMotion: false, drawnBefore: true, stepGap: .infinity))
+            // The loop's 450 ms a frame, and a drag.
+            precondition(!E.eases(reducedMotion: false, drawnBefore: true, stepGap: 450))
+            precondition(!E.eases(reducedMotion: false, drawnBefore: true, stepGap: 30))
+            precondition(!E.eases(reducedMotion: true, drawnBefore: true))
+            // The first drawing appears at once.
+            precondition(!E.eases(reducedMotion: false, drawnBefore: false))
+        }
+        test("the easing starts fast and ends exactly where it was going") {
+            precondition(E.easeOut(0) == 0 && E.easeOut(1) == 1 && E.easeOut(2) == 1)
+            precondition(E.easeOut(0.25) > 0.5)
+        }
+        test("a storm that moved slides from where it was to where it is") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", point(4 + 5 * KM, 45))], seq: 1)
+            precondition(easings.count == 1 && E.animates(easings))
+            let start = byKey(at(easings, 0), "S")!
+            precondition(start.shape == point(4, 45) && start.alpha == 1)
+            let half = lon(byKey(at(easings, 0.5), "S")?.shape)
+            precondition(half > 4 && half < 4 + 5 * KM)
+            precondition(byKey(at(easings, 1), "S")!.shape == point(4 + 5 * KM, 45))
+        }
+        test("a storm that did not move is left alone, so nothing redraws it") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", point(4, 45))], seq: 1)
+            precondition(!E.animates(easings))
+            precondition(easings[0].from == easings[0].to)
+        }
+        test("a storm that jumped further than a storm moves fades out there and in here") {
+            let far = point(4 + (E.maxKm + 5) * KM, 45)
+            precondition(!E.slides(point(4, 45), far))
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", far)], seq: 7)
+            let halfway = at(easings, 0.5)
+            let leaving = byKey(halfway, "S~7")!
+            precondition(leaving.leaving && leaving.shape == point(4, 45))
+            precondition(byKey(halfway, "S")!.shape == far)
+            precondition(byKey(halfway, "S")!.alpha > 0 && byKey(halfway, "S")!.alpha < 1)
+            // Gone once it ends.
+            precondition(at(easings, 1).map(\.key) == ["S"])
+        }
+        test("a different storm at nearly the same place fades, it does not slide") {
+            let before = E.settledOn([mark("A", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("B", point(4 + 0.1 * KM, 45))], seq: 1)
+            let start = at(easings, 0)
+            precondition(byKey(start, "B")!.alpha == 0 && byKey(start, "B")!.shape == point(4 + 0.1 * KM, 45))
+            precondition(byKey(start, "A~1")!.alpha == 1 && byKey(start, "A~1")!.leaving)
+            precondition(at(easings, 1).map(\.key) == ["B"])
+        }
+        test("a storm that appears fades in, and one that goes fades out and is gone") {
+            let before = E.settledOn([mark("OLD", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("NEW", point(5, 45))], seq: 2)
+            precondition(byKey(at(easings, 0), "NEW")!.alpha == 0 && byKey(at(easings, 0), "OLD~2")!.alpha == 1)
+            precondition(byKey(at(easings, 1), "NEW")!.alpha == 1 && byKey(at(easings, 1), "OLD~2") == nil)
+        }
+        test("a storm that changes look cross-fades, both looks moving together") {
+            let before = E.settledOn([mark("S", point(4, 45), "quiet")])
+            let easings = E.plan(at(before, 1), [mark("S", point(4 + 3 * KM, 45), "full")], seq: 3)
+            let half = at(easings, 0.5)
+            let oldLook = byKey(half, "S~3")!, newLook = byKey(half, "S")!
+            precondition(oldLook.item.look == "quiet" && newLook.item.look == "full")
+            precondition(oldLook.shape == newLook.shape)
+            precondition(abs(oldLook.alpha + newLook.alpha - 1) < 1e-9)
+            precondition(at(easings, 1).map { [$0.key, $0.item.look] } == [["S", "full"]])
+        }
+        test("a path keeps its points and grows its newest one to where the storm is") {
+            let from = line([4, 45], [4.01, 45])
+            let to = line([4, 45], [4.01, 45], [4.03, 45])
+            precondition(E.shapeAt(from, to, 0) == line([4, 45], [4.01, 45], [4.01, 45]))
+            precondition(E.shapeAt(from, to, 1) == to)
+            guard case .line(let half) = E.shapeAt(from, to, 0.5) else { preconditionFailure() }
+            precondition(abs(half[2].lon - 4.02) < 1e-9)
+        }
+        test("an outline with a new shape cross-fades rather than morphing") {
+            func square(_ size: Double) -> EaseShape {
+                .multiPolygon([[[LonLat(4, 45), LonLat(4 + size, 45), LonLat(4 + size, 45 + size), LonLat(4, 45 + size), LonLat(4, 45)]]])
+            }
+            func outline(_ shape: EaseShape) -> EaseDrawn<String> { EaseDrawn(key: "G", look: "", moves: false, shape: shape, value: "G") }
+            let before = E.settledOn([outline(square(0.1))])
+            let easings = E.plan(at(before, 1), [outline(square(0.2))], seq: 4)
+            let half = at(easings, 0.5)
+            precondition(byKey(half, "G~4")!.shape == square(0.1) && byKey(half, "G")!.shape == square(0.2))
+            // The same shape again: nothing to do.
+            precondition(!E.animates(E.plan(at(E.settledOn([outline(square(0.1))]), 1), [outline(square(0.1))], seq: 5)))
+        }
+        test("an update mid-way takes over from where the storm is drawn, never from where it was going") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let first = E.plan(at(before, 1), [mark("S", point(4 + 4 * KM, 45))], seq: 1)
+            let midway = at(first, 0.3)
+            let drawn = byKey(midway, "S")!.shape
+            let second = E.plan(midway, [mark("S", point(4 + 8 * KM, 45))], seq: 2)
+            precondition(second.count == 1)
+            precondition(byKey(at(second, 0), "S")!.shape == drawn)
+            precondition(byKey(at(second, 1), "S")!.shape == point(4 + 8 * KM, 45))
+        }
+        test("what was fading out goes on fading out from where it was, and leaves nothing behind") {
+            let before = E.settledOn([mark("GONE", point(4, 45)), mark("NEW", point(5, 45))])
+            let first = E.plan(at(before, 1), [mark("NEW", point(5, 45))], seq: 1)
+            let midway = at(first, 0.5)
+            let fading = byKey(midway, "GONE~1")!
+            precondition(fading.alpha > 0 && fading.alpha < 1)
+            let second = E.plan(midway, [mark("NEW", point(5, 45))], seq: 2)
+            // The same leaving mark, under its own key, from its own alpha: not a second ghost.
+            let leaving = second.filter(\.leaving)
+            precondition(leaving.count == 1 && leaving[0].key == "GONE~1" && leaving[0].fromAlpha == fading.alpha)
+            precondition(at(second, 1).map(\.key) == ["NEW"])
+        }
+        test("a storm fading in takes over from its own alpha, and one coming back while leaving comes in afresh") {
+            let first = E.plan([], [mark("S", point(4, 45))], seq: 1)
+            let midway = at(first, 0.2)
+            let alpha = byKey(midway, "S")!.alpha
+            let second = E.plan(midway, [mark("S", point(4, 45))], seq: 2)
+            precondition(second[0].fromAlpha == alpha && second[0].toAlpha == 1)
+
+            let leaving = at(E.plan(at(E.settledOn([mark("S", point(4, 45))]), 1), [], seq: 3), 0.5)
+            let back = E.plan(leaving, [mark("S", point(4, 45))], seq: 4)
+            precondition(byKey(at(back, 0), "S")!.alpha == 0)
+            precondition(byKey(at(back, 1), "S")!.alpha == 1)
+            precondition(at(back, 1).count == 1)
+        }
+        test("an update applied at once replaces whatever was running, leaving nothing") {
+            let first = E.plan(at(E.settledOn([mark("A", point(4, 45))]), 1), [mark("B", point(5, 45))], seq: 1)
+            precondition(at(first, 0.5).contains(where: \.leaving))
+            let snapped = E.settledOn([mark("C", point(6, 45))])
+            precondition(!E.animates(snapped))
+            precondition(at(snapped, 0).map(\.key) == ["C"] && at(snapped, 0)[0].alpha == 1)
+        }
+        test("distances are kilometres") {
+            precondition(abs(E.kmBetween(LonLat(4, 45), LonLat(4 + 10 * KM, 45)) - 10) < 1e-6)
+        }
+        test("a mark's geometry goes into a transition and back as it was") {
+            let ring = [LonLat(4, 45), LonLat(4.1, 45), LonLat(4.1, 45.1), LonLat(4, 45)]
+            for geometry: StormMark.Geometry in [.point(LonLat(4, 45)), .line(ring), .polygon(ring)] {
+                precondition(EaseShape(geometry).markGeometry == geometry)
+            }
         }
     }
 
