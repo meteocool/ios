@@ -19,6 +19,8 @@ struct GroupOutline: Equatable, Sendable {
     /// How many storms it has.
     var storms: Int
     var severity: Int
+    /// Whether it is another frame's shape than the one at the moment drawn.
+    var stale = false
 }
 
 /// A group is two or more storms the backend counts as one system (its
@@ -40,6 +42,19 @@ enum StormGroupRules {
     static func asksForGroups(_ absentAt: Double?, now: Double) -> Bool {
         guard let absentAt else { return true }
         return now - absentAt >= recheckMs
+    }
+
+    /// How far a group's outline may be from the radar frame on screen and
+    /// still be that frame's, ms: half a step of the radar's five-minute
+    /// grid. Further, and it is an earlier or a later frame's shape, drawn
+    /// dashed (`StormGroupRenderer`): a new scan lands before its systems do,
+    /// and in that gap the echoes have moved on from the line round them.
+    static let currentWithinMs = 300 * 1000 / 2.0
+
+    /// Whether a group's outline is the one for the frame at `moment`, ms.
+    static func outlineCurrentAt(_ group: StormSystem, _ moment: Double) -> Bool {
+        let seen = StormTime.ms(group.properties?.lastSeen ?? "")
+        return seen.isFinite && abs(seen - moment) <= currentWithinMs
     }
 
     /// A ring that is one: at least four positions, closed or not.
@@ -85,15 +100,17 @@ enum StormGroupRules {
     }
 
     /// The outlines to draw at `moment`: one per group of two or more storms
-    /// with an area to outline. The backend lists only those; anything else
-    /// is left out rather than drawn wrong.
+    /// with an area to outline, each marked stale when it is not that
+    /// moment's. The backend lists only those; anything else is left out
+    /// rather than drawn wrong.
     static func groupOutlines(_ groups: [StormSystem], _ moment: Double) -> [GroupOutline] {
         groups.compactMap { group in
             guard let p = group.properties, let storms = p.storms, storms.count >= 2, groupShownAt(group, moment),
                   let id = group.id ?? p.id else { return nil }
             let polygons = polygonsOf(group.geometryType, group.coordinates)
             guard !polygons.isEmpty else { return nil }
-            return GroupOutline(id: id, polygons: polygons, storms: storms.count, severity: StormDrawing.clampSeverity(p.severity ?? 0))
+            return GroupOutline(id: id, polygons: polygons, storms: storms.count, severity: StormDrawing.clampSeverity(p.severity ?? 0),
+                                stale: !outlineCurrentAt(group, moment))
         }
     }
 

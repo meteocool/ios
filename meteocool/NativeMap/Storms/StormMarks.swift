@@ -179,13 +179,24 @@ final class StormGroupOverlay: NSObject, MKOverlay, @unchecked Sendable {
 /// the storms' marks are drawn in it; a blue that is none of those stays
 /// apart from both. Over the radar and its sweeps, under the lightning and
 /// the storms; nothing on it is tapped.
+///
+/// An outline that is not the radar frame's on screen (a newer scan than its
+/// systems on the live step, or a frame earlier than it while playing back)
+/// is dashed, with half the wash: the shape is where the echoes were, not
+/// where they are on the image under it. Its dashes are bolder than the
+/// solid line and cased in the map's own colour, as the motion arrows are:
+/// a thin broken line on red and purple echoes is lost.
 final class StormGroupRenderer: MKOverlayRenderer {
+    /// The dash of an outline that is another frame's, in points (core's `STALE_DASH`).
+    static let staleDash: [CGFloat] = [8, 6]
+
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         guard let scene = (overlay as? StormGroupOverlay)?.scene else { return }
         let px = 1 / zoomScale
         let reach = mapRect.insetBy(dx: -4 * px, dy: -4 * px)
+        // core's `casing.ts`: the map's own colour under the dashes.
+        let casing = scene.dark ? CGColor(red: 12 / 255, green: 16 / 255, blue: 22 / 255, alpha: 0.75) : CGColor(red: 1, green: 1, blue: 1, alpha: 0.75)
         context.setLineJoin(.round)
-        context.setLineWidth(1.5 * px)
         for shown in scene.outlines where shown.fade > 0 {
             let outline = shown.outline
             // In tenths, as core's styles are cached.
@@ -198,12 +209,27 @@ final class StormGroupRenderer: MKOverlayRenderer {
                 }
             }
             guard path.boundingBox.intersects(CGRect(x: reach.minX, y: reach.minY, width: reach.width, height: reach.height)) else { continue }
+            let stale = outline.stale
             context.addPath(path)
-            context.setFillColor(scene.accent.copy(alpha: (scene.dark ? 0.07 : 0.05) * fade) ?? scene.accent)
+            context.setFillColor(scene.accent.copy(alpha: (scene.dark ? 0.07 : 0.05) * (stale ? 0.5 : 1) * fade) ?? scene.accent)
             context.fillPath(using: .evenOdd)
-            context.addPath(path)
-            context.setStrokeColor(scene.accent.copy(alpha: (scene.dark ? 0.8 : 0.7) * fade) ?? scene.accent)
-            context.strokePath()
+            if stale {
+                context.setLineCap(.butt)
+                context.setLineDash(phase: 0, lengths: Self.staleDash.map { $0 * px })
+                // Twice: the casing wide underneath, then the ink.
+                for (colour, width) in [(casing.copy(alpha: 0.75 * fade) ?? casing, 4.0), (scene.accent.copy(alpha: 0.95 * fade) ?? scene.accent, 2.0)] {
+                    context.addPath(path)
+                    context.setStrokeColor(colour)
+                    context.setLineWidth(width * px)
+                    context.strokePath()
+                }
+                context.setLineDash(phase: 0, lengths: [])
+            } else {
+                context.addPath(path)
+                context.setLineWidth(1.5 * px)
+                context.setStrokeColor(scene.accent.copy(alpha: (scene.dark ? 0.8 : 0.7) * fade) ?? scene.accent)
+                context.strokePath()
+            }
         }
     }
 }
@@ -729,7 +755,8 @@ final class StormMarks: NativeMapFeature {
                       shape: EaseShape(mark.geometry), value: mark)
         }
         let outlines = StormGroupRules.groupOutlines(store.groups, reference).map { outline in
-            EaseDrawn(key: outline.id, look: "", moves: false, shape: .multiPolygon(outline.polygons), value: outline)
+            // A system that catches up with the radar cross-fades from dashed to solid.
+            EaseDrawn(key: outline.id, look: outline.stale ? "stale" : "", moves: false, shape: .multiPolygon(outline.polygons), value: outline)
         }
 
         var stepGap: Double?

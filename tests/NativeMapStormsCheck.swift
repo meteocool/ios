@@ -1357,6 +1357,23 @@ struct NativeMapStormsCheck {
             precondition(!R.groupShownAt(g, T0 - 60 * 60_000), "its outline is an hour on from then")
             precondition(!R.groupShownAt(g, T0 - 100 * 60_000), "not yet born")
         }
+        test("an outline is the frame's when seen within half a radar step of it, and stale otherwise") {
+            precondition(R.currentWithinMs == 150_000)
+            precondition(R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(0) }, T0))
+            precondition(R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(-2) }, T0), "the scan's own, a little off the grid")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(-5) }, T0), "a scan behind the radar")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(5) }, T0), "a later frame's shape")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = "not a time" }, T0))
+        }
+        test("in the present a system a scan behind the radar is drawn stale, and current once it catches up") {
+            precondition(R.groupOutlines([group(G, [A, B]) { $0.lastSeen = at(-5) }], T0)[0].stale)
+            precondition(!R.groupOutlines([group(G, [A, B]) { $0.lastSeen = at(0) }], T0)[0].stale)
+        }
+        test("on an earlier frame a system's newest outline is stale, and on its own frame current") {
+            let g = group(G, [A, B]) { $0.bornAt = at(-90); $0.lastSeen = at(0) }
+            precondition(R.groupOutlines([g], T0 - 20 * 60_000)[0].stale)
+            precondition(!R.groupOutlines([g], T0)[0].stale)
+        }
         test("a storm's system is as many storms as its group lists") {
             precondition(R.systemSize(storm(A) { $0.group = G }, groups: [group(G, [B, A, C])], held: []) == 3)
         }
