@@ -84,10 +84,14 @@ struct ArchiveTab: View {
                     Image(systemName: "calendar")
                         .scaledFont(12, weight: .semibold, relativeTo: .caption)
                         .foregroundStyle(theme.accent)
-                    Text(label(shown))
-                        .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    // Squeezed between the logo's row and the buttons at the
+                    // largest text: the step's clock alone, never a cut date.
+                    ViewThatFits(in: .horizontal) {
+                        Text(label(shown))
+                        Text(StatusPill.clock(shown))
+                    }
+                    .scaledFont(13, weight: .semibold, relativeTo: .footnote, digits: true)
+                    .lineLimit(1)
                 }
                 .foregroundStyle(theme.text)
                 .padding(.horizontal, 12)

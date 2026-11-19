@@ -277,9 +277,11 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(open.isEnabled)
         // The system's calendar, start and length, in core's words; it starts
         // on the last three hours kept, 37 frames.
-        XCTAssertTrue(element("nativeMap.archive.day").exists, "The day")
-        // Up to its large detent: the start and length are under the calendar.
+        // Up to its large detent: the start and length are under the calendar,
+        // and at the largest text sizes the calendar under the lede.
         element("nativeMap.archive.sheet").swipeUp()
+        XCTAssertTrue(element("nativeMap.archive.day").waitForExistence(timeout: 5), "The day")
+        for _ in 0 ..< 4 where !element("nativeMap.archive.start").exists { element("nativeMap.archive.sheet").swipeUp() }
         XCTAssertTrue(element("nativeMap.archive.start").waitForExistence(timeout: 5), "The start")
         XCTAssertTrue(element("nativeMap.archive.length").exists, "The length")
         let summary = element("nativeMap.archive.summary")
@@ -484,7 +486,9 @@ final class NativeMapUITests: XCTestCase {
             || app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.status.late.'")).count > 0,
             "The backend's verdict")
         screenshot("status sheet")
-        element("nativeMap.status.details").tap()
+        let details = element("nativeMap.status.details")
+        for _ in 0 ..< 3 where !details.exists { sheet.swipeUp() }
+        details.tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForExistence(timeout: 5))
         screenshot("connection details")
         element("nativeMap.status.close").tap()
@@ -516,6 +520,8 @@ final class NativeMapUITests: XCTestCase {
         pill.tap()
         XCTAssertTrue(element("nativeMap.statusSheet").waitForExistence(timeout: 5))
         let late = element("nativeMap.status.late.radar.pl")
+        // Under the notice; at the largest text sizes, further down the sheet.
+        for _ in 0 ..< 3 where !late.waitForExistence(timeout: 2) { element("nativeMap.statusSheet").swipeUp() }
         XCTAssertTrue(late.waitForExistence(timeout: 5), "Poland's radar listed")
         XCTAssertTrue(late.label.contains("Poland") && late.label.contains("Nothing new since"), late.label)
         XCTAssertTrue(element("nativeMap.status.notice").exists, "The notice in the sheet")

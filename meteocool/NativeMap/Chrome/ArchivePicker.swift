@@ -246,6 +246,12 @@ private struct StartPicker: UIViewRepresentable {
         if picker.date != date { picker.date = date }
     }
 
+    /// Its own size, which grows with Dynamic Type: the row grows with it
+    /// rather than cutting it.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView picker: UIDatePicker, context: Context) -> CGSize? {
+        picker.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+    }
+
     func makeCoordinator() -> Coordinator { Coordinator(date: $date) }
 
     @MainActor

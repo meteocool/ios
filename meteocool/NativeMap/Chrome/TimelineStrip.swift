@@ -313,13 +313,26 @@ struct TimelineStrip: View {
         // The axis.
         // A window's clock labels clear its ends by the strip's width.
         let clear = window.map { RadarWindow.edgeClear(width: size.width, dated: $0.crossesMidnight()) } ?? TimelinePhysics.edgeClear
-        for tick in TimelinePhysics.axisTicks(steps: steps, gridNow: anchor, every: window?.axisMinutes ?? 60, clear: clear) {
-            let label = context.resolve(Text(player.offsetLabel(tick.step))
+        let ticks = TimelinePhysics.axisTicks(steps: steps, gridNow: anchor, every: window?.axisMinutes ?? 60, clear: clear)
+        let labels = ticks.map { tick in
+            context.resolve(Text(player.offsetLabel(tick.step))
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(theme.text2))
-            let half = label.measure(in: size).width / 2
-            let x = tick.at == 0 ? half : tick.at == 1 ? size.width - half : tick.at * size.width
-            context.draw(label, at: CGPoint(x: x, y: plot + Self.axisHeight / 2))
+        }
+        // The ends flush, the rest centred on their step.
+        let spans = zip(ticks, labels).map { tick, label -> ClosedRange<CGFloat> in
+            let width = label.measure(in: size).width
+            let x = tick.at == 0 ? width / 2 : tick.at == 1 ? size.width - width / 2 : tick.at * size.width
+            return (x - width / 2) ... (x + width / 2)
+        }
+        for (i, label) in labels.enumerated() {
+            // A label that would still touch an end's, where the strip is
+            // narrower than its share allows for, gives way to it.
+            let end = i == 0 || i == labels.count - 1
+            if !end, [spans.first, spans.last].contains(where: { $0.map { $0.overlaps((spans[i].lowerBound - 4) ... (spans[i].upperBound + 4)) } ?? false }) {
+                continue
+            }
+            context.draw(label, at: CGPoint(x: (spans[i].lowerBound + spans[i].upperBound) / 2, y: plot + Self.axisHeight / 2))
         }
     }
 }
