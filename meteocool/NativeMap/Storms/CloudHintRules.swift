@@ -3,7 +3,9 @@
 //  meteocool
 //
 //  Which storm cores the flat map tags "3D" (core's `layers/cloudHints.ts`):
-//  one per storm, a scan behind its radar or not, one per neighbourhood.
+//  one per storm, a scan behind its radar or not, one per neighbourhood,
+//  current before stale (`lib/staleTint.ts`; its grey is not ported: the
+//  storms stay in colour).
 //
 
 import Foundation

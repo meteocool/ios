@@ -2,7 +2,8 @@
 //  NativeMapFeature.swift
 //  meteocool
 //
-//  How the native map's parts plug into it.
+//  How the native map's parts plug into it (core's `caps/Capability.ts`
+//  and what each is handed, `caps/options.ts`).
 //
 
 import MapKit

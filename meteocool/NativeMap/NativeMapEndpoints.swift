@@ -2,7 +2,8 @@
 //  NativeMapEndpoints.swift
 //  meteocool
 //
-//  The hosts the native map reads from.
+//  The hosts the native map reads from (core's `src/urls.ts`, and the
+//  services its clients are bound to, `api/client.ts`).
 //
 
 import Foundation

@@ -2,7 +2,8 @@
 //  ArchiveStrikeLoader.swift
 //  meteocool
 //
-//  The strikes of a past window, from `/v3/lightning/strikes`.
+//  The strikes of a past window, from `/v3/lightning/strikes` (core's
+//  `lib/ArchiveStrikes.ts`).
 //
 
 import Foundation

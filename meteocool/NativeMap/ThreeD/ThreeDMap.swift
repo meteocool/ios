@@ -5,7 +5,8 @@
 //  core's 3D storm map (`caps/Cells3DCapability.ts`), native: the radar's
 //  storm volumes raymarched over the map, on the ground the radar is draped
 //  over, seen from an orbiting camera. The volumes, their modes, tags and
-//  lines are the AR view's (`StormFeed`, `StormScene`, `StormRenderer`).
+//  lines are the AR view's (`StormFeed`, `StormScene`, `StormRenderer`); the
+//  peel's slider is core's `PeelSlider.svelte`.
 //
 
 import Combine

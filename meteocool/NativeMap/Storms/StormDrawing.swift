@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  What the map draws for the storms in view, as plain marks in degrees:
-//  core's `lib/stormMarks.ts`, `lib/cellGeometry.ts` and `lib/cellPulse.ts`,
+//  core's `lib/stormMarks.ts`, `lib/cellGeometry.ts` (`cellTracks.test.ts`)
+//  and `lib/cellPulse.ts`,
 //  rule for rule. MapKit only sees the result (`StormMarks`). Only the
 //  storms that matter are marked in full; the backend says which
 //  (`notable`), and every other storm is a quiet dot, still there to be

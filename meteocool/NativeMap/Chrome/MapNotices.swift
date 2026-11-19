@@ -2,8 +2,9 @@
 //  MapNotices.swift
 //  meteocool
 //
-//  core's "Back to now" pill, the strips above the tray (`DismissableStrip`
-//  with `SwipeDock`, the one notice of `lib/noticeQueue.ts`) and its toasts.
+//  core's "Back to now" pill, the strips above the tray
+//  (`DismissableStrip.svelte` with `SwipeDock.svelte`, the one notice of
+//  `lib/noticeQueue.ts`) and its toasts.
 //
 
 import SwiftUI

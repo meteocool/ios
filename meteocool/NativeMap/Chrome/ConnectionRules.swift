@@ -5,6 +5,7 @@
 //  When core's status pill says the backend is degraded, the radar out of
 //  date, or the connection slow (`lib/degraded.ts`, `degradedStatus.ts`,
 //  `tileStatus.ts`, `updateCadence.ts`, `connectionState.ts`, `freshness.ts`),
+//  which endpoints are failing (`lib/apiHealth.ts`),
 //  checked as core's `degraded.test.ts` and `tileErrors.test.ts` check them.
 //
 

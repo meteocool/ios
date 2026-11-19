@@ -6,8 +6,9 @@
 //  `CellCutaway.svelte`), a vertical cut turning slowly and turned by a drag;
 //  the CAPPI on the 3D map (`CappiSweep.svelte`), everything above a height
 //  cut away, the height sweeping up and down; and the radars it was built
-//  from (`VolumeProvenance.svelte`, `RadarMinimap.svelte`). The raymarch is
-//  the AR view's and the 3D map's.
+//  from (`VolumeProvenance.svelte`, `RadarMinimap.svelte`). A cell's volume
+//  is fetched here (`lib/cellCutaway.ts`); the raymarch is the AR view's and
+//  the 3D map's (`lib/volumeRaymarch.ts`).
 //
 
 import MetalKit

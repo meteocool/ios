@@ -2,7 +2,9 @@
 //  RadarOverlay.swift
 //  meteocool
 //
-//  The radar composite as one MapKit overlay.
+//  The radar composite as one MapKit overlay. The step before stands in only
+//  for a tile of the step on screen still waiting, never once it is drawn
+//  (`staleFrames.test.ts`).
 //
 
 import Foundation

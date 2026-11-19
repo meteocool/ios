@@ -4,7 +4,10 @@
 //
 //  The native map's connection state and the status pill's word for it
 //  (core's `LiveIndicator.svelte`, `lib/connectionState.ts`,
-//  `lib/connectionStatus.ts`, `lib/degradedStatus.ts`).
+//  `lib/connectionStatus.ts`, `lib/degradedStatus.ts`): the network's path
+//  and how good it is (`lib/networkStatus.ts`, `lib/networkQuality.ts`,
+//  `lib/networkBanner.ts`), whether anything answers (`lib/reachability.ts`),
+//  and the requests' log (`lib/requestTiming.ts`).
 //
 
 import Foundation

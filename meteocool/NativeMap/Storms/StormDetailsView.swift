@@ -3,7 +3,10 @@
 //  meteocool
 //
 //  A storm's panel: core's `StormDetails.svelte` in `StormPanel.svelte`,
-//  with the size of its system from `lib/stormGroups.ts`.
+//  with the size of its system from `lib/stormGroups.ts`, its readings
+//  (`Readings.svelte`), what it merged with (`StormLineage.svelte`), its
+//  close and share discs (`Disc.svelte`, `CloseDisc.svelte`,
+//  `ShareDisc.svelte`), and its radars' sweeps (`lib/openRadar.ts`).
 //
 
 import SwiftUI

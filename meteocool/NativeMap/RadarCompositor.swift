@@ -3,7 +3,9 @@
 //  meteocool
 //
 //  Each step's picture, tile by tile, put together before it is shown, and
-//  its coarse preview (core's `lib/previewTiles.ts`).
+//  its coarse preview (core's `lib/previewTiles.ts`): only tiles the frame's
+//  index has (`layers/indexedTiles.ts`), DWD's cut where another network
+//  draws (`layers/networkHoles.ts`).
 //
 
 import Foundation

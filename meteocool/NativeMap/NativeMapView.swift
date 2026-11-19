@@ -2,7 +2,12 @@
 //  NativeMapView.swift
 //  meteocool
 //
-//  The radar map drawn with MapKit instead of core's web map.
+//  The radar map drawn with MapKit instead of core's web map (`Map.svelte`,
+//  padded by the tray): the reader's stored choices and a link's, held for
+//  the visit (`lib/Settings.ts`, `settingsOverride.test.ts`), the base map
+//  (`lib/baseLayers.ts`; a withdrawn one follows the system,
+//  `withdrawnMaps.test.ts`), the link to what is on screen
+//  (`lib/urlState.ts`), and waking (`lib/wakeup.ts`).
 //
 
 import Combine

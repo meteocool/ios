@@ -3,9 +3,10 @@
 //  meteocool
 //
 //  The lightning map's rules: how strikes age through core's palette, the
-//  strikes newer than the tile set, the histogram and its legend, and the
-//  services it asks (core's `caps/LightningCapability.ts`,
-//  `layers/lightning.ts`, `components/LightningChart.svelte`).
+//  strikes newer than the tile set (`lib/StrikeManagerV2.ts`), the histogram
+//  and its legend (`lib/lightningChart.ts`), and the services it asks (core's
+//  `caps/LightningCapability.ts`, `layers/lightning.ts`,
+//  `components/LightningChart.svelte`).
 //
 //  No app dependencies here: `scripts/check.sh` compiles this file alone.
 //

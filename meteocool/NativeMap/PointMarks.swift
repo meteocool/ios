@@ -4,7 +4,12 @@
 //
 //  Lightning strikes and mesocyclones on the native map: core's
 //  `layers/lightning.ts` and `layers/mesocyclones.ts`, and a tap on a
-//  mesocyclone opening its storm (`App.svelte`'s `mesocycloneStorm`).
+//  mesocyclone opening its storm (`App.svelte`'s `mesocycloneStorm`). The
+//  last half hour of strikes, each once and filed under when it struck
+//  (`lib/StrikeManager.ts`, `strikes.test.ts`, `strikeIdentity.test.ts`),
+//  drawn in half-second batches (`lib/coalesce.ts`); the mesocyclones of
+//  the last half hour (`lib/MesoCycloneManager.ts`). Their icons are core's
+//  `assets/lightning.png` and `assets/mesocyclone.png`.
 //
 
 import Foundation

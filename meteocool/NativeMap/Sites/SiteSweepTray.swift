@@ -4,7 +4,8 @@
 //
 //  Site mode's controls, in the player's tray while a radar is open (core's
 //  `SiteSweepTray.svelte`), with the "i" to the radar's own page, and the
-//  legend of radial velocity (`VelocityScaleLine.svelte`).
+//  legend of radial velocity (`VelocityScaleLine.svelte`), and the dial for
+//  storm-relative motion by hand (`MotionDial.svelte`).
 //
 
 import SwiftUI

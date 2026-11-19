@@ -3,8 +3,12 @@
 //  meteocool
 //
 //  core's player tray (`NowcastPlayback.svelte`): the place, the radar
-//  product, the timeline strip, play and the legend
-//  (`scales/ColumnScaleLine.svelte` for an echo top or VIL).
+//  product, the timeline strip, play, the archive's button
+//  (`ArchivePill.svelte`) and the legend (`scales/ScaleLine.svelte`, with
+//  core's `assets/legend_clouds.svg`, `assets/legend_rain.svg`,
+//  `assets/legend_thunderstorm.svg` and `assets/legend_hail.svg`;
+//  `scales/ColumnScaleLine.svelte` for an echo top or VIL). A row that
+//  scrolls sideways fades out at an edge with more beyond (`lib/fadeEdges.ts`).
 //
 
 import SwiftUI

@@ -2,7 +2,8 @@
 //  SnowOverlay.swift
 //  meteocool
 //
-//  Where it snows: core's snow overlay (`RadarCapability.processSnowOverlay`).
+//  Where it snows: core's snow overlay (`RadarCapability.processSnowOverlay`),
+//  drawn with its pattern, `assets/snow.png`.
 //
 
 import MapKit

@@ -45,7 +45,9 @@ HINTS = [
     ("tests/ui/", "core's UI tests changed: see what meteocoolUITests should cover"),
     ("src/colormaps.ts", "palettes changed: scripts/colormaps.py"),
 ]
-CITATION = re.compile(r"(?<![A-Za-z0-9_./-])((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.(?:svelte|ts|css|mjs|js))\b")
+# A core file as a comment names it: `lib/archive.ts`, `StormPanel.svelte`, a
+# unit test (`stormStore.test.ts`), an asset copied into the app (`assets/snow.png`).
+CITATION = re.compile(r"(?<![A-Za-z0-9_./-])((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(?:\.test)?\.(?:svelte|ts|css|mjs|js|json|svg|png|webp))\b")
 
 
 def git(core, *args):

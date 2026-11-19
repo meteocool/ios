@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  Radar tiles from raw values to colour: core's `lib/valuePng.ts` and
-//  `lib/rvp6.ts`, and echo tops' and VIL's tables (`lib/columnValues.ts`).
+//  `lib/rvp6.ts`, and echo tops' and VIL's tables (`lib/columnValues.ts`);
+//  the values in dBZ as `cmapUtils.test.ts` checks them.
 //
 
 import Foundation

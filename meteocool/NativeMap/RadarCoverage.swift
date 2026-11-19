@@ -2,7 +2,9 @@
 //  RadarCoverage.swift
 //  meteocool
 //
-//  Where each radar network is the one drawn: core's `spec/coverage.json`.
+//  Where each radar network is the one drawn: core's `spec/coverage.json`,
+//  its invariants (`coverage.test.ts`), and which network a point is on
+//  (`layers/networkAt.ts`).
 //
 
 import Foundation

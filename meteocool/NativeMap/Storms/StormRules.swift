@@ -5,7 +5,8 @@
 //  The storm panel's words and numbers: core's `lib/cellMetrics.ts`,
 //  `cellStatus.ts`, `stormStatus.ts`, `cellRecency.ts`, `cellPlacement.ts`,
 //  `cellLineage.ts`, `timeTicks.ts`, `swipeAway.ts` (the maths) and the
-//  history charts' scale from `StormDetails.svelte`, rule for rule.
+//  history charts' scale from `StormDetails.svelte` and `lib/chartScale.ts`,
+//  rule for rule.
 //
 
 import Foundation

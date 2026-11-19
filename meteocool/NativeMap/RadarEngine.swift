@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The radar composite on the native map: the series, its steps, and the
-//  tiles and pictures each step needs.
+//  tiles and pictures each step needs, and the radar draped on the 3D map's
+//  ground with the flat map's cuts (core's `layers/maskedTiles.ts`).
 //
 
 import MapKit

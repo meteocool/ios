@@ -4,7 +4,8 @@
 //
 //  A hold on the radar map and what it leads to: the menu (core's
 //  `PointMenu.svelte`), the inspected point and its ring
-//  (`inspectLatLon`), a link to the place, and the model comparison.
+//  (`inspectLatLon`), a link to the place, and the model comparison
+//  (`lib/modelCompare.ts`).
 //
 
 import Combine

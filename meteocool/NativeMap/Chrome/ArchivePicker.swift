@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The archive's sheet: which past window the map is used in (core's
-//  `ArchivePicker.svelte`, ng's `doc/archive.md`).
+//  `ArchivePicker.svelte`, ng's `doc/archive.md`), and what the archive
+//  covers (`lib/archiveCoverage.ts`).
 //
 
 import SwiftUI
