@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Tamna";
 "settings.base_layers.light" = "Svijetla";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satelitska";
 "settings.base_layers.system" = "Prema sustavu";
 "settings.color_map" = "Paleta boja radara";
 "settings.color_map_hint" = "Mijenja boje kojima se prikazuje oborina.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Crveni rub i ✦: DWD detektira tuču.";
 "storm.key.join" = "Spajanje ili dijeljenje";
 "storm.key.join_body" = "Točkasto: jedna se oluja spojila s drugom ili se od nje odvojila.";
+"storm.key.lightning" = "Munje";
+"storm.key.lightning_body" = "Udari s blitzortung.org, blijede tijekom pola sata.";
 "storm.key.live" = "Aktivna";
 "storm.key.live_body" = "Još se detektira. Bez prstena zadnji put je viđena prije nekog vremena.";
 "storm.key.mesocyclone" = "Mezociklona";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radari";
 "storm.volume.unavailable" = "Volumen nije dostupan";
 "storm_cells_3d" = "Olujne ćelije 3D";
+"style_3d.aria" = "Stil oluja: {style}";
+"style_3d.choose" = "Odaberi kako se oluje crtaju";
+"style_3d.cloud" = "Oblak";
+"style_3d.cloud_body" = "Osvijetljen oblak svega od slabe kiše naviše.";
+"style_3d.glow" = "Sjaj";
+"style_3d.glow_body" = "Prozirno svjetlo od najslabijeg odjeka, svaka jačina u svojoj boji.";
+"style_3d.shells" = "Ljuske";
+"style_3d.shells_body" = "Ploha na svakih 10 dBZ, jedna u drugoj kao ljuske luka.";
+"style_3d.title" = "Stil oluja";
 "text1" = "meteocool je besplatna GIS platforma koja prikuplja i vizualizira meteorološke podatke, s naglaskom na opasne vremenske pojave. Prilagođena je mobilnim uređajima, a možeš je koristiti da loviš nadolazeće nevrijeme ili da ga izbjegneš.";
 "text2" = "meteocool koristi radarske podatke meteoroloških službi Njemačke (DWD), Švicarske, Francuske, Češke, Poljske, Belgije, Slovačke, Litve, Estonije, Irske, Hrvatske, Danske, Nizozemske, Finske, Švedske i Norveške te munje u stvarnom vremenu iz projekta blitzortung.org.";
 "time_3d.choose" = "Prikaži oluje u ranijem trenutku";

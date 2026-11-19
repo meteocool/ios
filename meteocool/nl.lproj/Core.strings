@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Donker";
 "settings.base_layers.light" = "Licht";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satelliet";
 "settings.base_layers.system" = "Systeeminstelling volgen";
 "settings.color_map" = "Radar-kleurenschema";
 "settings.color_map_hint" = "Wijzigt de kleuren waarin de neerslag wordt getekend.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Rode rand en ✦: de DWD detecteert hagel.";
 "storm.key.join" = "Samensmelting of splitsing";
 "storm.key.join_body" = "Gestippeld: een onweer is in een ander opgegaan of ervan afgesplitst.";
+"storm.key.lightning" = "Bliksem";
+"storm.key.lightning_body" = "Inslagen van blitzortung.org, die in een halfuur vervagen.";
 "storm.key.live" = "Actief";
 "storm.key.live_body" = "Wordt nog gedetecteerd. Zonder de ring is het een tijd geleden voor het laatst gezien.";
 "storm.key.mesocyclone" = "Mesocycloon";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radars";
 "storm.volume.unavailable" = "Volume niet beschikbaar";
 "storm_cells_3d" = "Onweerscellen 3D";
+"style_3d.aria" = "Buienstijl: {style}";
+"style_3d.choose" = "Kies hoe de buien worden getekend";
+"style_3d.cloud" = "Wolk";
+"style_3d.cloud_body" = "Een belichte wolk van alles vanaf lichte regen.";
+"style_3d.glow" = "Gloed";
+"style_3d.glow_body" = "Doorschijnend licht vanaf de zwakste echo, elke sterkte in haar eigen kleur.";
+"style_3d.shells" = "Schillen";
+"style_3d.shells_body" = "Een oppervlak om de 10 dBZ, in elkaar als de rokken van een ui.";
+"style_3d.title" = "Buienstijl";
 "text1" = "meteocool is een gratis GIS-platform dat weergegevens verzamelt en visualiseert, met de nadruk op zwaar weer. Het is geoptimaliseerd voor mobiele apparaten, en je kunt het gebruiken om naderend weer op te zoeken of juist te ontwijken.";
 "text2" = "meteocool gebruikt radargegevens van de weerdiensten van Duitsland (DWD), Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Ierland, Kroatië, Denemarken, Nederland, Finland, Zweden en Noorwegen, en realtime bliksemgegevens van het blitzortung.org-project.";
 "time_3d.choose" = "Toon de buien op een eerder tijdstip";

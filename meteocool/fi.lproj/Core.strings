@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Tumma";
 "settings.base_layers.light" = "Vaalea";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satelliitti";
 "settings.base_layers.system" = "Järjestelmän mukaan";
 "settings.color_map" = "Tutkan väriasteikko";
 "settings.color_map_hint" = "Vaihtaa värit, joilla sade piirretään.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Punainen reuna ja ✦: DWD havaitsee rakeita.";
 "storm.key.join" = "Yhdistyminen tai jakautuminen";
 "storm.key.join_body" = "Pisteviiva: ukkonen yhdistyi toiseen tai irtosi siitä.";
+"storm.key.lightning" = "Salamat";
+"storm.key.lightning_body" = "Iskut blitzortung.orgista, haalistuvat puolen tunnin aikana.";
 "storm.key.live" = "Aktiivinen";
 "storm.key.live_body" = "Havaitaan yhä. Ilman rengasta se nähtiin viimeksi hetki sitten.";
 "storm.key.mesocyclone" = "Mesosykloni";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Tutkat";
 "storm.volume.unavailable" = "Tilavuus ei saatavilla";
 "storm_cells_3d" = "Ukkossolut 3D";
+"style_3d.aria" = "Myrskyjen tyyli: {style}";
+"style_3d.choose" = "Valitse, miten myrskyt piirretään";
+"style_3d.cloud" = "Pilvi";
+"style_3d.cloud_body" = "Valaistu pilvi kaikesta heikosta sateesta ylöspäin.";
+"style_3d.glow" = "Hehku";
+"style_3d.glow_body" = "Läpikuultavaa valoa heikoimmasta kaiusta alkaen, jokainen voimakkuus omalla värillään.";
+"style_3d.shells" = "Kuoret";
+"style_3d.shells_body" = "Pinta 10 dBZ:n välein, sisäkkäin kuin sipulin kerrokset.";
+"style_3d.title" = "Myrskyjen tyyli";
 "text1" = "meteocool on ilmainen paikkatietoalusta, joka kokoaa ja havainnollistaa säätietoja ja keskittyy erityisesti rajuilmoihin. Se on tehty mobiililaitteille, ja sen avulla voit lähteä lähestyvän sään perään tai väistellä sitä.";
 "text2" = "meteocool käyttää Saksan (DWD), Sveitsin, Ranskan, Tšekin, Puolan, Belgian, Slovakian, Liettuan, Viron, Irlannin, Kroatian, Tanskan, Alankomaiden, Suomen, Ruotsin ja Norjan sääpalvelujen tutkatietoja sekä blitzortung.org-projektin reaaliaikaisia salamahavaintoja.";
 "time_3d.choose" = "Näytä ukkoset aiemmalta ajalta";

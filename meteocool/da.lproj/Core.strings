@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Mørkt";
 "settings.base_layers.light" = "Lyst";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satellit";
 "settings.base_layers.system" = "Følg systemet";
 "settings.color_map" = "Radarfarveskala";
 "settings.color_map_hint" = "Ændrer de farver, nedbøren tegnes med.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Rød kant og ✦: DWD registrerer hagl.";
 "storm.key.join" = "Sammensmeltning eller deling";
 "storm.key.join_body" = "Prikket: et uvejr løb sammen med et andet eller brød ud fra det.";
+"storm.key.lightning" = "Lyn";
+"storm.key.lightning_body" = "Nedslag fra blitzortung.org, der falmer over en halv time.";
 "storm.key.live" = "Aktiv";
 "storm.key.live_body" = "Registreres stadig. Uden ringen blev det sidst set for et stykke tid siden.";
 "storm.key.mesocyclone" = "Mesocyklon";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radarer";
 "storm.volume.unavailable" = "Volumen ikke tilgængeligt";
 "storm_cells_3d" = "Uvejrsceller i 3D";
+"style_3d.aria" = "Uvejrsstil: {style}";
+"style_3d.choose" = "Vælg, hvordan uvejrene tegnes";
+"style_3d.cloud" = "Sky";
+"style_3d.cloud_body" = "En belyst sky af alt fra let regn og op.";
+"style_3d.glow" = "Glød";
+"style_3d.glow_body" = "Gennemsigtigt lys fra det svageste ekko og op, hver styrke i sin egen farve.";
+"style_3d.shells" = "Skaller";
+"style_3d.shells_body" = "En flade for hver 10 dBZ, lagt inden i hinanden som et løg.";
+"style_3d.title" = "Uvejrsstil";
 "text1" = "meteocool er en gratis GIS-platform, der samler og visualiserer vejrdata med fokus på voldsomt vejr. Den er optimeret til mobile enheder, og du kan bruge den til at jagte vejret, der er på vej, eller til at undgå det.";
 "text2" = "meteocool bruger radardata fra vejrtjenesterne i Tyskland (DWD), Schweiz, Frankrig, Tjekkiet, Polen, Belgien, Slovakiet, Litauen, Estland, Irland, Kroatien, Danmark, Nederlandene, Finland, Sverige og Norge samt lyn i realtid fra projektet blitzortung.org.";
 "time_3d.choose" = "Vis uvejrene på et tidligere tidspunkt";

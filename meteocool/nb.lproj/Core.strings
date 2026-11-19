@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Mørkt";
 "settings.base_layers.light" = "Lyst";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satellitt";
 "settings.base_layers.system" = "Som systemet";
 "settings.color_map" = "Fargeskala for radar";
 "settings.color_map_hint" = "Endrer fargene nedbøren tegnes med.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Rød kant og ✦: DWD registrerer hagl.";
 "storm.key.join" = "Sammenslåing eller deling";
 "storm.key.join_body" = "Prikket: et uvær gikk sammen med et annet eller brøt ut fra det.";
+"storm.key.lightning" = "Lyn";
+"storm.key.lightning_body" = "Nedslag fra blitzortung.org, som blekner over en halvtime.";
 "storm.key.live" = "Aktiv";
 "storm.key.live_body" = "Registreres fortsatt. Uten ringen ble det sist sett for en stund siden.";
 "storm.key.mesocyclone" = "Mesosyklon";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radarer";
 "storm.volume.unavailable" = "Volumet er ikke tilgjengelig";
 "storm_cells_3d" = "Tordenceller 3D";
+"style_3d.aria" = "Uværsstil: {style}";
+"style_3d.choose" = "Velg hvordan uværene tegnes";
+"style_3d.cloud" = "Sky";
+"style_3d.cloud_body" = "En belyst sky av alt fra lett regn og opp.";
+"style_3d.glow" = "Glød";
+"style_3d.glow_body" = "Gjennomsiktig lys fra det svakeste ekkoet og opp, hver styrke i sin egen farge.";
+"style_3d.shells" = "Skall";
+"style_3d.shells_body" = "En flate for hver 10 dBZ, lagt inni hverandre som en løk.";
+"style_3d.title" = "Uværsstil";
 "text1" = "meteocool er en gratis GIS-plattform som samler og visualiserer værdata, med vekt på uvær. Den er laget for mobil, og du kan bruke den til å jage været som er på vei – eller til å unngå det.";
 "text2" = "meteocool bruker radardata fra værtjenestene i Tyskland (DWD), Sveits, Frankrike, Tsjekkia, Polen, Belgia, Slovakia, Litauen, Estland, Irland, Kroatia, Danmark, Nederland, Finland, Sverige og Norge, og lyn i sanntid fra prosjektet blitzortung.org.";
 "time_3d.choose" = "Vis tordenværene på et tidligere tidspunkt";

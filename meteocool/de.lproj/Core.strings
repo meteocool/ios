@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Dunkel";
 "settings.base_layers.light" = "Hell";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satellit";
 "settings.base_layers.system" = "Wie System";
 "settings.color_map" = "Radar-Farbschema";
 "settings.color_map_hint" = "Ändert die Farben, in denen der Niederschlag gezeichnet wird.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Roter Rand und ✦: der DWD erkennt Hagel.";
 "storm.key.join" = "Verschmelzung oder Teilung";
 "storm.key.join_body" = "Gepunktet: ein Gewitter ist in ein anderes aufgegangen oder hat sich abgespalten.";
+"storm.key.lightning" = "Blitze";
+"storm.key.lightning_body" = "Einschläge von blitzortung.org, die über eine halbe Stunde verblassen.";
 "storm.key.live" = "Aktiv";
 "storm.key.live_body" = "Wird noch erfasst. Ohne den Ring wurde es zuletzt vor einer Weile gesehen.";
 "storm.key.mesocyclone" = "Mesozyklone";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radare";
 "storm.volume.unavailable" = "Volumen nicht verfügbar";
 "storm_cells_3d" = "Gewitterzellen 3D";
+"style_3d.aria" = "Gewitter-Darstellung: {style}";
+"style_3d.choose" = "Wählen, wie die Gewitter gezeichnet werden";
+"style_3d.cloud" = "Wolke";
+"style_3d.cloud_body" = "Eine beleuchtete Wolke aus allem ab leichtem Regen.";
+"style_3d.glow" = "Leuchten";
+"style_3d.glow_body" = "Durchscheinendes Licht ab dem schwächsten Echo, jede Stärke in ihrer eigenen Farbe.";
+"style_3d.shells" = "Schalen";
+"style_3d.shells_body" = "Eine Fläche alle 10 dBZ, ineinander wie die Schalen einer Zwiebel.";
+"style_3d.title" = "Gewitter-Darstellung";
 "text1" = "meteocool ist eine kostenlose GIS-Plattform, die Wetterdaten sammelt und visualisiert, mit Schwerpunkt auf Unwettern. Sie ist für Mobilgeräte optimiert, und du kannst damit anrückendem Wetter hinterherjagen oder ihm ausweichen.";
 "text2" = "meteocool nutzt Radardaten der Wetterdienste von Deutschland (DWD), der Schweiz, Frankreich, Tschechien, Polen, Belgien, der Slowakei, Litauen, Estland, Irland, Kroatien, Dänemark, den Niederlanden, Finnland, Schweden und Norwegen sowie Echtzeit-Blitzdaten vom Projekt blitzortung.org.";
 "time_3d.choose" = "Gewitter zu einer früheren Zeit zeigen";

@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Tume";
 "settings.base_layers.light" = "Hele";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satelliit";
 "settings.base_layers.system" = "Nagu süsteemis";
 "settings.color_map" = "Radari värviskaala";
 "settings.color_map_hint" = "Muudab värve, millega sademed kaardile joonistatakse.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Punane äär ja ✦: DWD tuvastab rahet.";
 "storm.key.join" = "Ühinemine või jagunemine";
 "storm.key.join_body" = "Punktiir: üks äike ühines teisega või eraldus sellest.";
+"storm.key.lightning" = "Välk";
+"storm.key.lightning_body" = "Löögid blitzortung.org-ist, tuhmuvad poole tunni jooksul.";
 "storm.key.live" = "Aktiivne";
 "storm.key.live_body" = "Seda tuvastatakse endiselt. Ilma rõngata nähti seda viimati mõne aja eest.";
 "storm.key.mesocyclone" = "Mesotsüklon";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radarid";
 "storm.volume.unavailable" = "Radarimaht pole saadaval";
 "storm_cells_3d" = "Äikeserakud 3D";
+"style_3d.aria" = "Äikesepilvede stiil: {style}";
+"style_3d.choose" = "Vali, kuidas äikesepilvi joonistatakse";
+"style_3d.cloud" = "Pilv";
+"style_3d.cloud_body" = "Valgustatud pilv kõigest alates nõrgast vihmast.";
+"style_3d.glow" = "Helendus";
+"style_3d.glow_body" = "Läbipaistev valgus alates nõrgimast kajast, iga tugevus oma värviga.";
+"style_3d.shells" = "Koored";
+"style_3d.shells_body" = "Pind iga 10 dBZ järel, üksteise sees nagu sibula kihid.";
+"style_3d.title" = "Äikesepilvede stiil";
 "text1" = "meteocool on tasuta GIS-platvorm, mis kogub ja visualiseerib ilmaandmeid, keskendudes ohtlikule ilmale. See on loodud eelkõige mobiilseadmetele ning sellega saad lähenevat ilma taga ajada või sellest hoopis eemale hoida.";
 "text2" = "meteocool kasutab Saksamaa (DWD), Šveitsi, Prantsusmaa, Tšehhi, Poola, Belgia, Slovakkia, Leedu, Eesti, Iirimaa, Horvaatia, Taani, Hollandi, Soome, Rootsi ja Norra ilmateenistuste radariandmeid ning projekti blitzortung.org reaalajas välguandmeid.";
 "time_3d.choose" = "Näita äikesi varasemal ajal";

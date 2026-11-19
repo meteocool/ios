@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Dark";
 "settings.base_layers.light" = "Light";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satellite";
 "settings.base_layers.system" = "Match System";
 "settings.color_map" = "Radar Color Map";
 "settings.color_map_hint" = "Changes the colors the precipitation is drawn in.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Red rim and ✦: DWD detects hail.";
 "storm.key.join" = "Merge or split";
 "storm.key.join_body" = "Dotted: one storm ran into another, or broke off it.";
+"storm.key.lightning" = "Lightning";
+"storm.key.lightning_body" = "Strikes from blitzortung.org, fading over half an hour.";
 "storm.key.live" = "Live";
 "storm.key.live_body" = "Still being detected. Without the ring, it was last seen a while ago.";
 "storm.key.mesocyclone" = "Mesocyclone";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radars";
 "storm.volume.unavailable" = "Volume unavailable";
 "storm_cells_3d" = "Storm Cells 3D";
+"style_3d.aria" = "Storm style: {style}";
+"style_3d.choose" = "Choose how the storms are drawn";
+"style_3d.cloud" = "Cloud";
+"style_3d.cloud_body" = "A lit cloud of everything from light rain up.";
+"style_3d.glow" = "Glow";
+"style_3d.glow_body" = "See-through light from the faintest echo up, every strength in its own colour.";
+"style_3d.shells" = "Shells";
+"style_3d.shells_body" = "A surface at every 10 dBZ, nested like an onion.";
+"style_3d.title" = "Storm Style";
 "text1" = "meteocool is a free GIS platform that aggregates and visualises weather data, with a focus on severe weather. It is optimized for mobile devices, and you can use it to chase upcoming weather, or to avoid it.";
 "text2" = "meteocool uses radar data from the weather services of Germany (DWD), Switzerland, France, Czechia, Poland, Belgium, Slovakia, Lithuania, Estonia, Ireland, Croatia, Denmark, the Netherlands, Finland, Sweden and Norway, and real-time lightning from the blitzortung.org project.";
 "time_3d.choose" = "Show the storms at an earlier time";

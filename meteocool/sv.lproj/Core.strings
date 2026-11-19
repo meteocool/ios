@@ -673,6 +673,7 @@
 "settings.base_layers.dark" = "Mörk";
 "settings.base_layers.light" = "Ljus";
 "settings.base_layers.osm" = "OpenStreetMap";
+"settings.base_layers.satellite" = "Satellit";
 "settings.base_layers.system" = "Följ systemet";
 "settings.color_map" = "Radarns färgskala";
 "settings.color_map_hint" = "Ändrar färgerna som nederbörden ritas i.";
@@ -928,6 +929,8 @@
 "storm.key.hail_body" = "Röd kant och ✦: DWD upptäcker hagel.";
 "storm.key.join" = "Sammanslagning eller delning";
 "storm.key.join_body" = "Prickad: ett oväder gick upp i ett annat eller bröt sig loss från det.";
+"storm.key.lightning" = "Blixtar";
+"storm.key.lightning_body" = "Nedslag från blitzortung.org, som bleknar under en halvtimme.";
 "storm.key.live" = "Aktivt";
 "storm.key.live_body" = "Upptäcks fortfarande. Utan ringen sågs det senast för en stund sedan.";
 "storm.key.mesocyclone" = "Mesocyklon";
@@ -1017,6 +1020,15 @@
 "storm.volume.radars" = "Radarer";
 "storm.volume.unavailable" = "Volymen är inte tillgänglig";
 "storm_cells_3d" = "Åskceller 3D";
+"style_3d.aria" = "Ovädersstil: {style}";
+"style_3d.choose" = "Välj hur ovädren ritas";
+"style_3d.cloud" = "Moln";
+"style_3d.cloud_body" = "Ett belyst moln av allt från lätt regn och uppåt.";
+"style_3d.glow" = "Glöd";
+"style_3d.glow_body" = "Genomskinligt ljus från det svagaste ekot och uppåt, varje styrka i sin egen färg.";
+"style_3d.shells" = "Skal";
+"style_3d.shells_body" = "En yta för var 10:e dBZ, inuti varandra som en lök.";
+"style_3d.title" = "Ovädersstil";
 "text1" = "meteocool är en gratis GIS-plattform som samlar och visualiserar väderdata, med fokus på oväder. Den är optimerad för mobila enheter, och du kan använda den för att jaga vädret som är på väg, eller för att undvika det.";
 "text2" = "meteocool använder radardata från vädertjänsterna i Tyskland (DWD), Schweiz, Frankrike, Tjeckien, Polen, Belgien, Slovakien, Litauen, Estland, Irland, Kroatien, Danmark, Nederländerna, Finland, Sverige och Norge, och blixtar i realtid från projektet blitzortung.org.";
 "time_3d.choose" = "Visa åskvädren vid en tidigare tidpunkt";
