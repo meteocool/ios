@@ -104,8 +104,11 @@ struct StormKeyView: View {
                                 .offset(x: -5)
                         }
                     }
-                    item(CoreStrings.t("storm.key.mesocyclone"), CoreStrings.t("storm.key.mesocyclone_body"), on: mesocyclones,
-                         id: "mesocyclone") {
+                    // DWD keeps no series of them: in a past window there are none to show.
+                    let kept = NativeMapLayer.mesocyclones.hasPast || model.window == nil
+                    item(CoreStrings.t("storm.key.mesocyclone"),
+                         CoreStrings.t(kept ? "storm.key.mesocyclone_body" : "chrome.archive.no_past"), on: mesocyclones,
+                         id: "mesocyclone", disabled: !kept) {
                         Image("MapMesocyclone").resizable().scaledToFit().frame(width: 20, height: 20)
                     }
                 }
@@ -169,7 +172,7 @@ struct StormKeyView: View {
                     id: mark.rawValue, badge: badge, swatch: swatch)
     }
 
-    private func item(_ title: String, _ body: String, on: Binding<Bool>, id: String, badge: StormSource? = nil,
+    private func item(_ title: String, _ body: String, on: Binding<Bool>, id: String, badge: StormSource? = nil, disabled: Bool = false,
                       @ViewBuilder swatch: () -> some View) -> some View {
         Toggle(isOn: on) {
             HStack(alignment: .top, spacing: 12) {
@@ -182,8 +185,9 @@ struct StormKeyView: View {
                     Text(body).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                 }
             }
-            .opacity(on.wrappedValue ? 1 : 0.55)
+            .opacity(on.wrappedValue && !disabled ? 1 : 0.55)
         }
+        .disabled(disabled)
         .accessibilityLabel(CoreStrings.t("storm.key.show", ["mark": title]))
         .accessibilityIdentifier("nativeMap.stormKey.\(id)")
     }

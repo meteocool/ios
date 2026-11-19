@@ -1369,6 +1369,9 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(app.switches["nativeMap.layers.motion"].firstMatch.value as? String, "1")
     }
 
+    /// What has no past is greyed in a window (core's `NO_PAST`), its switch
+    /// kept for live: rain motion, mesocyclones, the radars' marks, and the
+    /// storm key's mesocyclones.
     func testRainMotionIsGreyedInAPastWindow() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
@@ -1384,6 +1387,26 @@ final class NativeMapUITests: XCTestCase {
         for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
         XCTAssertFalse(motion.isEnabled, "No motion in the past")
         XCTAssertTrue(motion.label.contains("Not kept in the archive"), "Says why: \(motion.label)")
+        // Nor mesocyclones nor the radars' marks; the rest answer for the step.
+        for layer in ["mesocyclones", "sites"] {
+            let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
+            XCTAssertTrue(toggle.exists, layer)
+            XCTAssertFalse(toggle.isEnabled, "No \(layer) in the past")
+        }
+        XCTAssertTrue(app.switches["nativeMap.layers.lightning"].firstMatch.isEnabled, "Lightning has a past")
+        XCTAssertTrue(app.switches["nativeMap.layers.storms"].firstMatch.isEnabled, "Storms have a past")
+        element("nativeMap.layers.close").tap()
+        // The storm key's mesocyclone switch too, saying why.
+        let key = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(key.waitForExistence(timeout: 10))
+        key.tap()
+        let mesocyclones = app.switches["nativeMap.stormKey.mesocyclone"].firstMatch
+        XCTAssertTrue(element("nativeMap.stormKey").waitForExistence(timeout: 5))
+        // The key's last row, under the fold of a lazy list.
+        for _ in 0 ..< 5 where !(mesocyclones.exists && mesocyclones.isHittable) { element("nativeMap.stormKey").swipeUp() }
+        XCTAssertTrue(mesocyclones.exists)
+        XCTAssertFalse(mesocyclones.isEnabled, "No mesocyclones in the past")
+        XCTAssertTrue(app.staticTexts["Not kept in the archive. Back to live to see it."].exists, "Says why")
     }
 
     func testLoopFromTwoHoursBackIsKept() {

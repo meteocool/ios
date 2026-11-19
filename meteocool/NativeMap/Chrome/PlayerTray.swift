@@ -458,11 +458,12 @@ struct ProductPill: View {
                     Group {
                         if forecast {
                             Text(CoreStrings.t("chrome.radar_product.forecast_short"))
-                        } else if timeline.window != nil {
-                            // How old the scans are means nothing in the past.
-                            EmptyView()
                         } else if timeline.fellBack {
                             Text(CoreStrings.t("chrome.radar_product.fell_back_short")).foregroundStyle(theme.orangeInk)
+                        } else if timeline.window != nil {
+                            // How old the newest scan is, the live radar's age,
+                            // says nothing of the window's.
+                            EmptyView()
                         } else {
                             Text(Self.age(timeline.scanRange, now: context.date))
                         }

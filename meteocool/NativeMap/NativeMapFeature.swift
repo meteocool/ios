@@ -165,7 +165,9 @@ enum NativeMapLayer: String, CaseIterable {
     /// (`layer3dCells`, `layerStations` and `layerMotion` off, the rest on).
     var defaultOn: Bool { self != .cells3d && self != .stations && self != .motion }
 
-    /// Whether a past window draws it: the rain's motion arrows are the
-    /// newest motion field alone, which no past step has (core's `NO_PAST`).
-    var hasPast: Bool { self != .motion }
+    /// Whether a past window draws it (core's `NO_PAST`): not the
+    /// mesocyclones, of which DWD keeps no series; not the radars' marks,
+    /// which open site mode; not the rain's motion arrows, the newest motion
+    /// field alone. Their switches are greyed in a window, kept for live.
+    var hasPast: Bool { self != .motion && self != .mesocyclones && self != .sites }
 }
