@@ -411,7 +411,9 @@ private struct StationPanelView: View {
     }
 }
 
-/// The stations on or off: a pill in the tray beside the storm key's, pressed while they are drawn.
+/// The stations on or off: a pill in the tray beside the storm key's,
+/// pressed while they are drawn (core's `StationToggle.svelte`). It is the
+/// only switch for them: the layer switcher no longer has one.
 struct StationTogglePill: View {
     let on: Bool
     let theme: ChromeTheme

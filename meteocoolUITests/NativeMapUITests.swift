@@ -1876,7 +1876,10 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7", demo: true)
         waitForSeries()
         openLayers()
-        for layer in ["lightning", "mesocyclones", "storms", "fromStart", "cells3d", "terrain3d"] {
+        // The stations and the mesocyclones switch only from the map.
+        XCTAssertFalse(app.switches["nativeMap.layers.stations"].exists)
+        XCTAssertFalse(app.switches["nativeMap.layers.mesocyclones"].exists)
+        for layer in ["lightning", "storms", "fromStart", "cells3d", "terrain3d"] {
             let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
             for _ in 0 ..< 4 where !toggle.isHittable { element("nativeMap.layers").swipeUp() }
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)

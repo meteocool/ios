@@ -272,8 +272,9 @@ struct RadarTimeline: Sendable {
 
     /// The networks with a place in the composite, in core's priority order.
     static let networks = ["ch", "fr", "cz", "pl", "be", "sk", "lt", "ee", "ie", "hr", "dk", "nl", "fi", "se", "no"]
-    /// The networks meteocool's nowcast runs for (core's `NOWCAST_DOMAINS`):
-    /// all of them, Ireland's too since ng rebuilt Dublin's clutter map.
+    /// The networks meteocool's nowcast runs for (core's `NOWCAST_DOMAINS`,
+    /// `lib/nowcast.ts`): all of them, Ireland's too since ng rebuilt
+    /// Dublin's clutter map. Always on: core's setting for it is gone.
     static let nowcastNetworks = networks
 
     init(steps: [Int], gridNow: Int, now: Int?, lastPlayable: Int?, layers: [Int: [RadarLayer]], dbz: [Int: Double],
