@@ -1826,6 +1826,65 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
     }
 
+    /// How the storms are drawn (core's `StylePicker`): the cloud, until the
+    /// glow is picked beside the scan's picker; the layer switcher's group
+    /// says the same and picks it too. Kept across launches.
+    func testThreeDStyleIsPickedOnTheMapAndKept() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=50", demo: true)
+        let style = element("nativeMap.3d.style")
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Cloud")
+        sleep(5)
+        screenshot("3D storms as a cloud")
+        style.tap()
+        let glow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Glow'")).firstMatch
+        XCTAssertTrue(glow.waitForExistence(timeout: 5), "The menu names each style")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Cloud'")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Shells'")).firstMatch.exists, "Not on the map")
+        glow.tap()
+        XCTAssertTrue(waitForValue(style, timeout: 5) { _ in style.label == "Storm style: Glow" }, style.label)
+        sleep(4)
+        screenshot("3D storms as glow")
+        openLayers()
+        let glowRow = element("nativeMap.layers.style.glow")
+        for _ in 0 ..< 4 where !glowRow.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertTrue(glowRow.isSelected, "Settings has the map's style")
+        XCTAssertFalse(element("nativeMap.layers.style.cloud").isSelected)
+        element("nativeMap.layers.close").tap()
+        // Kept for the next visit.
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        let proceed = app.alerts.buttons["Continue to Demo"].firstMatch
+        if proceed.waitForExistence(timeout: 15) { proceed.tap() }
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Glow")
+        // The switcher's group picks it back.
+        openLayers()
+        let cloudRow = element("nativeMap.layers.style.cloud")
+        for _ in 0 ..< 4 where !cloudRow.isHittable { element("nativeMap.layers").swipeUp() }
+        cloudRow.tap()
+        XCTAssertTrue(cloudRow.isSelected)
+        element("nativeMap.layers.close").tap()
+        XCTAssertEqual(style.label, "Storm style: Cloud")
+    }
+
+    /// A link's `style=` is for the visit; core's shells, off its map, are not taken.
+    func testLinkedStyleHoldsForTheVisitOnly() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&style=glow", demo: true)
+        let style = element("nativeMap.3d.style")
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Glow", "As linked")
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launchEnvironment["MC_NATIVE_MAP_LINK"] = "?latLonZ=44,3.5,7&layer=cells3d&style=shells"
+        app.launch()
+        let proceed = app.alerts.buttons["Continue to Demo"].firstMatch
+        if proceed.waitForExistence(timeout: 15) { proceed.tap() }
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Cloud", "The reader's own; the link's shells are not on the map")
+    }
+
     func testThreeDEveryModeItsSliderNorthAndDetails() throws {
         let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
         launch(link: "?latLonZ=\(core.lat),\(core.lon),7&layer=cells3d", demo: true)
