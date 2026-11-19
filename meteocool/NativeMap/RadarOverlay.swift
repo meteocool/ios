@@ -89,23 +89,40 @@ final class RadarRenderer: MKOverlayRenderer {
         }
     }
 
-    /// Something to show while a picture waits for its tiles: the step
-    /// before's, else a coarser one of this step's.
+    /// Something to show while a picture waits for its tiles, of the same
+    /// time where there is any (core's `lib/frameSwitch.ts`): a coarser
+    /// picture of this step, a few zooms up; zooming out, the finer ones;
+    /// only then the step before's.
     private func drawStandIn(z: Int, x: Int, y: Int, zoom: Int, frame: RadarFrameRef, previous: RadarFrameRef?,
                              context: CGContext) {
         let compositor = scene.compositor
         let tile = RadarTileKey.mapRect(z: z, x: x, y: y)
-        var candidates: [(RadarFrameRef, Int)] = []
-        if let previous, previous.zoom(for: zoom) <= z { candidates.append((previous, previous.zoom(for: zoom))) }
-        candidates += stride(from: z - 1, through: RadarLayer.minZoom, by: -1).map { (frame, $0) }
-        for (stand, sz) in candidates {
-            let (sx, sy) = (x >> (z - sz), y >> (z - sz))
-            guard case .image(let image) = compositor.cached(stand, z: sz, x: sx, y: sy) else { continue }
+        func picture(_ of: RadarFrameRef, _ at: FrameSwitchRules.Tile) -> RadarCompositor.Result {
+            compositor.cached(of, z: at.z, x: at.x, y: at.y)
+        }
+        // Ready: a picture, or known to have nothing to draw.
+        func ready(_ at: FrameSwitchRules.Tile) -> Bool {
+            if case .pending = picture(frame, at) { return false }
+            return true
+        }
+        func draw(_ of: RadarFrameRef, _ at: FrameSwitchRules.Tile) {
+            guard case .image(let image) = picture(of, at) else { return }
             context.saveGState()
             context.clip(to: CGRect(x: tile.minX, y: tile.minY, width: tile.width, height: tile.height))
-            RadarCompositor.drawTile(image, in: RadarTileKey.mapRect(z: sz, x: sx, y: sy), context: context)
+            RadarCompositor.drawTile(image, in: RadarTileKey.mapRect(z: at.z, x: at.x, y: at.y), context: context)
             context.restoreGState()
-            return
         }
+        let here = FrameSwitchRules.Tile(z: z, x: x, y: y)
+        if let up = FrameSwitchRules.ancestor(of: here, minZ: RadarLayer.minZoom, depth: FrameSwitchRules.ancestorReach, has: ready) {
+            return draw(frame, up)
+        }
+        let children = FrameSwitchRules.children(of: here, maxZ: frame.deepest, has: ready)
+        if !children.isEmpty { return children.forEach { draw(frame, $0) } }
+        // The step before, where this one has nothing yet (it waited as
+        // long as it may, `RadarEngine.linger`).
+        guard let previous else { return }
+        let pz = previous.zoom(for: zoom)
+        guard pz <= z else { return }
+        draw(previous, FrameSwitchRules.Tile(z: pz, x: x >> (z - pz), y: y >> (z - pz)))
     }
 }

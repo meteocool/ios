@@ -16,6 +16,7 @@ struct NativeMapRadarCheck {
         products()
         motionArrows()
         playbackGate()
+        frameSwitch()
         print("NativeMapRadarCheck passed")
     }
 
@@ -314,5 +315,28 @@ struct NativeMapRadarCheck {
         // Nearest the needle first, the later of two as near first; from either end across the whole timeline.
         precondition(P.preloadOrder([0, 300, 600, 900, 1200], from: 600) == [600, 900, 300, 1200, 0])
         precondition(P.preloadOrder([0, 300, 600], from: 0) == [0, 300, 600] && P.preloadOrder([0, 300, 600], from: 600) == [600, 300, 0])
+    }
+
+    // MARK: - Switching steps (frameSwitch.test.ts)
+
+    static func frameSwitch() {
+        typealias F = FrameSwitchRules
+        typealias T = F.Tile
+        // A missing tile is drawn from the nearest coarser one ready, two zooms up at most.
+        var ready: Set<T> = [T(z: 5, x: 8, y: 10)]
+        precondition(F.ancestor(of: T(z: 7, x: 33, y: 41), minZ: 3, has: ready.contains) == T(z: 5, x: 8, y: 10))
+        precondition(F.ancestor(of: T(z: 8, x: 66, y: 82), minZ: 3, has: ready.contains) == nil, "three up is too coarse")
+        ready.insert(T(z: 6, x: 16, y: 20))
+        precondition(F.ancestor(of: T(z: 7, x: 33, y: 41), minZ: 3, has: ready.contains) == T(z: 6, x: 16, y: 20), "the nearest first")
+        precondition(F.ancestor(of: T(z: 3, x: 4, y: 5), minZ: 3, has: { _ in true }) == nil, "none above the source's least zoom")
+        precondition(F.ancestor(of: T(z: 8, x: 66, y: 82), minZ: 3, depth: F.ancestorReach, has: ready.contains) == T(z: 6, x: 16, y: 20))
+        // Zooming out, a missing tile is drawn from the finer ones ready.
+        let finer: Set<T> = [T(z: 6, x: 16, y: 20), T(z: 6, x: 17, y: 21)]
+        precondition(F.children(of: T(z: 5, x: 8, y: 10), maxZ: 8, has: finer.contains) == [T(z: 6, x: 16, y: 20), T(z: 6, x: 17, y: 21)])
+        precondition(F.children(of: T(z: 8, x: 8, y: 10), maxZ: 8, has: { _ in true }).isEmpty, "none past the source's deepest zoom")
+        // A step is switched to only once every one of its tiles is settled.
+        let settled: Set<String> = ["a", "b"]
+        precondition(F.settled(["a", "b"], ready: settled.contains) && !F.settled(["a", "b", "c"], ready: settled.contains))
+        precondition(F.settled([String](), ready: { _ in false }), "a step with nothing in view")
     }
 }

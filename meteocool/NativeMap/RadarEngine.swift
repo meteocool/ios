@@ -86,7 +86,7 @@ final class RadarEngine {
 
     /// The tiles of the step on screen, whose arrival redraws.
     private var shownTiles = Set<String>()
-    /// A step scrubbed to whose pictures are not all ready: the step on
+    /// A step asked for whose pictures are not all ready: the step on
     /// screen stays until they are, then the whole map changes at once.
     private var heldFrame: RadarFrameRef?
     private var heldIndex: Int?
@@ -348,22 +348,31 @@ final class RadarEngine {
 
     // MARK: - Steps
 
+    /// The longest the step on screen stands in for one whose pictures do
+    /// not all come: an empty map is worse than one a step behind, but not
+    /// for ever (core's `LINGER_MS`).
+    static let linger: TimeInterval = 5
+
     private func showStep(_ step: Int) {
         let frame = frame(for: step)
         let showing = scene.frames.current
-        // Playing waits for each step's pictures (`RadarPlayer.isReady`);
-        // a scrubbed-to step that is not ready keeps the one on screen for
-        // a moment, rather than changing tile by tile.
-        if player.playing || showing.layers.isEmpty || frame == showing || isReady(frame) {
+        // The picture moves to a step only once every tile of it in view is
+        // ready (`FrameSwitchRules.settled`): until then the step before
+        // stays whole, never two times in one picture, whether played to
+        // (the player waits for it a moment, `RadarPlayer.isReady`) or
+        // scrubbed to.
+        if showing.layers.isEmpty || frame == showing || isReady(frame) {
             display(frame)
         } else {
             heldFrame = frame
             heldIndex = player.index
-            holdTimer?.invalidate()
-            holdTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self, let held = self.heldFrame else { return }
-                    self.display(held)
+            // From the first step held: a hand moving on does not put it off.
+            if holdTimer == nil {
+                holdTimer = Timer.scheduledTimer(withTimeInterval: Self.linger, repeats: false) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, let held = self.heldFrame else { return }
+                        self.display(held)
+                    }
                 }
             }
         }

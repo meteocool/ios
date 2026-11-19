@@ -13,7 +13,12 @@
     "scripts/tests/packPixels.test.ts": "tests lib/packPixels.ts, web only",
     "src/layers/packTiles.ts": "the web's decoding workers",
     "src/lib/gpuBudget.ts": "WebGL, decode and preview budgets by device class; the native caches have their own bounds",
-    "scripts/tests/gpuBudget.test.ts": "tests lib/gpuBudget.ts, web only"
+    "scripts/tests/gpuBudget.test.ts": "tests lib/gpuBudget.ts, web only",
+    "src/lib/gpuTiles.ts": "the WebGL frame layer's texture cache; the native map keeps put-together pictures in RadarCompositor",
+    "scripts/tests/gpuTiles.test.ts": "tests lib/gpuTiles.ts, web only",
+    "src/layers/radarDrawing.ts": "chooses between the web's WebGL frame layer and its tile layers"
   },
-  "unported": {}
+  "unported": {
+    "src/layers/radarFrames.ts": "the WebGL2 frame layer. Its switching whole, same-step stand-ins, rest and previews are ported (RadarEngine, RadarOverlay, lib/frameSwitch.ts, lib/previewTiles.ts); its crossfade in value across a step's 450 ms (radarCrossfade, CROSSFADE_MS) is not: the native map colours tiles before putting a step together, and MapKit's tile-by-tile overlay redraws cannot dissolve every animation frame without a GPU renderer"
+  }
 }
