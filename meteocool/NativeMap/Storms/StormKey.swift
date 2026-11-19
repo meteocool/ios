@@ -21,26 +21,26 @@ struct StormKeyPill: View {
     let filtered: Bool
     let theme: ChromeTheme
     let open: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @ScaledMetric(relativeTo: .caption2) private var scale: CGFloat = 1
 
     var body: some View {
+        let metrics = ChipMetrics.of(sizeClass)
+        let mark = metrics.icon / 11 * scale
         Button(action: open) {
             HStack(spacing: 5) {
                 HStack(spacing: 2) {
-                    Diamond().fill(Color(uiColor: StormStyle.colour(2))).frame(width: 9, height: 9)
-                    Circle().fill(Color(uiColor: StormStyle.colour(1))).frame(width: 8, height: 8)
+                    Diamond().fill(Color(uiColor: StormStyle.colour(2))).frame(width: 9 * mark, height: 9 * mark)
+                    Circle().fill(Color(uiColor: StormStyle.colour(1))).frame(width: 8 * mark, height: 8 * mark)
                 }
                 Text(CoreStrings.t("storm.key.pill"))
                 if filtered {
-                    Circle().fill(theme.accent).frame(width: 6, height: 6)
+                    Circle().fill(theme.accent).frame(width: 6 * mark, height: 6 * mark)
                 }
             }
-            .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+            .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
             .foregroundStyle(theme.text)
-            .lineLimit(1)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(theme.tint, in: Capsule())
-            .hitTarget()
+            .chip(theme, metrics)
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(CoreStrings.t("storm.key.open"))

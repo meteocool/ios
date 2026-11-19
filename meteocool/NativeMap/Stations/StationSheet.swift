@@ -420,20 +420,18 @@ struct StationTogglePill: View {
     let on: Bool
     let theme: ChromeTheme
     let toggle: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let metrics = ChipMetrics.of(sizeClass)
         Button(action: toggle) {
             HStack(spacing: 5) {
-                Image(systemName: "wind").scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                Image(systemName: "wind").scaledFont(metrics.icon, weight: .semibold, relativeTo: .caption2)
                 Text(CoreStrings.t("stations.pill"))
             }
-            .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+            .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
             .foregroundStyle(on ? Color.white : theme.text)
-            .lineLimit(1)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(on ? theme.accent : theme.tint, in: Capsule())
-            .hitTarget()
+            .chip(theme, metrics, on: on)
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(CoreStrings.t("stations.toggle"))

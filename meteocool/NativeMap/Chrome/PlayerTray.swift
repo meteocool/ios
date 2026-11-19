@@ -160,6 +160,7 @@ private struct CappedWidth: Layout {
 private struct PillScroller<Content: View>: View {
     @ViewBuilder let content: Content
     @State private var more = Edges()
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private struct Edges: Equatable {
         var leading = false
@@ -168,7 +169,7 @@ private struct PillScroller<Content: View>: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 6) { content }
+            HStack(spacing: ChipMetrics.of(sizeClass).gap) { content }
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -412,6 +413,9 @@ struct ProductPill: View {
     /// With a radar open, its sweep shown: the pill is about that radar.
     var site: SiteSweepView?? = nil
     let open: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    private var metrics: ChipMetrics { ChipMetrics.of(sizeClass) }
 
     var body: some View {
         if let site { sitePill(site) } else { productPill }
@@ -422,19 +426,16 @@ struct ProductPill: View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             Button(action: open) {
                 HStack(spacing: 5) {
-                    Image(systemName: "dot.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
+                    Image(systemName: "dot.radiowaves.left.and.right").scaledFont(metrics.icon + 1, weight: .semibold, relativeTo: .caption2)
                     Text(view.map { RadarSiteAnnotation.name($0.site.site) } ?? "").truncationMode(.tail)
                     Text(Self.siteAge(view, now: context.date))
-                        .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
+                        .scaledFont(metrics.font, weight: .medium, relativeTo: .caption2, digits: true)
                         .foregroundStyle(theme.text2)
                         .layoutPriority(1)
                 }
-                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
                 .foregroundStyle(theme.text)
-                .lineLimit(1)
-                .padding(.horizontal, 10)
-                .frame(height: 24)
-                .background(theme.tint, in: Capsule())
+                .chip(theme, metrics)
             }
             .buttonStyle(PressScale())
         }
@@ -457,7 +458,7 @@ struct ProductPill: View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             Button(action: open) {
                 HStack(spacing: 5) {
-                    Image(systemName: "antenna.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
+                    Image(systemName: "antenna.radiowaves.left.and.right").scaledFont(metrics.icon + 1, weight: .semibold, relativeTo: .caption2)
                     Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_short"))
                     Group {
                         if forecast {
@@ -472,15 +473,12 @@ struct ProductPill: View {
                             Text(Self.age(timeline.scanRange, now: context.date))
                         }
                     }
-                    .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
+                    .scaledFont(metrics.font, weight: .medium, relativeTo: .caption2, digits: true)
                     .foregroundStyle(theme.text2)
                 }
-                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
                 .foregroundStyle(theme.text)
-                .lineLimit(1)
-                .padding(.horizontal, 10)
-                .frame(height: 24)
-                .background(theme.tint, in: Capsule())
+                .chip(theme, metrics)
             }
             .buttonStyle(PressScale())
             .disabled(forecast)
