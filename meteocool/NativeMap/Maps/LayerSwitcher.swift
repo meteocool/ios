@@ -51,6 +51,9 @@ struct LayerSwitcherView: View {
                         Toggle(CoreStrings.t("settings.playback_from_start"), isOn: fromStart)
                             .accessibilityIdentifier("nativeMap.layers.fromStart")
                     }
+                    section(CoreStrings.t("settings.map_3d") + ": " + CoreStrings.t("style_3d.title")) {
+                        ForEach(CloudStyle.allCases, id: \.self) { style in styleRow(style) }
+                    }
                     section(CoreStrings.t("settings.map_3d")) {
                         toggle(CoreStrings.t("settings.konrad_cells"), .cells3d)
                         toggle(CoreStrings.t("settings.terrain"), .terrain3d)
@@ -136,6 +139,27 @@ struct LayerSwitcherView: View {
                 .padding(14)
                 .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
+    }
+
+    /// How the 3D map draws its storms: one of a group, ticked (core's
+    /// `layer3dStyle` radio group), its name and what it is for.
+    private func styleRow(_ style: CloudStyle) -> some View {
+        let chosen = model.cloudStyle == style
+        return Button { model.cloudStyle = style } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(CoreStrings.t("style_3d.\(style.rawValue)")).foregroundStyle(Color.primary)
+                    Text(CoreStrings.t("style_3d.\(style.rawValue)_body")).font(.footnote).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "checkmark").fontWeight(.semibold).foregroundStyle(Color.accentColor).opacity(chosen ? 1 : 0)
+            }
+            .contentShape(Rectangle())
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+        .accessibilityIdentifier("nativeMap.layers.style.\(style.rawValue)")
     }
 
     /// A layer's switch. One with no past is greyed in a past window, its

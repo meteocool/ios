@@ -6,7 +6,8 @@
 //  storm volumes raymarched over the map, on the ground the radar is draped
 //  over, seen from an orbiting camera. The volumes, their modes, tags and
 //  lines are the AR view's (`StormFeed`, `StormScene`, `StormRenderer`); the
-//  peel's slider is core's `PeelSlider.svelte`.
+//  peel's slider is core's `PeelSlider.svelte`, and the storm style's picker
+//  beside the scan's core's `StylePicker.svelte`.
 //
 
 import Combine
@@ -302,7 +303,10 @@ final class ThreeDState: ObservableObject {
     @Published var scanProgress = 0.0
     @Published var scanNote: String?
     @Published var newestScan: Int?
+    /// The radar palette the storms are painted in, for the style's picture.
+    @Published var palette = "classic"
     var pickScan: (Int?) -> Void = { _ in }
+    var pickStyle: (CloudStyle) -> Void = { _ in }
     var openGuide: () -> Void = {}
     var setMode: (ARViewMode) -> Void = { _ in }
     var setSlider: (Double) -> Void = { _ in }
@@ -406,6 +410,11 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         }
         state.pickScan = { [weak self] in self?.pickScan($0) }
         state.openGuide = { [weak self] in self?.openGuide() }
+        state.pickStyle = { [weak self] style in
+            self?.touched()
+            self?.map?.model.cloudStyle = style
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
         state.open = { [weak self] in
             guard let self, let key = self.scene?.selectedKey else { return }
             self.open(key)
@@ -670,9 +679,14 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         guard let scene, let map else { return }
         scene.palette = UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic"
         renderer?.setPalette(scene.palette)
+        if state.palette != scene.palette { state.palette = scene.palette }
         scene.showLightning = map.isOn(.lightning)
         scene.mode = state.mode
         scene.sliderValue = state.slider
+        if scene.style != map.model.cloudStyle {
+            scene.style = map.model.cloudStyle
+            refreshSliderText()
+        }
         state.dark = map.model.isDark
     }
 
@@ -694,7 +708,8 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     private func openGuide() {
         guard let map else { return }
         var controller: UIViewController?
-        let guide = ThreeDGuide(palette: scene?.palette ?? "classic", cellsShown: map.isOn(.cells3d)) { controller?.dismiss(animated: true) }
+        let guide = ThreeDGuide(palette: scene?.palette ?? "classic", style: map.model.cloudStyle,
+                                cellsShown: map.isOn(.cells3d)) { controller?.dismiss(animated: true) }
         let host = UIHostingController(rootView: guide)
         controller = host
         host.modalPresentationStyle = .pageSheet
@@ -778,7 +793,8 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         switch state.mode {
         case .peel:
             if let key = scene?.selectedKey, let group = groups.first(where: { $0.key == key }) {
-                number = String(format: "%.0f", StormVolume.dbzLow + value * (group.peelFloor - StormVolume.dbzLow))
+                let floor = scene?.style.floor ?? StormVolume.dbzLow
+                number = String(format: "%.0f", floor + value * (group.peelFloor - floor))
             } else {
                 state.sliderText = String(format: "%.0f %%", value * 100)
                 return
@@ -1030,7 +1046,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
                             height: view.drawableSize.height * renderer.resolutionScale)
         let eye = SIMD3<Double>(pose.position)
         let storms = drawn.compactMap { storm, group -> StormRenderer.Storm? in
-            guard let volume = storm.volume, volume.marchBounds != nil else { return nil }
+            guard let volume = storm.volume, volume.marchBounds(glow: scene.style == .glow) != nil else { return nil }
             var uniforms = scene.uniforms(for: storm, group: group, volume: volume, pose: pose, target: target, light: light)
             // Taller than life, as the ground is; and never grey, however
             // far the scan is behind (a storm in colour reads as a storm).
@@ -1181,6 +1197,7 @@ struct ThreeDHUD: View {
                     .accessibilityIdentifier(state.scanNote != nil ? "nativeMap.3d.scanNote" : "nativeMap.3d.status")
             }
             HStack {
+                stylePicker
                 scanPicker
                 Spacer()
                 Button(action: state.openGuide) {
@@ -1301,6 +1318,36 @@ extension ThreeDHUD {
         .accessibilityLabel(when.map { "\(name), \($0)" } ?? name)
     }
 
+    /// How the storms are drawn (`StylePicker.svelte`): the pill is the
+    /// style's picture in the palette the storms are painted in, and no
+    /// word; the menu names each and says what it is for. The choice is
+    /// kept, as Settings keeps it.
+    var stylePicker: some View {
+        let theme = ChromeTheme(dark: model.isDark)
+        let name = { (style: CloudStyle) in CoreStrings.t("style_3d.\(style.rawValue)") }
+        return Menu {
+            Section(CoreStrings.t("style_3d.title")) {
+                ForEach(CloudStyle.allCases, id: \.self) { style in
+                    let body = CoreStrings.t("style_3d.\(style.rawValue)_body")
+                    Toggle(isOn: Binding(get: { model.cloudStyle == style }, set: { _ in state.pickStyle(style) })) {
+                        Text(name(style))
+                        Text(body)
+                    }
+                    .accessibilityLabel("\(name(style)), \(body)")
+                }
+            }
+        } label: {
+            StormStyleGlyph(style: model.cloudStyle, palette: state.palette, size: 18)
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .chromeGlass(theme, in: Capsule(), interactive: true)
+                .hitTarget()
+        }
+        .accessibilityLabel(CoreStrings.t("style_3d.aria", ["style": name(model.cloudStyle)]))
+        .accessibilityHint(CoreStrings.t("style_3d.choose"))
+        .accessibilityIdentifier("nativeMap.3d.style")
+    }
+
     /// "Latest", or one of the last two hours' scans (`ScanPicker.svelte`):
     /// filled with its time while the map is not live.
     @ViewBuilder
@@ -1336,6 +1383,48 @@ extension ThreeDHUD {
         .accessibilityLabel(face.map { CoreStrings.t("time_3d.past_aria", ["time": StatusPill.clock($0)]) } ?? CoreStrings.t("time_3d.latest_aria"))
         .accessibilityHint(CoreStrings.t("time_3d.choose"))
         .accessibilityIdentifier("nativeMap.3d.scan")
+    }
+}
+
+/// One storm drawn in a style, as three nested levels, envelope to core, in
+/// the palette the storms are painted in (`StylePicker.svelte`'s picture):
+/// soft and shaded for the cloud, blurred light for the glow. `size` is its
+/// height; it is a third wider.
+struct StormStyleGlyph: View {
+    let style: CloudStyle
+    let palette: String
+    var size: CGFloat = 24
+
+    private func colour(_ dbz: Double) -> Color {
+        let rgb = Colormaps.colour(dbz: dbz, palette: palette)
+        return Color(red: Double(rgb.x) / 255, green: Double(rgb.y) / 255, blue: Double(rgb.z) / 255)
+    }
+
+    var body: some View {
+        let levels = [30.0, 45, 58].map(colour)
+        let unit = size / 24
+        // Each level's width, height and centre in the picture's 32 by 24.
+        func level(_ colour: Color, _ width: CGFloat, _ height: CGFloat, _ x: CGFloat, _ y: CGFloat) -> some View {
+            Ellipse().fill(colour).frame(width: width * unit, height: height * unit).offset(x: (x - 16) * unit, y: (y - 12) * unit)
+        }
+        return ZStack {
+            switch style {
+            case .cloud:
+                level(levels[0].opacity(0.55), 26, 18, 16, 13)
+                level(levels[1].opacity(0.8), 16, 12, 15, 12)
+                level(levels[2], 7.6, 6.4, 14.5, 11)
+            case .glow:
+                ZStack {
+                    level(levels[0], 22, 15, 16, 12.5)
+                    level(levels[1], 13, 9.6, 15.5, 12)
+                    level(levels[2], 6, 5.2, 15, 11.5)
+                }
+                .blur(radius: 1.6 * unit)
+                .saturation(1.3)
+            }
+        }
+        .frame(width: 32 * unit, height: size)
+        .accessibilityHidden(true)
     }
 }
 
@@ -1475,10 +1564,13 @@ final class ThreeDMap: NativeMapFeature {
         return false
     }
 
+    /// The camera, and how the storms are drawn (`style`, on this map only;
+    /// beside an open storm too, as it is how the cut storm is drawn).
     func linkParameters() -> [String: String] {
-        guard let view, map?.model.capability == .cells3d else { return [:] }
+        guard let view, let map, map.model.capability == .cells3d else { return [:] }
         return ["pitch": String(Int(view.camera.pitch.rounded())),
-                "bearing": String(Int(CutAngle.normalise(view.camera.bearing.rounded())))]
+                "bearing": String(Int(CutAngle.normalise(view.camera.bearing.rounded()))),
+                "style": map.model.cloudStyle.rawValue]
     }
 
     func lookAt(_ coordinate: CLLocationCoordinate2D, zoom: Double?) -> Bool {

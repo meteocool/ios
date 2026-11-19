@@ -101,6 +101,14 @@ struct StormVolume: Sendable {
     /// round it (core's `echoPart`): what a ray marches. Nil when there is
     /// none, and then nothing is drawn.
     let marchBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
+    /// The same down to the 3D map's glow's fainter floor (`glowFloor`),
+    /// which draws echo the cloud leaves out.
+    let glowBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
+
+    /// What a ray marches: for the glow, or for the cloud.
+    func marchBounds(glow: Bool) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
+        glow ? glowBounds : marchBounds
+    }
 
     /// Bytes of 3D texture it takes.
     var textureBytes: Int { voxels.count }
@@ -109,6 +117,8 @@ struct StormVolume: Sendable {
     static let dbzLow = 20.0
     /// The width of the ramp from transparent to as opaque as it gets (core's `PEEL_BAND`).
     static let peelBand = 14.0
+    /// The weakest echo the 3D map's glow shows (`CloudStyle.glow.floor`).
+    static let glowFloor = 5.0
     /// How many voxels the peel leaves standing (core's `PEEL_CORE_VOXELS`).
     static let peelCoreVoxels = 300
 
@@ -151,7 +161,9 @@ struct StormVolume: Sendable {
         var strongest: UInt8 = 0
         var topLevel = -1
         var lo = SIMD3<Int>(nx, ny, nz), hi = SIMD3<Int>(-1, -1, -1)
+        var glowLo = lo, glowHi = hi
         let lowByte = UInt8(clamping: Int(((Self.dbzLow - header.dbzFloor) * header.dbzScale).rounded(.up)))
+        let glowByte = UInt8(clamping: Int(((Self.glowFloor - header.dbzFloor) * header.dbzScale).rounded(.up)))
         // A box from before tiles holds its neighbours too, and their tops are
         // not this storm's: within 4 km of the core only. A tile is a piece of
         // its storm, and its top is wherever its echo reaches, apron aside.
@@ -167,9 +179,13 @@ struct StormVolume: Sendable {
                     for x in 0 ..< nx {
                         let i = (row + x) * 2
                         let dbz = bytes[i], confidence = bytes[i + 1]
-                        if dbz >= lowByte, confidence > 0 {
-                            lo = simd_min(lo, SIMD3(x, y, z))
-                            hi = simd_max(hi, SIMD3(x, y, z))
+                        if dbz >= glowByte, confidence > 0 {
+                            glowLo = simd_min(glowLo, SIMD3(x, y, z))
+                            glowHi = simd_max(glowHi, SIMD3(x, y, z))
+                            if dbz >= lowByte {
+                                lo = simd_min(lo, SIMD3(x, y, z))
+                                hi = simd_max(hi, SIMD3(x, y, z))
+                            }
                         }
                         guard confidence >= 128 else { continue }
                         counts[Int(dbz)] += 1
@@ -196,15 +212,17 @@ struct StormVolume: Sendable {
         coreDbz = max(Self.dbzLow, Double(byte) / header.dbzScale + header.dbzFloor - Self.peelBand)
         maxDbz = Double(strongest) / header.dbzScale + header.dbzFloor
         echoTopM = topLevel >= 0 ? header.originM[2] + (Double(topLevel) + 1) * header.stepM[2] : nil
-        if hi.x >= 0 {
-            let size = SIMD3<Float>(Float(nx), Float(ny), Float(nz))
+        let size = SIMD3<Float>(Float(nx), Float(ny), Float(nz))
+        let (drawnMin, drawnMax) = (drawnMin, drawnMax)
+        func bounds(_ lo: SIMD3<Int>, _ hi: SIMD3<Int>) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
+            guard hi.x >= 0 else { return nil }
             let echoMin = simd_clamp(SIMD3<Float>(lo &- 1) / size, SIMD3(repeating: 0), SIMD3(repeating: 1))
             let echoMax = simd_clamp(SIMD3<Float>(hi &+ 2) / size, SIMD3(repeating: 0), SIMD3(repeating: 1))
             let lower = simd_max(echoMin, drawnMin), upper = simd_min(echoMax, drawnMax)
-            marchBounds = all(upper .> lower) ? (lower, upper) : nil
-        } else {
-            marchBounds = nil
+            return all(upper .> lower) ? (lower, upper) : nil
         }
+        marchBounds = bounds(lo, hi)
+        glowBounds = bounds(glowLo, glowHi)
     }
 
     /// Reflectivity and confidence of the voxel containing a normalised point,

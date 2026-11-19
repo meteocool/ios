@@ -45,7 +45,7 @@ xcrun swiftc meteocool/NativeMap/Stations/StationRules.swift tests/NativeMapStat
 "$scratch/check-native-map-storms"
 xcrun swiftc Shared/RainForecast.swift meteocool/AR/Colormaps.swift RainActivity/Widgets/RainForecast+Widgets.swift RainActivity/Widgets/PreviewCard.swift tests/WidgetCheck.swift -o "$scratch/check-widgets"
 "$scratch/check-widgets"
-xcrun swiftc meteocool/NativeMap/ThreeD/ThreeDMath.swift meteocool/NativeMap/ThreeD/ThreeDCamera.swift meteocool/NativeMap/ThreeD/ThreeDClouds.swift meteocool/NativeMap/ThreeD/ThreeDFraming.swift meteocool/NativeMap/ThreeD/ThreeDStyle.swift meteocool/NativeMap/ThreeD/CellVolume.swift meteocool/AR/StormVolume.swift meteocool/AR/Colormaps.swift tests/NativeMapThreeDCheck.swift -o "$scratch/check-native-map-3d"
+xcrun swiftc meteocool/NativeMap/ThreeD/ThreeDMath.swift meteocool/NativeMap/ThreeD/ThreeDCamera.swift meteocool/NativeMap/ThreeD/ThreeDClouds.swift meteocool/NativeMap/ThreeD/CloudStyle.swift meteocool/NativeMap/ThreeD/ThreeDFraming.swift meteocool/NativeMap/ThreeD/ThreeDStyle.swift meteocool/NativeMap/ThreeD/CellVolume.swift meteocool/AR/StormVolume.swift meteocool/AR/Colormaps.swift tests/NativeMapThreeDCheck.swift -o "$scratch/check-native-map-3d"
 "$scratch/check-native-map-3d"
 
 xcrun swiftc meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/ColumnValues.swift meteocool/AR/Colormaps.swift tests/RadarPixelsCheck.swift -o "$scratch/check-radar-pixels"

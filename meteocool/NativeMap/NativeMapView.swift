@@ -962,7 +962,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The choices a link names that are settings (core's
     /// `applyLinkedChoices`), held for this visit without being stored: the
     /// overlays it names (the rest stay the reader's own), the product, the
-    /// storm marks put away, the stations' parameter, a hand's storm motion.
+    /// storm marks put away, the stations' parameter, a hand's storm motion,
+    /// the 3D map's storm style.
     /// A storm or a cell turns storms on, a radar its marks, a station the
     /// stations: each opens on a map that draws it.
     private func applyLinkedChoices(_ parameters: [String: String]) {
@@ -977,6 +978,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         if station != nil { linkOverrides[.stations] = true }
         holdingLink = true
         if let product = parameters["product"].flatMap(RadarProduct.init(rawValue:)) { model.product = product }
+        // A style the map has; core's shells, which it took back off its map, are not.
+        if let style = parameters["style"].flatMap(CloudStyle.init(rawValue:)) { model.cloudStyle = style }
         holdingLink = false
         if let hidden = NativeMapLink.hidden(parameters["hide"]) {
             model.holdHiddenMarks(Set(hidden.compactMap(StormMarkToggle.init(rawValue:))))
@@ -1110,6 +1113,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                 // A link's product is for this visit; the reader's own stays stored.
                 if self?.holdingLink == false { self?.defaults?.set(product.rawValue, forKey: "nativeMap.radarProduct") }
                 self?.radar.product = product
+            }
+            .store(in: &observers)
+        model.cloudStyle = CloudStyle.of(defaults?.string(forKey: "nativeMap.layer3dStyle"))
+        model.$cloudStyle.dropFirst().removeDuplicates()
+            .sink { [weak self] style in
+                // A link's style is for this visit too.
+                if self?.holdingLink == false { self?.defaults?.set(style.rawValue, forKey: "nativeMap.layer3dStyle") }
+                DispatchQueue.main.async { self?.features.forEach { $0.settingsDidChange() } }
             }
             .store(in: &observers)
         model.$selectedStorm

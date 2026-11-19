@@ -75,6 +75,9 @@ final class NativeMapModel: ObservableObject {
     @Published var legendDBZ = false
     /// The observed picture chosen (`radarProduct`).
     @Published var product = RadarProduct.hx
+    /// How the 3D map draws its storms (core's `cloudStyle`, the
+    /// `layer3dStyle` setting; `CloudStyle`).
+    @Published var cloudStyle = CloudStyle.default
     /// The radar is behind (core's `radarStale`): dimmed, "Out of date".
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
