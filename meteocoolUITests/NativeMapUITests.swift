@@ -2288,6 +2288,13 @@ final class NativeMapUITests: XCTestCase {
         // The app names its sheet; newer systems show their own list in its place.
         let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 30))
+        // The link's card beside it, a picture of its own: the sheet offers
+        // what only a picture can do, among the first actions.
+        let picture = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["Save Image", "Assign to Contact"])).firstMatch
+        XCTAssertTrue(picture.waitForExistence(timeout: 10), "The card as a picture of its own")
+        // Time for the card to come in as the sheet's preview.
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
         screenshot("share sheet")
     }
 

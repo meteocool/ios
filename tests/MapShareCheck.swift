@@ -36,6 +36,26 @@ enum MapShareCheck {
         precondition(view?.viewSearch == "?layer=cells3d&view=11.5,48.1,9.2,40,-15&cloud=20261005T015000/de-T100053300344")
         precondition(MapShare(json: #"{"url":"https://app.meteocool.com/?shared=20261006T1234Z","title":"t"}"#, mapHost: host)?.viewSearch == nil,
                      "A link that says nothing but when it was shared is no view")
+        sharePreview()
         print("Map share parsing checks passed")
+    }
+
+    /// The card a link previews as (core's `shareTargets.test.ts`, its card
+    /// tests; the services' own pages are the web's share dialog's).
+    static func sharePreview() {
+        let link = "https://meteocool.com/?layer=radar&latLonZ=48.13510,11.58200,9.00&shared=20261006T1234Z"
+        func card(_ url: String) -> String? {
+            MapShare(json: #"{"url":"\#(url)","title":"t"}"#, mapHost: URL(string: url)?.host)?.previewURL?.absoluteString
+        }
+        // the card is asked for at the link's view, commas as they are
+        precondition(card(link) == "https://meteocool.com/v3/preview/og.png?aspectRatio=wide&frame=true&latLonZ=48.13510,11.58200,9.00")
+        // a link without a view gets the default card
+        precondition(card("https://meteocool.com/?layer=radar") == "https://meteocool.com/v3/preview/og.png?aspectRatio=wide&frame=true&default")
+        precondition(MapShare.previewPath(nil) == "/v3/preview/og.png?aspectRatio=wide&frame=true&default")
+        // a view that is not one cannot break out of its parameter
+        precondition(MapShare.previewPath("1,2,3&default\"><x") == "/v3/preview/og.png?aspectRatio=wide&frame=true&latLonZ=1,2,3%26default%22%3E%3Cx")
+        // From the link's own origin, the simulator's loopback map's port and all.
+        precondition(card("http://127.0.0.1:18765/?latLonZ=1,2,3") == "http://127.0.0.1:18765/v3/preview/og.png?aspectRatio=wide&frame=true&latLonZ=1,2,3")
+        precondition(card("https://demo.meteocool.com/?latLonZ=50.1,8.6,7.00&layer=cells3d") == "https://demo.meteocool.com/v3/preview/og.png?aspectRatio=wide&frame=true&latLonZ=50.1,8.6,7.00")
     }
 }
