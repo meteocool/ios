@@ -112,11 +112,11 @@ struct PlayerTray: View {
             PillScroller {
                 // DWD's weather stations, on or off: first, so the pills after it never move it.
                 StationTogglePill(on: model.layersOn.contains(.stations), theme: theme, toggle: actions.toggleStations)
-                // What the storm marks are, while they are drawn.
-                if model.layersOn.contains(.storms) {
-                    StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
-                                 theme: theme, open: actions.openStormKey)
-                }
+                // What the storm marks are, and the lightning's and the mesocyclones' switches.
+                StormKeyPill(model: model,
+                             filtered: (model.layersOn.contains(.storms) && !model.hiddenStormMarks.isEmpty)
+                                 || !model.layersOn.contains(.mesocyclones) || !model.layersOn.contains(.lightning),
+                             theme: theme, open: actions.openStormKey)
                 ProductPill(player: player, theme: theme, site: site.mode.map { _ in site.view }, open: actions.openProducts)
             }
             if model.point != nil, model.userLocation == nil {

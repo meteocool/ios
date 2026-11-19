@@ -1433,6 +1433,23 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.layers").waitForExistence(timeout: 5))
     }
 
+    /// The storm key opened from its pill, and its switch for `row` scrolled to.
+    private func stormKeySwitch(_ row: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        let pill = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), file: file, line: line)
+        if !element("nativeMap.stormKey").exists { pill.tap() }
+        XCTAssertTrue(element("nativeMap.stormKey").waitForExistence(timeout: 5), file: file, line: line)
+        let toggle = app.switches["nativeMap.stormKey.\(row)"].firstMatch
+        for _ in 0 ..< 5 where !(toggle.exists && toggle.isHittable) { element("nativeMap.stormKey").swipeUp() }
+        XCTAssertTrue(toggle.exists, row, file: file, line: line)
+        return toggle
+    }
+
+    private func closeStormKey() {
+        element("nativeMap.stormKey.close").tap()
+        XCTAssertTrue(element("nativeMap.stormKey").waitForNonExistence(timeout: 5))
+    }
+
     /// Rain Motion: off until it is turned on with the other overlays, then
     /// the arrows over the radar (core's `motion.spec.ts`); greyed in a past
     /// window, which has no motion of its own.
@@ -1480,7 +1497,6 @@ final class NativeMapUITests: XCTestCase {
             XCTAssertTrue(toggle.exists, layer)
             XCTAssertFalse(toggle.isEnabled, "No \(layer) in the past")
         }
-        XCTAssertTrue(app.switches["nativeMap.layers.lightning"].firstMatch.isEnabled, "Lightning has a past")
         XCTAssertTrue(app.switches["nativeMap.layers.storms"].firstMatch.isEnabled, "Storms have a past")
         element("nativeMap.layers.close").tap()
         // The storm key's mesocyclone switch too, saying why.
@@ -1494,6 +1510,7 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(mesocyclones.exists)
         XCTAssertFalse(mesocyclones.isEnabled, "No mesocyclones in the past")
         XCTAssertTrue(app.staticTexts["Not kept in the archive. Back to live to see it."].exists, "Says why")
+        XCTAssertTrue(stormKeySwitch("lightning").isEnabled, "Lightning has a past")
     }
 
     func testLoopFromTwoHoursBackIsKept() {
@@ -1526,18 +1543,18 @@ final class NativeMapUITests: XCTestCase {
         openLayers()
         func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
         XCTAssertEqual(value("storms"), "1")
-        XCTAssertEqual(value("lightning"), "0", "Off for the link")
-        XCTAssertEqual(value("mesocyclones"), "0", "Off for the link")
         element("nativeMap.layers.close").tap()
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Off for the link")
+        XCTAssertEqual(stormKeySwitch("mesocyclone").value as? String, "0", "Off for the link")
+        closeStormKey()
         // Opened again without the link, and without the reset: as the reader had it.
         app.terminate()
         app.launchArguments.removeAll { $0 == "--ui-test-reset" }
         app.launchEnvironment["MC_NATIVE_MAP_LINK"] = nil
         app.launch()
         waitForSeries()
-        openLayers()
-        XCTAssertEqual(value("lightning"), "1", "The reader's own")
-        XCTAssertEqual(value("mesocyclones"), "1", "The reader's own")
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "1", "The reader's own")
+        XCTAssertEqual(stormKeySwitch("mesocyclone").value as? String, "1", "The reader's own")
     }
 
     /// A link says each overlay on or off, the product, the storm marks put
@@ -1561,10 +1578,10 @@ final class NativeMapUITests: XCTestCase {
         menu.buttons["Close"].firstMatch.tap()
         XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
         openLayers()
-        func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
-        XCTAssertEqual(value("lightning"), "0", "Off for the link")
-        XCTAssertEqual(value("storms"), "1")
+        XCTAssertEqual(app.switches["nativeMap.layers.storms"].firstMatch.value as? String, "1")
         element("nativeMap.layers.close").tap()
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Off for the link")
+        closeStormKey()
         // Opened again without the link: the reader's own, none of it stored.
         app.terminate()
         app.launchArguments.removeAll { $0 == "--ui-test-reset" }
@@ -1661,19 +1678,44 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertFalse(pill.isSelected)
     }
 
-    func testLayerSwitcherTurnsLightningOff() {
+    /// The lightning is switched in the storm key (core's `StormKey`), not in
+    /// the layer switcher; the key's pill stays with the storm marks off,
+    /// with the lightning and the mesocyclones in it, and its dot says the
+    /// lightning is off.
+    func testStormKeyTurnsLightningOff() {
         launch()
         waitForSeries()
         openLayers()
         screenshot("layer switcher")
-        let lightning = app.switches["nativeMap.layers.lightning"].firstMatch
-        XCTAssertTrue(lightning.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.switches["nativeMap.layers.lightning"].firstMatch.exists, "Not in the layer switcher")
+        element("nativeMap.layers.close").tap()
+        let pill = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 10))
+        XCTAssertEqual(pill.value as? String ?? "", "", "Nothing off yet")
+        let lightning = stormKeySwitch("lightning")
         XCTAssertEqual(lightning.value as? String, "1")
+        screenshot("storm key with the lightning")
         lightning.switches.firstMatch.tap()
         XCTAssertTrue(waitForValue(lightning) { $0 == "0" })
-        element("nativeMap.layers.close").tap()
+        closeStormKey()
+        XCTAssertNotEqual(pill.value as? String ?? "", "", "The pill says something is off")
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Kept")
+        closeStormKey()
+        // The storm marks off: the pill stays, the key keeps the lightning and the mesocyclones.
         openLayers()
-        XCTAssertEqual(app.switches["nativeMap.layers.lightning"].firstMatch.value as? String, "0")
+        let storms = app.switches["nativeMap.layers.storms"].firstMatch
+        XCTAssertTrue(storms.waitForExistence(timeout: 5))
+        storms.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(storms) { $0 == "0" })
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "The pill stays with the storms off")
+        let back = stormKeySwitch("lightning")
+        XCTAssertTrue(stormKeySwitch("mesocyclone").exists)
+        XCTAssertFalse(app.switches["nativeMap.stormKey.meteocool"].firstMatch.exists, "No storm marks to switch")
+        screenshot("storm key without the storm marks")
+        back.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(back) { $0 == "1" })
+        closeStormKey()
     }
 
     func testLightningMapShowsItsHistogram() {

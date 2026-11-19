@@ -467,11 +467,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
     }
 
-    /// What the storm marks mean, each switchable (core's `StormKey`).
+    /// What the storm marks mean, each switchable, and the lightning's and
+    /// the mesocyclones' switches (core's `StormKey`).
     func openStormKey() {
         let mesocyclones = Binding(get: { [weak self] in self?.isOn(.mesocyclones) ?? true },
                                    set: { [weak self] on in self?.setOn(.mesocyclones, on) })
-        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones,
+        let lightning = Binding(get: { [weak self] in self?.isOn(.lightning) ?? true },
+                                set: { [weak self] on in self?.setOn(.lightning, on) })
+        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones, lightning: lightning,
                                                              close: { [weak self] in self?.dismissSheet() }))
         presentSheet(key, detents: [.medium(), .large()])
     }

@@ -4,9 +4,9 @@
 //
 //  The layers button's panel: core's maps as tiles (`McLayerSwitcher.svelte`,
 //  `MiniMap.svelte`), and what the radar map draws over the radar, which
-//  core keeps in its settings (`SettingsDialog.svelte`). The stations and
-//  the mesocyclones are not among them: they switch only from the map, on
-//  the tray's stations pill and in the storm key, as core's do.
+//  core keeps in its settings (`SettingsDialog.svelte`). The stations, the
+//  lightning and the mesocyclones are not among them: they switch only from
+//  the map, on the tray's stations pill and in the storm key, as core's do.
 //
 
 import SwiftUI
@@ -42,7 +42,6 @@ struct LayerSwitcherView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     grid
                     section(CoreStrings.t("rain_and_thunderstorms")) {
-                        toggle(CoreStrings.t("chrome.playback.lightning"), .lightning)
                         toggle(CoreStrings.t("chrome.playback.cells"), .storms)
                         toggle(CoreStrings.t("chrome.playback.radar_sites"), .sites)
                         toggle(CoreStrings.t("chrome.playback.motion"), .motion)
