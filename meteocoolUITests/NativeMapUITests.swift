@@ -497,6 +497,27 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
     }
 
+    /// A network whose radar has stopped arriving (here Poland's, as the
+    /// series would leave it: no frame, no nowcast) says so where it draws,
+    /// on the live step and in place of "No Forecast Here" past it.
+    func testStalledNetworkSaysRadarNotComingIn() {
+        app.launchEnvironment["MC_STALLED_NETWORKS"] = "pl"
+        launch(link: "?latLonZ=52.2,19.5,7")
+        waitForSeries()
+        let strip = element("nativeMap.strip.feedStopped")
+        XCTAssertTrue(strip.waitForExistence(timeout: 15), "Radar data not coming in")
+        XCTAssertTrue(strip.staticTexts["Radar Data Not Coming In"].exists)
+        screenshot("radar feed stopped")
+        let middle = timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        middle.press(forDuration: 0.05, thenDragTo: timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.4)))
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("+") }, "Into the forecast: \(timeline.value ?? "")")
+        XCTAssertTrue(strip.exists, "Still the feed's notice")
+        XCTAssertFalse(element("nativeMap.strip.noForecast").exists, "Not \"No Forecast Here\"")
+        strip.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element("nativeMap.strip.noForecast").exists, "Dismissed, it still is the reason")
+    }
+
     func testSharedLinkSaysHowOld() {
         // Shared twenty minutes ago: the map says so.
         let utc = DateFormatter()

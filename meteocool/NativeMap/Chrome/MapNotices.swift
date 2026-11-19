@@ -194,6 +194,12 @@ struct NoticeStrips: View {
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("nativeMap.strip.noRadar")
+            } else if notices.showFeedStopped {
+                DismissableStrip(title: CoreStrings.t("radar_feed_stopped"), theme: theme, dismiss: { notices.feedStoppedDismissed = true }) {
+                    Text(CoreStrings.plain("radar_feed_stopped_body")).notice(theme)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("nativeMap.strip.feedStopped")
             } else if notices.showNoForecast {
                 DismissableStrip(title: CoreStrings.t("forecast_no_coverage"), theme: theme, dismiss: { notices.noForecastDismissed = true }) {
                     Text(CoreStrings.plain("forecast_no_coverage_body_nowcast")).notice(theme)
@@ -218,12 +224,19 @@ private extension Text {
 final class NoticeState: ObservableObject {
     @Published var outOfRadar = false { didSet { if !outOfRadar { noRadarDismissed = false } } }
     @Published var noForecastHere = false { didSet { if !noForecastHere { noForecastDismissed = false } } }
+    /// A network whose radar has stopped arriving draws here (`feedStopped`).
+    @Published var feedStopped = false { didSet { if !feedStopped { feedStoppedDismissed = false } } }
     @Published var noRadarDismissed = false
     @Published var noForecastDismissed = false
+    @Published var feedStoppedDismissed = false
     @Published var radarShown = true
 
     var showNoRadar: Bool { radarShown && outOfRadar && !noRadarDismissed }
-    var showNoForecast: Bool { radarShown && !outOfRadar && noForecastHere && !noForecastDismissed }
+    var showFeedStopped: Bool { radarShown && !outOfRadar && feedStopped && !feedStoppedDismissed }
+    /// Not while the feed's notice applies, dismissed or not: that is the
+    /// reason there is no forecast.
+    var showNoForecast: Bool { radarShown && !outOfRadar && !feedStopped && noForecastHere && !noForecastDismissed }
+    var showsAny: Bool { showNoRadar || showFeedStopped || showNoForecast }
 }
 
 /// A toast at the top (core's `Toast.ts`): a message that goes after a while.

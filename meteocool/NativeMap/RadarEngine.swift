@@ -304,13 +304,22 @@ final class RadarEngine {
     }
 
     /// The series as UI tests want it: without the networks' nowcasts
-    /// (`MC_NO_NOWCAST`), as a run that has not come in would leave it.
+    /// (`MC_NO_NOWCAST`), as a run that has not come in would leave it;
+    /// without any frame of some networks (`MC_STALLED_NETWORKS='pl,cz'`),
+    /// as a stopped feed leaves them.
     nonisolated private static func forTests(_ series: RadarSeries?) -> RadarSeries? {
         #if DEBUG
-        if ProcessInfo.processInfo.environment["MC_NO_NOWCAST"] != nil, let all = series {
-            return RadarSeries(frames: all.frames, networks: all.networks,
-                               products: all.products?.filter { !$0.key.hasPrefix("nowcast_") },
-                               serverTime: all.serverTime, replay: all.replay)
+        var series = series
+        let environment = ProcessInfo.processInfo.environment
+        if environment["MC_NO_NOWCAST"] != nil, let all = series {
+            series = RadarSeries(frames: all.frames, networks: all.networks,
+                                 products: all.products?.filter { !$0.key.hasPrefix("nowcast_") },
+                                 serverTime: all.serverTime, replay: all.replay)
+        }
+        if let stalled = environment["MC_STALLED_NETWORKS"]?.split(separator: ",").map(String.init), let all = series {
+            series = RadarSeries(frames: all.frames, networks: all.networks?.filter { !stalled.contains($0.key) },
+                                 products: all.products?.filter { key, _ in !stalled.contains { key == "nowcast_\($0)" } },
+                                 serverTime: all.serverTime, replay: all.replay)
         }
         #endif
         return series

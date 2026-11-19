@@ -368,7 +368,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             (onTray ? dockOnTray : dockOnOther)?.isActive = true
         }
         notices.radarShown = radar
-        stripsChrome?.isHidden = !(notices.showNoRadar || notices.showNoForecast)
+        stripsChrome?.isHidden = !notices.showsAny
         stripsChrome?.invalidateIntrinsicContentSize()
         setNeedsLayout()
     }
@@ -484,6 +484,23 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         } else {
             notices.noForecastHere = false
         }
+        // Where a network whose radar has stopped draws, the map's present is
+        // the last picture that came and the nowcast has no run: the player
+        // says the weather service's data is not coming in (`feedOutage.ts`).
+        let stalled = stalledNetworks
+        let share = out || stalled.isEmpty ? 0 : ForecastCoverage.share(visible, radar: radar, domains: stalled)
+        notices.feedStopped = FeedOutage.saysFeedStopped(stalledShare: share, noForecast: notices.noForecastHere)
+    }
+
+    /// The networks whose radar has stopped arriving while DWD's still does,
+    /// measured against DWD's newest scan (core's `refreshStalled`). None in a
+    /// past window, which is the archive's and not a feed.
+    private var stalledNetworks: [String] {
+        let timeline = player.timeline
+        guard timeline.window == nil else { return [] }
+        let answered = radar.series?.networks != nil
+        let feeds = RadarTimeline.networks.map { FeedOutage.Feed(code: $0, newestScan: timeline.liveScans[$0], answered: answered) }
+        return FeedOutage.stalledNetworks(feeds, reference: timeline.liveScans["de"])
     }
 
     /// Hosts a SwiftUI view over the map, sized to fit; the caller places it.
