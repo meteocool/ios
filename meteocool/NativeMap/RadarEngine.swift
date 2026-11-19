@@ -277,8 +277,7 @@ final class RadarEngine {
                 self.processedTimes = (built.max(), ConnectionRules.cadence(processedTimes: built))
                 self.compose()
                 self.onSeries?(series)
-                if self.product == .merged || self.product == .colmax,
-                   series.products?[self.product.rawValue]?.isEmpty ?? true {
+                if self.product.isWhole, series.products?[self.product.rawValue]?.isEmpty ?? true {
                     self.onGaveUp?(self.product)
                 }
             }

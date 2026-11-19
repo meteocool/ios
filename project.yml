@@ -142,6 +142,7 @@ targets:
       - path: meteocool/NativeMap/RadarWindow.swift
       - path: meteocool/NativeMap/RadarCoverage.swift
       - path: meteocool/NativeMap/RadarPixels.swift
+      - path: meteocool/NativeMap/ColumnValues.swift
       - path: meteocool/NativeMap/RadarTileStore.swift
       - path: meteocool/NativeMap/RadarCompositor.swift
       - path: meteocool/NativeMap/NativeMapEndpoints.swift

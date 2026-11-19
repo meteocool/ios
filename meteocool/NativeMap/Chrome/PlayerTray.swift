@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  core's player tray (`NowcastPlayback.svelte`): the place, the radar
-//  product, the timeline strip, play and the legend.
+//  product, the timeline strip, play and the legend
+//  (`scales/ColumnScaleLine.svelte` for an echo top or VIL).
 //
 
 import SwiftUI
@@ -48,6 +49,10 @@ struct PlayerTray: View {
                 Group {
                     if let mode = site.mode, mode.quantity != .reflectivity {
                         VelocityLegend(nyquist: site.view?.nyquist, relative: mode.quantity == .srv, theme: theme)
+                    } else if site.mode == nil, let encoding = player.step.flatMap(player.timeline.columnEncoding(at:)) {
+                        // An echo top or VIL on the step on screen: its own scale. Not
+                        // in site mode, whose sweep is the radar the legend is for.
+                        ColumnLegend(encoding: encoding, theme: theme)
                     } else {
                         RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
                     }
@@ -325,6 +330,70 @@ struct RadarLegend: View {
                 }
                 .fixedSize()
                 .position(x: CGFloat(at) * width + (value == values.last ? 10 : 0), y: 7)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// The legend for an echo top or VIL, in place of the dBZ strip while one is
+/// drawn (`ColumnScaleLine.svelte`): its encoding's own palette, named in
+/// kilometres above sea level or kilograms a square metre, each number
+/// under its colour and the unit after the last. Not a toggle: there are no
+/// pictograms for a height.
+struct ColumnLegend: View {
+    let encoding: ColumnEncoding
+    let theme: ChromeTheme
+
+    /// As the dBZ strip's: a tick this close to the end runs into the one
+    /// before once the unit is on it, so it is left off.
+    private static let endClearance = 0.95
+
+    private var legend: (colours: [(at: Double, colour: ValueColour)], ticks: [(value: Double, at: Double)], min: Double, max: Double) {
+        encoding.scale.legend()
+    }
+
+    var body: some View {
+        let legend = self.legend
+        VStack(spacing: 2) {
+            Capsule()
+                .fill(LinearGradient(stops: legend.colours.map { stop in
+                    Gradient.Stop(color: Color(red: Double(stop.colour.r) / 255, green: Double(stop.colour.g) / 255,
+                                               blue: Double(stop.colour.b) / 255, opacity: Double(stop.colour.a) / 255),
+                                  location: stop.at)
+                }, startPoint: .leading, endPoint: .trailing))
+                .background(theme.tint, in: Capsule())
+                .overlay(Capsule().stroke(theme.edge, lineWidth: 1))
+                .frame(height: 10)
+                .padding(.top, 2)
+            GeometryReader { geometry in ticks(legend.ticks, width: geometry.size.width) }
+                .frame(height: 14)
+        }
+        .frame(height: 28)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(CoreStrings.t(encoding == .echoTop ? "chrome.scales.echotop" : "chrome.scales.vil",
+                                          ["min": Self.format(legend.min), "max": Self.format(legend.max)]))
+        .accessibilityValue(encoding.scale.unit)
+        .accessibilityIdentifier("nativeMap.columnLegend")
+    }
+
+    static func format(_ value: Double) -> String { value.formatted(.number) }
+
+    private func ticks(_ all: [(value: Double, at: Double)], width: CGFloat) -> some View {
+        let shown = all.filter { $0.at <= Self.endClearance }
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(shown.enumerated()), id: \.offset) { i, tick in
+                let last = i == shown.count - 1
+                HStack(spacing: 1) {
+                    Text(Self.format(tick.value))
+                        .scaledFont(11, weight: .semibold, relativeTo: .caption2, digits: true)
+                        .foregroundStyle(theme.text)
+                    if last {
+                        Text(encoding.scale.unit).scaledFont(8, weight: .medium, relativeTo: .caption2).foregroundStyle(theme.text2)
+                    }
+                }
+                .fixedSize()
+                .position(x: CGFloat(tick.at) * width + (last ? 10 : 0), y: 7)
             }
         }
         .accessibilityHidden(true)

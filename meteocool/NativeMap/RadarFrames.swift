@@ -26,12 +26,18 @@ struct RadarFrame: Decodable, Sendable, Equatable {
         let encoding: String
     }
 
-    /// The tiles holding raw values (RVP6, one byte per pixel), the only
-    /// kind the native map draws; nil for a frame that has none.
+    /// The tiles holding raw values (one byte per pixel: RVP6, or an echo
+    /// top's or VIL's), the only kind the native map draws; nil for a frame
+    /// that has none, or whose bytes it cannot read (`carriesValues`).
     var valueTileId: String? {
-        guard let values, values.encoding == "rvp6-u8" else { return nil }
+        guard let values, ValueEncoding.carriesValues(values.encoding) else { return nil }
         return values.tileId
     }
+
+    /// What its bytes mean: its `values.encoding`, or RVP6 for a frame that
+    /// does not say, as every frame drawn before the column products was
+    /// (`encodingOf`).
+    var encoding: String { values?.encoding ?? ValueEncoding.rvp6 }
 
     /// Where its tiles are: observations in `meteoradar`, forecasts in
     /// `meteonowcast` (core's `RadarCapability`).
@@ -138,17 +144,31 @@ enum RadarProduct: String, CaseIterable, Sendable {
     case dmax
     /// The column maximum of every network.
     case colmax
+    /// How high each column's echo reaches 18, 45 and 50 dBZ, and how much
+    /// liquid water it holds: read up the same tilts in the same pass as
+    /// `colmax` and drawn whole like it, in palettes of their own
+    /// (`ColumnEncoding`).
+    case echotop18, echotop45, echotop50, vil
 
-    /// The picker's groups, in order.
-    static let groups: [(group: String, products: [RadarProduct])] = [("lowest", [.hx, .merged]), ("column", [.dmax, .colmax])]
+    /// The picker's groups, in order: the lowest scans, the column maxima,
+    /// then the echo tops upward through the storm and VIL (`PRODUCT_GROUPS`).
+    static let groups: [(group: String, products: [RadarProduct])] = [
+        ("lowest", [.hx, .merged]), ("column", [.dmax, .colmax]), ("tops", [.echotop18, .echotop45, .echotop50, .vil]),
+    ]
+
+    /// The products of every network at once, each one frame over all of
+    /// Europe drawn whole in place of HX and the networks' composites; not
+    /// DMAX, which keeps DWD's grid (`WHOLE_PRODUCTS`).
+    var isWhole: Bool { self != .hx && self != .dmax }
 
     /// How far its newest scan may trail HX's before HX is drawn instead
-    /// (`BEHIND_ALLOWED_S`).
+    /// (`BEHIND_ALLOWED_S`): the column maximum's pass, and what it reads up
+    /// the column, a cycle further than the rest.
     var allowedBehind: Int {
         switch self {
         case .hx: return .max
         case .merged, .dmax: return 600
-        case .colmax: return 900
+        case .colmax, .echotop18, .echotop45, .echotop50, .vil: return 900
         }
     }
 
@@ -157,7 +177,16 @@ enum RadarProduct: String, CaseIterable, Sendable {
         switch self {
         case .hx: return []
         case .dmax: return ["dmax", "colmax"]
-        case .merged, .colmax: return [rawValue]
+        default: return [rawValue]
+        }
+    }
+
+    /// Its newest frame alone, for the menu's age: `/v3/radar/<path>`.
+    var latestPath: String? {
+        switch self {
+        case .hx: return nil
+        case .merged: return "europe"
+        default: return rawValue
         }
     }
 
@@ -177,6 +206,8 @@ struct RadarLayer: Sendable, Hashable {
     let index: TileIndex
     let maxZoom: Int
     let clip: RadarClip
+    /// What its tiles' bytes mean (`values.encoding`), which they are coloured by.
+    var encoding = ValueEncoding.rvp6
 
     static func == (a: RadarLayer, b: RadarLayer) -> Bool {
         a.key == b.key && a.bucket == b.bucket && a.tileId == b.tileId && a.clip == b.clip
@@ -291,10 +322,8 @@ struct RadarTimeline: Sendable {
         for code in Self.networks { networkFrames[code] = byStep(series.networks?[code]) }
         var nowcastFrames: [String: [Int: RadarFrame]] = [:]
         for code in Self.nowcastNetworks { nowcastFrames[code] = byStep(series.products?["nowcast_\(code)"]) }
-        let productFrames: [RadarProduct: [Int: RadarFrame]] = [
-            .merged: byStep(series.products?["merged"]), .colmax: byStep(series.products?["colmax"]),
-            .dmax: byStep(series.products?["dmax"]),
-        ]
+        var productFrames: [RadarProduct: [Int: RadarFrame]] = [:]
+        for product in RadarProduct.allCases where product != .hx { productFrames[product] = byStep(series.products?[product.rawValue]) }
 
         let now = window?.end ?? frames.filter { $0.value.isObservation && $0.value.valueTileId != nil }.keys.max()
             ?? frames.filter { $0.value.valueTileId != nil && $0.key <= series.serverTime }.keys.max()
@@ -370,7 +399,7 @@ struct RadarTimeline: Sendable {
                 var dwdFrame = frame
                 var dwdTile = tileId
                 if frame.isObservation {
-                    if drawn == .merged || drawn == .colmax, let whole = productFrame(drawn, at: step),
+                    if drawn.isWhole, let whole = productFrame(drawn, at: step),
                        let layer = Self.layer(drawn.rawValue, whole, maxZoom: 8, clip: .whole) {
                         // One frame of every network stands in for all of them.
                         layers[step] = [layer]
@@ -423,8 +452,6 @@ struct RadarTimeline: Sendable {
         switch drawn {
         case .hx:
             if let hxScan { let parts = [hxScan] + networkScans; range = (parts.max()!, parts.min()!) }
-        case .merged, .colmax:
-            if let latest = newestFrame(drawn) { let own = scan(latest.step, latest.frame); range = (own, own) }
         case .dmax:
             if let latest = newestFrame(.dmax) {
                 let own = scan(latest.step, latest.frame)
@@ -432,6 +459,9 @@ struct RadarTimeline: Sendable {
                 let parts = around.map { [own, $0] } ?? [own] + networkScans
                 range = (parts.max()!, parts.min()!)
             }
+        default:
+            // Every network's products are one frame each, stamped with their own newest scan.
+            if let latest = newestFrame(drawn) { let own = scan(latest.step, latest.frame); range = (own, own) }
         }
 
         self.init(steps: steps, gridNow: grid, now: now, lastPlayable: lastPlayable, layers: layers, dbz: dbz,
@@ -445,7 +475,15 @@ struct RadarTimeline: Sendable {
         guard let tileId = frame.valueTileId else { return nil }
         let index = TileIndex(frame.tiles)
         return RadarLayer(key: code, bucket: frame.bucket, tileId: tileId, index: index,
-                          maxZoom: min(index.deepestZoom ?? maxZoom, 9), clip: clip)
+                          maxZoom: min(index.deepestZoom ?? maxZoom, 9), clip: clip, encoding: frame.encoding)
+    }
+
+    /// An echo top's or VIL's encoding while one is drawn on `step`, whose
+    /// legend is its own; nil for reflectivity, which is every step but one
+    /// a column product is drawn on (core's `drawnEncoding`).
+    func columnEncoding(at step: Int) -> ColumnEncoding? {
+        guard let layers = layers[step], layers.count == 1 else { return nil }
+        return ColumnEncoding(encoding: layers[0].encoding)
     }
 
     /// The step closest to `time`, among those that can be shown.

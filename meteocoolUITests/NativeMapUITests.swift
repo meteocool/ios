@@ -377,6 +377,55 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.explainer").waitForNonExistence(timeout: 5))
     }
 
+    /// The echo tops and VIL: their own group in the menu, each drawn with a
+    /// legend in its own unit, and reflectivity's legend again on a step it
+    /// does not draw (core's `column-products.spec.ts`).
+    func testEchoTopsAndVILHaveTheirOwnLegend() {
+        launch(demo: true)
+        waitForSeries()
+        XCTAssertTrue(element("nativeMap.legend").exists)
+        func choose(_ product: String) {
+            element("nativeMap.productPill").tap()
+            let menu = element("nativeMap.productMenu")
+            XCTAssertTrue(menu.waitForExistence(timeout: 5))
+            let row = element("nativeMap.product.\(product)")
+            for _ in 0 ..< 4 where !row.isHittable { menu.swipeUp() }
+            XCTAssertTrue(row.waitForExistence(timeout: 5), product)
+            row.tap()
+            XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+        }
+        element("nativeMap.productPill").tap()
+        let menu = element("nativeMap.productMenu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        // The third group, below the first two.
+        for _ in 0 ..< 4 where !element("nativeMap.product.vil").isHittable { menu.swipeUp() }
+        for product in ["echotop18", "echotop45", "echotop50", "vil"] {
+            XCTAssertTrue(element("nativeMap.product.\(product)").exists, product)
+        }
+        XCTAssertTrue(app.staticTexts["Echo Tops & VIL"].exists)
+        app.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(element("nativeMap.productMenu").waitForNonExistence(timeout: 5))
+
+        choose("echotop18")
+        let column = element("nativeMap.columnLegend")
+        XCTAssertTrue(column.waitForExistence(timeout: 20), "The echo top's own legend")
+        XCTAssertEqual(column.value as? String, "km")
+        XCTAssertFalse(element("nativeMap.legend").exists)
+        screenshot("echo top")
+
+        // The forecast is WN's whatever is chosen: read in dBZ.
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.4)).tap()
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("+") }, "On the forecast: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.legend").waitForExistence(timeout: 5))
+        XCTAssertFalse(column.exists)
+        element("nativeMap.backToNow").tap()
+        XCTAssertTrue(column.waitForExistence(timeout: 5))
+
+        choose("vil")
+        XCTAssertTrue(waitForValue(column) { $0 == "kg/m²" }, "VIL's own legend: \(column.value ?? "")")
+        screenshot("VIL")
+    }
+
     func testStatusPillOpensConnectionDetails() {
         launch()
         waitForSeries()

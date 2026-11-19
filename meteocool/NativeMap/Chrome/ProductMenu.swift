@@ -8,14 +8,14 @@
 import SwiftUI
 
 /// Each product's newest scan, from its own endpoint (`/v3/radar/europe`,
-/// `/colmax`, `/dmax`), for the menu's ages.
+/// `/colmax`, `/dmax`, `/echotop18`, …), for the menu's ages.
 @MainActor
 final class ProductScans: ObservableObject {
     @Published var newest: [RadarProduct: Int] = [:]
 
     func load(_ map: NativeMapContext) {
-        let paths: [RadarProduct: String] = [.merged: "europe", .colmax: "colmax", .dmax: "dmax"]
-        for (product, path) in paths {
+        for product in RadarProduct.allCases {
+            guard let path = product.latestPath else { continue }
             map.fetch(map.endpoints.api.appendingPathComponent("v3/radar/\(path)")) { [weak self] data, _ in
                 guard let data, let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let scan = (object["upstream_time"] as? NSNumber)?.intValue ?? (object["processed_time"] as? NSNumber)?.intValue else { return }
@@ -25,7 +25,7 @@ final class ProductScans: ObservableObject {
     }
 }
 
-/// The menu: the products in their two groups, each with its newest scan's
+/// The menu: the products in their three groups, each with its newest scan's
 /// age, the chosen one ticked; "?" opens the explainer.
 struct ProductMenu: View {
     @ObservedObject var player: RadarPlayer

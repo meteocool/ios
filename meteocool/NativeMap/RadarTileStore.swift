@@ -17,9 +17,11 @@ struct RadarTileKey: Hashable, Sendable {
     let x: Int
     /// XYZ, top row 0.
     let y: Int
+    /// What its bytes mean, which it is coloured by.
+    let encoding: String
 
     init(_ layer: RadarLayer, z: Int, x: Int, y: Int) {
-        (bucket, tileId, self.z, self.x, self.y) = (layer.bucket, layer.tileId, z, x, y)
+        (bucket, tileId, self.z, self.x, self.y, encoding) = (layer.bucket, layer.tileId, z, x, y, layer.encoding)
     }
 
     func url(base: URL) -> URL {
@@ -71,7 +73,9 @@ final class RadarTileStore: @unchecked Sendable {
     private let lock = NSLock()
     private let session: URLSession
     private var base: URL
+    /// The reader's palette and the ink, and each encoding's table in them.
     private var lut: RadarLUT
+    private var luts: [String: RadarLUT] = [:]
     /// Compressed PNGs, small: what the network delivered.
     private let pngs = NSCache<NSString, NSData>()
     /// Coloured tiles, a megabyte each, in the current palette.
@@ -116,6 +120,7 @@ final class RadarTileStore: @unchecked Sendable {
             let next = RadarLUT(palette: palette, ink: ink)
             guard next.id != lut.id else { return false }
             lut = next
+            luts = [:]
             return true
         }
         if changed { images.removeAllObjects() }
@@ -130,9 +135,18 @@ final class RadarTileStore: @unchecked Sendable {
         }
     }
 
+    /// The table a tile is coloured with: the palette's, or its encoding's own.
+    private func table(_ encoding: String) -> RadarLUT {
+        if encoding == lut.encoding { return lut }
+        if let known = luts[encoding] { return known }
+        let made = RadarLUT(encoding: encoding, palette: lut.name, ink: lut.ink)
+        luts[encoding] = made
+        return made
+    }
+
     /// The tile as it can be drawn now, without waiting for the network.
     func lookup(_ key: RadarTileKey) -> Lookup {
-        let (name, lut, isMissing) = lock.withLock { (cacheName(key), self.lut, missing.contains(key)) }
+        let (name, lut, isMissing) = lock.withLock { (cacheName(key), table(key.encoding), missing.contains(key)) }
         if isMissing { return .empty }
         if let box = images.object(forKey: name) { return box.image.map(Lookup.image) ?? .empty }
         guard let png = pngs.object(forKey: cacheName(key, palette: false)) else { return .pending }
@@ -203,6 +217,6 @@ final class RadarTileStore: @unchecked Sendable {
     }
 
     private func cacheName(_ key: RadarTileKey, palette: Bool = true) -> NSString {
-        "\(palette ? lut.id : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
+        "\(palette ? table(key.encoding).id : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
     }
 }
