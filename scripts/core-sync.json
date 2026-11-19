@@ -1,5 +1,5 @@
 {
-  "core": "ceb413fd23dc66438e5c794e23f7865f8801512b",
+  "core": "ad10177d65809e3a3d12ae31073b2cdaa8a32eba",
   "pending": {},
   "webOnly": {
     "src/sw.ts": "the web app's service worker",
@@ -92,7 +92,8 @@
     "scripts/tests/chooseLocale.test.ts": "tests locale/choose.ts, the web's choice of language from the URL and the browser; the app speaks the system's language (CoreStrings)",
     "scripts/tests/licences.test.ts": "tests scripts/licences.mjs, core's build tooling; the app has its own scripts/licences.py",
     "scripts/tests/networkEvents.test.ts": "tests api/events.ts's split of the network event's names into countries and frames; the native map fetches the whole series again on any of them (RadarEngine)",
-    "scripts/tests/frameStores.test.ts": "guards against a Svelte store glitch between the frame and its liveness; natively they are one value (RadarStep)"
+    "scripts/tests/frameStores.test.ts": "guards against a Svelte store glitch between the frame and its liveness; natively they are one value (RadarStep)",
+    "scripts/tests/satelliteBasemap.test.ts": "tests layers/satellite.ts's crop of a VersaTiles tile's ancestor, which Apple's imagery does without; that the imagery counts as a dark basemap holds natively (NativeMapView.applyBaseMap)"
   },
   "unported": {
     "src/layers/radarFrames.ts": "the WebGL2 frame layer. Its switching whole, same-step stand-ins, rest and previews are ported (RadarEngine, RadarOverlay, lib/frameSwitch.ts, lib/previewTiles.ts); its crossfade in value across a step's 450 ms (radarCrossfade, CROSSFADE_MS) is not: the native map colours tiles before putting a step together, and MapKit's tile-by-tile overlay redraws cannot dissolve every animation frame without a GPU renderer",
