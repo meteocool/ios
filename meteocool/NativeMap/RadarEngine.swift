@@ -113,6 +113,7 @@ final class RadarEngine {
         player.onStep = { [weak self] step in self?.showStep(step) }
         player.isReady = { [weak self] step in self?.isReady(step) ?? true }
         player.preloadMode = { [weak self] in self?.preloadMode ?? .none }
+        player.isMoving = { [weak self] in self?.moving ?? false }
         compositor.onPrepared = { [weak self] in self?.prepared() }
         compositor.onBuilt = { [weak self] frame, rect in
             guard let self, self.scene.frames.current == frame else { return }
@@ -232,7 +233,16 @@ final class RadarEngine {
         return true
     }
 
+    /// The map is being zoomed or panned, between MapKit's will and did change.
+    private(set) var moving = false
+
+    func regionWillChange() {
+        moving = true
+        player.mapStartedMoving()
+    }
+
     func regionDidChange() {
+        moving = false
         prefetch()
         prepareAhead()
     }
@@ -366,7 +376,7 @@ final class RadarEngine {
         // blur as it comes: until then the step before stays whole, never two
         // times in one picture, whether played to (the player waits for it a
         // moment, `RadarPlayer.isReady`) or scrubbed to.
-        if showing.layers.isEmpty || frame == showing || isReady(frame) || isPreviewed(frame) {
+        if showing.layers.isEmpty || frame == showing || isReady(frame) || isPreviewed(frame) || standsIn(frame) {
             display(frame)
         } else {
             heldFrame = frame
@@ -482,6 +492,17 @@ final class RadarEngine {
     private func isPreviewed(_ frame: RadarFrameRef) -> Bool {
         guard let mapView else { return false }
         return compositor.isPreviewed(frame, zoom: drawZoom, in: mapView.visibleMapRect)
+    }
+
+    /// While the map is being zoomed or panned, a step is moved to on less: a
+    /// preview that covers only part of the view will do, as the ground at
+    /// the edges is new to every step alike; so will its own pictures of
+    /// the zoom next to the one drawn, coarser or finer.
+    private func standsIn(_ frame: RadarFrameRef) -> Bool {
+        guard moving, let mapView else { return false }
+        let visible = mapView.visibleMapRect, zoom = drawZoom
+        return compositor.isPreviewed(frame, zoom: zoom, in: visible, partly: true)
+            || compositor.isReady(frame, zoom: zoom - 1, in: visible) || compositor.isReady(frame, zoom: zoom + 1, in: visible)
     }
 
     /// Pictures were put together: a held step may be ready now.

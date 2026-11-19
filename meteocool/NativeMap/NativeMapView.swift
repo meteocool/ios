@@ -1071,6 +1071,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+        radar.regionWillChange()
         for feature in features { feature.regionWillChange() }
     }
 

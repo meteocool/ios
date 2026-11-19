@@ -165,6 +165,26 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(playButton.value as? String, "paused")
     }
 
+    /// The loop keeps playing while the map is panned and zoomed: a step
+    /// is not held for pictures of a view the map is only passing through.
+    func testPlayingGoesOnWhileTheMapMoves() {
+        launch(link: "?latLonZ=47.0,8.0,7", demo: true)
+        waitForSeries()
+        playButton.tap()
+        XCTAssertEqual(playButton.value as? String, "playing")
+        var seen = Set<String>()
+        for i in 0 ..< 6 {
+            let from = map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+            let to = map.coordinate(withNormalizedOffset: CGVector(dx: i % 2 == 0 ? 0.3 : 0.7, dy: 0.45))
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+            if let value = timeline.value as? String { seen.insert(value) }
+            if i == 3 { map.pinch(withScale: 1.6, velocity: 1) }
+        }
+        XCTAssertGreaterThan(seen.count, 2, "Played on while the map moved: \(seen)")
+        XCTAssertEqual(playButton.value as? String, "playing")
+        playButton.tap()
+    }
+
     func testScrubbingBackAndBackToNow() {
         launch()
         waitForSeries()

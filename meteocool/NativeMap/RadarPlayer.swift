@@ -61,6 +61,9 @@ final class RadarPlayer: ObservableObject {
     /// What is prepared ahead: playback waits for a step only while its
     /// pictures are (`holdsForTiles`).
     var preloadMode: (() -> PlaybackRules.PreloadMode)?
+    /// The map is being zoomed or panned: playback does not wait for
+    /// pictures of a zoom the map is only passing through (`holdsForTiles`).
+    var isMoving: (() -> Bool)?
 
     /// Parked on the newest observation: stays there as new ones arrive.
     private(set) var followsLive = true
@@ -225,7 +228,7 @@ final class RadarPlayer: ObservableObject {
         let next = nextIndex()
         // The step on screen stays a little longer while the next one's
         // pictures are not ready, never longer than `maxWait`.
-        if let isReady, PlaybackRules.holdsForTiles(preloadMode?() ?? .all) {
+        if let isReady, PlaybackRules.holdsForTiles(preloadMode?() ?? .all, moving: isMoving?() ?? false) {
             let since = waitingSince ?? Date()
             waitingSince = since
             let waited = Date().timeIntervalSince(since)
@@ -237,6 +240,12 @@ final class RadarPlayer: ObservableObject {
         waitingSince = nil
         show(next)
         startTimer(after: Self.frameInterval)
+    }
+
+    /// The map started to move: a step held for its pictures goes on now.
+    func mapStartedMoving() {
+        guard playing, !grabbed, waitingSince != nil else { return }
+        startTimer(after: 0)
     }
 
     /// The step after this one while playing (`nextFrame`).
