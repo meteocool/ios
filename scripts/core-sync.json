@@ -1,5 +1,5 @@
 {
-  "core": "06ea743498d7198c170cac9601ceac370d0f4dcc",
+  "core": "ceb413fd23dc66438e5c794e23f7865f8801512b",
   "pending": {},
   "webOnly": {
     "src/sw.ts": "the web app's service worker",
