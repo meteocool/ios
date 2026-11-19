@@ -2501,9 +2501,16 @@ final class NativeMapUITests: XCTestCase {
         // The facts: the operator, the band, and the network's own numbers.
         let facts = element("nativeMap.radarInfo.facts")
         XCTAssertTrue(facts.waitForExistence(timeout: 5))
-        XCTAssertTrue(facts.staticTexts["Operator"].exists && facts.staticTexts["DWD"].exists, "The operator's row")
-        XCTAssertTrue(facts.staticTexts["C band · dual polarisation"].exists)
-        XCTAssertTrue(facts.staticTexts["246 m above sea level"].exists)
+        // A row is one element at the accessibility sizes, two otherwise,
+        // and may be further down there.
+        func fact(_ text: String) -> Bool {
+            let row = facts.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+            for _ in 0 ..< 3 where !row.exists { page.swipeUp() }
+            return row.exists
+        }
+        XCTAssertTrue(fact("Operator") && fact("DWD"), "The operator's row")
+        XCTAssertTrue(fact("C band · dual polarisation"))
+        XCTAssertTrue(fact("246 m above sea level"))
         XCTAssertTrue(element("nativeMap.radarInfo.text").exists)
         screenshot("radar page")
         // The sources and the way on to how every radar works, further down.

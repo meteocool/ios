@@ -156,6 +156,8 @@ struct RadarInfoPage: View {
                     }
                 }
                 .font(.body)
+                // A container, or each row would take its identifier.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("nativeMap.radarInfo.facts")
             } else {
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 7) {
