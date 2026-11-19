@@ -59,6 +59,8 @@ struct RadarExplainer: View {
                     section("why") { paragraphs("why", 3) }
                 }
                 .padding()
+                // Its words can be copied with a long press (core's `.mc-selectable`).
+                .textSelection(.enabled)
             }
             .navigationTitle(t("title"))
             .navigationBarTitleDisplayMode(.inline)

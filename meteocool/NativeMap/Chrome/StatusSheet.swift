@@ -48,8 +48,12 @@ struct StatusSheet: View {
                                 .toolbar { closeButton }
                         }
                         .accessibilityIdentifier("nativeMap.status.details")
+                        // A row to tap, not text to copy.
+                        .textSelection(.disabled)
                     }
                 }
+                // Its sentences can be copied with a long press (core's `.mc-selectable`).
+                .textSelection(.enabled)
             }
             .navigationTitle(CoreStrings.t("status.title"))
             .navigationBarTitleDisplayMode(.inline)

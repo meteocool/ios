@@ -73,6 +73,10 @@ struct StormDetailsView: View {
                 .padding(.top, wide ? 16 : 21)
                 .padding(.trailing, wide ? 0 : 8)
                 .padding(.bottom, 28)
+                // Its words can be copied (core's `.mc-selectable`); a long
+                // press on a text, so the sheet's drags and the dial's turn
+                // and the buttons' taps are as they were.
+                .textSelection(.enabled)
             }
             .scrollIndicators(.automatic)
             // Clear of the discs: on an iPad the indicator takes a drag, and

@@ -68,6 +68,8 @@ struct RadarInfoPage: View {
                     explainRow
                 }
                 .padding()
+                // Its words can be copied with a long press (core's `.mc-selectable`).
+                .textSelection(.enabled)
             }
             .navigationTitle(CoreStrings.t("site.title", ["name": name]))
             .navigationBarTitleDisplayMode(.inline)

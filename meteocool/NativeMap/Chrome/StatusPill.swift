@@ -195,6 +195,8 @@ struct ConnectionDetails: View {
                     }
                 }
                 .scaledFont(13, relativeTo: .footnote)
+                // Copied into bug reports: a long press copies a value (core's `.mc-selectable`).
+                .textSelection(.enabled)
             }
             .navigationTitle(CoreStrings.t("connection_details"))
             .navigationBarTitleDisplayMode(.inline)

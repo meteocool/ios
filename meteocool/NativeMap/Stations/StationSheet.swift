@@ -96,6 +96,8 @@ struct StationSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 6)
             }
+            // Its words can be copied with a long press (core's `.mc-selectable`).
+            .textSelection(.enabled)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) { Image(systemName: "xmark") }
