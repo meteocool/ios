@@ -188,8 +188,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The SwiftUI controls over the map, each in its own host so the map
     /// keeps every touch that misses them: the tray at the bottom, the strips
     /// above it, "Back to now" above those, the status pill on the top line,
-    /// and toasts under it.
+    /// and toasts under it; under them all, a past window's frame.
     private func configureChrome() {
+        // Round the map below the status bar, under every control, taking no touches.
+        let frame = addChrome(ArchiveFrame(model: model))
+        frame.isUserInteractionEnabled = false
+        NSLayoutConstraint.activate([
+            frame.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
+            frame.bottomAnchor.constraint(equalTo: bottomAnchor),
+            frame.leadingAnchor.constraint(equalTo: leadingAnchor),
+            frame.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+
         let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
                                   openProducts: { [weak self] in self?.openProducts() },
                                   openStormKey: { [weak self] in self?.openStormKey() },
@@ -289,8 +299,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         // Above whichever bars are up, as core counts the open strips and hints.
         let backHost = WeakView()
-        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site,
-                                           leaveWindow: { [weak self] in self?.leaveWindow() }) { backHost.view?.invalidateIntrinsicContentSize() })
+        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site) { backHost.view?.invalidateIntrinsicContentSize() })
         backHost.view = back
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -303,17 +312,23 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         })
         pillHost.view = pill
         // Centred, unless the logo's row of discs on the left reaches it on a
-        // narrow phone: then it keeps to their right (`logoRowWidth`).
-        // Below its content's compression resistance, or the host is squeezed
-        // to keep the centre and the capsule overflows it back to the middle.
+        // narrow phone: then it keeps to their right (`logoRowWidth`), and
+        // left of the buttons on the right (a past window's tab, which is
+        // wider): squeezed between them only then, its text cut short.
+        // Centring is below its content's compression resistance, or the host
+        // is squeezed to keep the centre and the capsule overflows it back to
+        // the middle.
         let centred = pill.centerXAnchor.constraint(equalTo: centerXAnchor)
         centred.priority = .defaultLow
-        pill.setContentCompressionResistancePriority(.required, for: .horizontal)
+        pill.setContentCompressionResistancePriority(.required - 1, for: .horizontal)
         let clear = pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
                                                   constant: Self.logoRowWidth)
+        let clearRight = pill.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor,
+                                                        constant: -ChromeTheme.controlColumn)
         NSLayoutConstraint.activate([
             centred,
             clear,
+            clearRight,
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
 
@@ -321,7 +336,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         NSLayoutConstraint.activate([
             toast.centerXAnchor.constraint(equalTo: centerXAnchor),
             toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
-            toast.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter + 44 + ChromeTheme.gutter),
+            // Under the top line: the pill, or a window's tab and the pill under it.
+            toast.topAnchor.constraint(equalTo: pill.bottomAnchor, constant: ChromeTheme.gutter),
         ])
     }
 
@@ -1098,7 +1114,9 @@ private final class ChromeState: ObservableObject {
     @Published var width: CGFloat = 0
 }
 
-/// The status pill, which opens Connection Details.
+/// The status pill, which opens Connection Details; in a past window the
+/// frame's tab in its place, the pill under it only while the connection
+/// has something to say.
 private struct PillHost: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
@@ -1110,10 +1128,24 @@ private struct PillHost: View {
     let resized: () -> Void
 
     var body: some View {
-        StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() },
-                   leaveWindow: { owner.leaveWindow() }, wakes: owner.wakeCount)
-            .opacity(model.capability == .radar ? 1 : 0)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in DispatchQueue.main.async { resized() } }
+        VStack(spacing: 0) {
+            if let window = model.window {
+                ArchiveTab(window: window, step: player.step, theme: ChromeTheme(dark: model.isDark),
+                           choose: { owner.openArchive() }, live: { owner.leaveWindow() })
+            }
+            if model.window == nil || saysSomething {
+                StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() },
+                           wakes: owner.wakeCount)
+            }
+        }
+        .opacity(model.capability == .radar ? 1 : 0)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in DispatchQueue.main.async { resized() } }
+    }
+
+    /// The pill has a word for the connection, which a window does not silence.
+    private var saysSomething: Bool {
+        monitor.pillState(live: player.isLive, shownStep: player.step, replay: player.timeline.replay, radarStale: model.stale,
+                          hasTimeline: !player.timeline.steps.isEmpty, archive: model.window != nil) != .none
     }
 }
 

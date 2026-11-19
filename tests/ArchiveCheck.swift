@@ -58,6 +58,18 @@ struct ArchiveCheck {
         let pill = RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: locale)
         precondition(pill == "2 Nov 14:05", pill)
         precondition(RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: Locale(identifier: "en_US")) == "Nov 2 14:05")
+        // The frame's tab: the step with its weekday for VoiceOver; on a wide
+        // screen the window's day and span, and the step by its clock, dated
+        // once past the start's midnight.
+        let weekday = RadarWindow.dateTime(utc("20261102T1405Z"), weekday: true, timeZone: zone, locale: locale)
+        precondition(weekday == "Mon 2 Nov 14:05", weekday)
+        let span = day.span(timeZone: zone, locale: locale)
+        precondition(span == "Mon 2 Nov 14:00–17:00", span)
+        let nightSpan = night.span(timeZone: zone, locale: locale)
+        precondition(nightSpan == "Mon 2 Nov 22:00 – Tue 3 Nov 02:00", nightSpan)
+        precondition(day.clock(utc("20261102T1505Z"), timeZone: zone, locale: locale) == "15:05")
+        let past = night.clock(utc("20261103T0005Z"), timeZone: zone, locale: locale)
+        precondition(past == "Tue 00:05", past)
         let summary = day.summary(timeZone: zone, locale: locale)
         precondition(summary.contains("14:00") && summary.contains("17:00"), summary)
         // The strip: ticks spaced for the length, counted from the reader's midnight.

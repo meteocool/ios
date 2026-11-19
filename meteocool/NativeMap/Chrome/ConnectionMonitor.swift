@@ -45,8 +45,6 @@ final class NetworkLog: @unchecked Sendable {
 /// The pill's state, in core's priority order.
 enum PillState: Equatable {
     case offline, catchingUp, degraded, stale, slow, time(Int), demo, live, none
-    /// A step of a past window: its date and time, and the way back to live.
-    case archive(Int)
 }
 
 /// Watches the path, the requests and the radar's freshness, and says
@@ -165,7 +163,10 @@ final class ConnectionMonitor: ObservableObject {
         case .degraded: return .degraded
         case .online: break
         }
-        if archive, let shownStep { return .archive(shownStep) }
+        // A past window is the reader's choice, and the frame's tab says it
+        // and is the way out of it (`ArchiveFrame`): it outranks whatever is
+        // only about now, and leaves the pill nothing to say.
+        if archive { return .none }
         if radarStale { return .stale }
         if slow { return .slow }
         if !live, let shownStep { return .time(shownStep) }

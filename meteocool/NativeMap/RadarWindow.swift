@@ -91,11 +91,30 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         Self.format(step, template: crossesMidnight(in: timeZone) ? "EEEHHmm" : "HHmm", timeZone: timeZone, locale: locale)
     }
 
-    /// The pill's date and time of a step, short enough for the top line
-    /// ("5 Nov 14:05", "Nov 5 14:05").
-    static func dateTime(_ step: Int, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
-        format(step, template: "dMMM", timeZone: timeZone, locale: locale) + " "
+    /// A step's date and time, short enough for a phone's top line ("5 Nov
+    /// 14:05", "Nov 5 14:05"); with its weekday where there is room, as
+    /// VoiceOver reads the frame's tab ("Thu 5 Nov 14:05").
+    static func dateTime(_ step: Int, weekday: Bool = false, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        format(step, template: weekday ? "EEEdMMM" : "dMMM", timeZone: timeZone, locale: locale) + " "
             + format(step, template: "HHmm", timeZone: timeZone, locale: locale)
+    }
+
+    /// The window's day and span, as a wide screen's tab names it
+    /// (`ArchiveFrame.svelte`): "Thu 5 Nov 14:05–17:05", or both ends dated
+    /// where it runs over midnight.
+    func span(timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        let first = Self.dateTime(start, weekday: true, timeZone: timeZone, locale: locale)
+        guard !crossesMidnight(in: timeZone) else {
+            return first + " – " + Self.dateTime(end, weekday: true, timeZone: timeZone, locale: locale)
+        }
+        return first + "–" + Self.format(end, template: "HHmm", timeZone: timeZone, locale: locale)
+    }
+
+    /// A step by its clock, with its weekday once it has crossed midnight
+    /// from the window's start: the wide tab's step beside its span.
+    func clock(_ step: Int, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        let sameDay = calendar(timeZone).isDate(Self.date(start), inSameDayAs: Self.date(step))
+        return Self.format(step, template: sameDay ? "HHmm" : "EEEHHmm", timeZone: timeZone, locale: locale)
     }
 
     /// The whole window, as the picker sums it up ("5 Nov, 14:05 – 17:05").

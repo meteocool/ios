@@ -280,15 +280,17 @@ final class NativeMapUITests: XCTestCase {
         let clock = { (value: String) in value.contains(":") && !value.hasPrefix("-") && !value.hasPrefix("+") }
         XCTAssertTrue(waitForValue(timeline, timeout: 60, clock), "In the window: \(timeline.value ?? "")")
         screenshot("archive window")
-        let back = element("nativeMap.backToNow")
+        // The frame's tab is the way back to live.
+        let back = element("nativeMap.archive.tab.live")
         XCTAssertTrue(back.waitForExistence(timeout: 5), "The way back to live")
         back.tap()
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
     }
 
     /// A link to a past window (`from=`, `to=`, `t=`, as core writes it)
-    /// opens the map in it, on its frame. Three hours back: within the day
-    /// staging keeps even without the archive.
+    /// opens the map in it, on its frame, framed, its tab on the top line
+    /// naming the step in place of the pill. Three hours back: within the
+    /// day staging keeps even without the archive.
     func testWindowLinkOpensThePast() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
@@ -301,16 +303,28 @@ final class NativeMapUITests: XCTestCase {
         clock.dateFormat = "HH:mm"
         let shown = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 1800)))
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { $0.hasSuffix(shown) }, "On the linked step \(shown): \(timeline.value ?? "")")
-        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 5))
-        XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5), "The way back to live")
+        let tab = element("nativeMap.archive.tab")
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "The frame's tab")
+        XCTAssertTrue(tab.label.hasPrefix("Archive, ") && tab.label.hasSuffix(shown), "Names the step: \(tab.label)")
+        // The pill has nothing to say in the past, nor "Back to now" below.
+        XCTAssertFalse(element("nativeMap.pill").exists, "No pill in a window")
+        XCTAssertFalse(element("nativeMap.backToNow").exists, "The tab is the way back")
         screenshot("archive link")
         // Scrubbing stays inside the window: its first step at the far left.
         timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.4)).tap()
         let first = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 3600)))
         XCTAssertTrue(waitForValue(timeline) { $0.hasSuffix(first) }, "At the window's start \(first): \(timeline.value ?? "")")
-        // The pill leaves the window.
-        element("nativeMap.pill").tap()
+        XCTAssertTrue(tab.label.hasSuffix(first), "The tab follows the step: \(tab.label)")
+        // The tab opens the picker.
+        tab.tap()
+        XCTAssertTrue(element("nativeMap.archive.sheet").waitForExistence(timeout: 10), "The archive's sheet")
+        app.buttons["nativeMap.archive.close"].firstMatch.tap()
+        XCTAssertTrue(element("nativeMap.archive.sheet").waitForNonExistence(timeout: 5))
+        // Its cross leaves the window, and the pill is back.
+        element("nativeMap.archive.tab.live").tap()
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 5), "The pill again")
+        XCTAssertFalse(tab.exists, "No tab live")
     }
 
     /// A link to a point opens with its ring and its readings.
@@ -1352,7 +1366,7 @@ final class NativeMapUITests: XCTestCase {
         func link(_ seconds: Int) -> String { formatter.string(from: Date(timeIntervalSince1970: TimeInterval(seconds))) }
         launch(link: "?latLonZ=48.14,11.58,7&from=\(link(end - 3600))&to=\(link(end))")
         waitForSeries()
-        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 30), "In the window")
+        XCTAssertTrue(element("nativeMap.archive.tab").waitForExistence(timeout: 30), "In the window")
         openLayers()
         let motion = app.switches["nativeMap.layers.motion"].firstMatch
         XCTAssertTrue(motion.waitForExistence(timeout: 5))
