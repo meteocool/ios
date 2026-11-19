@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The radar timeline the native map plays: core's `/v3/radar/timeseries`
-//  and the layers each of its steps draws.
+//  and the layers each of its steps draws, as `caps/RadarCapability.ts`
+//  composes DWD's (`layers/dwd.ts`) and every network's (`layers/network.ts`).
 //
 
 import Foundation
