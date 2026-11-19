@@ -93,6 +93,11 @@ final class StormStore: ObservableObject {
     weak var map: NativeMapContext?
     /// The box the held storms were asked for.
     private var fetched: StormDrawing.Extent?
+    /// The box the request out now asks for, while it is out. A move inside
+    /// it waits for that answer instead of asking again: the tray settling
+    /// just after the first fetch nudges the view a few points, and that
+    /// sent the storms and the groups twice.
+    private var requested: StormDrawing.Extent?
     private var token = 0
     /// When the backend last had no groups (ms), so it is not asked again on
     /// every pan; nil for never.
@@ -134,14 +139,17 @@ final class StormStore: ObservableObject {
     func reload(force: Bool = false) {
         guard let map, frame != .hidden, let view = Self.extent(of: map.mapView.visibleMapRect) else { return }
         let world = StormDrawing.worldExtent(view)
-        if !force, StormDrawing.covers(fetched, world) { return }
+        if !force, StormDrawing.covers(fetched, world) || StormDrawing.covers(requested, world) { return }
         let padded = StormDrawing.worldExtent(StormDrawing.padExtent(view, Self.padding))
         token += 1
         let mine = token
+        requested = padded
         let (since, until) = Self.span(window)
         let answer = Answer()
         func apply() {
-            guard mine == token, let storms = answer.storms, let groups = answer.groups else { return }
+            guard let storms = answer.storms, let groups = answer.groups else { return }
+            if mine == token { requested = nil }
+            guard mine == token else { return }
             fetched = padded
             held = storms
             self.groups = groups
@@ -173,7 +181,7 @@ final class StormStore: ObservableObject {
         }
         let url = map.endpoints.storms(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
                                        since: since, until: until)
-        map.fetch(url) { data, status in
+        map.fetch(url) { [weak self] data, status in
             if let data, let collection = StormJSON.storms(data) {
                 answer.storms = collection.features
                 if older != nil {
@@ -187,6 +195,8 @@ final class StormStore: ObservableObject {
                 // No storms served: not an error.
                 answer.storms = []
             } else {
+                // Nothing to draw, and the next move asks again.
+                if mine == self?.token { self?.requested = nil }
                 return
             }
             apply()
@@ -206,6 +216,7 @@ final class StormStore: ObservableObject {
         window = next
         token += 1
         fetched = nil
+        requested = nil
         held = []
         groups = []
         selection = nil
