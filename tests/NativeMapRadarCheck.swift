@@ -15,6 +15,7 @@ struct NativeMapRadarCheck {
         valueTables()
         products()
         motionArrows()
+        playbackLoop()
         playbackGate()
         frameSwitch()
         print("NativeMapRadarCheck passed")
@@ -277,6 +278,40 @@ struct NativeMapRadarCheck {
         precondition(M.stale(frame: arrows - 2 * 3600, arrows: arrows, onForecast: false))
         // With no frame or no arrows yet, nothing is stale.
         precondition(!M.stale(frame: nil, arrows: arrows, onForecast: false) && !M.stale(frame: arrows, arrows: nil, onForecast: false))
+    }
+
+    // MARK: - The loop (playbackLoop.test.ts)
+
+    static func playbackLoop() {
+        typealias P = PlaybackRules
+        let minute = 60, now = 1_800_000_000
+        func state(shown: Int = now, loopFrom: Int = now, fromStart: Bool = false, noForecast: Bool = false, only: [Int]? = nil) -> P.LoopState {
+            P.LoopState(shown: shown, latestObservation: now, now: now, lastStep: now + 120 * minute, start: now - 120 * minute,
+                        loopFrom: loopFrom, fromStart: fromStart, noForecast: noForecast, only: only)
+        }
+        // A full playback steps into the forecast and wraps to now at its end.
+        precondition(P.nextFrame(state()) == now + 5 * minute && P.nextFrame(state(shown: now + 120 * minute)) == now)
+        // With no forecast, playback stops at now and goes back to where it was started.
+        precondition(P.nextFrame(state(shown: now - 5 * minute, loopFrom: now - 15 * minute, noForecast: true)) == now)
+        precondition(P.nextFrame(state(loopFrom: now - 15 * minute, noForecast: true)) == now - 15 * minute)
+        // With no forecast and play-from-start, the loop goes back to the start.
+        precondition(P.nextFrame(state(loopFrom: now - 15 * minute, fromStart: true, noForecast: true)) == now - 120 * minute)
+        // A forecast lost mid-playback ends the loop on the next frame, not in the wash.
+        precondition(P.nextFrame(state(shown: now + 30 * minute, noForecast: true)) == now - 120 * minute)
+        // With a radar open, playback skips the steps it has no sweep for and never enters the forecast.
+        let only = [now - 30 * minute, now - 25 * minute, now - 10 * minute, now]
+        precondition(P.nextFrame(state(shown: now - 25 * minute, loopFrom: now - 30 * minute, only: only)) == now - 10 * minute)
+        precondition(P.nextFrame(state(shown: now - 20 * minute, loopFrom: now - 30 * minute, only: only)) == now - 10 * minute)
+        // Past its last sweep: back to its first, not into the forecast.
+        precondition(P.nextFrame(state(loopFrom: now - 30 * minute, only: only)) == now - 30 * minute)
+        precondition(P.nextFrame(state(shown: now + 30 * minute, loopFrom: now + 30 * minute, only: only)) == now - 30 * minute)
+        // Round every sweep, not only those after where play was pressed.
+        precondition(P.nextFrame(state(loopFrom: now - 25 * minute, only: only)) == now - 30 * minute)
+        precondition(P.nextFrame(state(loopFrom: now - 25 * minute, fromStart: true, only: only)) == now - 30 * minute)
+        // A radar opened on a step it has no sweep for goes to its nearest one.
+        let sweeps = [now - 30 * minute, now - 10 * minute, now]
+        precondition(P.nearestStep(sweeps, to: now + 15 * minute) == now && P.nearestStep(sweeps, to: now - 20 * minute) == now - 30 * minute)
+        precondition(P.nearestStep(sweeps, to: now - 15 * minute) == now - 10 * minute && P.nearestStep([], to: now) == nil)
     }
 
     // MARK: - Playback (playbackGate.test.ts, framePreload.test.ts)

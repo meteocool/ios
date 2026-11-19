@@ -39,8 +39,12 @@ final class RadarPlayer: ObservableObject {
     @Published var only: Set<Int>? {
         didSet {
             guard only != oldValue, let only, !only.isEmpty, let step, !only.contains(step) else { return }
-            // A step outside them opens on the newest it has.
-            if let newest = timeline.steps.lastIndex(where: { only.contains($0) }) { show(newest) }
+            // A step outside its sweeps' hours opens on the newest it has; in
+            // a gap between them, on the nearest (`keepToSweeps`).
+            let mine = timeline.steps.filter { only.contains($0) }
+            guard let first = mine.first, let last = mine.last else { return }
+            let target = step > first && step < last ? PlaybackRules.nearestStep(mine, to: step) ?? last : last
+            if let at = timeline.steps.firstIndex(of: target) { show(at) }
         }
     }
     /// Steps whose pictures are ready to show: the strip's preload fill.
@@ -242,26 +246,17 @@ final class RadarPlayer: ObservableObject {
     /// forecast and round to now (or two hours back), or, with no forecast
     /// on screen, through the past and back to where play was pressed.
     func nextIndex(after index: Int) -> Int {
-        // An open radar's steps alone, round to where play was pressed.
-        if let only, !only.isEmpty {
-            let mine = timeline.steps.indices.filter { only.contains(timeline.steps[$0]) }
-            if let next = mine.first(where: { $0 > index }) { return next }
-            if !fromStart, let loopFrom, mine.contains(loopFrom), loopFrom < mine.last! { return loopFrom }
-            return mine.first!
-        }
-        let start = 0
+        let steps = timeline.steps
+        guard steps.indices.contains(index) else { return 0 }
         // A window: through it, and round to its start.
-        if timeline.window != nil { return index < lastIndex ? index + 1 : start }
-        let gridNow = timeline.steps.firstIndex(of: timeline.gridNow) ?? (nowIndex ?? 0)
-        if !noForecast {
-            if index < lastIndex { return index + 1 }
-            return fromStart ? start : min(gridNow, lastIndex)
-        }
-        let latest = nowIndex ?? lastIndex
-        if index < latest { return index + 1 }
-        if fromStart { return start }
-        guard let loopFrom, loopFrom < latest else { return start }
-        return loopFrom
+        if timeline.window != nil { return index < lastIndex ? index + 1 : 0 }
+        let mine = only.map { only in steps.filter { only.contains($0) } }
+        let gridNow = steps.contains(timeline.gridNow) ? timeline.gridNow : (timeline.now ?? steps[0])
+        let state = PlaybackRules.LoopState(
+            shown: steps[index], latestObservation: steps[nowIndex ?? lastIndex], now: min(gridNow, steps[lastIndex]),
+            lastStep: steps[lastIndex], start: steps[0], loopFrom: steps[loopFrom.flatMap { steps.indices.contains($0) ? $0 : nil } ?? index], fromStart: fromStart,
+            noForecast: noForecast, only: mine?.isEmpty == false ? mine : nil)
+        return steps.firstIndex(of: PlaybackRules.nextFrame(state)) ?? 0
     }
 
     private func show(_ newIndex: Int) {

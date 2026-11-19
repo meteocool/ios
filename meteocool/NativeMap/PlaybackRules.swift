@@ -2,8 +2,8 @@
 //  PlaybackRules.swift
 //  meteocool
 //
-//  When playback moves on, and what is loaded ahead of it: core's
-//  `lib/playbackGate.ts` and `lib/framePreload.ts`.
+//  Where playback goes, when it moves on, and what is loaded ahead of it:
+//  core's `lib/playbackLoop.ts`, `lib/playbackGate.ts` and `lib/framePreload.ts`.
 //
 
 import Foundation
@@ -12,6 +12,56 @@ import Foundation
 ///
 /// No app dependencies here: `scripts/check.sh` compiles this file alone.
 enum PlaybackRules {
+    // MARK: - The loop (lib/playbackLoop.ts)
+
+    static let stepSeconds = 300
+
+    /// Where the loop is, for `nextFrame`.
+    struct LoopState {
+        /// The step on screen.
+        var shown: Int
+        /// The newest observed step.
+        var latestObservation: Int
+        /// The grid's now, where a full playback starts again.
+        var now: Int
+        /// The last step playback may reach: the forecast's end.
+        var lastStep: Int
+        /// The grid's first step.
+        var start: Int
+        /// Where playback was started from.
+        var loopFrom: Int
+        /// The "play from the start" setting.
+        var fromStart = false
+        /// The forecast covers none of the screen.
+        var noForecast = false
+        /// The only steps playback may land on, oldest first: an open radar's, with a sweep.
+        var only: [Int]? = nil
+    }
+
+    /// The step after `shown`, wrapping round at the end of what is worth
+    /// playing: through the forecast and round to now (or the start); with no
+    /// forecast on screen, through the past and back to where play was
+    /// pressed; with a radar open, through its sweeps alone and round all of
+    /// them, wherever play was pressed (`nextFrame`).
+    static func nextFrame(_ state: LoopState) -> Int {
+        if let only = state.only, let first = only.first {
+            // Past the last: back to the first, so every round shows all of them.
+            return only.first { $0 > state.shown } ?? first
+        }
+        if state.noForecast {
+            if state.shown < state.latestObservation { return state.shown + stepSeconds }
+            // Back to where play was pressed, unless that was no earlier than now.
+            return state.fromStart || state.loopFrom >= state.latestObservation ? state.start : state.loopFrom
+        }
+        if state.shown >= state.lastStep { return state.fromStart ? state.start : state.now }
+        return state.shown + stepSeconds
+    }
+
+    /// The step in `only` nearest `t`, the earlier of two as near (`nearestStep`).
+    static func nearestStep(_ only: [Int], to t: Int) -> Int? {
+        only.reduce(nil as Int?) { best, step in best.map { abs(step - t) < abs($0 - t) ? step : $0 } ?? step }
+    }
+
     // MARK: - The gate (lib/playbackGate.ts)
 
     /// The longest the step on screen is held for the next one's pictures
