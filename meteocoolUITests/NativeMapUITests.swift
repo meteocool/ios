@@ -1414,6 +1414,29 @@ final class NativeMapUITests: XCTestCase {
         screenshot("cell panel bottom")
     }
 
+    /// The panel's words can be copied (core's `.mc-selectable`): a long
+    /// press on its text offers Copy, and the panel stays open and scrolls.
+    func testPanelTextCanBeCopied() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        let details = element("nativeMap.storm.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
+        let facts = element("nativeMap.storm.facts")
+        for _ in 0 ..< 6 where !facts.exists { details.swipeUp() }
+        XCTAssertTrue(facts.waitForExistence(timeout: 5))
+        let text = facts.staticTexts.firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.press(forDuration: 1.2)
+        let copy = app.menuItems["Copy"].firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 5), "Copy offered")
+        screenshot("panel text copied")
+        copy.tap()
+        XCTAssertTrue(details.exists, "Still open")
+        details.swipeDown()
+        XCTAssertTrue(details.exists)
+    }
+
     func testCellPanelShowsItsMeasuredStructure() {
         let code = "2026102012009999999999"
         app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
