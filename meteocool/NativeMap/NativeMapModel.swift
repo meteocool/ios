@@ -41,6 +41,9 @@ final class NativeMapModel: ObservableObject {
     @Published var connected = false
     /// The map is drawn dark (core's dark basemap rules: labels, casings, wash).
     @Published var isDark = false
+    /// The base map is the satellite imagery (`baseLayer` of `satellite`),
+    /// which counts as dark (core's `isDarkBasemap`).
+    @Published var satellite = false
     /// Something the map put over the controls, by owner; the controls hide
     /// while any is set.
     @Published var covers = Set<String>()

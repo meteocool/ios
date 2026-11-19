@@ -1885,6 +1885,38 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(style.label, "Storm style: Cloud", "The reader's own; the link's shells are not on the map")
     }
 
+    /// The satellite basemap (core's `layers/satellite.ts`): offered in
+    /// Settings with the others, and Apple's imagery under the radar and
+    /// under the 3D map's storms.
+    func testSatelliteBasemapUnderBothMaps() {
+        launch(link: "?latLonZ=44,3.5,7", demo: true)
+        waitForSeries()
+        app.buttons["map.settings"].tap()
+        let row = app.staticTexts["Base Map Layer"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        for _ in 0 ..< 6 where !row.isHittable { app.tables.firstMatch.swipeUp() }
+        row.tap()
+        let matchSystem = app.switches["Match System"]
+        XCTAssertTrue(matchSystem.waitForExistence(timeout: 5))
+        if matchSystem.value as? String == "1" { matchSystem.tap() }
+        let table = app.tables["settings.options"]
+        let satellite = table.staticTexts["Satellite"]
+        for _ in 0 ..< 4 where !satellite.isHittable { table.swipeUp() }
+        satellite.tap()
+        XCTAssertTrue(table.cells.containing(.staticText, identifier: "Satellite").firstMatch.isSelected)
+        app.buttons["picker.save"].tap()
+        XCTAssertTrue(app.staticTexts["Satellite"].waitForExistence(timeout: 5), "Settings names it")
+        app.buttons["Done"].firstMatch.tap()
+        waitForSeries()
+        sleep(4)
+        screenshot("satellite basemap")
+        openLayers()
+        element("nativeMap.layers.map.cells3d").tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        sleep(10)
+        screenshot("satellite under the 3D map")
+    }
+
     func testThreeDEveryModeItsSliderNorthAndDetails() throws {
         let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
         launch(link: "?latLonZ=\(core.lat),\(core.lon),7&layer=cells3d", demo: true)

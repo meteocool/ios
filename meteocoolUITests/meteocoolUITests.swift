@@ -157,7 +157,7 @@ final class meteocoolUITests: XCTestCase {
         completeOnboardingWithoutPermissions()
         tap("map.settings")
         for (title, options) in [
-            ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)"]),
+            ("Base Map Layer", ["Light", "Dark", "OpenStreetMap", "CyclOSM (Biking)", "Satellite"]),
             ("Radar Color Map", ["Classic", "NWS Reflectivity", "PyArt StepSeq", "Homeyer (Color Vision Deficiency)", "Lang"])
         ] {
             app.staticTexts[title].tap()

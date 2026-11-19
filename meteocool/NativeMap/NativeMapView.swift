@@ -6,7 +6,8 @@
 //  padded by the tray): the reader's stored choices and a link's, held for
 //  the visit (`lib/Settings.ts`, `settingsOverride.test.ts`), the base map
 //  (`lib/baseLayers.ts`; a withdrawn one follows the system,
-//  `withdrawnMaps.test.ts`), the link to what is on screen
+//  `withdrawnMaps.test.ts`; the satellite imagery of `layers/satellite.ts`
+//  is Apple's), the link to what is on screen
 //  (`lib/urlState.ts`), and waking (`lib/wakeup.ts`).
 //
 
@@ -1057,17 +1058,31 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Apple's map kept muted under the radar, as core's own base maps are.
     /// `osm` and `cyclosm` were the busier maps: Apple's full map stands in.
+    /// `satellite` is Apple's imagery with its roads, borders and names over
+    /// it (core's VersaTiles imagery with its coast, borders and motorways,
+    /// credited by Apple's own legal link; its fallback to a coarser tile,
+    /// `ancestorCrop`, is VersaTiles' own), and the chrome and the inks over
+    /// it are the dark map's: forest, fields and sea are mostly darker than
+    /// mid-grey.
     private func applyBaseMap(_ layer: String) {
-        let busy = layer == "osm" || layer == "cyclosm"
-        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: busy ? .default : .muted)
-        configuration.pointOfInterestFilter = layer == "cyclosm"
-            ? MKPointOfInterestFilter(including: [.park, .nationalPark, .campground, .beach]) : .excludingAll
-        mapView.preferredConfiguration = configuration
+        let satellite = layer == "satellite"
+        if satellite {
+            let configuration = MKHybridMapConfiguration(elevationStyle: .flat)
+            configuration.pointOfInterestFilter = .excludingAll
+            mapView.preferredConfiguration = configuration
+        } else {
+            let busy = layer == "osm" || layer == "cyclosm"
+            let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: busy ? .default : .muted)
+            configuration.pointOfInterestFilter = layer == "cyclosm"
+                ? MKPointOfInterestFilter(including: [.park, .nationalPark, .campground, .beach]) : .excludingAll
+            mapView.preferredConfiguration = configuration
+        }
         switch layer {
         case "light": overrideUserInterfaceStyle = .light
-        case "dark": overrideUserInterfaceStyle = .dark
+        case "dark", "satellite": overrideUserInterfaceStyle = .dark
         default: overrideUserInterfaceStyle = .unspecified
         }
+        if model.satellite != satellite { model.satellite = satellite }
         model.isDark = traitCollection.userInterfaceStyle == .dark
     }
 
