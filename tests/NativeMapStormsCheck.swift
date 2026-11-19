@@ -318,6 +318,10 @@ struct NativeMapStormsCheck {
             precondition(dot.quiet && !dot.hail && !dot.meso)
             precondition(d.pings.isEmpty)
         }
+        test("a quiet storm still being seen is one a mesocyclone can be matched to") {
+            let live = draw([storm(A) { $0.notable = false }, storm(B) { $0.notable = true }]).live
+            precondition(live.map(\.storm).sorted() == [A, B].sorted())
+        }
         test("a quiet storm, selected, is drawn in full") {
             let quiet = storm(A) { $0.notable = false }
             precondition(StormDrawing.stormLook(quiet, selected: A) == .full)

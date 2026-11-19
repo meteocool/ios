@@ -73,8 +73,8 @@ struct StormDrawingResult: Equatable, Sendable {
     /// The joins, drawn underneath.
     var links: [StormMark] = []
     var pings: [StormPing] = []
-    /// Every storm still being seen where it is drawn: what a mesocyclone is
-    /// matched against (`MesocycloneRules`).
+    /// Every storm still being seen where it is drawn, ringed or quiet: what
+    /// a mesocyclone is matched against (`MesocycloneRules`).
     var live: [LiveStorm] = []
 }
 
@@ -223,7 +223,11 @@ enum StormDrawing {
             let path = pathOf(storm)
             // A quiet storm is its position alone: no path, ring, outline or join.
             if quiet {
-                if !taken { result.marks.append(mark(.position, p.id, .point(storm.geometry))) }
+                if !taken {
+                    result.marks.append(mark(.position, p.id, .point(storm.geometry)))
+                    // Still a storm a mesocyclone can turn in.
+                    if live { result.live.append(LiveStorm(storm: p.id, coordinates: storm.geometry)) }
+                }
                 continue
             }
             if path.count > 1 && !hidden.contains(.path) { result.marks.append(mark(.path, "\(p.id):path", .line(path))) }
