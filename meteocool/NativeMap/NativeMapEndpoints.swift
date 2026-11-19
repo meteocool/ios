@@ -95,6 +95,9 @@ struct NativeMapEndpoints: Equatable, Sendable {
     }
 
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }
+    /// The newest tile set of the rain's motion arrows (404 until a motion
+    /// field has been found anywhere).
+    var motionLayer: URL { api.appendingPathComponent("v3/motion/layer") }
     var snow: URL { api.appendingPathComponent("v3/radar/snow") }
     var lightning: URL { data.appendingPathComponent("lightning_cache") }
     var mesocyclones: URL { data.appendingPathComponent("mesocyclones/all/") }

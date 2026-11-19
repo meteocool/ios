@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Checks the radar's products and how their tiles are coloured: core's
@@ -13,6 +14,7 @@ struct NativeMapRadarCheck {
         columnValues()
         valueTables()
         products()
+        motionArrows()
         print("NativeMapRadarCheck passed")
     }
 
@@ -204,5 +206,74 @@ struct NativeMapRadarCheck {
                                                  with: "\"\(now - behind)\": \(frame("w", "vil-0.5kg-u8"))")
             precondition(RadarTimeline(series: try! RadarSeries.decode(Data(late.utf8)), clock: now + 120, product: .vil).drawn == drawn)
         }
+    }
+
+    // MARK: - The rain's motion (motionArrow.test.ts)
+
+    static func motionArrows() {
+        typealias M = MotionArrowRules
+        func arrow(_ east: Double, _ north: Double) -> M.Shape {
+            guard let shape = M.arrow(east: east, north: north) else { preconditionFailure("an arrow for \(east), \(north)") }
+            return shape
+        }
+        func tip(_ shape: M.Shape) -> CGPoint { shape.head.0 }
+        func tail(_ shape: M.Shape) -> CGPoint { shape.shaft.0 }
+
+        // A motion east and north is a speed and the direction the rain goes.
+        let east = M.motion(east: 40, north: 0)
+        close(east.kmh, 40)
+        close(east.towardDeg, 90)
+        close(M.motion(east: 0, north: 30).towardDeg, 0)
+        close(M.motion(east: 0, north: -30).towardDeg, 180)
+        close(M.motion(east: -30, north: 0).towardDeg, 270)
+        close(M.motion(east: 30, north: 30).kmh, (1800.0).squareRoot())
+
+        // Speeds are kept to the nearest 5 km/h and directions to the nearest 5 degrees.
+        precondition(M.roundKmh(37.4) == 35 && M.roundKmh(37.5) == 40)
+        precondition(M.roundDeg(2.4) == 0 && M.roundDeg(357.6) == 0 && M.roundDeg(-3) == 355)
+
+        // Rain too slow to have a direction has no arrow.
+        precondition(M.arrow(east: 2, north: 1) == nil && M.arrow(east: 0, north: 0) == nil)
+        precondition(M.arrow(east: M.stillKmh, north: 0) != nil)
+
+        // The arrow points the way the rain goes: up the screen for rain going north.
+        let north = arrow(0, 40)
+        close(tip(north).x, 0)
+        precondition(tip(north).y < 0 && tail(north).y > 0)
+        let eastward = arrow(40, 0)
+        precondition(tip(eastward).x > 0)
+        close(tip(eastward).y, 0)
+
+        // The arrow is centred on its block.
+        let shape = arrow(30, -20)
+        close(tip(shape).x + tail(shape).x, 0)
+        close(tip(shape).y + tail(shape).y, 0)
+
+        // A faster motion is a longer arrow, up to the longest.
+        func length(_ shape: M.Shape) -> Double { hypot(tip(shape).x - tail(shape).x, tip(shape).y - tail(shape).y) }
+        close(length(arrow(M.stillKmh, 0)), M.size.shortest)
+        precondition(length(arrow(60, 0)) > length(arrow(30, 0)))
+        close(length(arrow(M.fastestKmh, 0)), M.size.longest)
+        close(length(arrow(3 * M.fastestKmh, 0)), M.size.longest)
+        close(M.length(0), M.size.shortest)
+
+        // The head sits at the tip, as wide either side of the shaft.
+        let up = arrow(0, 50)
+        let (left, right) = (up.head.1, up.head.2)
+        close(left.y, right.y)
+        close(left.x, -right.x)
+        close(abs(left.x), M.size.halfWidth)
+        precondition(up.shaft.1 == CGPoint(x: 0, y: left.y))
+
+        // The arrows are the motion of a forecast frame, and of an observed one shortly before them.
+        let arrows = 1_700_000_000
+        precondition(!M.stale(frame: arrows + 30 * 60, arrows: arrows, onForecast: true))
+        precondition(!M.stale(frame: arrows - 10 * 60, arrows: arrows, onForecast: false))
+        precondition(!M.stale(frame: arrows - M.staleAfter, arrows: arrows, onForecast: false))
+        // Not of an observed frame well before them.
+        precondition(M.stale(frame: arrows - M.staleAfter - 1, arrows: arrows, onForecast: false))
+        precondition(M.stale(frame: arrows - 2 * 3600, arrows: arrows, onForecast: false))
+        // With no frame or no arrows yet, nothing is stale.
+        precondition(!M.stale(frame: nil, arrows: arrows, onForecast: false) && !M.stale(frame: arrows, arrows: nil, onForecast: false))
     }
 }

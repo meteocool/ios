@@ -10,7 +10,7 @@ import MapKit
 import UIKit
 
 /// A vector tile source (`{z}/{x}/{y}` with XYZ y, 512 px tiles as
-/// OpenLayers' `VectorTileSource` makes them), drawn by `draw`.
+/// OpenLayers' `VectorTileSource` makes them, or `tileSize`), drawn by `draw`.
 final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
     /// A tile's features in map points, ready to draw.
     struct Tile {
@@ -30,6 +30,8 @@ final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
     let boundingMapRect = MKMapRect.world
     let minZoom: Int
     let maxZoom: Int
+    /// Pixels a tile side: a zoom deeper at the same scale for 256.
+    let tileSize: Int
     /// Draws one tile into the renderer's context; called on drawing threads.
     let draw: @Sendable (Tile, MKZoomScale, CGContext) -> Void
     /// Called on the main queue when a tile arrived, with its rect.
@@ -43,9 +45,10 @@ final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
     private var failed = Set<String>()
     private static let cacheSize = 96
 
-    init(minZoom: Int = 0, maxZoom: Int, draw: @escaping @Sendable (Tile, MKZoomScale, CGContext) -> Void) {
+    init(minZoom: Int = 0, maxZoom: Int, tileSize: Int = 512, draw: @escaping @Sendable (Tile, MKZoomScale, CGContext) -> Void) {
         self.minZoom = minZoom
         self.maxZoom = maxZoom
+        self.tileSize = tileSize
         self.draw = draw
     }
 
@@ -67,7 +70,7 @@ final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
     /// The tiles for `mapRect` at the zoom MapKit draws, nearest coarser
     /// stand-ins for those still loading; asks for what is missing.
     func tiles(for mapRect: MKMapRect, zoomScale: MKZoomScale) -> [Tile] {
-        let z = max(minZoom, min(maxZoom, RadarTileKey.zoom(forScale: Double(zoomScale))))
+        let z = max(minZoom, min(maxZoom, zoom(for: zoomScale)))
         guard let range = RadarTileKey.range(z: z, covering: mapRect) else { return [] }
         var out: [Tile] = []
         var missing: [(String, Int, Int, Int)] = []
@@ -95,6 +98,12 @@ final class VectorTileOverlay: NSObject, MKOverlay, @unchecked Sendable {
         }
         for (key, z, x, y) in missing { load(key, z: z, x: x, y: y) }
         return out
+    }
+
+    /// The zoom whose tiles come closest to one tile pixel per point at
+    /// `zoomScale`, before `maxZoom` holds it back.
+    func zoom(for zoomScale: MKZoomScale) -> Int {
+        RadarTileKey.zoom(forScale: Double(zoomScale) * 512 / Double(tileSize))
     }
 
     private func load(_ key: String, z: Int, x: Int, y: Int) {

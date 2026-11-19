@@ -151,7 +151,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // A tap on a mesocyclone opens the storm it turns in.
         let mesocyclones = MesocycloneMarks(openStorm: { [weak storms] at in storms?.openStorm(atMesocyclone: at) ?? false })
         return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), mesocyclones, StationMarks(), sites, storms, CloudHints(),
-                PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
+                MotionArrows(), PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.

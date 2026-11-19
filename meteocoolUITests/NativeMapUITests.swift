@@ -1301,6 +1301,45 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.layers").waitForExistence(timeout: 5))
     }
 
+    /// Rain Motion: off until it is turned on with the other overlays, then
+    /// the arrows over the radar (core's `motion.spec.ts`); greyed in a past
+    /// window, which has no motion of its own.
+    func testRainMotionIsOffUntilTurnedOn() {
+        launch(link: "?latLonZ=47.5,9.5,7", demo: true)
+        waitForSeries()
+        openLayers()
+        let motion = app.switches["nativeMap.layers.motion"].firstMatch
+        XCTAssertTrue(motion.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertEqual(motion.value as? String, "0", "Off by default")
+        motion.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(motion) { $0 == "1" }, "Turned on")
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(element("nativeMap.layers").waitForNonExistence(timeout: 5))
+        RunLoop.current.run(until: Date().addingTimeInterval(6))
+        screenshot("rain motion")
+        // Kept: the next time the overlays open it is still on.
+        openLayers()
+        XCTAssertEqual(app.switches["nativeMap.layers.motion"].firstMatch.value as? String, "1")
+    }
+
+    func testRainMotionIsGreyedInAPastWindow() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        let end = (Int(Date().timeIntervalSince1970) - 3 * 3600) / 300 * 300
+        func link(_ seconds: Int) -> String { formatter.string(from: Date(timeIntervalSince1970: TimeInterval(seconds))) }
+        launch(link: "?latLonZ=48.14,11.58,7&from=\(link(end - 3600))&to=\(link(end))")
+        waitForSeries()
+        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 30), "In the window")
+        openLayers()
+        let motion = app.switches["nativeMap.layers.motion"].firstMatch
+        XCTAssertTrue(motion.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertFalse(motion.isEnabled, "No motion in the past")
+        XCTAssertTrue(motion.label.contains("Not kept in the archive"), "Says why: \(motion.label)")
+    }
+
     func testLoopFromTwoHoursBackIsKept() {
         launch()
         waitForSeries()

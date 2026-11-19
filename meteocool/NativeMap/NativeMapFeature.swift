@@ -159,9 +159,13 @@ protocol NativeMapHost: AnyObject {
 
 /// The layer switches the native map stores (`nativeMap.<rawValue>`).
 enum NativeMapLayer: String, CaseIterable {
-    case lightning, mesocyclones, storms, snow, cells3d, terrain3d, sites, stations
+    case lightning, mesocyclones, storms, snow, cells3d, terrain3d, sites, stations, motion
 
     /// Whether it is on before the user has chosen: as core's settings
-    /// (`layer3dCells` and `layerStations` off, the rest on).
-    var defaultOn: Bool { self != .cells3d && self != .stations }
+    /// (`layer3dCells`, `layerStations` and `layerMotion` off, the rest on).
+    var defaultOn: Bool { self != .cells3d && self != .stations && self != .motion }
+
+    /// Whether a past window draws it: the rain's motion arrows are the
+    /// newest motion field alone, which no past step has (core's `NO_PAST`).
+    var hasPast: Bool { self != .motion }
 }

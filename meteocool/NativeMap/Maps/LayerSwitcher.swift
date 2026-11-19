@@ -45,6 +45,7 @@ struct LayerSwitcherView: View {
                         toggle(CoreStrings.t("chrome.playback.cells"), .storms)
                         toggle(CoreStrings.t("chrome.playback.radar_sites"), .sites)
                         toggle(CoreStrings.t("stations.title"), .stations)
+                        toggle(CoreStrings.t("chrome.playback.motion"), .motion)
                     }
                     section(CoreStrings.t("settings.playback")) {
                         Toggle(CoreStrings.t("settings.playback_from_start"), isOn: fromStart)
@@ -137,9 +138,20 @@ struct LayerSwitcherView: View {
         }
     }
 
+    /// A layer's switch. One with no past is greyed in a past window, its
+    /// setting kept for live (core's `shownIn`).
     private func toggle(_ label: String, _ layer: NativeMapLayer) -> some View {
-        Toggle(label, isOn: Binding(get: { _ = revision; return isOn(layer) },
-                                    set: { setOn(layer, $0); revision += 1 }))
-            .accessibilityIdentifier("nativeMap.layers.\(layer.rawValue)")
+        let kept = layer.hasPast || model.window == nil
+        return Toggle(isOn: Binding(get: { _ = revision; return isOn(layer) },
+                                    set: { setOn(layer, $0); revision += 1 })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                if !kept {
+                    Text(CoreStrings.t("chrome.archive.no_past")).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .disabled(!kept)
+        .accessibilityIdentifier("nativeMap.layers.\(layer.rawValue)")
     }
 }
