@@ -1514,12 +1514,11 @@ final class NativeMapUITests: XCTestCase {
         for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
         XCTAssertFalse(motion.isEnabled, "No motion in the past")
         XCTAssertTrue(motion.label.contains("Not kept in the archive"), "Says why: \(motion.label)")
-        // Nor mesocyclones nor the radars' marks; the rest answer for the step.
-        for layer in ["mesocyclones", "sites"] {
-            let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
-            XCTAssertTrue(toggle.exists, layer)
-            XCTAssertFalse(toggle.isEnabled, "No \(layer) in the past")
-        }
+        // Nor the radars' marks; the rest answer for the step. Mesocyclones
+        // switch from the storm key alone, below.
+        let sites = app.switches["nativeMap.layers.sites"].firstMatch
+        XCTAssertTrue(sites.exists)
+        XCTAssertFalse(sites.isEnabled, "No radars' marks in the past")
         XCTAssertTrue(app.switches["nativeMap.layers.storms"].firstMatch.isEnabled, "Storms have a past")
         element("nativeMap.layers.close").tap()
         // The storm key's mesocyclone switch too, saying why.
