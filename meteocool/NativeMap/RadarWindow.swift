@@ -154,6 +154,18 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         }
     }
 
+    /// How close to an end a label may sit on a strip `width` points wide,
+    /// as a share of it (`windowEdgeClear`): a clock time is wider than the
+    /// live strip's offsets, and on a phone the fixed share let "15:00" run
+    /// into a "14:45" at the start. `dated`: the labels carry days (a window
+    /// across midnight), wider still.
+    static func edgeClear(width: Double, dated: Bool) -> Double {
+        // The live strip's share (`TimelinePhysics.edgeClear`, `AXIS_EDGE_CLEAR`).
+        let least = 0.09
+        guard width > 0 else { return least }
+        return max(least, (dated ? 80 : 40) / width)
+    }
+
     /// Minutes between the ruler's ticks, so a long window is not a solid bar.
     var rulerMinutes: Int {
         switch seconds {

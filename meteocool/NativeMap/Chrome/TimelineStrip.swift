@@ -311,7 +311,9 @@ struct TimelineStrip: View {
         }
 
         // The axis.
-        for tick in TimelinePhysics.axisTicks(steps: steps, gridNow: anchor, every: window?.axisMinutes ?? 60) {
+        // A window's clock labels clear its ends by the strip's width.
+        let clear = window.map { RadarWindow.edgeClear(width: size.width, dated: $0.crossesMidnight()) } ?? TimelinePhysics.edgeClear
+        for tick in TimelinePhysics.axisTicks(steps: steps, gridNow: anchor, every: window?.axisMinutes ?? 60, clear: clear) {
             let label = context.resolve(Text(player.offsetLabel(tick.step))
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(theme.text2))

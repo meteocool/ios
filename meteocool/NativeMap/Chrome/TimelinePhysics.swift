@@ -120,16 +120,21 @@ enum TimelinePhysics {
         1 - pow(1 - max(0, min(1, k)), 3)
     }
 
-    /// The axis labels (`axisTicks`): both ends, and every `every` minutes
-    /// from the clock's step in between, away from the ends.
-    static func axisTicks(steps: [Int], gridNow: Int, every: Int = 60) -> [(at: Double, step: Int)] {
+    /// How close to an end a label may sit before the end's wins, as a share
+    /// of the strip (`AXIS_EDGE_CLEAR`).
+    static let edgeClear = 0.09
+
+    /// The axis labels (`axisTicks`, a window's `windowTicks`): both ends,
+    /// and every `every` minutes from the clock's step in between, no closer
+    /// to an end than `clear`.
+    static func axisTicks(steps: [Int], gridNow: Int, every: Int = 60, clear: Double = edgeClear) -> [(at: Double, step: Int)] {
         guard steps.count > 1 else { return [] }
         let n = Double(steps.count)
         var ticks: [(Double, Int)] = [(0, steps[0])]
         for i in 1 ..< steps.count - 1 {
             let minutes = Int((Double(steps[i] - gridNow) / 60).rounded())
             let at = (Double(i) + 0.5) / n
-            if minutes % every == 0, at >= 0.09, at <= 0.91 { ticks.append((at, steps[i])) }
+            if minutes % every == 0, at >= clear, at <= 1 - clear { ticks.append((at, steps[i])) }
         }
         ticks.append((1, steps[steps.count - 1]))
         return ticks

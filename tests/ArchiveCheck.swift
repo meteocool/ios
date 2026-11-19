@@ -11,6 +11,7 @@ struct ArchiveCheck {
     static func main() {
         windows()
         labels()
+        edges()
         coverage()
         timeline()
         strikes()
@@ -83,6 +84,21 @@ struct ArchiveCheck {
             let ticks = TimelinePhysics.axisTicks(steps: window.steps, gridNow: window.anchor(timeZone: zone), every: window.axisMinutes)
             precondition(ticks.count >= 2 && ticks.count <= 7, "\(hours) h: \(ticks.count)")
         }
+    }
+
+    /// On a phone's strip a clock label gives way to the start's sooner
+    /// (core's `windowEdgeClear`).
+    static func edges() {
+        let day = 1_793_491_200, hour = 3600
+        // Three hours from 14:45: "15:00" is the fourth of 37 steps, 9.5% in.
+        let window = RadarWindow(start: day + 14 * hour + 45 * 60, end: day + 17 * hour + 45 * 60)!
+        func labels(_ clear: Double) -> [Int] {
+            TimelinePhysics.axisTicks(steps: window.steps, gridNow: day, every: 60, clear: clear).map(\.step)
+        }
+        precondition(labels(RadarWindow.edgeClear(width: 1200, dated: false)).contains(day + 15 * hour))
+        precondition(!labels(RadarWindow.edgeClear(width: 360, dated: false)).contains(day + 15 * hour))
+        precondition(RadarWindow.edgeClear(width: 360, dated: true) > RadarWindow.edgeClear(width: 360, dated: false))
+        precondition(RadarWindow.edgeClear(width: 0, dated: false) == RadarWindow.edgeClear(width: 10_000, dated: false))
     }
 
     static func coverage() {
