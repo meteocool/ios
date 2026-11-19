@@ -46,5 +46,5 @@ xcrun swiftc meteocool/NativeMap/ThreeD/ThreeDMath.swift meteocool/NativeMap/Thr
 
 xcrun swiftc meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/ColumnValues.swift meteocool/AR/Colormaps.swift tests/RadarPixelsCheck.swift -o "$scratch/check-radar-pixels"
 "$scratch/check-radar-pixels"
-xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarWindow.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/ColumnValues.swift meteocool/NativeMap/MotionArrowRules.swift meteocool/AR/Colormaps.swift tests/NativeMapRadarCheck.swift -o "$scratch/check-native-map-radar"
+xcrun swiftc meteocool/NativeMap/RadarFrames.swift meteocool/NativeMap/RadarWindow.swift meteocool/NativeMap/RadarPixels.swift meteocool/NativeMap/ColumnValues.swift meteocool/NativeMap/MotionArrowRules.swift meteocool/NativeMap/PlaybackRules.swift meteocool/AR/Colormaps.swift tests/NativeMapRadarCheck.swift -o "$scratch/check-native-map-radar"
 "$scratch/check-native-map-radar"

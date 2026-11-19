@@ -2,7 +2,8 @@
 //  RadarTileStore.swift
 //  meteocool
 //
-//  Fetches, decodes and colours the radar's value tiles for the native map.
+//  Fetches, decodes and colours the radar's value tiles for the native map
+//  (core's `layers/valueTiles.ts` without OpenLayers).
 //
 
 import Foundation

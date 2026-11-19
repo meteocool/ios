@@ -6,7 +6,14 @@
     "src/browserCheck.js": "browser support check",
     "src/vite-env.d.ts": "build tooling",
     "src/entrypoints/*": "the web app's entry points",
-    "scripts/tests/register.mjs": "test tooling"
+    "scripts/tests/register.mjs": "test tooling",
+    "src/lib/decodedTiles.ts": "the web's byte-bounded store of decoded tiles shared by its loaders; RadarTileStore and RadarCompositor keep the native map's",
+    "scripts/tests/decodedTiles.test.ts": "tests lib/decodedTiles.ts, web only",
+    "src/lib/packPixels.ts": "packs value bytes into WebGL textures",
+    "scripts/tests/packPixels.test.ts": "tests lib/packPixels.ts, web only",
+    "src/layers/packTiles.ts": "the web's decoding workers",
+    "src/lib/gpuBudget.ts": "WebGL, decode and preview budgets by device class; the native caches have their own bounds",
+    "scripts/tests/gpuBudget.test.ts": "tests lib/gpuBudget.ts, web only"
   },
   "unported": {}
 }

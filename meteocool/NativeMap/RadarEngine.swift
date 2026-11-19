@@ -29,6 +29,10 @@ final class RadarEngine {
     var stale = false { didSet { updateOpacity() } }
     /// A storm is selected: the radar steps back (`INSPECT_OPACITY`).
     var dimmed = false { didSet { updateOpacity() } }
+    /// A slow or data-saving connection: less is fetched ahead (`preloadMode`).
+    var slow = false {
+        didSet { if slow != oldValue { prefetch() } }
+    }
     /// A radar is open in its own sweep: the composites step back under it.
     var siteDimmed = false { didSet { updateOpacity() } }
     /// The newest observation's build time and the learned cadence, for the
@@ -105,6 +109,7 @@ final class RadarEngine {
         store.onTile = { [weak self] key in self?.tileArrived(key) }
         player.onStep = { [weak self] step in self?.showStep(step) }
         player.isReady = { [weak self] step in self?.isReady(step) ?? true }
+        player.preloadMode = { [weak self] in self?.preloadMode ?? .none }
         compositor.onPrepared = { [weak self] in self?.prepared() }
         compositor.onBuilt = { [weak self] frame, rect in
             guard let self, self.scene.frames.current == frame else { return }
@@ -449,26 +454,43 @@ final class RadarEngine {
         if ready != player.preloaded { player.preloaded = ready }
     }
 
-    /// Puts the pictures of the steps coming up together ahead of time:
-    /// while playing, in the order playing reaches them (core's
-    /// `playbackLoop`); while paused, nearest first either side, for scrubbing.
-    private func prepareAhead() {
+    /// What is fetched and put together ahead (core's `preloadMode`): every
+    /// step, as the native map always has; on a slow or data-saving
+    /// connection only the next few while playing, and otherwise the step on
+    /// screen alone.
+    var preloadMode: PlaybackRules.PreloadMode {
+        let shown = visible && !player.timeline.steps.isEmpty
+        guard slow else { return shown ? .all : .none }
+        return PlaybackRules.preloadMode(setting: true, radarShown: shown, browsing: player.playing || player.grabbed || !player.isLive,
+                                         playing: player.playing, slow: true)
+    }
+
+    /// The steps whose pictures are put together ahead, the one on screen
+    /// first: while playing, in the order playing reaches them (core's
+    /// `playOrder`); while paused, nearest first either side, for scrubbing.
+    private func stepsAhead(from start: Int) -> [Int] {
         let steps = player.timeline.steps
-        guard !steps.isEmpty, let mapView, mapView.bounds.width > 0 else { return }
-        let start = heldIndex ?? player.index
-        var order = [start]
-        if player.playing {
-            var i = start
-            while order.count < 10 {
-                i = i + 1 < steps.count ? i + 1 : (player.nowIndex ?? 0)
-                if order.contains(i) { break }
-                order.append(i)
-            }
-        } else {
+        switch preloadMode {
+        case .none, .previews:
+            return [start]
+        case .ahead:
+            return player.playing ? PlaybackRules.playOrder(from: start, next: player.nextIndex(after:), max: PlaybackRules.aheadOnSlow + 1)
+                : [start] + Array((start + 1 ..< steps.count).prefix(PlaybackRules.aheadOnSlow))
+        case .all:
+            if player.playing { return PlaybackRules.playOrder(from: start, next: player.nextIndex(after:), max: 10) }
+            var order = [start]
             for distance in 1 ..< steps.count where order.count < 14 {
                 for i in [start + distance, start - distance] where steps.indices.contains(i) { order.append(i) }
             }
+            return order
         }
+    }
+
+    /// Puts the pictures of the steps coming up together ahead of time.
+    private func prepareAhead() {
+        let steps = player.timeline.steps
+        guard !steps.isEmpty, let mapView, mapView.bounds.width > 0 else { return }
+        let order = stepsAhead(from: heldIndex ?? player.index)
         var seen = Set<String>()
         let frames = order.map { frame(for: steps[$0]) }.filter { seen.insert($0.key).inserted }
         // A margin around the view: MapKit draws a little past its edges.
@@ -502,7 +524,8 @@ final class RadarEngine {
         let visible = mapView.visibleMapRect
         let zoom = drawZoom
         var plan: [RadarTileKey: Int] = [:]
-        let order = timeline.steps.indices.sorted { abs($0 - player.index) < abs($1 - player.index) }
+        let order = preloadMode == .all ? timeline.steps.indices.sorted { abs($0 - player.index) < abs($1 - player.index) }
+            : stepsAhead(from: player.index)
         for i in order {
             let distance = abs(i - player.index)
             for layer in timeline.layers[timeline.steps[i]] ?? [] {

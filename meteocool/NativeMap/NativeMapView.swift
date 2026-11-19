@@ -91,6 +91,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         radar.onWindowRefused = { [weak self] _ in self?.windowRefused() }
         monitor.radarStale = { [weak self] in self?.model.stale ?? false }
         monitor.newestProcessed = { [weak self] in self?.radar.processedTimes ?? (nil, nil) }
+        // A slow or data-saving connection fetches less ahead (`preloadMode`).
+        monitor.$slow.removeDuplicates().sink { [weak self] slow in self?.radar.slow = slow }.store(in: &observers)
         observeSettings()
         socket.onEvent = { [weak self] name, data in self?.socketEvent(name, data) }
         socket.onReconnect = { [weak self] in self?.wake() }

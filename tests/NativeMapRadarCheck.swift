@@ -15,6 +15,7 @@ struct NativeMapRadarCheck {
         valueTables()
         products()
         motionArrows()
+        playbackGate()
         print("NativeMapRadarCheck passed")
     }
 
@@ -275,5 +276,43 @@ struct NativeMapRadarCheck {
         precondition(M.stale(frame: arrows - 2 * 3600, arrows: arrows, onForecast: false))
         // With no frame or no arrows yet, nothing is stale.
         precondition(!M.stale(frame: nil, arrows: arrows, onForecast: false) && !M.stale(frame: arrows, arrows: nil, onForecast: false))
+    }
+
+    // MARK: - Playback (playbackGate.test.ts, framePreload.test.ts)
+
+    static func playbackGate() {
+        typealias P = PlaybackRules
+        // A step whose pictures are ready is moved on to at once; one not ready is waited for.
+        precondition(P.shouldAdvance(ready: true, waited: 0))
+        precondition(!P.shouldAdvance(ready: false, waited: 0) && !P.shouldAdvance(ready: false, waited: P.readyTimeout - 0.001))
+        // Waited for long enough, playback moves on regardless.
+        precondition(P.shouldAdvance(ready: false, waited: P.readyTimeout) && P.shouldAdvance(ready: false, waited: 0.2, timeout: 0.1))
+        // The wait left shrinks with the wait so far, and never goes below nothing.
+        precondition(P.waitLeft(0) == P.readyTimeout && P.waitLeft(0.4, timeout: 1) == 0.6 && P.waitLeft(5, timeout: 1) == 0)
+        // Playback waits only while steps are being prepared ahead.
+        precondition(P.holdsForTiles(.all) && P.holdsForTiles(.ahead))
+        precondition(!P.holdsForTiles(.none), "with nothing filling the store, a wait would only time out")
+        precondition(!P.holdsForTiles(.previews), "previews are not what a step waits for")
+        precondition(!P.holdsForTiles(.all, moving: true) && !P.holdsForTiles(.ahead, moving: true), "nor while the map is being zoomed or panned")
+        // The longest hold is a few frames of playback, not a stall.
+        precondition(P.readyTimeout >= 1 && P.readyTimeout <= 2)
+        // Playing, the steps to prepare are those the loop shows next, in its order, once round.
+        let loop = { (shown: Int) in shown >= 1200 ? 600 : shown + 300 }
+        precondition(P.playOrder(from: 900, next: loop, max: 10) == [900, 1200, 600])
+        precondition(P.playOrder(from: 900, next: loop, max: 2) == [900, 1200])
+        // A loop that never comes back to where it started stops when it repeats itself.
+        precondition(P.playOrder(from: 300, next: { $0 >= 900 ? 600 : $0 + 300 }, max: 10) == [300, 600, 900])
+
+        // What is loaded ahead.
+        func mode(browsing: Bool = true, playing: Bool = false, slow: Bool = false, setting: Bool = true, shown: Bool = true) -> P.PreloadMode {
+            P.preloadMode(setting: setting, radarShown: shown, browsing: browsing, playing: playing, slow: slow)
+        }
+        precondition(mode(browsing: false) == .none, "a map opened to look at now preloads nothing")
+        precondition(mode() == .all && mode(playing: true) == .all)
+        precondition(mode(slow: true) == .previews && mode(browsing: false, slow: true) == .none && mode(playing: true, slow: true) == .ahead)
+        precondition(mode(playing: true, setting: false) == .none && mode(playing: true, shown: false) == .none)
+        // Nearest the needle first, the later of two as near first; from either end across the whole timeline.
+        precondition(P.preloadOrder([0, 300, 600, 900, 1200], from: 600) == [600, 900, 300, 1200, 0])
+        precondition(P.preloadOrder([0, 300, 600], from: 0) == [0, 300, 600] && P.preloadOrder([0, 300, 600], from: 600) == [600, 300, 0])
     }
 }

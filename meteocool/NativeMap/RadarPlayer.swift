@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The native map's player: which step is on screen, and playback (core's
-//  `NowcastPlayback.svelte` and `lib/playbackLoop.ts`).
+//  `NowcastPlayback.svelte` and `lib/playbackLoop.ts`), held for each
+//  step's pictures by `lib/playbackGate.ts`'s rules (`PlaybackRules`).
 //
 
 import Foundation
@@ -17,8 +18,8 @@ final class RadarPlayer: ObservableObject {
     /// Back on the live frame after this long away (`RETURN_TO_LIVE_AFTER_MS`).
     static let returnToLiveAfter: TimeInterval = 5 * 60
     /// Waiting for a step's pictures at most this long, so a slow tile
-    /// cannot stop playback.
-    static let maxWait: TimeInterval = 3
+    /// cannot stop playback (`READY_TIMEOUT_MS`).
+    static let maxWait = PlaybackRules.readyTimeout
 
     @Published private(set) var timeline = RadarTimeline.empty
     @Published private(set) var index = 0
@@ -53,6 +54,9 @@ final class RadarPlayer: ObservableObject {
     /// Whether a step's pictures are ready: playing waits for the next one,
     /// so a step comes on screen whole, never tile by tile.
     var isReady: ((Int) -> Bool)?
+    /// What is prepared ahead: playback waits for a step only while its
+    /// pictures are (`holdsForTiles`).
+    var preloadMode: (() -> PlaybackRules.PreloadMode)?
 
     /// Parked on the newest observation: stays there as new ones arrive.
     private(set) var followsLive = true
@@ -215,11 +219,14 @@ final class RadarPlayer: ObservableObject {
     private func tick() {
         guard playing, !grabbed, !timeline.steps.isEmpty else { return }
         let next = nextIndex()
-        if let isReady, !isReady(timeline.steps[next]) {
+        // The step on screen stays a little longer while the next one's
+        // pictures are not ready, never longer than `maxWait`.
+        if let isReady, PlaybackRules.holdsForTiles(preloadMode?() ?? .all) {
             let since = waitingSince ?? Date()
             waitingSince = since
-            if Date().timeIntervalSince(since) < Self.maxWait {
-                startTimer(after: 0.1)
+            let waited = Date().timeIntervalSince(since)
+            if !PlaybackRules.shouldAdvance(ready: isReady(timeline.steps[next]), waited: waited, timeout: Self.maxWait) {
+                startTimer(after: min(0.1, PlaybackRules.waitLeft(waited, timeout: Self.maxWait)))
                 return
             }
         }
@@ -228,10 +235,13 @@ final class RadarPlayer: ObservableObject {
         startTimer(after: Self.frameInterval)
     }
 
-    /// The step after this one while playing (`nextFrame`): through the
+    /// The step after this one while playing (`nextFrame`).
+    func nextIndex() -> Int { nextIndex(after: index) }
+
+    /// The step after `index` while playing (`nextFrame`): through the
     /// forecast and round to now (or two hours back), or, with no forecast
     /// on screen, through the past and back to where play was pressed.
-    func nextIndex() -> Int {
+    func nextIndex(after index: Int) -> Int {
         // An open radar's steps alone, round to where play was pressed.
         if let only, !only.isEmpty {
             let mine = timeline.steps.indices.filter { only.contains(timeline.steps[$0]) }
