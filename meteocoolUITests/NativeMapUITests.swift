@@ -1325,7 +1325,8 @@ final class NativeMapUITests: XCTestCase {
     /// the arrows over the radar (core's `motion.spec.ts`); greyed in a past
     /// window, which has no motion of its own.
     func testRainMotionIsOffUntilTurnedOn() {
-        launch(link: "?latLonZ=47.5,9.5,7", demo: true)
+        // Over the demo's rain, south of the Alps.
+        launch(link: "?latLonZ=44.3,8.8,6", demo: true)
         waitForSeries()
         openLayers()
         let motion = app.switches["nativeMap.layers.motion"].firstMatch

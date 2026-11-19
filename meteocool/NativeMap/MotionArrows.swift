@@ -26,10 +26,11 @@ struct MotionLayer: Decodable, Equatable {
 /// mean motion, from a vector tile set the server renders from every
 /// domain's newest motion field. Off unless turned on (`layerMotion`).
 ///
-/// The server sends each zoom the arrows of one block size, so they stay
+/// Each zoom draws the arrows of one block size, its `level`, so they stay
 /// about as far apart on the screen at every zoom and nothing here thins or
-/// declutters them. They are drawn in the map's own space, so they turn
-/// with it.
+/// declutters them. The tiles stop at zoom 8 and hold the levels of the
+/// zooms past it too; the drawing picks the zoom's own. They are drawn in
+/// the map's own space, so they turn with it.
 ///
 /// The arrows are the newest motion, whatever step the timeline shows; they
 /// go faint on an observed step well before them (`MotionArrowRules.stale`).
@@ -47,7 +48,8 @@ final class MotionArrows: NativeMapFeature {
         let style = self.style
         // The server's zooms, one block size each, are 256-pixel tiles': at
         // 512 a phone screen held too few arrows to see the field turn.
-        return VectorTileOverlay(maxZoom: 10, tileSize: 256) { tile, zoomScale, context in
+        // The tile set's deepest zoom is 8: past it, its tiles are drawn bigger.
+        return VectorTileOverlay(maxZoom: 8, tileSize: 256) { tile, zoomScale, context in
             style.draw(tile, zoomScale: zoomScale, in: context)
         }
     }()
@@ -168,10 +170,15 @@ final class MotionArrowStyle: @unchecked Sendable {
         let ink = dark ? CGColor(red: 1, green: 1, blue: 1, alpha: 0.95) : CGColor(red: 17 / 255, green: 20 / 255, blue: 26 / 255, alpha: 0.9)
         let casing = dark ? CGColor(red: 12 / 255, green: 16 / 255, blue: 22 / 255, alpha: 0.75) : CGColor(red: 1, green: 1, blue: 1, alpha: 0.75)
         let points = 1 / Double(zoomScale)
+        // The whole zoom of 256-pixel tiles drawn here, nearer in, and its level.
+        let zoom = Int((log2(MKMapSize.world.width * Double(zoomScale) / 256) - 1e-9).rounded(.up))
+        let level = MotionArrowRules.level(atZoom: min(MotionArrowRules.finestZoom, max(0, zoom)))
         context.setLineCap(.round)
         context.setLineJoin(.round)
         for layer in tile.layers {
             for feature in layer.features where feature.type == .point {
+                // A tile set from before the levels were sent has one level a zoom already.
+                if let own = feature.properties["level"]?.number, Int(own) != level { continue }
                 guard let east = feature.properties["e"]?.number, let north = feature.properties["n"]?.number,
                       let shape = MotionArrowRules.arrow(east: east, north: north) else { continue }
                 // A tile's buffer repeats its neighbours' arrows: each is drawn from its own tile.

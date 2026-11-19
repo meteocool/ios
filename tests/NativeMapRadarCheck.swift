@@ -279,6 +279,12 @@ struct NativeMapRadarCheck {
         precondition(M.stale(frame: arrows - 2 * 3600, arrows: arrows, onForecast: false))
         // With no frame or no arrows yet, nothing is stale.
         precondition(!M.stale(frame: nil, arrows: arrows, onForecast: false) && !M.stale(frame: arrows, arrows: nil, onForecast: false))
+
+        // Each zoom draws one level, a zoom out a level coarser.
+        precondition(M.level(atZoom: M.finestZoom) == 0 && M.level(atZoom: 9) == 1 && M.level(atZoom: 8) == 2 && M.level(atZoom: 6) == 4)
+        // Past the finest zoom the finest level stays, far out the coarsest.
+        precondition(M.level(atZoom: 14) == 0 && M.level(atZoom: M.finestZoom - M.coarsestLevel) == M.coarsestLevel)
+        precondition(M.level(atZoom: 1) == M.coarsestLevel)
     }
 
     // MARK: - The loop (playbackLoop.test.ts)

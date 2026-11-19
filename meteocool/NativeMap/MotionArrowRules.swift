@@ -113,4 +113,17 @@ enum MotionArrowRules {
         guard let frame, let arrows, !onForecast else { return false }
         return arrows - frame > staleAfter
     }
+
+    /// The zoom the finest arrows, a block of one lattice cell, are drawn at;
+    /// each coarser level a zoom out.
+    static let finestZoom = 10
+    /// The coarsest level, 64 cells a side, drawn at every zoom out from its own.
+    static let coarsestLevel = 6
+
+    /// The level of arrows drawn at a whole zoom (of 256-pixel tiles): one
+    /// block size a zoom, so the arrows stay as far apart on the screen; the
+    /// finest past `finestZoom`, the coarsest far out (`levelAtZoom`).
+    static func level(atZoom zoom: Int) -> Int {
+        min(coarsestLevel, max(0, finestZoom - zoom))
+    }
 }
