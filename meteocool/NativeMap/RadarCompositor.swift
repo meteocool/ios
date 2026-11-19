@@ -303,8 +303,9 @@ final class RadarCompositor: @unchecked Sendable {
             bytes += cost
             jobs += pieces
         }
+        let frameOf = Dictionary(jobs.map { ($0.key, $0.frameName) }, uniquingKeysWith: { first, _ in first })
         let generation = lock.withLock { () -> Int in
-            previews.plan(jobs.map(\.key))
+            previews.plan(jobs.map(\.key), frameOf: { frameOf[$0] })
             previewGeneration += 1
             return previewGeneration
         }
@@ -350,6 +351,12 @@ final class RadarCompositor: @unchecked Sendable {
         guard let piece = lock.withLock({ previews.covering(name, z: z, x: x, y: y, ground: Self.box(ground), partly: partly) })
         else { return nil }
         return (piece.image?.image, Self.rect(piece.covers), piece.z)
+    }
+
+    /// Whether a piece of `frame`'s preview the plan names is still to come.
+    func awaitsPreview(_ frame: RadarFrameRef) -> Bool {
+        let name = previewName(frame)
+        return lock.withLock { previews.awaits(name) }
     }
 
     /// Whether `frame` can be shown in `rect` at MapKit's `zoom`: each of its

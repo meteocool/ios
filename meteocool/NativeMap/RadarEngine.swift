@@ -380,7 +380,6 @@ final class RadarEngine {
     private func showStep(_ step: Int) {
         let frame = frame(for: step)
         let showing = scene.frames.current
-        rest()
         // The picture moves to a step only once every tile of it in view is
         // ready (`FrameSwitchRules.settled`), or its preview covers the
         // rest, blurred but of the time asked for, each tile replacing the
@@ -402,32 +401,52 @@ final class RadarEngine {
                 }
             }
         }
+        askedAt = CACurrentMediaTime()
+        rest(frame)
         updateOpacity()
         prepareAhead()
         prefetch()
         onStep?(step)
     }
 
-    /// A step a hand on the timeline crosses has its preview drawn and its
-    /// own tiles asked for only once the needle has stayed on it a moment:
-    /// the steps it only passed over are not in the way of the one it
-    /// stopped on.
-    private func rest() {
+    /// When the step on screen, or the one held for, was asked for.
+    private var askedAt: CFTimeInterval = 0
+
+    /// How much longer, in seconds, the step asked for waits before its own
+    /// tiles are asked for. Shown at once from its preview under a hand on
+    /// the timeline, `PreviewTileRules.rest`: the needle may only be passing
+    /// over it. Held with nothing of it to show, the rest as well, and up to
+    /// `PreviewTileRules.previewWait` in all while its preview is on its way
+    /// (`FrameSwitchRules.waitsToAsk`).
+    private func restLeft(_ frame: RadarFrameRef) -> TimeInterval {
+        let waited = (CACurrentMediaTime() - askedAt) * 1000
+        let rest = PreviewTileRules.rest * 1000
+        guard heldFrame == frame else { return player.grabbed ? max(0, rest - waited) / 1000 : 0 }
+        return FrameSwitchRules.waitsToAsk(waited, showsAnother: !scene.frames.current.layers.isEmpty,
+                                           previewDue: compositor.awaitsPreview(frame), rest: rest,
+                                           previewWait: PreviewTileRules.previewWait * 1000) / 1000
+    }
+
+    /// A step the needle crosses has its preview drawn and its own tiles
+    /// asked for only once it has stayed on it a moment (`restLeft`): the
+    /// steps it only passed over are not in the way of the one it stopped
+    /// on, nor of the previews still coming.
+    private func rest(_ frame: RadarFrameRef) {
         restTimer?.invalidate()
         restTimer = nil
-        guard player.grabbed else {
-            scene.rested = true
+        let left = restLeft(frame)
+        guard left > 0 else {
+            if !scene.rested {
+                scene.rested = true
+                renderer?.setNeedsDisplay()
+                prepareAhead()
+                prefetch()
+            }
             return
         }
         scene.rested = false
-        restTimer = Timer.scheduledTimer(withTimeInterval: PreviewTileRules.rest, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                self.scene.rested = true
-                self.renderer?.setNeedsDisplay()
-                self.prepareAhead()
-                self.prefetch()
-            }
+        restTimer = Timer.scheduledTimer(withTimeInterval: left, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.rest(frame) }
         }
     }
 
@@ -516,9 +535,11 @@ final class RadarEngine {
             || compositor.isReady(frame, zoom: zoom - 1, in: visible) || compositor.isReady(frame, zoom: zoom + 1, in: visible)
     }
 
-    /// Pictures were put together: a held step may be ready now.
+    /// Pictures were put together: a held step may be ready now, and the
+    /// one asked for no longer waiting for its preview.
     private func prepared() {
         if let held = heldFrame, isReady(held) || isPreviewed(held) { display(held) }
+        if !scene.rested { rest(heldFrame ?? scene.frames.current) }
         updatePreloaded()
     }
 
@@ -645,7 +666,8 @@ final class RadarEngine {
                 priority: distance == 0 && scene.rested ? 0 : preview + 1 + distance)
             if plan.count > 1200 { break }
         }
-        store.replacePlan(plan)
+        // Under a hand, every step's preview before any other step's tiles.
+        store.replacePlan(plan, holdBehind: PlaybackRules.previewsFirst(playing: player.playing) ? preview : nil)
     }
 
     // MARK: - Look

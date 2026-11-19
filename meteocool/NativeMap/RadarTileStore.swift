@@ -87,7 +87,11 @@ final class RadarTileStore: @unchecked Sendable {
     private let images = NSCache<NSString, ImageBox>()
     private var missing = Set<RadarTileKey>()
     private var pending: [RadarTileKey: Int] = [:]
-    private var running = Set<RadarTileKey>()
+    /// What is being fetched, with the priority it was asked for at.
+    private var running: [RadarTileKey: Int] = [:]
+    /// Asked for later than this priority waits while anything at it is
+    /// still to come (`PlaybackRules.nextToFetch`); nil holds nothing.
+    private var holdBehind: Int?
     private static let concurrency = 8
 
     private final class ImageBox {
@@ -163,7 +167,7 @@ final class RadarTileStore: @unchecked Sendable {
     /// Fetches what is missing of `keys`, sooner for a lower `priority`.
     func request(_ keys: [RadarTileKey], priority: Int) {
         lock.withLock {
-            for key in keys where !missing.contains(key) && !running.contains(key) {
+            for key in keys where !missing.contains(key) && running[key] == nil {
                 guard pngs.object(forKey: cacheName(key, palette: false)) == nil else { continue }
                 pending[key] = min(pending[key] ?? .max, priority)
             }
@@ -172,11 +176,14 @@ final class RadarTileStore: @unchecked Sendable {
     }
 
     /// Replaces what waits to be fetched by a new plan (a moved map, another
-    /// frame); fetches already under way finish.
-    func replacePlan(_ plan: [RadarTileKey: Int]) {
+    /// frame); fetches already under way finish. With `holdBehind`, what is
+    /// asked for later than that priority waits until nothing at it is left
+    /// to fetch: the steps' tiles behind the previews'.
+    func replacePlan(_ plan: [RadarTileKey: Int], holdBehind: Int? = nil) {
         lock.withLock {
+            self.holdBehind = holdBehind
             pending = plan.filter { key, _ in
-                !missing.contains(key) && !running.contains(key) && pngs.object(forKey: cacheName(key, palette: false)) == nil
+                !missing.contains(key) && running[key] == nil && pngs.object(forKey: cacheName(key, palette: false)) == nil
             }
         }
         pump()
@@ -185,9 +192,9 @@ final class RadarTileStore: @unchecked Sendable {
     private func pump() {
         let next: [(RadarTileKey, URL)] = lock.withLock {
             var picked: [(RadarTileKey, URL)] = []
-            while running.count < Self.concurrency, let key = pending.min(by: { $0.value < $1.value })?.key {
-                pending[key] = nil
-                running.insert(key)
+            while running.count < Self.concurrency,
+                  let key = PlaybackRules.nextToFetch(pending, running: running.values, holdBehind: holdBehind) {
+                running[key] = pending.removeValue(forKey: key)
                 picked.append((key, key.url(base: base)))
             }
             return picked
@@ -203,7 +210,7 @@ final class RadarTileStore: @unchecked Sendable {
     private func finished(_ key: RadarTileKey, data: Data?, status: Int?, failed: Bool) {
         var notify = false
         lock.withLock {
-            running.remove(key)
+            running[key] = nil
             if let status, status == 404 || status == 403 {
                 // Not published: a tile with nothing in it.
                 if missing.count > 20_000 { missing.removeAll() }

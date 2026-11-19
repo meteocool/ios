@@ -47,6 +47,13 @@ enum PreviewTileRules {
     /// stops on (core's `REST_MS`).
     static let rest: TimeInterval = 0.08
 
+    /// How long a step asked for with nothing to show waits for its preview,
+    /// where one is on its way, before its tiles are asked for regardless:
+    /// the preview is a hundredth of them and shows the step at once, and
+    /// its tiles asked for beside it are in its way on a slow connection. No
+    /// longer than a preview takes on such a one (core's `PREVIEW_WAIT_MS`).
+    static let previewWait: TimeInterval = 1
+
     /// The zoom a view drawn from tiles at `z` is previewed from: `zooms` up,
     /// no further than the pyramid's top. Nil where that is no coarser than
     /// the view's own tiles, which are then as few as a preview's would be.
@@ -152,6 +159,8 @@ struct PreviewStore<Image: Sendable> {
     /// By step, then by `z/x/y`.
     private var frames: [String: [String: String]] = [:]
     private var wanted = Set<String>()
+    /// The plan's keys not yet answered for, by the step each is of.
+    private var due: [String: Set<String>] = [:]
     /// The bytes held now.
     private(set) var bytes = 0
     /// The most bytes held at once.
@@ -166,10 +175,23 @@ struct PreviewStore<Image: Sendable> {
 
     func has(_ key: String) -> Bool { pieces[key] != nil }
 
-    /// The keys taken in from now on; what is held under others stays while there is room.
-    mutating func plan(_ keys: some Sequence<String>) {
+    /// The keys taken in from now on; what is held under others stays while
+    /// there is room. With `frameOf`, the step each key is a piece of: that
+    /// step is then waited for (`awaits`) until each has been put.
+    mutating func plan(_ keys: some Sequence<String>, frameOf: ((String) -> String?)? = nil) {
         wanted = Set(keys)
+        due = [:]
+        guard let frameOf else { return }
+        for key in wanted where pieces[key] == nil {
+            guard let frame = frameOf(key) else { continue }
+            due[frame, default: []].insert(key)
+        }
     }
+
+    /// Whether a piece the plan names for `frame` is still to come: its
+    /// preview is on its way, and worth a moment's wait. A piece that never
+    /// comes is waited for for good, so the caller bounds its wait.
+    func awaits(_ frame: String) -> Bool { due[frame] != nil }
 
     /// Whether the plan in hand names `key`.
     func planned(_ key: String) -> Bool { wanted.contains(key) }
@@ -180,6 +202,7 @@ struct PreviewStore<Image: Sendable> {
         order = []
         frames = [:]
         wanted = []
+        due = [:]
         bytes = 0
     }
 
@@ -187,6 +210,8 @@ struct PreviewStore<Image: Sendable> {
     @discardableResult
     mutating func put(_ piece: PreviewPiece<Image>) -> Bool {
         guard wanted.contains(piece.key) else { return false }
+        // Answered for, kept or not.
+        if due[piece.frame]?.remove(piece.key) != nil, due[piece.frame]?.isEmpty == true { due[piece.frame] = nil }
         if pieces[piece.key] != nil { remove(piece.key) }
         // A step has one piece a coarse tile: a newer crop of it replaces the last.
         let at = "\(piece.z)/\(piece.x)/\(piece.y)"

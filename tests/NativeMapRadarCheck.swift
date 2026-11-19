@@ -354,6 +354,19 @@ struct NativeMapRadarCheck {
         precondition(mode() == .all && mode(playing: true) == .all)
         precondition(mode(slow: true) == .previews && mode(browsing: false, slow: true) == .none && mode(playing: true, slow: true) == .ahead)
         precondition(mode(playing: true, setting: false) == .none && mode(playing: true, shown: false) == .none)
+        // Under a hand on the timeline, every step's preview comes before any step's tiles; playing, the next step's do not wait.
+        precondition(P.previewsFirst(playing: false) && !P.previewsFirst(playing: true))
+        // Held, what is queued behind the previews stays queued until they are in (core's FramePreloader `hold`).
+        precondition(["p0", "p1"].contains(P.nextToFetch(["p0": 1, "p1": 1, "t0": 2], running: [Int](), holdBehind: 1)))
+        precondition(P.nextToFetch(["t0": 2, "t1": 3], running: [1], holdBehind: 1) == nil, "one preview is still on its way")
+        // The previews in, or failed and no longer running, the steps' tiles follow, nearest first.
+        precondition(P.nextToFetch(["t0": 2, "t1": 3], running: [Int](), holdBehind: 1) == "t0")
+        // What comes before the previews (the step on screen's own tiles) is never held.
+        precondition(P.nextToFetch(["now": 0, "t0": 2], running: [1], holdBehind: 1) == "now")
+        // Not held, the soonest is fetched whatever else is on its way; a plan with no previews holds nothing up.
+        precondition(P.nextToFetch(["t0": 2], running: [1], holdBehind: nil) == "t0")
+        precondition(P.nextToFetch(["t0": 2], running: [0, 2], holdBehind: 1) == "t0")
+        precondition(P.nextToFetch([String: Int](), running: [Int](), holdBehind: 1) == nil)
         // Nearest the needle first, the later of two as near first; from either end across the whole timeline.
         precondition(P.preloadOrder([0, 300, 600, 900, 1200], from: 600) == [600, 900, 300, 1200, 0])
         precondition(P.preloadOrder([0, 300, 600], from: 0) == [0, 300, 600] && P.preloadOrder([0, 300, 600], from: 600) == [600, 300, 0])
@@ -380,6 +393,20 @@ struct NativeMapRadarCheck {
         let settled: Set<String> = ["a", "b"]
         precondition(F.settled(["a", "b"], ready: settled.contains) && !F.settled(["a", "b", "c"], ready: settled.contains))
         precondition(F.settled([String](), ready: { _ in false }), "a step with nothing in view")
+        // A map that shows nothing asks for its step's tiles at once.
+        precondition(F.waitsToAsk(0, showsAnother: false, previewDue: false, rest: 80, previewWait: 1000) == 0)
+        precondition(F.waitsToAsk(0, showsAnother: false, previewDue: true, rest: 80, previewWait: 1000) == 0)
+        // A step the needle may only be passing over waits out the rest before its tiles are asked for.
+        precondition(F.waitsToAsk(0, showsAnother: true, previewDue: false, rest: 80, previewWait: 1000) == 80)
+        precondition(F.waitsToAsk(50, showsAnother: true, previewDue: false, rest: 80, previewWait: 1000) == 30)
+        precondition(F.waitsToAsk(80, showsAnother: true, previewDue: false, rest: 80, previewWait: 1000) == 0)
+        precondition(F.waitsToAsk(500, showsAnother: true, previewDue: false, rest: 80, previewWait: 1000) == 0)
+        // A step whose preview is on its way waits for that, but not for good.
+        precondition(F.waitsToAsk(80, showsAnother: true, previewDue: true, rest: 80, previewWait: 1000) == 920)
+        precondition(F.waitsToAsk(999, showsAnother: true, previewDue: true, rest: 80, previewWait: 1000) == 1)
+        precondition(F.waitsToAsk(1000, showsAnother: true, previewDue: true, rest: 80, previewWait: 1000) == 0)
+        // The wait for a preview is never shorter than the rest.
+        precondition(F.waitsToAsk(10, showsAnother: true, previewDue: true, rest: 80, previewWait: 0) == 70)
     }
 
     // MARK: - Previews (previewTiles.test.ts)
@@ -453,5 +480,33 @@ struct NativeMapRadarCheck {
         newer.put(piece("a", "f1", (3, 4, 2), [0, 0, 256, 512]))
         newer.put(piece("a2", "f1", (3, 4, 2), [128, 0, 384, 512]))
         precondition(!newer.has("a") && newer.find("f1", z: 3, x: 4, y: 2)?.key == "a2" && newer.bytes == 100)
+
+        // A step is waited for until every piece the plan names for it has been put.
+        var due = PreviewStore<Int>(capacity: 10_000)
+        let frames = ["a": "f1", "b": "f1", "c": "f2"]
+        due.plan(["a", "b", "c"], frameOf: { frames[$0] })
+        precondition(due.awaits("f1") && due.awaits("f2"))
+        precondition(!due.awaits("f3"), "the plan names nothing of it")
+        due.put(piece("a", "f1", (3, 4, 2), tile))
+        precondition(due.awaits("f1"), "one piece of it is still to come")
+        due.put(piece("b", "f1", (3, 5, 2), tile))
+        precondition(!due.awaits("f1") && due.awaits("f2"))
+
+        // A step whose pieces are already held is not waited for, nor one of a plan that names no steps.
+        var held = PreviewStore<Int>(capacity: 10_000)
+        held.plan(["a"], frameOf: { _ in "f1" })
+        held.put(piece("a", "f1", (3, 4, 2), tile))
+        held.plan(["a"], frameOf: { _ in "f1" })
+        precondition(!held.awaits("f1"))
+        held.plan(["b"])
+        precondition(!held.awaits("f1"))
+
+        // A piece there was no room for is not waited for any longer, nor anything once cleared.
+        var room = PreviewStore<Int>(capacity: 300)
+        room.plan(["a", "b"], frameOf: { $0 == "a" ? "f1" : "f2" })
+        precondition(!room.put(piece("a", "f1", (3, 4, 2), tile, cost: 1000)), "too large to keep")
+        precondition(!room.awaits("f1") && room.awaits("f2"))
+        room.clear()
+        precondition(!room.awaits("f2"))
     }
 }

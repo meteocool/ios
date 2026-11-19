@@ -146,6 +146,8 @@ targets:
       - path: meteocool/NativeMap/RadarTileStore.swift
       - path: meteocool/NativeMap/RadarCompositor.swift
       - path: meteocool/NativeMap/PreviewTileRules.swift
+      # The tile store's order of fetching (`nextToFetch`).
+      - path: meteocool/NativeMap/PlaybackRules.swift
       - path: meteocool/NativeMap/NativeMapEndpoints.swift
       - path: meteocool/NativeMap/radar-coverage.json
     settings:

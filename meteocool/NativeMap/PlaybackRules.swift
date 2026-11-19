@@ -104,7 +104,8 @@ enum PlaybackRules {
 
     /// What to load ahead: every step, the next few after the needle, only
     /// each step's coarse preview, or nothing. The first two load the
-    /// previews as well, before anything else.
+    /// previews as well, and before any step's tiles unless playing
+    /// (`previewsFirst`).
     enum PreloadMode: String, Sendable {
         case all, ahead, previews, none
     }
@@ -120,6 +121,30 @@ enum PlaybackRules {
         guard setting, radarShown, browsing else { return .none }
         guard slow else { return .all }
         return playing ? .ahead : .previews
+    }
+
+    /// Whether the steps' tiles wait until every step's preview is in
+    /// (`previewsFirst`).
+    ///
+    /// Under a hand on the timeline they do: the needle can be anywhere on
+    /// it within the second, and a step it lands on with no preview leaves
+    /// the map on another time, while the tiles of the steps around where it
+    /// started, a hundred times the bytes, take the connection. Not while
+    /// playing: the next step is known, and playback waits for its tiles.
+    static func previewsFirst(playing: Bool) -> Bool {
+        !playing
+    }
+
+    /// The next of `pending` to fetch, the soonest `priority` (the lowest)
+    /// first; nil when there is none or what is left is held. With
+    /// `holdBehind`, anything asked for later than that priority stays
+    /// queued while anything at it is still `pending` or `running`: the
+    /// steps' tiles behind the previews (core's `FramePreloader` held while
+    /// its previews' loader is not `idle`). A preview that failed is no
+    /// longer running, and is not waited for.
+    static func nextToFetch<Key>(_ pending: [Key: Int], running: some Collection<Int>, holdBehind: Int?) -> Key? {
+        let held = holdBehind.map { hold in pending.values.contains(hold) || running.contains(hold) } ?? false
+        return pending.filter { !held || $0.value <= holdBehind! }.min { $0.value < $1.value }?.key
     }
 
     /// The order to load steps in: nearest `from` first, the later of two as

@@ -59,4 +59,18 @@ enum FrameSwitchRules {
     static func settled<Job>(_ jobs: some Sequence<Job>, ready: (Job) -> Bool) -> Bool {
         jobs.allSatisfy(ready)
     }
+
+    /// How much longer, ms, a step asked for with nothing of it to show
+    /// waits before its tiles are asked for; 0 to ask now (`waitsToAsk`).
+    ///
+    /// A map that shows nothing asks at once. One that shows another step
+    /// (`showsAnother`) waits `rest` since the step was asked for, as the
+    /// needle may only be passing over it; and, where the step's preview is
+    /// on its way (`previewDue`), `previewWait` in all: the preview shows the
+    /// step sooner than its tiles would, and those are in its way on a slow
+    /// line.
+    static func waitsToAsk(_ waited: Double, showsAnother: Bool, previewDue: Bool, rest: Double, previewWait: Double) -> Double {
+        guard showsAnother else { return 0 }
+        return max(0, (previewDue ? max(rest, previewWait) : rest) - waited)
+    }
 }
