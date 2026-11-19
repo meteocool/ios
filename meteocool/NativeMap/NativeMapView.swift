@@ -271,6 +271,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // An open radar's controls, on the tray; the strips stand on them.
         let siteCard = addToDock(SiteSweepCard(state: model.site, model: model))
         siteCard.isHidden = true
+        model.site.about = { [weak self] code in self?.openRadarInfo(code) }
         model.site.$mode
             .map { $0 != nil }
             .removeDuplicates()
@@ -452,6 +453,15 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                                             close: { [weak self] in self?.dismissSheet() },
                                                             explain: { [weak self] in self?.openExplainer() }))
         presentSheet(menu, detents: [.medium(), .large()])
+    }
+
+    /// The open radar's own page (core's `RadarInfo`), from the tray's "i".
+    func openRadarInfo(_ code: String) {
+        let info = RadarInfoBundle.load(code, locale: CoreStrings.language)
+        let page = UIHostingController(rootView: RadarInfoPage(code: code, info: info, photoOrigin: MeteocoolEnvironment.current.mapURL,
+                                                               close: { [weak self] in self?.dismissSheet() },
+                                                               explain: { [weak self] in self?.openExplainer() }))
+        presentSheet(page, detents: [.medium(), .large()])
     }
 
     private func openExplainer() {

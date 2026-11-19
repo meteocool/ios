@@ -38,6 +38,8 @@ mkdir "$scratch/sweeps"
 for quantity in DBZH VRADH; do gunzip -c "tests/fixtures/sweeps/$quantity.mcsw" > "$scratch/sweeps/$quantity.mcsw"; done
 xcrun swiftc meteocool/NativeMap/Sites/SiteSweepRules.swift meteocool/NativeMap/Storms/RadarSites.swift tests/NativeMapSitesCheck.swift -o "$scratch/check-native-map-sites"
 "$scratch/check-native-map-sites" "$scratch/sweeps"
+xcrun swiftc meteocool/NativeMap/Sites/RadarInfoRules.swift meteocool/NativeMap/Storms/RadarSites.swift tests/RadarInfoCheck.swift -o "$scratch/check-radar-info"
+"$scratch/check-radar-info" meteocool/NativeMap/RadarInfo
 xcrun swiftc meteocool/NativeMap/Stations/StationRules.swift tests/NativeMapStationsCheck.swift -o "$scratch/check-native-map-stations"
 "$scratch/check-native-map-stations"
 "$scratch/check-native-map-storms"

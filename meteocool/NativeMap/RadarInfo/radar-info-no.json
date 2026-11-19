@@ -1,0 +1,218 @@
+{
+  "noand": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 500C",
+    "band": "C",
+    "dualPol": null,
+    "since": "2017",
+    "towerM": 5.5,
+    "photo": {
+      "src": "/radars/noand.webp",
+      "width": 800,
+      "height": 1422,
+      "author": "Meteorologisk institutt",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+      "page": "https://snl.no/And%C3%B8ya_v%C3%A6rradar"
+    },
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/And%C3%B8ya_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMbrWcLs3ygiTtLB15tb7ou9E72onnm9XXe8jGhFEM7X6",
+      "https://www.blv.no/na-er-varradaren-i-orden/s/5-9-512073",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "nober": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 635CDP",
+    "band": "C",
+    "dualPol": true,
+    "since": "2012",
+    "towerM": 17,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Berlev%C3%A5g_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMVA0wdS_47yLwwNK79eoK028ZXtjH-4qL8KskvmEOWVm",
+      "https://www.nrk.no/tromsogfinnmark/dette-er-norges-hoyeste-vaerradio-1.8255793",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "nobml": {
+    "operator": "MET Norway",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": true,
+    "since": "2020",
+    "towerM": 6.5,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/B%C3%B8mlo_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMeBFfJ8XDn_vWP-kAmH65eU4Ohbcyv7sgQD8kjxkB2vI",
+      "https://www.met.no/nyhetsarkiv/na-oppgraderer-vi-bomlo-vaerradar"
+    ]
+  },
+  "nohas": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 600C",
+    "band": "C",
+    "dualPol": null,
+    "since": "2008",
+    "towerM": 6.5,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Hasvik_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMfWJ8e6r10f1WDyJZUxBoZZocp-nHds-gRB8oXjkv1lv",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "nohfj": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2016",
+    "towerM": 13.5,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Hafjell_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMcB_ZUI23ZXZ2-Thj2d5eVbTnzDdXRhz3Fzt_VqIpB95",
+      "https://www.met.no/nyhetsarkiv/na-oppgraderer-vi-bomlo-vaerradar"
+    ]
+  },
+  "nohgb": {
+    "operator": "MET Norway",
+    "system": "Leonardo METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": 7,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/H%C3%A6gebostad_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMfLtJo6NKGpI6Fe_Uj0HWwrr-gLZRj07YjUHW0FnbcaR",
+      "https://www.met.no/nyhetsarkiv/na-oppgraderer-vi-bomlo-vaerradar",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "nohur": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 635CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2010",
+    "towerM": 13.5,
+    "photo": {
+      "src": "/radars/nohur.webp",
+      "width": 800,
+      "height": 530,
+      "author": "Meteorologisk institutt",
+      "licence": "CC BY 3.0 NO",
+      "licenceUrl": "https://creativecommons.org/licenses/by/3.0/no/",
+      "page": "https://snl.no/Hurum_v%C3%A6rradar"
+    },
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Hurum_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMepJuBVqbeokpdmvxTVGTqwX0grkm9gwjRgYQUfAPp6V",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "norsa": {
+    "operator": "MET Norway",
+    "system": "Leonardo METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2018",
+    "towerM": 9,
+    "photo": {
+      "src": "/radars/norsa.webp",
+      "width": 800,
+      "height": 1067,
+      "author": "Meteorologisk institutt",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+      "page": "https://snl.no/Rissa_v%C3%A6rradar"
+    },
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Rissa_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMVkMGvVXbSdeclZ0VWfo7psl0izu0oGznTZxzbbcYMx1",
+      "https://doffin.no/notices/2018-891166",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "norsg": {
+    "operator": "MET Norway",
+    "system": null,
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.met.no/nyhetsarkiv/ny-vaerradar-i-finnmark-gir-bedre-varsling",
+      "https://www.met.no/nyhetsarkiv/ny-vaerradar-pa-finnmarksvidda",
+      "https://kommunikasjon.ntb.no/pressemelding/17943360/ny-vaerradar-apnet-i-finnmark?publisherId=17846853",
+      "https://www.regjeringen.no/no/aktuelt/ny-verradar-pa-finnmarksvidda/id2769360/"
+    ]
+  },
+  "norst": {
+    "operator": "MET Norway",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": true,
+    "since": "2021",
+    "towerM": 12,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/R%C3%B8st_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMYPqdfwERP5vW0jLIik1ZGvWav2WjHVVI9MG0HUFzvj6",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  },
+  "nosmn": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 10.5,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/S%C3%B8mna_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMR5bltSU0u6q0Zwsks1UKzYMoEaLSSbheU4tsu9HURdt"
+    ]
+  },
+  "nosta": {
+    "operator": "MET Norway",
+    "system": "Selex METEOR 600C",
+    "band": "C",
+    "dualPol": false,
+    "since": "2009",
+    "towerM": 10,
+    "photo": {
+      "src": "/radars/nosta.webp",
+      "width": 800,
+      "height": 1066,
+      "author": "Norwegian Meteorological Institute (met.no)",
+      "licence": "Attribution",
+      "licenceUrl": null,
+      "page": "https://commons.wikimedia.org/wiki/File:Radom-montering.jpg"
+    },
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://snl.no/Stad_v%C3%A6rradar",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMespllCNRDRU3eRFichsgOP6S89JbQ5P8YFtzHZzddSS",
+      "https://no.wikipedia.org/wiki/V%C3%A6rradar"
+    ]
+  }
+}

@@ -34,7 +34,9 @@ ahead most of the time; a sync ports what it has gained since the last one.
    - a new route goes into NativeMapEndpoints.swift, a socket event through
      `socketEvent`, a link parameter into NativeMapLink.swift and the
      feature's `open` and `linkParameters`;
-   - strings come from `scripts/core-strings.py build/core`, never by hand.
+   - strings come from `scripts/core-strings.py build/core`, never by hand,
+     and the radars' pages (facts and texts) from
+     `scripts/core-radar-info.py build/core`.
 4. A core change with no native counterpart goes into the ledger's
    `webOnly` or `unported` with its reason, so the next sync does not weigh
    it again.

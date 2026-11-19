@@ -40,7 +40,7 @@ HINTS = [
     ("src/locale/", "strings changed: scripts/core-sync.py export, then scripts/core-strings.py build/core"),
     ("spec/", "the API's spec changed: check NativeMapEndpoints.swift and the decoders (StormData.swift, RadarFrames.swift)"),
     ("src/api/generated/", None),
-    ("src/radarInfo/", "the radars' texts changed: rerun their import"),
+    ("src/radarInfo/", "the radars' pages changed: scripts/core-radar-info.py build/core"),
     ("public/", None),
     ("tests/ui/", "core's UI tests changed: see what meteocoolUITests should cover"),
     ("src/colormaps.ts", "palettes changed: scripts/colormaps.py"),

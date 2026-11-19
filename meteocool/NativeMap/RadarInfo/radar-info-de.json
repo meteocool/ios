@@ -1,0 +1,341 @@
+{
+  "deasb": {
+    "operator": "DWD",
+    "system": null,
+    "band": "C",
+    "dualPol": false,
+    "since": "2018",
+    "towerM": 30,
+    "photo": {
+      "src": "/radars/deasb.webp",
+      "width": 800,
+      "height": 600,
+      "author": "Michael W",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+      "page": "https://geo.hlipp.de/photo/249286"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://ams.confex.com/ams/35Radar/webprogram/Paper191548.html",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte"
+    ]
+  },
+  "deboo": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 30,
+    "photo": {
+      "src": "/radars/deboo.webp",
+      "width": 800,
+      "height": 1423,
+      "author": "FinleyFinleyson",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Radarturm-Schwienhagen-Boostedt.jpg"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMboB8aYIhqmDm-zcwhT8hVs66ST1bLD3S3x27LCzy2QM",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://de.wikipedia.org/wiki/Schwienhagen",
+      "https://de.wikipedia.org/wiki/Boostedt"
+    ]
+  },
+  "dedrs": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 36,
+    "photo": {
+      "src": "/radars/dedrs.webp",
+      "width": 800,
+      "height": 1200,
+      "author": "Albrecht Voß",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Dresden,_Wilhelmine-Reichard-Ring,_Flughafen_Dresden,_Wetter-Radarturm,_17.6.2.40-070133.jpg"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMaFS-H8oWVNpreFAqN14gTywDDdH79Wkz_aWF9ngds43",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte",
+      "https://de.wikipedia.org/wiki/Flughafen_Dresden"
+    ]
+  },
+  "deeis": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 26,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMZYEpjFM7-_txsNgOTz5Lj9Tur5k7O5JvU5Ri8qMGaW8",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte",
+      "https://de.wikipedia.org/wiki/Eisberg_(Oberpf%C3%A4lzer_Wald)"
+    ]
+  },
+  "deess": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2012",
+    "towerM": 30,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMZWtQ3AI1zji_bbIWRdUvKkAIiQCDyEt38bCe0YnkjrK",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte",
+      "https://de.wikipedia.org/wiki/Schuir",
+      "https://www.lto.de/recht/nachrichten/n/vg-duesseldorf-10-k-5017-13-windraeder-deutscher-wetterdienst"
+    ]
+  },
+  "defbg": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2012",
+    "towerM": 21,
+    "photo": {
+      "src": "/radars/defbg.webp",
+      "width": 800,
+      "height": 564,
+      "author": "Jörg Braukmann",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Friedrich-Luise-Turm.jpg"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMSZY1NVxh4ZEmMuyOibo6m-UK8BXLbQTVUY4YFts9JG6",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikipedia.org/wiki/Feldberg_(Berg_im_Schwarzwald)"
+    ]
+  },
+  "defld": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 73,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMR9-yeXUDoVQw_uAwHZyM9NjvsbDkFOoqf-d_b_lLn9t",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikipedia.org/wiki/Flechtdorf",
+      "https://nabu-waldeck-frankenberg.de/tl_files/fM_k0002/Pressespiegel/2014/2014-12-11%20WLZ%20Wetterradar%20soll%20in%20den%20Kellerwald.pdf"
+    ]
+  },
+  "dehnr": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 44,
+    "photo": {
+      "src": "/radars/dehnr.webp",
+      "width": 800,
+      "height": 1067,
+      "author": "TeWeBs",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:HAJ_Alter_Tower.JPG"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMdZ2322P1NqFlUD5eW0YW_qc5ZwyZpnU9Q0sUS_W0wmA",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://de.wikipedia.org/wiki/Flughafen_Hannover"
+    ]
+  },
+  "deisn": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 45,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMZvMGQbf0w-IAlQcEsTw3Vor8KpfW0pDeyJ9_0PNmnaq",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://www.essl.org/ECSS/2013/programme/presentations/48.pdf"
+    ]
+  },
+  "demem": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2013",
+    "towerM": 55,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMTmRakYEboEdIuDMAa8lYdB_DYDQQfDbtIesty3ECy00",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://www.schwaebische.de/regional/bayern/neues-wetterauge-spaeht-in-den-himmel-ueber-schwaben-857979",
+      "https://de.wikipedia.org/wiki/Niederrieden"
+    ]
+  },
+  "deneu": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2012",
+    "towerM": 30,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMV2gdeCoAjFmWDurbVWvUB7Ecrk8zoPx-K5ofeB2V5Hr",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte"
+    ]
+  },
+  "denhb": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 32,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMVBu81q46aKA-RwdL8am-mkQ6pwP7OoIJSy4hqJdBpAn",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://www.kuladig.de/Objektansicht/KLD-345689"
+    ]
+  },
+  "deoft": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2011",
+    "towerM": 45,
+    "photo": {
+      "src": "/radars/deoft.webp",
+      "width": 800,
+      "height": 1201,
+      "author": "Stefan Oemisch",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:2021_Wetterradarturm_bei_Langen.jpg"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMWQX9dJ6MoIx4L0P9VCgsyoYbNnrJtnYYwNc2z_q87tM",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://bollinger-grohmann.com/en.projects.weather-radar-system.html"
+    ]
+  },
+  "depro": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 51,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMb4Wgx75FJA67Iw43Kkh8LibYvjFv3X2KAhlyrqCgtag",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://de.wikipedia.org/wiki/Heidekrug_(Pr%C3%B6tzel)",
+      "https://de.wikipedia.org/wiki/Pr%C3%B6tzel"
+    ]
+  },
+  "deros": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2014",
+    "towerM": 34,
+    "photo": {
+      "src": "/radars/deros.webp",
+      "width": 800,
+      "height": 534,
+      "author": "Foto Fitti",
+      "licence": "CC BY-SA 3.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Warnem%C3%BCnde,_Rostock,_Germany_-_panoramio.jpg"
+    },
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMQ0PN_7aW4C088-OyWvR0qCS9R71qAxvaER-hfVlmLYt",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte"
+    ]
+  },
+  "detur": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2013",
+    "towerM": 32,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMb6NAVh1HvT6wzTc7kkGQeQaXBuDdjjFhiNIk2SfAIPh",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte",
+      "https://www.schwaebische.de/regional/ulm-alb-donau/nellingen/neidvolle-blicke-zum-nachbarn-719640",
+      "https://gewerbeaufsicht.baden-wuerttemberg.de/documents/20121/72110/Schallausbreitung_Windenergieanlagen_Fachgutachten_Wetterradar.pdf"
+    ]
+  },
+  "deumd": {
+    "operator": "DWD",
+    "system": "EEC DWSR-5001C/SDP/CE",
+    "band": "C",
+    "dualPol": true,
+    "since": "2013",
+    "towerM": 24,
+    "photo": null,
+    "sources": [
+      "https://www.dwd.de/DE/presse/publikationen/wetterradar_pdf.pdf?__blob=publicationFile&v=5",
+      "https://www.pa.op.dlr.de/erad2014/programme/ExtendedAbstracts/237_Helmert.pdf",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMe2QKV9DiEad_cE7JGyWwbYyhdTeNfPDDdzHoNcOZbN9",
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://de.wikiversity.org/wiki/Projekt:FE_Beobachtung_1/Wetterradar/Anwendungen,_Systeme,_Projekte",
+      "https://www.donnerwetter.de/wetter-spezial/keine-ufos-im-radar_cid_15957.html"
+    ]
+  }
+}

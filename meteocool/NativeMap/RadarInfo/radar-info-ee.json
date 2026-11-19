@@ -1,0 +1,32 @@
+{
+  "eehar": {
+    "operator": "Estonian Environment Agency",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2024",
+    "towerM": 36,
+    "photo": null,
+    "sources": [
+      "https://news.err.ee/1609558624/new-harku-weather-radar-data-showing-on-estonian-weather-service-page-app",
+      "https://www.newstodate.aero/2007/6/finnish-provider-of-met-radars-lands-estonian-order",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "eesur": {
+    "operator": "Estonian Environment Agency",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2008",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://www.newstodate.aero/2007/6/finnish-provider-of-met-radars-lands-estonian-order",
+      "https://news.err.ee/1609558624/new-harku-weather-radar-data-showing-on-estonian-weather-service-page-app",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

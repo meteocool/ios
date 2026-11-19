@@ -1,0 +1,65 @@
+{
+  "skjav": {
+    "operator": "SHMÚ",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 16,
+    "photo": null,
+    "sources": [
+      "https://drepo.uniza.sk/bitstreams/8b54ce75-3995-4752-8179-bf2bc1045152/download",
+      "https://sk.wikipedia.org/wiki/Mal%C3%BD_Javorn%C3%ADk_(Mal%C3%A9_Karpaty,_584_m)",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "skkoj": {
+    "operator": "SHMÚ",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 16,
+    "photo": {
+      "src": "/radars/skkoj.webp",
+      "width": 800,
+      "height": 534,
+      "author": "Draceane",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Koj%C5%A1ovsk%C3%A1_ho%C4%BEa,_meteoradar,_2018.jpg"
+    },
+    "sources": [
+      "https://drepo.uniza.sk/bitstreams/8b54ce75-3995-4752-8179-bf2bc1045152/download",
+      "https://sk.wikipedia.org/wiki/Koj%C5%A1ovsk%C3%A1_ho%C4%BEa_(vrch)",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "skkub": {
+    "operator": "SHMÚ",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 20,
+    "photo": null,
+    "sources": [
+      "https://drepo.uniza.sk/bitstreams/8b54ce75-3995-4752-8179-bf2bc1045152/download",
+      "https://sk.wikipedia.org/wiki/Kub%C3%ADnska_ho%C4%BEa_(vrch)",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "sklaz": {
+    "operator": "SHMÚ",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 42,
+    "photo": null,
+    "sources": [
+      "https://drepo.uniza.sk/bitstreams/8b54ce75-3995-4752-8179-bf2bc1045152/download",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

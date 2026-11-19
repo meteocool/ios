@@ -2454,6 +2454,51 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.site.deoft").waitForExistence(timeout: 20))
     }
 
+    func testTheTraysInfoOpensTheRadarsPage() {
+        launch(link: "?radar=deoft")
+        waitForSeries()
+        let about = element("nativeMap.site.info")
+        XCTAssertTrue(about.waitForExistence(timeout: 20), "The open radar's \"i\"")
+        XCTAssertEqual(about.label, "About this radar")
+        about.tap()
+        let page = element("nativeMap.radarInfo")
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "The radar's page")
+        XCTAssertTrue(app.navigationBars["Offenthal radar"].firstMatch.waitForExistence(timeout: 5))
+        // Its photo, from the web map's origin, credited and licensed.
+        let photo = element("nativeMap.radarInfo.photo")
+        XCTAssertTrue(photo.waitForExistence(timeout: 10))
+        XCTAssertEqual(photo.label, "The Offenthal radar")
+        let credit = element("nativeMap.radarInfo.credit")
+        XCTAssertTrue(credit.waitForExistence(timeout: 5))
+        XCTAssertTrue(credit.label.hasPrefix("Photo: Stefan Oemisch, "), credit.label)
+        // The facts: the operator, the band, and the network's own numbers.
+        let facts = element("nativeMap.radarInfo.facts")
+        XCTAssertTrue(facts.waitForExistence(timeout: 5))
+        XCTAssertTrue(facts.staticTexts["Operator"].exists && facts.staticTexts["DWD"].exists, "The operator's row")
+        XCTAssertTrue(facts.staticTexts["C band · dual polarisation"].exists)
+        XCTAssertTrue(facts.staticTexts["246 m above sea level"].exists)
+        XCTAssertTrue(element("nativeMap.radarInfo.text").exists)
+        screenshot("radar page")
+        // The sources and the way on to how every radar works, further down.
+        let explain = element("nativeMap.radarInfo.explain")
+        if !explain.isHittable { page.swipeUp() }
+        let sources = element("nativeMap.radarInfo.sources")
+        XCTAssertTrue(sources.waitForExistence(timeout: 5))
+        // Named by publisher, ending with where the photo was published.
+        XCTAssertTrue(sources.links["DWD"].exists)
+        XCTAssertTrue(sources.links["Photo (Wikimedia Commons)"].exists)
+        XCTAssertTrue(explain.waitForExistence(timeout: 5))
+        // A tap while the page still glides from the swipe only stops it.
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        explain.tap()
+        if !element("nativeMap.explainer").waitForExistence(timeout: 3), page.exists { explain.tap() }
+        XCTAssertTrue(element("nativeMap.explainer").waitForExistence(timeout: 10), "How the radar works")
+        XCTAssertFalse(page.exists)
+        element("nativeMap.explainer.close").tap()
+        // The radar stays open under it.
+        XCTAssertTrue(element("nativeMap.site").waitForExistence(timeout: 10))
+    }
+
     func testRadarMarkOpensItsSweepWithItsTiltsAndClosesBackToTheTimeline() {
         launch(link: "?latLonZ=50.2,9.2,7.4")
         waitForSeries()
