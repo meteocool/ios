@@ -2,7 +2,8 @@
 //  NativeMapModel.swift
 //  meteocool
 //
-//  The native map's state that its controls and sheets show.
+//  The native map's state that its controls and sheets show (core's
+//  `src/stores.ts`, where its counterparts are kept).
 //
 
 import Combine
@@ -77,6 +78,15 @@ final class NativeMapModel: ObservableObject {
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+    /// What the backend's trusted status says of this screen (core's
+    /// `statusVerdict` over `serverStatus`); nil without one, when the map's
+    /// own rules judge, and in a past window.
+    @Published var statusVerdict: StatusVerdict?
+    /// The socket has been gone for a while (core's `socketDown`): the status
+    /// sheet says so, and the map asks on a timer of its own.
+    @Published var socketDown = false
+    /// A notice is in the slot above the tray: the dry outlook gives way.
+    @Published var noticeShown = false
     /// The past window the map is used in (the archive), nil live. Set
     /// before its steps land; `RadarPlayer.window` is the strip's.
     @Published var window: RadarWindow?

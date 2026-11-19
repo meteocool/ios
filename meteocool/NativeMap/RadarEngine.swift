@@ -110,6 +110,7 @@ final class RadarEngine {
         paletteChoice = palette
 
         store.onTile = { [weak self] key in self?.tileArrived(key) }
+        store.onOutcome = { ok in NetworkLog.shared.tileOutcome(ok) }
         player.onStep = { [weak self] step in self?.showStep(step) }
         player.isReady = { [weak self] step in self?.isReady(step) ?? true }
         player.preloadMode = { [weak self] in self?.preloadMode ?? .none }

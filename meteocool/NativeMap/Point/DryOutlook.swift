@@ -78,6 +78,8 @@ final class DryOutlookDock {
             // The drawer it opens covers it, and the strip would only restate it.
             && !map.model.compareOpen
             && map.model.selectedStorm == nil
+            // The slot holds one notice, and this one is last in line (`lib/noticeQueue.ts`).
+            && !map.model.noticeShown
             && player.isLive
             && !player.playing
     }

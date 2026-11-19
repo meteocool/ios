@@ -3,14 +3,14 @@
 //  meteocool
 //
 //  core's status pill (`LiveIndicator.svelte`) and Connection Details
-//  (`ConnectionInfo.svelte`).
+//  (`ConnectionInfo.svelte`), behind the status sheet.
 //
 
 import Network
 import SwiftUI
 
-/// "● Latest", the frame's time, or what is wrong with the connection,
-/// centred on the top line. A tap opens Connection Details.
+/// "● Latest", the frame's time, or what is wrong with the connection or
+/// late on screen, centred on the top line. A tap opens the status sheet.
 struct StatusPill: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
@@ -26,7 +26,8 @@ struct StatusPill: View {
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
     private var state: PillState {
         monitor.pillState(live: player.isLive, shownStep: player.step, replay: player.timeline.replay,
-                          radarStale: model.stale, hasTimeline: !player.timeline.steps.isEmpty, archive: model.window != nil)
+                          radarStale: model.stale, hasTimeline: !player.timeline.steps.isEmpty, archive: model.window != nil,
+                          headline: model.statusVerdict?.headline)
     }
 
     var body: some View {
@@ -57,7 +58,7 @@ struct StatusPill: View {
                 }
                 .buttonStyle(PressScale())
                 .accessibilityLabel(accessibilityLabel(state))
-                .accessibilityHint(CoreStrings.t("connection_details"))
+                .accessibilityHint(CoreStrings.t("status.title"))
                 .accessibilityIdentifier("nativeMap.pill")
             }
         }
@@ -67,6 +68,8 @@ struct StatusPill: View {
         .task(id: wakes) { await dimAfterAWhile() }
         .task { await blink() }
     }
+
+    private var warned: Bool { model.statusVerdict?.notices.contains { $0.level == .warning } ?? false }
 
     private func isTime(_ state: PillState) -> Bool {
         if case .time = state { return true }
@@ -85,7 +88,8 @@ struct StatusPill: View {
         case .offline: return CoreStrings.t("offline")
         case .catchingUp: return CoreStrings.t("catching_up")
         case .degraded: return CoreStrings.t("degraded")
-        case .stale: return CoreStrings.t("outdated")
+        case .stale, .dataDown: return CoreStrings.t("outdated")
+        case .dataDelayed: return CoreStrings.t("delayed")
         case .slow: return CoreStrings.t("slow_connection")
         case .demo: return CoreStrings.t("demo")
         case .live: return CoreStrings.t("latest")
@@ -96,9 +100,11 @@ struct StatusPill: View {
     @ViewBuilder
     private func dot(_ state: PillState) -> some View {
         let colour: Color = switch state {
+        // A notice of ours marked a warning, for what is on screen: the live dot holds orange.
+        case .live where warned: theme.orange
         case .live: blinkOn || reduceMotion ? theme.red : theme.redDim
         case .offline: theme.red
-        case .slow, .stale, .degraded: theme.orange
+        case .slow, .stale, .degraded, .dataDown, .dataDelayed: theme.orange
         case .demo, .catchingUp: theme.accent
         default: .clear
         }
@@ -134,17 +140,17 @@ struct StatusPill: View {
 }
 
 /// What the connection and the radar are doing, for the curious and for
-/// bug reports (`ConnectionInfo.svelte`), refreshed every two seconds.
+/// bug reports (`ConnectionInfo.svelte`), refreshed every two seconds: the
+/// status sheet's last row leads here.
 struct ConnectionDetails: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
     @ObservedObject var monitor: ConnectionMonitor
-    let close: () -> Void
 
     private func d(_ key: String, _ args: [String: Any] = [:]) -> String { CoreStrings.t("chrome.diagnostics.\(key)", args) }
 
     var body: some View {
-        NavigationStack {
+        Group {
             TimelineView(.periodic(from: .now, by: 2)) { context in
                 List {
                     Section(d("timesteps")) { timesteps }
@@ -176,7 +182,7 @@ struct ConnectionDetails: View {
                     Section(d("latency_by_service")) { latency(now: context.date) }
                     Section(d("section.degraded")) {
                         row(d("state"), monitor.degradedReasons.isEmpty ? d("ok") : d("degraded"))
-                        ForEach(monitor.degradedReasons, id: \.name) { reason in row(reason.name, reason.reason) }
+                        ForEach(monitor.degradedReasons, id: \.id) { reason in row(reason.name, reason.reason) }
                     }
                     Section(d("section.api_errors")) {
                         let failing = ConnectionRules.failingEndpoints(NetworkLog.shared.snapshot.records, now: context.date)
@@ -192,12 +198,6 @@ struct ConnectionDetails: View {
             }
             .navigationTitle(CoreStrings.t("connection_details"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: close) { Image(systemName: "xmark") }
-                        .accessibilityLabel(CoreStrings.t("close"))
-                }
-            }
         }
         // A container: its own children keep their identifiers.
         .accessibilityElement(children: .contain)

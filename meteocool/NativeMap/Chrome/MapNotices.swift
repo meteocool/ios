@@ -3,7 +3,7 @@
 //  meteocool
 //
 //  core's "Back to now" pill, the strips above the tray (`DismissableStrip`
-//  with `SwipeDock`) and its toasts.
+//  with `SwipeDock`, the one notice of `lib/noticeQueue.ts`) and its toasts.
 //
 
 import SwiftUI
@@ -178,7 +178,9 @@ struct DismissableStrip<Content: View>: View {
     }
 }
 
-/// The strips core shows above the tray on the radar map, one at a time.
+/// The one notice in the slot above the tray (`lib/noticeQueue.ts`): ours
+/// for this view first, then what the map finds for itself. The dry outlook,
+/// last in the queue, keeps its own strip and gives way to any of these.
 struct NoticeStrips: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
@@ -188,27 +190,34 @@ struct NoticeStrips: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if notices.showNoRadar {
-                DismissableStrip(title: CoreStrings.t("radar_no_coverage"), theme: theme, dismiss: { notices.noRadarDismissed = true }) {
-                    Text(CoreStrings.plain("radar_no_coverage_body")).notice(theme)
+            if let shown = notices.shown {
+                let words = Self.words(shown)
+                DismissableStrip(title: words.title, theme: theme, dismiss: { notices.dismiss(shown) }) {
+                    Text(words.body).notice(theme)
                 }
                 .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("nativeMap.strip.noRadar")
-            } else if notices.showFeedStopped {
-                DismissableStrip(title: CoreStrings.t("radar_feed_stopped"), theme: theme, dismiss: { notices.feedStoppedDismissed = true }) {
-                    Text(CoreStrings.plain("radar_feed_stopped_body")).notice(theme)
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("nativeMap.strip.feedStopped")
-            } else if notices.showNoForecast {
-                DismissableStrip(title: CoreStrings.t("forecast_no_coverage"), theme: theme, dismiss: { notices.noForecastDismissed = true }) {
-                    Text(CoreStrings.plain("forecast_no_coverage_body_nowcast")).notice(theme)
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("nativeMap.strip.noForecast")
+                .accessibilityIdentifier("nativeMap.strip.\(words.id)")
+                // One replacing another leaves and comes in as a strip of its own.
+                .id(NoticeQueue.dismissalKey(shown))
             }
         }
         .padding(.horizontal, ChromeTheme.gutter)
+    }
+
+    /// A strip's heading and text by what it is about, and its identifier.
+    static func words(_ notice: NoticeQueue.Queued) -> (title: String, body: String, id: String) {
+        switch notice {
+        case .ours(let ours):
+            return (CoreStrings.t(ours.level == .warning ? "notice_warning" : "notice_info"), ours.text, "notice")
+        case .condition(.noCoverage):
+            return (CoreStrings.t("radar_no_coverage"), CoreStrings.plain("radar_no_coverage_body"), "noRadar")
+        case .condition(.radarStopped):
+            return (CoreStrings.t("radar_feed_stopped"), CoreStrings.plain("radar_feed_stopped_body"), "feedStopped")
+        case .condition(.forecastStopped):
+            return (CoreStrings.t("forecast_feed_stopped"), CoreStrings.plain("forecast_feed_stopped_body"), "forecastStopped")
+        case .condition(.noForecast), .condition(.dryOutlook):
+            return (CoreStrings.t("forecast_no_coverage"), CoreStrings.plain("forecast_no_coverage_body_nowcast"), "noForecast")
+        }
     }
 }
 
@@ -218,25 +227,36 @@ private extension Text {
     }
 }
 
-/// Which strips are up, and which the reader has hidden; each comes back
-/// once its condition clears and returns (core's per-condition dismissal).
+/// What applies above the tray, and what the reader has hidden: a
+/// condition comes back once it has cleared and returns; ours stay hidden by
+/// id for the session, a map built again included (`lib/noticeQueue.ts`).
 @MainActor
 final class NoticeState: ObservableObject {
-    @Published var outOfRadar = false { didSet { if !outOfRadar { noRadarDismissed = false } } }
-    @Published var noForecastHere = false { didSet { if !noForecastHere { noForecastDismissed = false } } }
-    /// A network whose radar has stopped arriving draws here (`feedStopped`).
-    @Published var feedStopped = false { didSet { if !feedStopped { feedStoppedDismissed = false } } }
-    @Published var noRadarDismissed = false
-    @Published var noForecastDismissed = false
-    @Published var feedStoppedDismissed = false
+    /// The notices dismissed this session.
+    private static var sessionDismissed = Set<String>()
+
+    /// What applies now; the dry outlook is its own strip's to judge.
+    @Published private(set) var candidates = NoticeQueue.Candidates()
+    @Published private(set) var dismissed = NoticeState.sessionDismissed
     @Published var radarShown = true
 
-    var showNoRadar: Bool { radarShown && outOfRadar && !noRadarDismissed }
-    var showFeedStopped: Bool { radarShown && !outOfRadar && feedStopped && !feedStoppedDismissed }
-    /// Not while the feed's notice applies, dismissed or not: that is the
-    /// reason there is no forecast.
-    var showNoForecast: Bool { radarShown && !outOfRadar && !feedStopped && noForecastHere && !noForecastDismissed }
-    var showsAny: Bool { showNoRadar || showFeedStopped || showNoForecast }
+    /// The one shown, if any.
+    var shown: NoticeQueue.Queued? { radarShown ? NoticeQueue.next(candidates, dismissed: dismissed) : nil }
+
+    func update(_ next: NoticeQueue.Candidates) {
+        if next != candidates { candidates = next }
+        let kept = NoticeQueue.rearmed(dismissed, next)
+        if kept != dismissed { keep(kept) }
+    }
+
+    func dismiss(_ notice: NoticeQueue.Queued) {
+        keep(dismissed.union([NoticeQueue.dismissalKey(notice)]))
+    }
+
+    private func keep(_ next: Set<String>) {
+        dismissed = next
+        Self.sessionDismissed = next
+    }
 }
 
 /// A toast at the top (core's `Toast.ts`): a message that goes after a while.

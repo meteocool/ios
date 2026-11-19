@@ -95,6 +95,8 @@ struct NativeMapEndpoints: Equatable, Sendable {
     }
 
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }
+    /// What the backend judges late, and its notices (404 from a backend without it).
+    var status: URL { api.appendingPathComponent("v3/status") }
     /// The newest tile set of the rain's motion arrows (404 until a motion
     /// field has been found anywhere).
     var motionLayer: URL { api.appendingPathComponent("v3/motion/layer") }

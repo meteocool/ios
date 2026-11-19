@@ -70,6 +70,10 @@ final class RadarTileStore: @unchecked Sendable {
 
     /// Called on the main queue when a tile has arrived or turned out empty.
     var onTile: (@MainActor (RadarTileKey) -> Void)?
+    /// A tile asked for landed (true, a blank one too) or failed, on the
+    /// fetch's own queue: the map's `tile-errors` criterion counts them
+    /// (core's `radarTileOutcome`). Set before the first fetch.
+    var onOutcome: (@Sendable (Bool) -> Void)?
 
     private let lock = NSLock()
     private let session: URLSession
@@ -211,6 +215,7 @@ final class RadarTileStore: @unchecked Sendable {
             }
         }
         pump()
+        onOutcome?(notify)
         guard notify else { return }
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated { self?.onTile?(key) }

@@ -471,15 +471,57 @@ final class NativeMapUITests: XCTestCase {
         screenshot("VIL")
     }
 
-    func testStatusPillOpensConnectionDetails() {
+    /// The pill opens the status sheet, what it sums up in sentences, and
+    /// Connection Details behind its last row.
+    func testStatusPillOpensTheStatusSheet() {
         launch()
         waitForSeries()
         element("nativeMap.pill").tap()
+        let sheet = element("nativeMap.statusSheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        // Staging answers /v3/status: what is late here, or that everything arrives.
+        XCTAssertTrue(element("nativeMap.status.arriving").waitForExistence(timeout: 10)
+            || app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.status.late.'")).count > 0,
+            "The backend's verdict")
+        screenshot("status sheet")
+        element("nativeMap.status.details").tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForExistence(timeout: 5))
         screenshot("connection details")
-        element("nativeMap.connectionDetails").buttons["Close"].firstMatch.tap()
-        XCTAssertTrue(element("nativeMap.connectionDetails").waitForNonExistence(timeout: 5))
+        element("nativeMap.status.close").tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
     }
+
+    /// The backend's verdict (`MC_STATUS`): Poland's radar down under the
+    /// middle of the screen is "Out of date" on the pill and "not coming in"
+    /// above the tray; a warning of ours comes first; the sheet lists it all.
+    func testStatusSaysWhatIsLateHere() {
+        let now = Int(Date().timeIntervalSince1970)
+        app.launchEnvironment["MC_STATUS"] = """
+        {"server_time": \(now), "replay": false, "notices": [{"id": "ui-test", "level": "warning", "domains": null, "starts": \(now - 60),
+         "ends": null, "text": {"en": "Poland's radars are being serviced."}}],
+         "components": [{"kind": "radar", "domain": "de", "state": "ok", "newest": \(now - 300)},
+                        {"kind": "radar", "domain": "pl", "state": "down", "newest": \(now - 3600), "since": \(now - 2700)}]}
+        """
+        launch(link: "?latLonZ=52.2,19.5,7")
+        waitForSeries()
+        let pill = element("nativeMap.pill")
+        XCTAssertTrue(waitForLabel(pill, timeout: 20) { $0 == "Out of date" }, "The pill: \(pill.label)")
+        let notice = element("nativeMap.strip.notice")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "Our warning first")
+        XCTAssertTrue(notice.staticTexts["Poland's radars are being serviced."].exists)
+        screenshot("status notice")
+        notice.buttons["Close"].firstMatch.tap()
+        let stopped = element("nativeMap.strip.feedStopped")
+        XCTAssertTrue(stopped.waitForExistence(timeout: 5), "Then the radar's notice")
+        pill.tap()
+        XCTAssertTrue(element("nativeMap.statusSheet").waitForExistence(timeout: 5))
+        let late = element("nativeMap.status.late.radar.pl")
+        XCTAssertTrue(late.waitForExistence(timeout: 5), "Poland's radar listed")
+        XCTAssertTrue(late.label.contains("Poland") && late.label.contains("Nothing new since"), late.label)
+        XCTAssertTrue(element("nativeMap.status.notice").exists, "The notice in the sheet")
+        screenshot("status sheet late")
+    }
+
 
     func testNoForecastStripWhereNoRunHasComeIn() {
         // France without its nowcast, as when a run has not come in: past
@@ -498,10 +540,13 @@ final class NativeMapUITests: XCTestCase {
     }
 
     /// A network whose radar has stopped arriving (here Poland's, as the
-    /// series would leave it: no frame, no nowcast) says so where it draws,
+    /// series would leave it: no frame, no nowcast), by the map's own rules,
+    /// says so where it draws,
     /// on the live step and in place of "No Forecast Here" past it.
     func testStalledNetworkSaysRadarNotComingIn() {
         app.launchEnvironment["MC_STALLED_NETWORKS"] = "pl"
+        // A backend without /v3/status: the map's own rules judge.
+        app.launchEnvironment["MC_STATUS"] = "404"
         launch(link: "?latLonZ=52.2,19.5,7")
         waitForSeries()
         let strip = element("nativeMap.strip.feedStopped")
