@@ -47,8 +47,14 @@ restore_package_pins() {
 }
 
 # UDID of a booted simulator, booting one first if none is running.
+# MC_SIMULATOR_UDID picks one, booted if it is not, while others are running.
 booted_simulator() {
     local udid
+    if [ -n "${MC_SIMULATOR_UDID:-}" ]; then
+        xcrun simctl boot "$MC_SIMULATOR_UDID" >/dev/null 2>&1 || true
+        printf '%s' "$MC_SIMULATOR_UDID"
+        return
+    fi
     udid="$(xcrun simctl list devices booted | grep -oE '[0-9A-F-]{36}' | head -1)"
     if [ -z "$udid" ]; then
         if [ -n "$SIMULATOR" ]; then

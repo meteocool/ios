@@ -13,11 +13,14 @@ three things and lays them side by side:
     scripts/core-sync.py                 # commits to port, each file with its Swift side
     scripts/core-sync.py coverage        # core files no Swift file names and the ledger omits
     scripts/core-sync.py export [dir]    # core at the target ref, to read and to run
-                                         # scripts/core-strings.py on (default build/core)
+                                         # scripts/core-strings.py on (default build/core),
+                                         # into an emptied directory
     scripts/core-sync.py mark [ref]      # record the port as synced to ref
 
 Options: --core path/to/core (default: ../core, or ~/meteocool/core),
---ref REF (default origin/develop; fetched first unless --no-fetch).
+--ref REF (default origin/develop; fetched first unless --no-fetch). To
+pin a sync to one commit while core moves on, pass `--ref <sha> --no-fetch`
+to every command.
 
 AGENTS.md, "Syncing with core", says how a sync goes.
 """
@@ -26,6 +29,7 @@ import fnmatch
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -153,12 +157,25 @@ def coverage(core, ref, ledger, cited):
     return 1 if missing else 0
 
 
+# Left in an export, so a later one knows the directory is its own to empty.
+EXPORT_MARK = ".core-sync-export"
+
+
 def export(core, ref, target):
+    # Emptied first, so a file core has since deleted does not linger; only
+    # an earlier export, or a directory under build/, is ever emptied.
+    target = target.resolve()
+    if target.exists() and any(target.iterdir()):
+        ours = (target / EXPORT_MARK).exists() or (ROOT / "build") in target.parents
+        if not ours:
+            sys.exit(f"{target} is not an earlier export: not emptying it")
+        shutil.rmtree(target)
     target.mkdir(parents=True, exist_ok=True)
     archive = subprocess.Popen(["git", "-C", str(core), "archive", ref], stdout=subprocess.PIPE)
     subprocess.run(["tar", "-x", "-C", str(target)], stdin=archive.stdout, check=True)
     if archive.wait() != 0:
         sys.exit("git archive failed")
+    (target / EXPORT_MARK).write_text(git(core, "rev-parse", ref))
     print(f"core at {git(core, 'rev-parse', '--short', ref).strip()} in {target}")
 
 

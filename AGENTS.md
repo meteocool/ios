@@ -20,8 +20,12 @@ ahead most of the time; a sync ports what it has gained since the last one.
    each changed file the Swift files that port it. `NEW` marks a file that
    nothing ports and the ledger omits.
 2. `scripts/core-sync.py export` writes core at `origin/develop` to
-   `build/core`. Read core there, not in the core checkout, which may be on
-   another branch. `git -C ../core show <sha>` shows what a commit changed.
+   `build/core`, emptied first. Read core there, not in the core checkout,
+   which may be on another branch. `git -C ../core show <sha>` shows what a
+   commit changed.
+   - Core moves while a sync is under way. To port up to a chosen commit,
+     pin every step to it: pass `--ref <sha> --no-fetch` to `status`,
+     `export`, `coverage` and `mark` alike (`mark <sha> --no-fetch`).
 3. Port commit by commit, in core's order, one iOS commit per core feature
    with core's subject where it fits. For a core file:
    - rules (`src/lib/*.ts`) go into a `*Rules.swift` with no app
@@ -41,8 +45,11 @@ ahead most of the time; a sync ports what it has gained since the last one.
    `webOnly` or `unported` with its reason, so the next sync does not weigh
    it again.
 5. `scripts/check.sh` and `scripts/build.sh` pass, and the UI tests for what
-   changed pass on a simulator. Then `scripts/core-sync.py mark`, and
-   `scripts/core-sync.py coverage` lists nothing new.
+   changed pass on a simulator (`MC_SIMULATOR_UDID` pins `scripts/test.sh`
+   to one when others are booted). Then `scripts/core-sync.py mark`, and
+   `scripts/core-sync.py coverage` lists nothing new. A core test is matched
+   by its name (`x.test.ts` with what names `x.ts`): one named otherwise is
+   cited by its own name in its Check, or set aside.
 
 ## Design: Apple's guidelines first
 
