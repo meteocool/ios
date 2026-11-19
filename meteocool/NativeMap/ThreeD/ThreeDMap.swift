@@ -124,7 +124,7 @@ final class ThreeDGround {
     /// `ready` runs in the same turn the new ground takes over (the scene's
     /// origin moving with it, so nothing is drawn misplaced or missing).
     func build(_ camera: OrbitCamera, key: String, scene: StormScene, device: MTLDevice, radar: RadarEngine, dark: Bool,
-               terrain: Bool, replacing: Bool = false, ready: (@MainActor () -> Void)? = nil) {
+               satellite: Bool = false, terrain: Bool, replacing: Bool = false, ready: (@MainActor () -> Void)? = nil) {
         guard !building || replacing else { return }
         building = true
         token += 1
@@ -136,12 +136,12 @@ final class ThreeDGround {
         let rect = MKMapRect(x: middle.x - side / 2, y: middle.y - side / 2, width: side, height: side)
         Task { @MainActor in
             defer { if mine == self.token { self.building = false } }
-            async let snapshot = Self.snapshot(rect, dark: dark)
+            async let snapshot = Self.snapshot(rect, dark: dark, satellite: satellite)
             async let heights = terrain ? Self.terrain(rect) : nil
             let drape = await Self.drape(rect, radar: radar)
             let map = await snapshot
             let relief = await heights
-            guard let picture = Self.compose(map, drape: drape, dark: dark),
+            guard let picture = Self.compose(map, drape: drape, dark: dark, satellite: satellite),
                   let texture = try? await MTKTextureLoader(device: device).newTexture(cgImage: picture, options: [
                       .generateMipmaps: true, .SRGB: false, .textureUsage: MTLTextureUsage.shaderRead.rawValue,
                   ]),
@@ -165,7 +165,9 @@ final class ThreeDGround {
         centre = nil
     }
 
-    private static func snapshot(_ rect: MKMapRect, dark: Bool) async -> CGImage? {
+    /// Apple's map over the area: muted, or with the satellite basemap its
+    /// imagery with the roads, borders and names over it.
+    private static func snapshot(_ rect: MKMapRect, dark: Bool, satellite: Bool) async -> CGImage? {
         let options = MKMapSnapshotter.Options()
         options.mapRect = rect
         // At 1x over the whole texture rather than 2x over half of it: the
@@ -174,9 +176,15 @@ final class ThreeDGround {
         options.size = CGSize(width: pixels, height: pixels)
         options.traitCollection = UITraitCollection(traitsFrom: [UITraitCollection(displayScale: 1),
                                                                   UITraitCollection(userInterfaceStyle: dark ? .dark : .light)])
-        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
-        configuration.pointOfInterestFilter = .excludingAll
-        options.preferredConfiguration = configuration
+        if satellite {
+            let configuration = MKHybridMapConfiguration(elevationStyle: .flat)
+            configuration.pointOfInterestFilter = .excludingAll
+            options.preferredConfiguration = configuration
+        } else {
+            let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+            configuration.pointOfInterestFilter = .excludingAll
+            options.preferredConfiguration = configuration
+        }
         return await withCheckedContinuation { continuation in
             MKMapSnapshotter(options: options).start { snapshot, _ in continuation.resume(returning: snapshot?.image.cgImage) }
         }
@@ -194,7 +202,10 @@ final class ThreeDGround {
         return nil
     }
 
-    private static func compose(_ map: CGImage?, drape: CGImage?, dark: Bool) -> CGImage? {
+    /// The map, the imagery drained as core drains it (`maplibreStyle.ts`'s
+    /// `IMAGERY_PAINT`): forests and fields in full colour are the storms'
+    /// green and yellow; then the radar over it.
+    private static func compose(_ map: CGImage?, drape: CGImage?, dark: Bool, satellite: Bool = false) -> CGImage? {
         guard let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: pixels * 4,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
@@ -202,6 +213,19 @@ final class ThreeDGround {
         context.setFillColor(dark ? CGColor(red: 0.09, green: 0.11, blue: 0.14, alpha: 1) : CGColor(red: 0.85, green: 0.87, blue: 0.86, alpha: 1))
         context.fill(all)
         if let map { context.draw(map, in: all) }
+        if map != nil, satellite {
+            // Saturation down by 55 %, contrast by 10 %, brightness to at most 85 %.
+            context.saveGState()
+            context.setBlendMode(.saturation)
+            context.setFillColor(CGColor(gray: 0.5, alpha: 0.55))
+            context.fill(all)
+            context.setBlendMode(.normal)
+            context.setFillColor(CGColor(gray: 0.5, alpha: 0.1))
+            context.fill(all)
+            context.setFillColor(CGColor(gray: 0, alpha: 0.15))
+            context.fill(all)
+            context.restoreGState()
+        }
         if let drape {
             context.setAlpha(CGFloat(ThreeDPaint.radarOpacity) * 1.6)
             context.interpolationQuality = .none
@@ -979,7 +1003,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
             let fresh = StormScene(frame: next)
             fresh.palette = scene.palette
             ground.build(camera, key: groundKey(map, scene: scene), scene: fresh, device: renderer.device, radar: map.radar,
-                         dark: map.model.isDark, terrain: map.isOn(.terrain3d), replacing: true) { [weak self] in
+                         dark: map.model.isDark, satellite: map.model.satellite, terrain: map.isOn(.terrain3d), replacing: true) { [weak self] in
                 self?.scene?.move(to: next)
             }
         }
@@ -988,7 +1012,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     /// What the ground is built for: the radar step and its palette, the
     /// map's look, the terrain switch.
     private func groundKey(_ map: NativeMapContext, scene: StormScene) -> String {
-        "\(stepKey)|\(map.model.isDark)|\(map.isOn(.terrain3d))|\(scene.palette)"
+        "\(stepKey)|\(map.model.isDark)|\(map.model.satellite)|\(map.isOn(.terrain3d))|\(scene.palette)"
     }
 
     // MARK: Drawing
@@ -1024,7 +1048,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
         let key = groundKey(map, scene: scene)
         if ground.wants(camera, key: key) {
             ground.build(camera, key: key, scene: scene, device: renderer.device, radar: map.radar, dark: map.model.isDark,
-                         terrain: map.isOn(.terrain3d))
+                         satellite: map.model.satellite, terrain: map.isOn(.terrain3d))
         }
         scene.now = Date()
         scene.alignmentError = 0
