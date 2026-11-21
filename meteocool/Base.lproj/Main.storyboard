@@ -118,8 +118,8 @@
                         <constraints>
                             <constraint firstItem="hoo-g4-0lM" firstAttribute="trailing" secondItem="Sla-Kf-0cZ" secondAttribute="trailing" constant="7" id="16H-Gc-dlY"/>
                             <constraint firstItem="3Ch-Cm-5GN" firstAttribute="top" secondItem="cDh-gy-KMX" secondAttribute="bottom" constant="6" id="5UN-e4-Y3W"/>
-                            <constraint firstItem="JvE-AE-63L" firstAttribute="leading" secondItem="hoo-g4-0lM" secondAttribute="leading" id="8nr-JA-JaN"/>
-                            <constraint firstItem="JvE-AE-63L" firstAttribute="trailing" secondItem="hoo-g4-0lM" secondAttribute="trailing" id="9Nc-5J-emt"/>
+                            <constraint firstItem="JvE-AE-63L" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="8nr-JA-JaN"/>
+                            <constraint firstItem="JvE-AE-63L" firstAttribute="trailing" secondItem="8bC-Xf-vdC" secondAttribute="trailing" id="9Nc-5J-emt"/>
                             <constraint firstItem="JvE-AE-63L" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="BP9-HD-ZrX"/>
                             <constraint firstItem="JvE-AE-63L" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="Bq8-nA-2sM"/>
                             <constraint firstItem="cDh-gy-KMX" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="Dvq-u9-azd"/>

@@ -72,6 +72,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     private var shareButtonBackdrop: UIView?
     /// What hides the controls and the logo; see `setCovered`.
     private var covers = Set<Cover>()
+    /// Whether the page's flight game is up: `AppDelegate` allows landscape
+    /// only then and while the AR view is up.
+    private(set) static var isFlying = false
     /// The storm selected on the map, from the page's `cloudSelected:` and
     /// `cellSelected:` messages: what the AR view looks for when opened.
     private var mapSelection: StormTarget?
@@ -207,10 +210,17 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         layerSwitcherButton.isEnabled = false
     }
 
-    /// The map is laid out for portrait on a phone; only the AR view turns.
+    /// The map is laid out for portrait on a phone; only the AR view and the
+    /// page's flight game turn. `AppDelegate` must allow the same.
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        UIDevice.current.userInterfaceIdiom == .pad ? .all : .portrait
+        if Self.isFlying { return .landscape }
+        return UIDevice.current.userInterfaceIdiom == .pad ? .all : .portrait
     }
+
+    /// The flight game takes the whole screen. The page keeps its own
+    /// controls clear of the notch and the home indicator.
+    override var prefersStatusBarHidden: Bool { Self.isFlying }
+    override var prefersHomeIndicatorAutoHidden: Bool { Self.isFlying }
 
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
         scrollView.pinchGestureRecognizer?.isEnabled = false
@@ -432,6 +442,9 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// Every new page has to report in, including one the page loads itself
     /// (core's service worker reloads it after an update).
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        // The game cannot say it left once its page is gone. Turn back now
+        // rather than when the new page reports in, which may never happen.
+        setCovered(.flight, false)
         guard nativeMap == nil else { return }
         webviewReady = false
         layerSwitcherButton.isEnabled = false
@@ -676,6 +689,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         case "detailSheetCollapsed": setCovered(.expandedSheet, false)
         case "hideControls": setCovered(.popup, true)
         case "showControls": setCovered(.popup, false)
+        case "flightEntered": setCovered(.flight, true)
+        case "flightLeft": setCovered(.flight, false)
         default: break
         }
     }
@@ -879,8 +894,10 @@ extension ViewController {
     /// What the page has drawn over the controls' corners. The controls and
     /// the logo stay hidden while any of these is open, so closing one over
     /// another does not bring them back on top of it. `popup` is the page's
-    /// own `hideControls`, for a menu it places where they float.
-    enum Cover { case layerSwitcher, expandedSheet, popup }
+    /// own `hideControls`, for a menu it places where they float. `flight` is
+    /// the page's flight game (`flightEntered` to `flightLeft`), which also
+    /// turns the app to landscape and hides the status bar; see `setFlying`.
+    enum Cover { case layerSwitcher, expandedSheet, popup, flight }
 
     func setCovered(_ cover: Cover, _ covered: Bool) {
         if covered { covers.insert(cover) } else { covers.remove(cover) }
@@ -896,6 +913,36 @@ extension ViewController {
     private func refreshCovers() {
         setMapControlsHidden(!covers.isEmpty)
         setLogoHidden(!covers.isEmpty)
+        let flying = covers.contains(.flight)
+        if flying != Self.isFlying { setFlying(flying) }
+    }
+
+    /// Turns to landscape for the flight game, or back to how the map is
+    /// laid out. Going in, the top of the phone goes to the left unless it is
+    /// already held sideways; both sides are allowed from then on. Leaving
+    /// asks for what the map allows, portrait on a phone.
+    private func setFlying(_ flying: Bool) {
+        Self.isFlying = flying
+        setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
+        // Whatever is presented over the map decides the orientation while
+        // it is up, and it has to see the app's new mask too.
+        var shown: UIViewController? = self
+        while let controller = shown {
+            controller.setNeedsUpdateOfSupportedInterfaceOrientations()
+            shown = controller.presentedViewController
+        }
+        guard let scene = viewIfLoaded?.window?.windowScene else { return }
+        let orientations: UIInterfaceOrientationMask
+        if flying {
+            let sideways = scene.interfaceOrientation.isLandscape || UIDevice.current.orientation.isLandscape
+            orientations = sideways ? .landscape : .landscapeRight
+        } else {
+            orientations = supportedInterfaceOrientations
+        }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: orientations)) { error in
+            print("Flight orientation \(flying ? "in" : "out"): \(error.localizedDescription)")
+        }
     }
 
     /// Shows or hides the floating map controls as one unit.
@@ -1240,7 +1287,9 @@ extension ViewController {
     /// The scripts that run before the page: the geolocation shim, the
     /// graphics watch, and what the app can do for the page
     /// (`window.nativeCapabilities`): the share sheet, which makes the page
-    /// show its share buttons (core's lib/share.ts), and, while the AR view is
+    /// show its share buttons (core's lib/share.ts), flight, which makes the
+    /// page report its flight game so the app turns to landscape for it
+    /// (`flightEntered`, `flightLeft`), and, while the AR view is
     /// offered, AR, so a storm's panel offers "View in AR" and the page reports
     /// its selection (core's lib/nativeAR.ts).
     fileprivate func installUserScripts() {
@@ -1248,7 +1297,7 @@ extension ViewController {
         controller.removeAllUserScripts()
         controller.addUserScript(GeolocationBridge.userScript)
         controller.addUserScript(MapRecovery.graphicsWatch)
-        let capabilities = arAvailable ? "{ share: true, ar: true }" : "{ share: true }"
+        let capabilities = arAvailable ? "{ share: true, flight: true, ar: true }" : "{ share: true, flight: true }"
         controller.addUserScript(WKUserScript(
             source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, \(capabilities));",
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
