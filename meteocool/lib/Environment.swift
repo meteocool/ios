@@ -160,6 +160,23 @@ enum MeteocoolEnvironment: String, CaseIterable {
         return page()
     }
 
+    /// The map page in meteoair mode, opened at a flight's link: `query` is
+    /// the link's own (`MapLink.flight`), which core reads to take off at
+    /// once, beside the page's version.
+    func flightURL(query: String) -> URL {
+        var components = URLComponents(url: webURL, resolvingAgainstBaseURL: false)!
+        components.percentEncodedQuery = [components.percentEncodedQuery, query]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "&")
+        components.fragment = "meteoair"
+        return components.url!
+    }
+
+    /// A flight's link on the website, for a browser: what the native map,
+    /// which has no flight, opens it as.
+    func flightPageURL(query: String) -> URL {
+        URL(string: "\(webHost)/meteoair.html" + (query.isEmpty ? "" : "?\(query)"))!
+    }
+
     /// Whether `host` serves one of the environments' web maps, so a link on
     /// it is a link to the map.
     static func isWebHost(_ host: String) -> Bool {

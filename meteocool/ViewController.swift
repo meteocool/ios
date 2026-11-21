@@ -3,6 +3,7 @@ import UIKit.UIGestureRecognizer
 import WebKit
 import CoreLocation
 import LinkPresentation
+import SafariServices
 
 @MainActor var viewController: ViewController? = nil
 
@@ -77,6 +78,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     /// A shared link's search, held until the page reports in with
     /// `requestSettings`.
     private var pendingLink: String?
+    /// A flight's link to load the page with, next time it is loaded from scratch (`openFlight`).
+    private var pendingFlight: String?
     /// A link opened during this visit to the foreground says where the map
     /// looks, so coming back to the foreground does not centre on the user.
     /// UIKit may hand over the link before or after `willEnterForeground`.
@@ -396,8 +399,26 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         }
         webviewReady = false
         layerSwitcherButton.isEnabled = false
-        webView.load(URLRequest(url: MeteocoolEnvironment.current.webURL))
+        // A flight's link waiting: the page in meteoair mode, once. A reload after that is the map again.
+        let flight = pendingFlight
+        pendingFlight = nil
+        webView.load(URLRequest(url: flight.map { MeteocoolEnvironment.current.flightURL(query: $0) } ?? MeteocoolEnvironment.current.webURL))
         recovery.loadStarted()
+    }
+
+    /// A flight's link (`SceneDelegate`, `MapLink.flight`): the map page
+    /// loaded again in meteoair mode, which takes off at once where the link
+    /// names a start. Held until the view has loaded, whose first load takes
+    /// it. The native map has no flight, so the link opens over it in
+    /// Safari's view, as the website.
+    func openFlight(query: String) {
+        if nativeMap != nil {
+            present(SFSafariViewController(url: MeteocoolEnvironment.current.flightPageURL(query: query)), animated: true)
+            return
+        }
+        pendingFlight = query
+        guard isViewLoaded else { return }
+        loadMap()
     }
 
     /// The page stopped working. The native controls stay usable while

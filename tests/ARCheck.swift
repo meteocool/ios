@@ -321,6 +321,22 @@ enum ARCheck {
                      "meteocool://map/ios.html?layer=radar"] {
             precondition(opening(link) == nil, link)
         }
+        // A flight's link: meteoair.html on one of the app's hosts, opened in meteoair mode; the page alone too.
+        func flight(_ link: String) -> String? { MapLink.flight(opening: URL(string: link)!) }
+        precondition(flight("https://app.meteocool.com/meteoair.html?fly=46.3100,10.2400&alt=FL130&spd=256kt")
+            == "fly=46.3100,10.2400&alt=FL130&spd=256kt")
+        precondition(flight("https://demo.meteocool.com/meteoair?fly=45.1,9.2&weather=demo") == "fly=45.1,9.2&weather=demo")
+        precondition(flight("https://app.meteocool.com/meteoair.html") == "", "The flight's page alone")
+        for link in ["https://app.meteocool.com/?fly=1,2", "https://evil.example/meteoair.html?fly=1,2",
+                     "http://app.meteocool.com/meteoair.html?fly=1,2", "https://app.meteocool.com/x/meteoair.html"] {
+            precondition(flight(link) == nil, link)
+        }
+        precondition(opening("https://app.meteocool.com/meteoair.html?fly=1,2") == nil, "Not a map link")
+        let page = MeteocoolEnvironment.app.flightURL(query: "fly=46.31,10.24&weather=demo")
+        precondition(page.path == "/ios.html" && page.fragment == "meteoair", page.absoluteString)
+        precondition(page.query?.hasPrefix("version=") == true && page.query?.hasSuffix("&fly=46.31,10.24&weather=demo") == true, page.absoluteString)
+        precondition(MeteocoolEnvironment.app.flightURL(query: "").query?.contains("&") == false)
+        precondition(MeteocoolEnvironment.demo.flightPageURL(query: "fly=1,2").absoluteString == "https://demo.meteocool.com/meteoair.html?fly=1,2")
         let script = MapLink.openScript(search: "?a=\"</script>")!
         precondition(script.contains(#"["?a=\"<\/script>"][0]"#) || script.contains(#"["?a=\"</script>"][0]"#), script)
     }

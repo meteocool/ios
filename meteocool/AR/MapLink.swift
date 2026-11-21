@@ -61,6 +61,19 @@ enum MapLink {
         return "?" + query
     }
 
+    /// The query of a flight's link (core's `lib/studio/flightLink.ts`), or
+    /// nil for a URL that is not one: meteoair.html on one of the app's
+    /// hosts, with the flight's start in the query, or "" for the flight's
+    /// page alone. The map opens it in its meteoair mode, which takes off at
+    /// once where the query names a start.
+    static func flight(opening url: URL) -> String? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.port == nil,
+              let host = components.host, MeteocoolEnvironment.isWebHost(host),
+              ["/meteoair.html", "/meteoair"].contains(components.path.lowercased()) else { return nil }
+        return components.percentEncodedQuery ?? ""
+    }
+
     /// JavaScript that opens a link's search in the map without reloading
     /// it: through `window.openLink` where core has it, and otherwise the way
     /// the browser's back button does, which core's urlState already follows.
