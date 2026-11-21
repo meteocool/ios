@@ -1297,7 +1297,7 @@ extension ViewController {
         controller.removeAllUserScripts()
         controller.addUserScript(GeolocationBridge.userScript)
         controller.addUserScript(MapRecovery.graphicsWatch)
-        let capabilities = arAvailable ? "{ share: true, flight: true, ar: true }" : "{ share: true, flight: true }"
+        let capabilities = arAvailable ? "{ share: true, flight: true, inlineVideo: true, ar: true }" : "{ share: true, flight: true, inlineVideo: true }"
         controller.addUserScript(WKUserScript(
             source: "window.nativeCapabilities = Object.assign(window.nativeCapabilities || {}, \(capabilities));",
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
