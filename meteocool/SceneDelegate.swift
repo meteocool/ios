@@ -55,13 +55,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     /// Opens a shared map link (a universal link on app.meteocool.com) in
-    /// the map. Anything else, on another host or page, is ignored.
+    /// the map, and a flight's link (meteoair.html) in its meteoair mode.
+    /// Anything else, on another host or page, is ignored.
     private func open(_ activity: NSUserActivity, in map: ViewController?) {
         guard activity.activityType == NSUserActivityTypeBrowsingWeb, let url = activity.webpageURL else { return }
         open(url, in: map)
     }
 
     private func open(_ url: URL, in map: ViewController?) {
+        if let flight = MapLink.flight(opening: url) {
+            map?.openFlight(query: flight)
+            return
+        }
         guard let search = MapLink.search(opening: url) else { return }
         map?.openLink(search: search)
     }
