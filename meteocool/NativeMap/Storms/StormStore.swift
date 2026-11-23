@@ -286,7 +286,7 @@ final class StormStore: ObservableObject {
         let open: (RadarVolume) -> Void = { [weak self] volume in
             self?.openVolume(volume, details: details)
         }
-        map.fetch(map.endpoints.data.appendingPathComponent("cells/volumes")) { [weak self] data, _ in
+        map.fetch(map.endpoints.volumes(at: map.windowStep)) { [weak self] data, _ in
             if let listed = data.flatMap(StormJSON.volumes)?.first(where: { $0.path == path }) {
                 open(listed)
                 return

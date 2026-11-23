@@ -274,6 +274,34 @@ final class StormFeed {
     /// Where the camera looks, true azimuth in degrees; storms in front load first.
     var lookAzimuth: Double?
 
+    /// A past window's step the storms are for (unix seconds), nil for the
+    /// newest. The boxes and cells are listed again for each step; the
+    /// strikes, mesocyclones and tracks are the live sky's, so none are
+    /// held while it is set.
+    var at: Int? {
+        didSet {
+            guard at != oldValue else { return }
+            // An earlier scan picked is neither the step's nor, back live, the newest.
+            pinnedScan = nil
+            if at != nil {
+                strikes = []
+                mesocyclones = []
+                tracks = [:]
+            }
+            onChange?()
+            guard !polls.isEmpty else { return }
+            Task { [weak self] in
+                await self?.loadVolumeIndex()
+                await self?.loadCells()
+            }
+        }
+    }
+
+    /// `at` as the boxes and cells are asked for it, after `separator`.
+    private static func query(at: Int?, _ separator: String) -> String {
+        at.map { separator + "at=" + RadarWindow.at($0) } ?? ""
+    }
+
     private var inflight: Set<String> = []
     private var retryAfter: [String: Date] = [:]
     /// A newer scan's list, held back until the volumes replacing the ones
@@ -382,10 +410,13 @@ final class StormFeed {
     }
 
     private func loadVolumeIndex() async {
-        guard let index = await get(VolumeIndex.self, "cells/volumes?coarse=true") else {
+        let at = at
+        guard let index = await get(VolumeIndex.self, "cells/volumes?coarse=true" + Self.query(at: at, "&")) else {
             if listedAt == nil { status = .failed; onChange?() }
             return
         }
+        // Another step's, asked before the reader moved on.
+        guard at == self.at else { return }
         latestIndex = index
         if pinnedScan != nil {
             // An earlier scan is on show; the newest waits for "Latest".
@@ -493,7 +524,8 @@ final class StormFeed {
     }
 
     private func loadCells() async {
-        guard let index = await get(CellIndex.self, "cells/current") else { return }
+        let at = at
+        guard let index = await get(CellIndex.self, "cells/current" + Self.query(at: at, "?")), at == self.at else { return }
         cells = index.cells ?? []
         linkCells()
         onChange?()
@@ -520,11 +552,11 @@ final class StormFeed {
     }
 
     private func loadTracks() async {
-        guard let viewer else { return }
+        guard let viewer, at == nil else { return }
         // About 180 km each way, which is the range storms are drawn at.
         let dLat = 1.7, dLon = 1.7 / max(cos(viewer.lat * .pi / 180), 0.2)
         let bbox = String(format: "%.3f,%.3f,%.3f,%.3f", viewer.lon - dLon, viewer.lat - dLat, viewer.lon + dLon, viewer.lat + dLat)
-        guard let collection = await get(TrackCollection.self, "cells/tracks?bbox=\(bbox)") else { return }
+        guard let collection = await get(TrackCollection.self, "cells/tracks?bbox=\(bbox)"), at == nil else { return }
         var byCode: [String: CellTrack] = [:]
         for track in collection.features ?? [] where track.properties.active != false {
             byCode[track.properties.code] = track
@@ -534,7 +566,7 @@ final class StormFeed {
     }
 
     private func loadLightning() async {
-        guard let wire = await get([WireStrike].self, "lightning_cache") else { return }
+        guard at == nil, let wire = await get([WireStrike].self, "lightning_cache"), at == nil else { return }
         let cutoff = Date().addingTimeInterval(-10 * 60)
         strikes = wire.compactMap { strike in
             let time = Date(timeIntervalSince1970: strike.time / 1000)
@@ -549,7 +581,7 @@ final class StormFeed {
     }
 
     private func loadMesocyclones() async {
-        guard let wire = await get([WireMesocyclone].self, "mesocyclones/all/") else { return }
+        guard at == nil, let wire = await get([WireMesocyclone].self, "mesocyclones/all/"), at == nil else { return }
         mesocyclones = wire.map { meso in
             let (lon, lat) = Geo.lonLat(mercatorX: meso.lon, y: meso.lat)
             return Mesocyclone(lat: lat, lon: lon, diameterM: meso.diameter ?? 2000, intensity: meso.intensity ?? 0)

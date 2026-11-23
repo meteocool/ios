@@ -35,6 +35,8 @@ struct ArchiveCheck {
         precondition(RadarWindow(start: 0, end: 1000 * 300) == nil)
         // Every length the picker offers fits.
         for hours in RadarWindow.lengths { precondition(RadarWindow(ending: window.end, hours: hours)?.hours == Double(hours)) }
+        // A step as the volumes, cells and sweeps are asked for it.
+        precondition(RadarWindow.at(utc("20261120T1405Z")) == "2026-11-20T14:05:00Z", RadarWindow.at(utc("20261120T1405Z")))
     }
 
     static func labels() {

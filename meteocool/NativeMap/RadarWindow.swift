@@ -58,6 +58,12 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         return max(start, min(end, on))
     }
 
+    /// A step as the volumes, cells and sweeps take it in `at`: ISO 8601 in
+    /// UTC ("2026-11-20T14:05:00Z").
+    static func at(_ step: Int) -> String {
+        ISO8601DateFormatter().string(from: date(step))
+    }
+
     /// The window a link's frame opens (`t=` with no `from=`/`to=`): none
     /// while the frame is on the live strip, two hours either side of
     /// `now`; a two-hour window ending at it while the archive keeps it.

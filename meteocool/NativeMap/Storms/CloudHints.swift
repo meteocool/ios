@@ -5,7 +5,8 @@
 //  A "3D" tag beside every storm core the 3D map can cut open (core's
 //  `layers/cloudHints.ts`), and the way there: a tap opens the core on the
 //  3D map with its panel. Only on the flat radar map's newest observation,
-//  the scan the cores were found in. One per storm, thinned at a wide zoom.
+//  the scan the cores were found in, or on a past window's step, whose
+//  cores are fetched for it. One per storm, thinned at a wide zoom.
 //
 //  Unlike core's, a tag a scan behind its radar keeps its colour: it only
 //  gives way to a current one where two are too close.
@@ -109,7 +110,10 @@ final class CloudHints: NativeMapFeature {
     private var clouds: [RadarVolume] = []
     private var drawn: [CloudHintAnnotation] = []
     private var drawnKey = ""
-    private var live = true
+    /// On the newest observation, or a window's step: a step there are cores for.
+    private var onStep = true
+    /// The window's step the cores held are for, nil live.
+    private var cloudsAt: Int?
     private var loading = false
     private var keyChanged: AnyCancellable?
 
@@ -122,10 +126,11 @@ final class CloudHints: NativeMapFeature {
 
     func wake() { load() }
 
-    /// The cores are kept six hours: a past window has none.
+    /// The cores held were another time's; the wake that follows fetches
+    /// the window's step's, or now's.
     func windowDidChange(_ window: RadarWindow?) {
-        guard window != nil else { return }
         clouds = []
+        cloudsAt = nil
         map?.model.volumes = []
         redraw()
     }
@@ -142,8 +147,10 @@ final class CloudHints: NativeMapFeature {
     }
 
     func stepDidChange(_ step: RadarStep) {
-        live = step.isLive || step.time == nil
+        onStep = step.isLive || step.time == nil || step.window != nil
         redraw()
+        // A window's cores are its step's.
+        if step.window != nil, map?.windowStep != cloudsAt { load() }
     }
 
     func regionDidChange() { redraw() }
@@ -179,13 +186,17 @@ final class CloudHints: NativeMapFeature {
     }
 
     private func load() {
-        guard let map, !loading, map.model.window == nil else { return }
+        guard let map, !loading else { return }
         loading = true
-        map.fetch(map.endpoints.data.appendingPathComponent("cells/volumes")) { [weak self] data, _ in
+        let at = map.windowStep
+        map.fetch(map.endpoints.volumes(at: at)) { [weak self] data, _ in
             guard let self else { return }
             self.loading = false
+            // The step moved on, or the window changed, while it was out.
+            guard at == self.map?.windowStep else { return self.load() }
             guard let data, let volumes = StormJSON.volumes(data) else { return }
             self.clouds = volumes
+            self.cloudsAt = at
             // And for a storm opened on this map, the box its patch is in.
             self.map?.model.volumes = volumes
             self.redraw()
@@ -195,7 +206,7 @@ final class CloudHints: NativeMapFeature {
     private func redraw() {
         guard let map else { return }
         let zoom = map.zoomLevel
-        let shown = map.model.capability == .radar && live && zoom > CloudHintRules.minZoom && !clouds.isEmpty
+        let shown = map.model.capability == .radar && onStep && zoom > CloudHintRules.minZoom && !clouds.isEmpty
             && !map.model.hiddenStormMarks.contains(.volume)
         let scans = map.player.timeline.liveScans
         let tags = shown ? CloudHintRules.onePerStorm(clouds).map {
