@@ -140,8 +140,7 @@ final class SiteSweeps: NativeMapFeature {
     }
     private var marksShown: Bool {
         guard let map else { return false }
-        // The sweeps are kept a day: a past window has no site mode.
-        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom && map.model.window == nil
+        return map.isOn(.sites) && map.model.capability == .radar && map.zoomLevel > Self.minZoom
     }
 
     func attach(to map: NativeMapContext) {
@@ -150,7 +149,6 @@ final class SiteSweeps: NativeMapFeature {
         map.mapView.register(BeamRingLabelView.self, forAnnotationViewWithReuseIdentifier: BeamRingLabelView.reuse)
         map.model.site.reader = { [weak self] coordinate in self?.readAt(coordinate) }
         map.model.site.opener = { [weak self] code in
-            guard self?.map?.model.window == nil else { return }
             // Site mode is the flat radar map's.
             if self?.map?.model.capability != .radar { self?.map?.setCapability(.radar) }
             self?.open(code)
@@ -218,6 +216,12 @@ final class SiteSweeps: NativeMapFeature {
         guard step != self.step else { return }
         self.step = step
         redraw()
+        // A window's sites and tilts are listed as they were at its step.
+        guard step.window != nil else { return }
+        updateMarks()
+        if let code = state?.mode?.site {
+            refreshOpenSite(code) { [weak self] in self?.redraw() }
+        }
     }
 
     func wake() {
@@ -236,8 +240,8 @@ final class SiteSweeps: NativeMapFeature {
         refreshOpenSite(code) { [weak self] in self?.redraw() }
     }
 
+    /// The wake that follows lists the sites again, for the window's step or now.
     func windowDidChange(_ window: RadarWindow?) {
-        if window != nil { state?.close() }
         updateMarks()
     }
 
@@ -252,7 +256,7 @@ final class SiteSweeps: NativeMapFeature {
     /// A link to a radar (`radar=`, `sweep=`, `tilt=`) opens it, on the
     /// radar map; with no view of its own, the radar's reach in view.
     func open(_ link: [String: String]) -> Bool {
-        guard let map, map.model.window == nil,
+        guard let map,
               let mode = SiteSweepRules.fromLink(radar: link["radar"], sweep: link["sweep"], tilt: link["tilt"]) else { return false }
         if map.model.capability != .radar { map.setCapability(.radar) }
         if link["latLonZ"] == nil, let site = RadarSites.site(mode.site) {
@@ -297,10 +301,12 @@ final class SiteSweeps: NativeMapFeature {
         let southEast = MKMapPoint(x: rect.maxX, y: rect.maxY).coordinate
         let box = [northWest.longitude, southEast.latitude, southEast.longitude, northWest.latitude]
             .map { String(format: "%.3f", $0) }.joined(separator: ",")
-        guard box != listedBox else { return }
-        listedBox = box
-        map.fetch(map.endpoints.sweeps(bbox: box)) { [weak self] data, _ in
-            guard let self, self.listedBox == box, self.marksShown, let data,
+        let at = map.windowStep
+        let listing = box + (at.map { "@\($0)" } ?? "")
+        guard listing != listedBox else { return }
+        listedBox = listing
+        map.fetch(map.endpoints.sweeps(bbox: box, at: at)) { [weak self] data, _ in
+            guard let self, self.listedBox == listing, self.marksShown, let data,
                   let listing = try? JSONDecoder().decode(SweepListing.self, from: data) else { return }
             var sites = listing.sites ?? []
             // The open site stays listed while the reader pans away from it.
@@ -394,10 +400,13 @@ final class SiteSweeps: NativeMapFeature {
 
     private func refreshOpenSite(_ code: String, then: @escaping () -> Void) {
         guard let map else { return }
-        map.fetch(map.endpoints.sweeps(site: code)) { [weak self] data, _ in
+        let at = map.windowStep
+        map.fetch(map.endpoints.sweeps(site: code, at: at)) { [weak self] data, _ in
             guard let self else { return }
+            // Not over a later step's: the reader may have moved on meanwhile.
             if let data, let listing = try? JSONDecoder().decode(SweepListing.self, from: data),
-               let site = listing.sites?.first(where: { $0.site == code }), self.state?.mode?.site == code {
+               let site = listing.sites?.first(where: { $0.site == code }), self.state?.mode?.site == code,
+               at == self.map?.windowStep {
                 self.openSite = site
             }
             then()

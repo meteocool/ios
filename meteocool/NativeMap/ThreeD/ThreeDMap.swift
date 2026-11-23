@@ -452,6 +452,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     func show() {
         framePending = true
         openedKey = nil
+        followStep()
         feed.start()
         touched()
         metalView.isPaused = false
@@ -662,6 +663,7 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
 
     func wake() {
         feed.stop()
+        followStep()
         feed.start()
     }
 
@@ -678,6 +680,17 @@ final class ThreeDMapView: UIView, MTKViewDelegate, UIGestureRecognizerDelegate 
     /// The radar step drawn on the ground changed: drape it again.
     func stepChanged(_ step: RadarStep) {
         stepKey = step.time.map(String.init) ?? ""
+        followStep()
+    }
+
+    /// In a past window the storms are the step's on screen; live, the newest.
+    private func followStep() {
+        let at = map?.windowStep
+        guard feed.at != at else { return }
+        feed.at = at
+        // An earlier scan picked live is not the window's step, nor the newest once it is left.
+        state.scanShown = nil
+        state.scanLoading = nil
     }
 
     // MARK: Feed
@@ -1180,7 +1193,8 @@ struct ThreeDHUD: View {
                     .accessibilityIdentifier(state.scanNote != nil ? "nativeMap.3d.scanNote" : "nativeMap.3d.status")
             }
             HStack {
-                scanPicker
+                // A window's storms follow its own steps.
+                if model.window == nil { scanPicker }
                 Spacer()
                 Button(action: state.openGuide) {
                     Text(CoreStrings.t("guide_3d.pill"))
@@ -1466,8 +1480,9 @@ final class ThreeDMap: NativeMapFeature {
                                               pitch: number("pitch").map { min(max($0, 0), 85) },
                                               bearing: number("bearing").map(CutAngle.normalise))
         if camera.view != nil || camera.pitch != nil || camera.bearing != nil { (view ?? makeView(map)).applyLink(camera) }
-        // `t` is the earlier scan the storms are from; a tracked storm is about now.
-        if let scan = link["t"].flatMap(NativeMapLink.frameTime), link["storm"] == nil, link["cell"] == nil {
+        // `t` is the earlier scan the storms are from; a tracked storm is about
+        // now. In a window it is the step, which the storms follow already.
+        if let scan = link["t"].flatMap(NativeMapLink.frameTime), link["storm"] == nil, link["cell"] == nil, map.model.window == nil {
             (view ?? makeView(map)).openScan(scan)
         }
         // The storm, the cut, the point are other parts'.

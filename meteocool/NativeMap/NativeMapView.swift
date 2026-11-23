@@ -641,8 +641,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// Uses the map in a past window, on `time` or its first step: the
     /// timeline, the radar and what is drawn over it are the window's.
     func openWindow(_ window: RadarWindow, at time: Int? = nil) {
-        // The 3D map has no past.
-        if model.capability == .cells3d { setCapability(.radar) }
         let changed = model.window != window
         model.window = window
         radar.open(window: window, at: time.map(window.clamp))
@@ -967,8 +965,6 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     func setCapability(_ capability: NativeMapModel.Capability) {
         guard capability != model.capability else { return }
-        // The 3D map has no past: picking it is going back to live.
-        if capability == .cells3d { leaveWindow() }
         if capability != .cells3d { model.detour = nil }
         model.capability = capability
         radar.visible = capability == .radar

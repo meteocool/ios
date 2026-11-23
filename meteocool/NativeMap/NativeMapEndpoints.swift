@@ -84,14 +84,21 @@ struct NativeMapEndpoints: Equatable, Sendable {
 
     /// Every radar in a box that has published sweeps lately, or one radar
     /// alone, with each tilt's newest sweeps (site mode). A sweep itself is
-    /// fetched from `tiles` by its `path`.
-    func sweeps(bbox: String) -> URL { sweeps(["bbox": bbox]) }
-    func sweeps(site: String) -> URL { sweeps(["site": site]) }
+    /// fetched from `tiles` by its `path`. With `at` (a past window's step),
+    /// as they were listed then.
+    func sweeps(bbox: String, at: Int? = nil) -> URL { sweeps(["bbox": bbox], at: at) }
+    func sweeps(site: String, at: Int? = nil) -> URL { sweeps(["site": site], at: at) }
 
-    private func sweeps(_ query: [String: String]) -> URL {
-        var components = URLComponents(url: data.appendingPathComponent("sweeps"), resolvingAgainstBaseURL: false)!
-        components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        return components.url!
+    private func sweeps(_ items: [String: String], at: Int?) -> URL {
+        // In one order, so a window's answers are found again in the cache.
+        query(data.appendingPathComponent("sweeps"), items.merging(at.map { ["at": RadarWindow.at($0)] } ?? [:]) { $1 })
+    }
+
+    /// The boxes of sky of each network's newest scan; with `at` (a past
+    /// window's step), of its newest scan at or before it.
+    func volumes(at: Int?) -> URL {
+        let url = data.appendingPathComponent("cells/volumes")
+        return at.map { query(url, ["at": RadarWindow.at($0)]) } ?? url
     }
 
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }

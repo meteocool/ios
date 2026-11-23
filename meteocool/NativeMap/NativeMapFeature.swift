@@ -55,6 +55,10 @@ extension NativeMapContext {
     func shareMap(title: String, source: UIView?) {
         shareMap(title: title, source: source, center: nil, extra: [:])
     }
+
+    /// A past window's step on screen, nil live: the `at` the volumes, the
+    /// cells and the sweeps are asked for.
+    var windowStep: Int? { model.window.map { $0.clamp(player.step ?? $0.end) } }
 }
 
 /// One part of the native map: an overlay, marks, a sheet, a capability.

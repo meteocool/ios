@@ -537,7 +537,7 @@ struct StormDetailsView: View {
         let box = [sites.map(\.lon).min()! - pad, sites.map(\.lat).min()! - pad, sites.map(\.lon).max()! + pad, sites.map(\.lat).max()! + pad]
             .map { String(format: "%.3f", $0) }.joined(separator: ",")
         let served: Set<String> = await withCheckedContinuation { done in
-            map.fetch(map.endpoints.sweeps(bbox: box)) { data, _ in
+            map.fetch(map.endpoints.sweeps(bbox: box, at: map.windowStep)) { data, _ in
                 let listing = data.flatMap { try? JSONDecoder().decode(SweepListing.self, from: $0) }
                 done.resume(returning: Set((listing?.sites ?? []).map(\.site)))
             }
