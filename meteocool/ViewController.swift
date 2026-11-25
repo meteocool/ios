@@ -479,6 +479,18 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         decisionHandler(appPage ? .grant : .prompt)
     }
 
+    /// A link the page opens beside itself (`target="_blank"`: the flight's
+    /// licences and the sources they link to) opens over the map in Safari's
+    /// view, and the page stays as it is. The web view opens no windows.
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        guard let url = navigationAction.request.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return nil }
+        var top: UIViewController = self
+        while let presented = top.presentedViewController { top = presented }
+        top.present(SFSafariViewController(url: url), animated: true)
+        return nil
+    }
+
     @objc func willResignActive() {
         linkPlacedView = false
         nativeMap?.player.leftForeground()
