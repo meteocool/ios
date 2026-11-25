@@ -275,6 +275,8 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // native calls it may make. Do not hardcode it: a hardcoded "2.2"
         // stayed in the URL after the app version changed.
         webView.navigationDelegate = self
+        // For the motion permission the flight's tilt asks for.
+        webView.uiDelegate = self
         installLoadStatus()
         recovery = MapRecovery(webView: webView, reload: { [weak self] view in
             self?.loadMap()
@@ -465,6 +467,16 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         guard nativeMap == nil else { return }
         recovery.failed(.crash)
+    }
+
+    /// The flight's tilt control (core's TouchControls) asks for how the
+    /// phone is held through `DeviceOrientationEvent.requestPermission()`,
+    /// from a tap. The app's own map pages get it without WebKit's alert,
+    /// as they get the location through the app; anything else is asked.
+    func webView(_ webView: WKWebView, requestDeviceOrientationAndMotionPermissionFor origin: WKSecurityOrigin,
+                 initiatedByFrame frame: WKFrameInfo, decisionHandler: @escaping @MainActor @Sendable (WKPermissionDecision) -> Void) {
+        let appPage = origin.protocol == "https" && origin.port == 0 && MeteocoolEnvironment.isWebHost(origin.host)
+        decisionHandler(appPage ? .grant : .prompt)
     }
 
     @objc func willResignActive() {
