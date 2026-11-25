@@ -88,7 +88,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     /// the settings and onboarding are laid out for portrait only, and a sky
     /// full of storms is wider than it is tall. Info.plist lists only
     /// portrait for the iPhone, and this replaces that list at run time.
+    /// The page's flight game is landscape only, on any device, and must
+    /// agree with `ViewController.supportedInterfaceOrientations`.
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        if ViewController.isFlying { return .landscape }
         if UIDevice.current.userInterfaceIdiom == .pad { return .all }
         return ARStormViewController.isPresented ? .allButUpsideDown : .portrait
     }
