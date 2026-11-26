@@ -944,9 +944,12 @@ extension ViewController {
     /// Turns to landscape for the flight game, or back to how the map is
     /// laid out. Going in, the top of the phone goes to the left unless it is
     /// already held sideways; both sides are allowed from then on. Leaving
-    /// asks for what the map allows, portrait on a phone.
+    /// asks for what the map allows, portrait on a phone. The screen stays
+    /// on meanwhile: a flight steered by tilting the phone has no touches to
+    /// keep it awake.
     private func setFlying(_ flying: Bool) {
         Self.isFlying = flying
+        UIApplication.shared.isIdleTimerDisabled = flying
         setNeedsStatusBarAppearanceUpdate()
         setNeedsUpdateOfHomeIndicatorAutoHidden()
         // Whatever is presented over the map decides the orientation while
