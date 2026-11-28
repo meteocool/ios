@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "te zien op meteocool";
 "radar_help.key.scan" = "gemeten door een radar";
 "radar_help.lede" = "Hoe de weerradars de lucht aftasten, wanneer ze publiceren wat ze gemeten hebben, en welk deel van meteocool uit welke gegevens wordt gemaakt.";
-"radar_help.made.caption" = "De oranje lijnen zijn de 3D-wolken. Een kolommaximum zegt waar de buien zijn: DMAX voor Duitsland, het eigen kolommaximum van meteocool voor de andere landen. De ruwe sweeps vullen de box van elke bui.";
+"radar_help.made.caption" = "De oranje lijnen zijn de 3D-wolken. Een kolommaximum zegt waar de buien zijn: DMAX voor Duitsland, MRMS van de NOAA voor de Verenigde Staten, het eigen kolommaximum van meteocool voor de andere landen. De ruwe sweeps vullen de box van elke bui.";
 "radar_help.made.cells" = "Onweerscellen en banen";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "De celherkenning en -volging van de DWD. Voor elke cel snijdt meteocool de echte omtrek van elke sterkte uit DMAX.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Inslagen komen één voor één binnen en verschijnen meteen. De bliksemtegels worden elke vijf minuten opnieuw gebouwd.";
 "radar_help.made.meso" = "Mesocyclonen";
-"radar_help.made.meso_from" = "mesocyclonenbestand van de DWD";
-"radar_help.made.meso_how" = "Getoond zoals ze gepubliceerd worden.";
+"radar_help.made.meso_from" = "mesocyclonenbestand van de DWD, snelheid uit de ruwe sweeps";
+"radar_help.made.meso_how" = "De detecties van de DWD boven Duitsland, getoond zoals ze gepubliceerd worden. Daarnaast rotatiesignaturen die meteocool eens per cyclus uit de snelheid van de radars leest.";
 "radar_help.made.networks" = "Radarkaart CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "ruwe sweeps";
 "radar_help.made.networks_how" = "meteocool neemt de laagste hoek van elke radar, haalt storingen weg en bouwt één composiet per land. Het zoekt elke 30 seconden naar nieuwe sweeps. Klaar binnen een minuut (Estland, Zweden) tot 7 minuten (Noorwegen, Denemarken) na de scan; die van Denemarken komt elke tien minuten.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Zo werkt de radar";
 "radar_help.products.p1" = "De radarkaart kan twee soorten beeld tonen. Een laagste scan toont de laagste sweep van elke radar: de echo het dichtst bij de grond, en dus het dichtst bij de regen die je echt voelt. Ver van een radar zit zelfs die sweep hoog, zoals het zijaanzicht hierboven laat zien, en kan regen uit lage wolken ontbreken.";
 "radar_help.products.p2" = "Een kolommaximum toont voor elk punt op de kaart de sterkste echo van alle hoeken erboven, tot 12 km. Zo zie je waar de kernen van de buien zitten, ook regen en hagel die nog hoog in de wolk hangen of onderweg naar beneden verdampen. Het is dus niet per se regen aan de grond: het lijkt meestal sterker en groter dan de laagste scan en kan regen tonen waar het beneden droog blijft.";
-"radar_help.products.p3" = "Een kolommaximum wacht op de hele volumescan en loopt daarom een scan of meer achter. DMAX is het kolommaximum van de DWD voor Duitsland; meteocool bouwt een eigen uit alle zestien netwerken. De onweerscellen en de 3D-wolken worden in een kolommaximum gevonden.";
+"radar_help.products.p3" = "Een kolommaximum wacht op de hele volumescan en loopt daarom een scan of meer achter. DMAX is het kolommaximum van de DWD voor Duitsland; meteocool bouwt een eigen uit alle zestien netwerken. De onweerscellen en de 3D-wolken worden in een kolommaximum gevonden. Voor de Verenigde Staten publiceert MRMS van de NOAA een eigen kolommaximum.";
 "radar_help.products.title" = "Laagste scan of kolommaximum";
 "radar_help.tilts.above_1" = "recht boven de radar";
 "radar_help.tilts.above_2" = "kijkt geen hoek";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Actief";
 "storm.key.live_body" = "Wordt nog gedetecteerd. Zonder de ring is het een tijd geleden voor het laatst gezien.";
 "storm.key.mesocyclone" = "Mesocycloon";
-"storm.key.mesocyclone_body" = "Een rotatie uit het mesocycloonproduct van de DWD.";
+"storm.key.mesocyclone_body" = "Een rotatie uit het mesocycloonproduct van het DWD, of een rotatiesignatuur die meteocool uit de snelheid van een radar leest.";
 "storm.key.meteocool" = "meteocool-onweer";
-"storm.key.meteocool_body" = "Door meteocool gevolgd op de radar, in heel Europa. Zonder verwachting, hagel- of rotatiemelding.";
+"storm.key.meteocool_body" = "Door meteocool gevolgd op de radar, in heel Europa en de Verenigde Staten. Zonder verwachting, hagel- of rotatiemelding.";
 "storm.key.open" = "Wat de onweerssymbolen betekenen";
 "storm.key.path" = "Baan";
 "storm.key.path_body" = "Waar het is geweest. Vervaagt zodra het niet meer wordt gezien.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Een oppervlak om de 10 dBZ, in elkaar als de rokken van een ui.";
 "style_3d.title" = "Buienstijl";
 "text1" = "meteocool is een gratis GIS-platform dat weergegevens verzamelt en visualiseert, met de nadruk op zwaar weer. Het is geoptimaliseerd voor mobiele apparaten, en je kunt het gebruiken om naderend weer op te zoeken of juist te ontwijken.";
-"text2" = "meteocool gebruikt radargegevens van de weerdiensten van Duitsland (DWD), Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Ierland, Kroatië, Denemarken, Nederland, Finland, Zweden en Noorwegen, en realtime bliksemgegevens van het blitzortung.org-project.";
+"text2" = "meteocool gebruikt radargegevens van de weerdiensten van Duitsland (DWD), Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Ierland, Kroatië, Denemarken, Nederland, Finland, Zweden, Noorwegen en de Verenigde Staten (NOAA/NWS, NOAA/NSSL MRMS), en realtime bliksemgegevens van het blitzortung.org-project. meteocool bewerkt deze gegevens: het herprojecteert ze, deelt ze op in tegels en berekent er voorspellingen mee. NOAA en de andere weerdiensten onderschrijven meteocool niet.";
 "time_3d.choose" = "Toon de buien op een eerder tijdstip";
 "time_3d.failed" = "De buien om {time} konden niet worden geladen";
 "time_3d.latest" = "Nieuwste";

@@ -213,6 +213,11 @@ enum LightningRules {
         let west = Double(x) / n * 360 - 180, east = Double(x + 1) / n * 360 - 180
         func latitude(_ row: Double) -> Double { atan(sinh(.pi * (1 - 2 * row / n))) * 180 / .pi }
         let north = latitude(Double(y)), south = latitude(Double(y + 1))
-        return east >= -130 && west <= -60 && north >= 20 && south <= 55
+        return noaaCovers(west: west, east: east, south: south, north: north)
+    }
+
+    /// Whether a box, in degrees, touches the contiguous US the service draws.
+    static func noaaCovers(west: Double, east: Double, south: Double, north: Double) -> Bool {
+        east >= -130 && west <= -60 && north >= 20 && south <= 55
     }
 }

@@ -134,6 +134,24 @@ final class NOAATileOverlay: MKTileOverlay, @unchecked Sendable {
     }
 }
 
+extension LightningRules {
+    /// Whether the view shows any of the US that NOAA's reflectivity covers.
+    static func noaaCovers(_ rect: MKMapRect) -> Bool {
+        guard !rect.isNull, !rect.isEmpty else { return false }
+        let world = MKMapRect.world
+        if rect.width >= world.width { return true }
+        // A view across the antimeridian: each side on its own.
+        if rect.maxX > world.maxX {
+            return noaaCovers(MKMapRect(x: rect.minX, y: rect.minY, width: world.maxX - rect.minX, height: rect.height))
+                || noaaCovers(MKMapRect(x: 0, y: rect.minY, width: rect.maxX - world.maxX, height: rect.height))
+        }
+        let northWest = MKMapPoint(x: rect.minX, y: rect.minY).coordinate
+        let southEast = MKMapPoint(x: rect.maxX, y: rect.maxY).coordinate
+        return noaaCovers(west: northWest.longitude, east: southEast.longitude,
+                          south: southEast.latitude, north: northWest.latitude)
+    }
+}
+
 /// The strikes after the tile set's newest, drawn as core's crosses.
 final class StrikeOverlay: NSObject, MKOverlay, @unchecked Sendable {
     let coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)

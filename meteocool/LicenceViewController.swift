@@ -51,10 +51,16 @@ struct DataSource {
                    url: "https://www.smhi.se/data/om-smhis-data/villkor-for-anvandning"),
         DataSource(name: "© Norwegian Meteorological Institute (MET Norway)", detailKey: "source_met_norway",
                    url: "https://www.met.no/en/free-meteorological-data/Licensing-and-crediting"),
+        // Public domain, so no ©. NOAA's terms ask that processed data not
+        // pass for its own and that nothing suggest it endorses meteocool:
+        // the details and the footer say both.
+        DataSource(name: "NOAA National Weather Service (NWS)", detailKey: "source_noaa",
+                   url: "https://www.weather.gov/disclaimer"),
+        DataSource(name: "NOAA National Severe Storms Laboratory (NSSL) · MRMS", detailKey: "source_noaa_mrms",
+                   url: "https://www.nssl.noaa.gov/projects/mrms/"),
+        // Every network above but Germany's and the United States' comes through it.
         DataSource(name: "EUMETNET Open Radar Data", detailKey: "source_eumetnet",
                    url: "https://eumetnet.github.io/openradardata-documentation/"),
-        DataSource(name: "NOAA / National Weather Service", detailKey: "source_noaa",
-                   url: "https://www.weather.gov/disclaimer"),
         DataSource(name: "© Blitzortung.org and its contributors", detailKey: "source_blitzortung",
                    url: "https://www.blitzortung.org/"),
         DataSource(name: "© Open-Meteo.com", detailKey: "source_openmeteo",

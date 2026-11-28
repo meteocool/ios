@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "meteocoolis näidatud";
 "radar_help.key.scan" = "radari mõõdetud";
 "radar_help.lede" = "Kuidas ilmaradarid taevast skaneerivad, millal nad mõõdetu avaldavad ja milline meteocooli osa millistest andmetest tehakse.";
-"radar_help.made.caption" = "Oranžid jooned on 3D-pilved. Sambamaksimum näitab, kus äikesed on: Saksamaa kohta DMAX, teiste riikide kohta meteocooli oma. Toorskaneeringud täidavad iga äikese kasti.";
+"radar_help.made.caption" = "Oranžid jooned on 3D-pilved. Sambamaksimum näitab, kus äikesed on: Saksamaa kohta DMAX, Ameerika Ühendriikide kohta NOAA MRMS, teiste riikide kohta meteocooli oma. Toorskaneeringud täidavad iga äikese kasti.";
 "radar_help.made.cells" = "Äikeserakud ja liikumisteed";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "DWD rakkude tuvastamine ja jälgimine. Iga raku jaoks lõikab meteocool DMAX-ist välja tegeliku kontuuri iga tugevusastme kohta.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Välgulöögid saabuvad ükshaaval ja ilmuvad kohe. Välgupaanid koostatakse uuesti iga viie minuti järel.";
 "radar_help.made.meso" = "Mesotsüklonite märgid";
-"radar_help.made.meso_from" = "DWD mesotsüklonite fail";
-"radar_help.made.meso_how" = "Näidatakse nii, nagu need avaldatakse.";
+"radar_help.made.meso_from" = "DWD mesotsüklonite fail, toorskaneeringute kiirus";
+"radar_help.made.meso_how" = "DWD tuvastused Saksamaa kohal, näidatakse nii, nagu need avaldatakse. Nende kõrval pöörlemise tunnused, mille meteocool loeb kord tsüklis radarite kiirusest.";
 "radar_help.made.networks" = "Radarikaart, CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "toorskaneeringud";
 "radar_help.made.networks_how" = "meteocool võtab iga radari madalaima tõusunurga, eemaldab müra ja koostab igale riigile ühe liitpildi. Uusi ringskaneeringuid otsitakse iga 30 sekundi järel. Valmis alla minuti (Eesti, Rootsi) kuni 7 minuti (Norra, Taani) jooksul pärast skaneerimist; Taani oma tuleb iga kümne minuti järel.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Kuidas radar töötab";
 "radar_help.products.p1" = "Radarikaart võib näidata kahte liiki pilti. Madalaim skaneering näitab iga radari madalaimat ringskaneeringut: maapinnale lähimat kaja ja seega kõige lähemat vastet vihmale, mida sa tegelikult tunned. Radarist kaugel on isegi see ringskaneering kõrgel, nagu ülal külgvaatel näha, nii et madalatest pilvedest sadav vihm võib jääda märkamata.";
 "radar_help.products.p2" = "Sambamaksimum näitab kaardi iga punkti kohta tugevaimat kaja ükskõik millisel selle kohal oleval tõusunurgal, kuni 12 km kõrguseni. See märgib, kus asuvad äikesetuumad, sealhulgas vihma ja rahet, mis on veel pilves kõrgel ega ole veel alla jõudnud või aurustub teel alla. Seega pole see tingimata vihm maapinnal: tavaliselt näib see madalaimast skaneeringust tugevam ja laiem ning võib näidata vihma ka seal, kus all jääb kuivaks.";
-"radar_help.products.p3" = "Sambamaksimum vajab tervet mahuskaneeringut, seega jääb see ühe või enama skaneeringu võrra maha. DMAX on DWD sambamaksimum Saksamaa kohta; meteocool koostab oma kõigi kuueteistkümne võrgu põhjal. Äikeserakud ja 3D-pilved leitakse sambamaksimumist.";
+"radar_help.products.p3" = "Sambamaksimum vajab tervet mahuskaneeringut, seega jääb see ühe või enama skaneeringu võrra maha. DMAX on DWD sambamaksimum Saksamaa kohta; meteocool koostab oma kõigi kuueteistkümne võrgu põhjal. Äikeserakud ja 3D-pilved leitakse sambamaksimumist. Ameerika Ühendriikide kohta avaldab oma NOAA MRMS.";
 "radar_help.products.title" = "Madalaim skaneering või sambamaksimum";
 "radar_help.tilts.above_1" = "otse radari kohal";
 "radar_help.tilts.above_2" = "ei vaata ükski tõusunurk";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktiivne";
 "storm.key.live_body" = "Seda tuvastatakse endiselt. Ilma rõngata nähti seda viimati mõne aja eest.";
 "storm.key.mesocyclone" = "Mesotsüklon";
-"storm.key.mesocyclone_body" = "DWD mesotsüklonite tootes tuvastatud pöörlemine.";
+"storm.key.mesocyclone_body" = "DWD mesotsüklonitoote tuvastatud pöörlemine või pöörlemise tunnus, mille meteocool loeb radari kiirusest.";
 "storm.key.meteocool" = "meteocooli äike";
-"storm.key.meteocool_body" = "Jälgib meteocool radarilt kogu Euroopas. Prognoosi ega rahe- või pöörlemismärget pole.";
+"storm.key.meteocool_body" = "Jälgib meteocool radarilt kogu Euroopas ja Ameerika Ühendriikides. Prognoosi ega rahe- või pöörlemismärget pole.";
 "storm.key.open" = "Mida äikesemärgid tähendavad";
 "storm.key.path" = "Teekond";
 "storm.key.path_body" = "Kus see on liikunud. Tuhmub, kui seda enam ei nähta.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Pind iga 10 dBZ järel, üksteise sees nagu sibula kihid.";
 "style_3d.title" = "Äikesepilvede stiil";
 "text1" = "meteocool on tasuta GIS-platvorm, mis kogub ja visualiseerib ilmaandmeid, keskendudes ohtlikule ilmale. See on loodud eelkõige mobiilseadmetele ning sellega saad lähenevat ilma taga ajada või sellest hoopis eemale hoida.";
-"text2" = "meteocool kasutab Saksamaa (DWD), Šveitsi, Prantsusmaa, Tšehhi, Poola, Belgia, Slovakkia, Leedu, Eesti, Iirimaa, Horvaatia, Taani, Hollandi, Soome, Rootsi ja Norra ilmateenistuste radariandmeid ning projekti blitzortung.org reaalajas välguandmeid.";
+"text2" = "meteocool kasutab Saksamaa (DWD), Šveitsi, Prantsusmaa, Tšehhi, Poola, Belgia, Slovakkia, Leedu, Eesti, Iirimaa, Horvaatia, Taani, Hollandi, Soome, Rootsi, Norra ja Ameerika Ühendriikide (NOAA/NWS, NOAA/NSSL MRMS) ilmateenistuste radariandmeid ning projekti blitzortung.org reaalajas välguandmeid. meteocool töötleb neid andmeid: projitseerib need ümber, jagab paanideks ja arvutab nende põhjal prognoose. Ei NOAA ega teised ilmateenistused ei toeta ega soovita meteocooli.";
 "time_3d.choose" = "Näita äikesi varasemal ajal";
 "time_3d.failed" = "Äikesi seisuga {time} ei õnnestunud otsida";
 "time_3d.latest" = "Värskeim";

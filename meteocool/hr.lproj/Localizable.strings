@@ -159,7 +159,7 @@
 /* Data sources and licences (SettingsViewController.dataSources) */
 "data_sources_header" = "Izvori podataka i licence";
 "data_sources_footer" = "Pružatelji podataka ne podržavaju službeno meteocool i ne daju nikakva jamstva. Dodirni izvor za njegovu licencu.";
-"source_dwd" = "Radar Njemačka, olujne ćelije, vremenske karte · CC BY 4.0, izmijenjeno";
+"source_dwd" = "Radar Njemačka, olujne ćelije, mezociklone, 3D volumeni, vremenske karte, meteorološke postaje · CC BY 4.0, izmijenjeno";
 "source_meteoswiss" = "Radar Švicarska · CC BY 4.0, izmijenjeno";
 "source_meteofrance" = "Radar Francuska · Licence Ouverte 2.0 (Etalab), izmijenjeno";
 "source_chmi" = "Radar Češka · CC BY 4.0, izmijenjeno";
@@ -169,19 +169,20 @@
 "source_shmu" = "Radar Slovačka · CC BY 4.0, izmijenjeno";
 "source_lhmt" = "Radar Litva · CC BY 4.0 / CC BY-SA 4.0, izmijenjeno";
 "source_kaur" = "Radar Estonija · CC BY 4.0, izmijenjeno";
-"source_met_eireann" = "Radar Irska · Copyright Met Éireann. Izvor: www.met.ie. Objavljeno pod licencom Creative Commons Imenovanje 4.0 međunarodna (CC BY 4.0). Podaci su izmijenjeni: meteocool ih je spojio, ponovno projicirao, očistio od odraza tla i šuma te obojio.";
+"source_met_eireann" = "Radar Irska · Copyright Met Éireann. Izvor: www.met.ie. Objavljeno pod licencom Creative Commons Imenovanje 4.0 međunarodna (CC BY 4.0). Podaci su izmijenjeni: meteocool ih je spojio, ponovno projicirao, očistio od odraza tla i šuma te obojio. Met Éireann ne prihvaća nikakvu odgovornost za pogreške ili propuste u podacima, njihovu dostupnost ni za bilo kakav gubitak ili štetu nastalu njihovom uporabom.";
 "source_dhmz" = "Radar Hrvatska · Izvor: DHMZ. CC BY 4.0 / Otvorena dozvola, izmijenjeno, posljednje u vrijeme snimanja prikazano na karti";
 "source_dmi" = "Radar Danska · CC BY 4.0, izmijenjeno";
 "source_knmi" = "Radar Nizozemska (Den Helder, Herwijnen) · CC BY 4.0, izmijenjeno";
 "source_fmi" = "Radar Finska · CC BY 4.0, izmijenjeno";
 "source_smhi" = "Radar Švedska · CC BY 4.0, izmijenjeno";
 "source_met_norway" = "Radar Norveška · Na temelju podataka MET Norwaya. NLOD 2.0 / CC BY 4.0, izmijenjeno";
-"source_noaa" = "Radar SAD · javno dobro";
+"source_noaa" = "Radar SAD, vlastiti prolazi svakog radara (NEXRAD Level III) · javno dobro; obradio meteocool, stoga to nisu izvorni podaci NOAA-e";
+"source_noaa_mrms" = "Radar SAD: kompozit, maksimum stupca, vrhovi odjeka, VIL i 3D volumeni · javno dobro; obradio meteocool, stoga to nisu izvorni podaci NOAA-e";
 "source_blitzortung" = "Munje";
 "source_openmeteo" = "Usporedba modela · CC BY 4.0";
 "source_osm" = "Podaci podloge karte · ODbL";
 "source_protomaps" = "Pločice podloge karte";
-"source_eumetnet" = "Radar Švicarska, Francuska, Češka, Poljska, Belgija, Slovačka, Litva, Estonija, Irska, Hrvatska, Danska, Nizozemska, Finska, Švedska i Norveška, dostavljeno putem ove usluge";
+"source_eumetnet" = "Radar svih gore navedenih mreža osim njemačke i američke, dostavljeno putem ove usluge";
 "source_mapterhorn" = "Teren na 3D karti · otvoreni visinski podaci, uglavnom CC BY 4.0. Dodirni za sve izvore.";
 "source_freepik" = "Artwork designed by Freepik from Flaticon";
 "source_gorbachev" = "Ikone legende";
@@ -279,6 +280,7 @@
 "native_map_pause" = "Pauza";
 "native_map_timeline" = "Vrijeme radara";
 "native_map_mesocyclone" = "Mezociklona, jačina %ld";
+"native_map_rotation_signature" = "Rotacijski potpis";
 "native_map_storm" = "Oluja";
 "native_map_storm_near" = "Oluja kod %@";
 "native_map_hail" = "Tuča";

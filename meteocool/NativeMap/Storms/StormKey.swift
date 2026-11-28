@@ -55,9 +55,9 @@ struct StormKeyPill: View {
 /// The key itself.
 struct StormKeyView: View {
     @ObservedObject var model: NativeMapModel
-    /// The mesocyclones' layer switch, which the key's last row is.
+    /// The mesocyclones' layer switch, the last row of what holds everywhere.
     let mesocyclones: Binding<Bool>
-    /// The lightning's layer switch, the last row of what holds everywhere.
+    /// The lightning's layer switch, above the mesocyclones'.
     let lightning: Binding<Bool>
     let close: () -> Void
 
@@ -78,17 +78,18 @@ struct StormKeyView: View {
                          id: "lightning", disabled: !lightningKept) {
                         Image("MapLightning").resizable().scaledToFit().frame(width: 20, height: 20)
                     }
-                }
-                // What DWD's tracking adds, over Germany alone.
-                Section(CoreStrings.t("storm.key.germany_only")) {
-                    if storms { dwdRows }
-                    // DWD keeps no series of them: in a past window there are none to show.
+                    // DWD's mesocyclones and meteocool's rotation signatures, wherever there is radar;
+                    // no series of them is kept, so a past window has none.
                     let kept = NativeMapLayer.mesocyclones.hasPast || model.window == nil
                     item(CoreStrings.t("storm.key.mesocyclone"),
                          CoreStrings.t(kept ? "storm.key.mesocyclone_body" : "chrome.archive.no_past"), on: mesocyclones,
                          id: "mesocyclone", disabled: !kept) {
                         Image("MapMesocyclone").resizable().scaledToFit().frame(width: 20, height: 20)
                     }
+                }
+                // What DWD's tracking adds, over Germany alone.
+                if storms {
+                    Section(CoreStrings.t("storm.key.germany_only")) { dwdRows }
                 }
             }
             .navigationTitle(CoreStrings.t("storm.key.title"))

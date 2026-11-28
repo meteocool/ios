@@ -695,22 +695,25 @@ final class RadarEngine {
         didSet { updateOpacity() }
     }
 
+    /// Core's credit per network (`layers/attributions.ts`). The United
+    /// States' is public domain, so it carries no ©.
+    static let noaaCredit = "NOAA/NWS, NOAA/NSSL MRMS"
     private static let networkCredits = [
-        "ch": "MeteoSwiss", "fr": "Météo-France", "cz": "ČHMÚ", "pl": "IMGW-PIB", "be": "RMI, © VMM", "sk": "SHMÚ",
-        "lt": "LHMT", "ee": "Keskkonnaagentuur", "ie": "Met Éireann (CC BY 4.0)", "hr": "DHMZ", "dk": "DMI",
-        "nl": "KNMI", "fi": "FMI", "se": "SMHI", "no": "MET Norway",
+        "ch": "© MeteoSwiss", "fr": "© Météo-France", "cz": "© ČHMÚ", "pl": "© IMGW-PIB", "be": "© RMI, © VMM",
+        "sk": "© SHMÚ", "lt": "© LHMT", "ee": "© Keskkonnaagentuur", "ie": "© Met Éireann (CC BY 4.0)", "hr": "© DHMZ",
+        "dk": "© DMI", "nl": "© KNMI", "fi": "© FMI", "se": "© SMHI", "no": "© MET Norway", "us": noaaCredit,
     ]
 
     /// Who a network's radar is from.
     static func credit(network: String) -> String? {
-        network == "de" ? "DWD" : networkCredits[network]
+        network == "de" ? "© DWD" : networkCredits[network]
     }
 
     /// Who the radar on screen is from, as core credits each visible layer.
     func credits(in visible: MKMapRect) -> [String] {
         var names: [String] = []
         for layer in shownLayers where coverage.bounds(of: layer.clip).intersects(visible) {
-            if layer.key == "de" { names.insert("DWD", at: 0) } else if let name = Self.networkCredits[layer.key] { names.append(name) }
+            if layer.key == "de" { names.insert("© DWD", at: 0) } else if let name = Self.networkCredits[layer.key] { names.append(name) }
         }
         return names
     }

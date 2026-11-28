@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "prikazano na meteocoolu";
 "radar_help.key.scan" = "izmjerio radar";
 "radar_help.lede" = "Kako meteorološki radari skeniraju nebo, kada objavljuju ono što su izmjerili i koji je dio meteocoola napravljen od kojih podataka.";
-"radar_help.made.caption" = "Narančaste linije su 3D oblaci. Maksimum stupca govori gdje su oluje: DMAX za Njemačku, meteocoolov vlastiti za ostale zemlje. Sirovi prolazi popunjavaju kutiju svake oluje.";
+"radar_help.made.caption" = "Narančaste linije su 3D oblaci. Maksimum stupca govori gdje su oluje: DMAX za Njemačku, NOAA-in MRMS za Sjedinjene Američke Države, meteocoolov vlastiti za ostale zemlje. Sirovi prolazi popunjavaju kutiju svake oluje.";
 "radar_help.made.cells" = "Olujne ćelije i putanje";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "Otkrivanje i praćenje ćelija DWD-a. Za svaku ćeliju meteocool iz DMAX-a izrezuje stvarni obris za svaku razinu jačine.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Udari stižu jedan po jedan i odmah se prikazuju. Pločice munja ponovno se izrađuju svakih pet minuta.";
 "radar_help.made.meso" = "Oznake mezociklona";
-"radar_help.made.meso_from" = "DWD-ova datoteka mezociklona";
-"radar_help.made.meso_how" = "Prikazuju se onako kako su objavljene.";
+"radar_help.made.meso_from" = "DWD-ova datoteka mezociklona, brzina iz sirovih prolaza";
+"radar_help.made.meso_how" = "DWD-ove detekcije nad Njemačkom, prikazane onako kako su objavljene. Uz njih rotacijski potpisi koje meteocool jednom po ciklusu čita iz brzine radara.";
 "radar_help.made.networks" = "Radarska karta, CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "sirovi prolazi";
 "radar_help.made.networks_how" = "meteocool uzima najnižu elevaciju svakog radara, uklanja šum i izrađuje jedan kompozit po zemlji. Nove prolaze traži svakih 30 sekundi. Gotovo za manje od minute (Estonija, Švedska) do 7 minuta (Norveška, Danska) nakon skena; danski stiže svakih deset minuta.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Kako radi radar";
 "radar_help.products.p1" = "Radarska karta može prikazati dvije vrste slike. Najniži sken prikazuje najniži prolaz svakog radara: odjek najbliži tlu, dakle ono što je najbliže kiši koju ćeš stvarno osjetiti. Daleko od radara čak je i taj prolaz visoko, kao što pokazuje bočni pogled iznad, pa se kiša iz niskih oblaka može propustiti.";
 "radar_help.products.p2" = "Maksimum stupca za svaku točku na karti prikazuje najjači odjek u bilo kojoj elevaciji iznad nje, do 12 km. Tako se vidi gdje su olujne jezgre, uključujući kišu i tuču koje su još visoko u oblaku i još nisu pale ili koje ispare na putu prema dolje. Zato to nije nužno kiša na tlu: obično izgleda jače i šire od najnižeg skena i može pokazivati kišu ondje gdje je ispod suho.";
-"radar_help.products.p3" = "Maksimumu stupca treba cijeli volumni sken, pa kasni jedan sken ili više. DMAX je maksimum stupca DWD-a za Njemačku; meteocool izrađuje vlastiti iz svih šesnaest mreža. Olujne ćelije i 3D oblaci pronalaze se u maksimumu stupca.";
+"radar_help.products.p3" = "Maksimumu stupca treba cijeli volumni sken, pa kasni jedan sken ili više. DMAX je maksimum stupca DWD-a za Njemačku; meteocool izrađuje vlastiti iz svih šesnaest mreža. Olujne ćelije i 3D oblaci pronalaze se u maksimumu stupca. Za Sjedinjene Američke Države svoj objavljuje NOAA-in MRMS.";
 "radar_help.products.title" = "Najniži sken ili maksimum stupca";
 "radar_help.tilts.above_1" = "točno iznad radara";
 "radar_help.tilts.above_2" = "ne gleda nijedna elevacija";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktivna";
 "storm.key.live_body" = "Još se detektira. Bez prstena zadnji put je viđena prije nekog vremena.";
 "storm.key.mesocyclone" = "Mezociklona";
-"storm.key.mesocyclone_body" = "Rotacija otkrivena u DWD-ovom proizvodu mezociklona.";
+"storm.key.mesocyclone_body" = "Rotacija iz DWD-ova mezociklonskog proizvoda ili rotacijski potpis koji meteocool čita iz brzine radara.";
 "storm.key.meteocool" = "meteocool oluja";
-"storm.key.meteocool_body" = "Prati je meteocool s radara diljem Europe. Bez prognoze i dojava tuče ili rotacije.";
+"storm.key.meteocool_body" = "Prati je meteocool s radara diljem Europe i Sjedinjenih Američkih Država. Bez prognoze i dojava tuče ili rotacije.";
 "storm.key.open" = "Što znače oznake oluja";
 "storm.key.path" = "Putanja";
 "storm.key.path_body" = "Kuda je prošla. Blijedi kad se više ne vidi.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Ploha na svakih 10 dBZ, jedna u drugoj kao ljuske luka.";
 "style_3d.title" = "Stil oluja";
 "text1" = "meteocool je besplatna GIS platforma koja prikuplja i vizualizira meteorološke podatke, s naglaskom na opasne vremenske pojave. Prilagođena je mobilnim uređajima, a možeš je koristiti da loviš nadolazeće nevrijeme ili da ga izbjegneš.";
-"text2" = "meteocool koristi radarske podatke meteoroloških službi Njemačke (DWD), Švicarske, Francuske, Češke, Poljske, Belgije, Slovačke, Litve, Estonije, Irske, Hrvatske, Danske, Nizozemske, Finske, Švedske i Norveške te munje u stvarnom vremenu iz projekta blitzortung.org.";
+"text2" = "meteocool koristi radarske podatke meteoroloških službi Njemačke (DWD), Švicarske, Francuske, Češke, Poljske, Belgije, Slovačke, Litve, Estonije, Irske, Hrvatske, Danske, Nizozemske, Finske, Švedske, Norveške i Sjedinjenih Američkih Država (NOAA/NWS, NOAA/NSSL MRMS) te munje u stvarnom vremenu iz projekta blitzortung.org. meteocool obrađuje te podatke: preprojicira ih, dijeli na pločice i iz njih izračunava prognoze. Ni NOAA ni ostale meteorološke službe ne podržavaju niti preporučuju meteocool.";
 "time_3d.choose" = "Prikaži oluje u ranijem trenutku";
 "time_3d.failed" = "Nije uspjelo dohvaćanje oluja u {time}";
 "time_3d.latest" = "Najnovije";

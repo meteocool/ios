@@ -159,7 +159,7 @@
 /* Data sources and licences (SettingsViewController.dataSources) */
 "data_sources_header" = "Tietolähteet ja lisenssit";
 "data_sources_footer" = "Palveluntarjoajat eivät ole suosittaneet meteocoolia eivätkä anna mitään takuuta. Napauta lähdettä nähdäksesi sen lisenssin.";
-"source_dwd" = "Tutka Saksa, ukkossolut, sääkartat · CC BY 4.0, muokattu";
+"source_dwd" = "Tutka Saksa, ukkossolut, mesosyklonit, 3D-tilavuudet, sääkartat, sääasemat · CC BY 4.0, muokattu";
 "source_meteoswiss" = "Tutka Sveitsi · CC BY 4.0, muokattu";
 "source_meteofrance" = "Tutka Ranska · Licence Ouverte 2.0 (Etalab), muokattu";
 "source_chmi" = "Tutka Tšekki · CC BY 4.0, muokattu";
@@ -169,19 +169,20 @@
 "source_shmu" = "Tutka Slovakia · CC BY 4.0, muokattu";
 "source_lhmt" = "Tutka Liettua · CC BY 4.0 / CC BY-SA 4.0, muokattu";
 "source_kaur" = "Tutka Viro · CC BY 4.0, muokattu";
-"source_met_eireann" = "Tutka Irlanti · Copyright Met Éireann. Lähde: www.met.ie. Julkaistu Creative Commons Nimeä 4.0 Kansainvälinen -lisenssillä (CC BY 4.0). Tietoja on muokattu: meteocool on yhdistänyt ja uudelleenprojisoinut ne, poistanut maakaiut ja kohinan sekä värittänyt ne.";
+"source_met_eireann" = "Tutka Irlanti · Copyright Met Éireann. Lähde: www.met.ie. Julkaistu Creative Commons Nimeä 4.0 Kansainvälinen -lisenssillä (CC BY 4.0). Tietoja on muokattu: meteocool on yhdistänyt ja uudelleenprojisoinut ne, poistanut maakaiut ja kohinan sekä värittänyt ne. Met Éireann ei vastaa millään tavoin tietojen virheistä tai puutteista, niiden saatavuudesta eikä niiden käytöstä aiheutuvista menetyksistä tai vahingoista.";
 "source_dhmz" = "Tutka Kroatia · Izvor: DHMZ. CC BY 4.0 / Otvorena dozvola, muokattu, viimeksi kartalla näkyvänä keilausaikana";
 "source_dmi" = "Tutka Tanska · CC BY 4.0, muokattu";
 "source_knmi" = "Tutka Alankomaat (Den Helder, Herwijnen) · CC BY 4.0, muokattu";
 "source_fmi" = "Tutka Suomi · CC BY 4.0, muokattu";
 "source_smhi" = "Tutka Ruotsi · CC BY 4.0, muokattu";
 "source_met_norway" = "Tutka Norja · Perustuu MET Norwayn tietoihin. NLOD 2.0 / CC BY 4.0, muokattu";
-"source_noaa" = "Tutka Yhdysvallat · public domain";
+"source_noaa" = "Tutka Yhdysvallat, kunkin tutkan omat pyyhkäisyt (NEXRAD Level III) · public domain; meteocoolin muokkaamia, joten ne eivät ole NOAA:n alkuperäisiä tietoja";
+"source_noaa_mrms" = "Tutka Yhdysvallat: yhdistelmä, pylväsmaksimi, kaikujen huiput, VIL ja 3D-tilavuudet · public domain; meteocoolin muokkaamia, joten ne eivät ole NOAA:n alkuperäisiä tietoja";
 "source_blitzortung" = "Salamat";
 "source_openmeteo" = "Mallivertailu · CC BY 4.0";
 "source_osm" = "Taustakartan tiedot · ODbL";
 "source_protomaps" = "Taustakartan tiilet";
-"source_eumetnet" = "Tutka Sveitsi, Ranska, Tšekki, Puola, Belgia, Slovakia, Liettua, Viro, Irlanti, Kroatia, Tanska, Alankomaat, Suomi, Ruotsi ja Norja, toimitettu sen kautta";
+"source_eumetnet" = "Tutka kaikista yllä olevista verkoista paitsi Saksan ja Yhdysvaltojen, toimitettu sen kautta";
 "source_mapterhorn" = "Maasto 3D-kartalla · avoimet korkeustiedot, enimmäkseen CC BY 4.0. Napauta nähdäksesi kaikki lähteet.";
 "source_freepik" = "Artwork designed by Freepik from Flaticon";
 "source_gorbachev" = "Selitteen kuvakkeet";
@@ -279,6 +280,7 @@
 "native_map_pause" = "Tauko";
 "native_map_timeline" = "Tutka-aika";
 "native_map_mesocyclone" = "Mesosykloni, voimakkuus %ld";
+"native_map_rotation_signature" = "Pyörteen tunnusmerkki";
 "native_map_storm" = "Ukkonen";
 "native_map_storm_near" = "Ukkonen lähellä: %@";
 "native_map_hail" = "Rakeet";

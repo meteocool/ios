@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "näkyy meteocoolissa";
 "radar_help.key.scan" = "tutkan mittaama";
 "radar_help.lede" = "Miten säätutkat keilaavat taivasta, milloin ne julkaisevat mittaamansa ja mistä tiedoista mikin meteocoolin osa tehdään.";
-"radar_help.made.caption" = "Oranssit viivat ovat 3D-pilviä. Pylväsmaksimi kertoo, missä ukkoset ovat: Saksassa DMAX, muissa maissa meteocoolin oma. Raakapyyhkäisyt täyttävät kunkin ukkosen laatikon.";
+"radar_help.made.caption" = "Oranssit viivat ovat 3D-pilviä. Pylväsmaksimi kertoo, missä ukkoset ovat: Saksassa DMAX, Yhdysvalloissa NOAA:n MRMS, muissa maissa meteocoolin oma. Raakapyyhkäisyt täyttävät kunkin ukkosen laatikon.";
 "radar_help.made.cells" = "Ukkossolut ja niiden reitit";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "DWD:n solujen tunnistus ja seuranta. meteocool leikkaa jokaiselle solulle todelliset ääriviivat kullakin voimakkuudella DMAX:sta.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Salamat saapuvat yksitellen ja näkyvät heti. Salamatiilet luodaan uudelleen viiden minuutin välein.";
 "radar_help.made.meso" = "Mesosyklonimerkinnät";
-"radar_help.made.meso_from" = "DWD:n mesosyklonitiedosto";
-"radar_help.made.meso_how" = "Näytetään sellaisina kuin ne julkaistaan.";
+"radar_help.made.meso_from" = "DWD:n mesosyklonitiedosto, raakapyyhkäisyjen nopeus";
+"radar_help.made.meso_how" = "DWD:n havainnot Saksan yllä, näytetään sellaisina kuin ne julkaistaan. Niiden rinnalla pyörteen tunnusmerkit, jotka meteocool lukee tutkien nopeudesta kerran kierrossa.";
 "radar_help.made.networks" = "Tutkakartta, CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "raakapyyhkäisyt";
 "radar_help.made.networks_how" = "meteocool ottaa jokaisen tutkan alimman kulman, poistaa häiriöpisteet ja tekee yhden yhdistelmän kullekin maalle. Se etsii uusia pyyhkäisyjä 30 sekunnin välein. Valmis alle minuutista (Viro, Ruotsi) seitsemään minuuttiin (Norja, Tanska) keilauksen jälkeen; Tanskan tiedot tulevat kymmenen minuutin välein.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Miten tutka toimii";
 "radar_help.products.p1" = "Tutkakartta voi näyttää kahdenlaista kuvaa. Alin keilaus näyttää kunkin tutkan alimman pyyhkäisyn: maanpintaa lähimmän kaiun, ja siten lähimmän vastineen sille sateelle, jonka oikeasti tunnet. Kaukana tutkasta sekin pyyhkäisy on korkealla, kuten yllä oleva sivukuva näyttää, joten matalista pilvistä satava sade voi jäädä näkymättä.";
 "radar_help.products.p2" = "Pylväsmaksimi näyttää kartan jokaisen kohdan yläpuolelta voimakkaimman kaiun millä tahansa kulmalla, 12 kilometriin asti. Se osoittaa, missä ukkospilvien ytimet ovat, mukaan lukien sateen ja rakeet, jotka ovat vielä korkealla pilvessä eivätkä ole vielä pudonneet tai jotka haihtuvat matkalla alas. Se ei siis välttämättä ole sadetta maassa: se näyttää yleensä voimakkaammalta ja laajemmalta kuin alin keilaus, ja se voi näyttää sadetta siellä, missä alhaalla pysyy kuivaa.";
-"radar_help.products.p3" = "Pylväsmaksimi tarvitsee koko tilavuuskeilauksen, joten se on yhden keilauksen tai enemmän jäljessä. DMAX on DWD:n pylväsmaksimi Saksalle; meteocool tekee oman kaikista kuudestatoista tutkaverkosta. Ukkossolut ja 3D-pilvet etsitään pylväsmaksimista.";
+"radar_help.products.p3" = "Pylväsmaksimi tarvitsee koko tilavuuskeilauksen, joten se on yhden keilauksen tai enemmän jäljessä. DMAX on DWD:n pylväsmaksimi Saksalle; meteocool tekee oman kaikista kuudestatoista tutkaverkosta. Ukkossolut ja 3D-pilvet etsitään pylväsmaksimista. Yhdysvalloille NOAA:n MRMS julkaisee omansa.";
 "radar_help.products.title" = "Alin keilaus vai pylväsmaksimi";
 "radar_help.tilts.above_1" = "aivan tutkan yläpuolelle";
 "radar_help.tilts.above_2" = "ei katso mikään kulma";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktiivinen";
 "storm.key.live_body" = "Havaitaan yhä. Ilman rengasta se nähtiin viimeksi hetki sitten.";
 "storm.key.mesocyclone" = "Mesosykloni";
-"storm.key.mesocyclone_body" = "DWD:n mesosyklonituotteen havaitsema pyöriminen.";
+"storm.key.mesocyclone_body" = "DWD:n mesosyklonituotteen havaitsema pyörre tai pyörteen tunnusmerkki, jonka meteocool lukee tutkan nopeudesta.";
 "storm.key.meteocool" = "meteocoolin ukkonen";
-"storm.key.meteocool_body" = "meteocool seuraa sitä tutkasta koko Euroopassa. Ei ennustetta eikä rae- tai pyörimisilmoitusta.";
+"storm.key.meteocool_body" = "meteocool seuraa sitä tutkasta koko Euroopassa ja Yhdysvalloissa. Ei ennustetta eikä rae- tai pyörimisilmoitusta.";
 "storm.key.open" = "Mitä ukkosmerkit tarkoittavat";
 "storm.key.path" = "Reitti";
 "storm.key.path_body" = "Missä se on kulkenut. Haalistuu, kun sitä ei enää nähdä.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Pinta 10 dBZ:n välein, sisäkkäin kuin sipulin kerrokset.";
 "style_3d.title" = "Myrskyjen tyyli";
 "text1" = "meteocool on ilmainen paikkatietoalusta, joka kokoaa ja havainnollistaa säätietoja ja keskittyy erityisesti rajuilmoihin. Se on tehty mobiililaitteille, ja sen avulla voit lähteä lähestyvän sään perään tai väistellä sitä.";
-"text2" = "meteocool käyttää Saksan (DWD), Sveitsin, Ranskan, Tšekin, Puolan, Belgian, Slovakian, Liettuan, Viron, Irlannin, Kroatian, Tanskan, Alankomaiden, Suomen, Ruotsin ja Norjan sääpalvelujen tutkatietoja sekä blitzortung.org-projektin reaaliaikaisia salamahavaintoja.";
+"text2" = "meteocool käyttää Saksan (DWD), Sveitsin, Ranskan, Tšekin, Puolan, Belgian, Slovakian, Liettuan, Viron, Irlannin, Kroatian, Tanskan, Alankomaiden, Suomen, Ruotsin, Norjan ja Yhdysvaltojen (NOAA/NWS, NOAA/NSSL MRMS) sääpalvelujen tutkatietoja sekä blitzortung.org-projektin reaaliaikaisia salamahavaintoja. meteocool käsittelee nämä tiedot: se muuntaa ne toiseen projektioon, pilkkoo ne tiiliksi ja laskee niistä ennusteita. NOAA tai muut sääpalvelut eivät tue tai suosittele meteocoolia.";
 "time_3d.choose" = "Näytä ukkoset aiemmalta ajalta";
 "time_3d.failed" = "Ukkosia klo {time} ei voitu hakea";
 "time_3d.latest" = "Uusin";

@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "vist på meteocool";
 "radar_help.key.scan" = "målt av en radar";
 "radar_help.lede" = "Hvordan værradarene skanner himmelen, når de publiserer det de har målt, og hvilken del av meteocool som lages av hvilke data.";
-"radar_help.made.caption" = "De oransje linjene er 3D-skyene. Et kolonnemaksimum sier hvor tordenværene er: DMAX for Tyskland, meteocools eget for de andre landene. De rå sveipene fyller boksen til hvert tordenvær.";
+"radar_help.made.caption" = "De oransje linjene er 3D-skyene. Et kolonnemaksimum sier hvor tordenværene er: DMAX for Tyskland, NOAAs MRMS for USA, meteocools eget for de andre landene. De rå sveipene fyller boksen til hvert tordenvær.";
 "radar_help.made.cells" = "Tordenceller og baner";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "DWDs deteksjon og sporing av celler. For hver celle skjærer meteocool ut det virkelige omrisset ved hver styrke fra DMAX.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Nedslagene kommer ett og ett og vises med en gang. Lynflisene bygges på nytt hvert femte minutt.";
 "radar_help.made.meso" = "Mesosyklonmarkeringer";
-"radar_help.made.meso_from" = "DWDs mesosyklonfil";
-"radar_help.made.meso_how" = "Vises slik de publiseres.";
+"radar_help.made.meso_from" = "DWDs mesosyklonfil, hastighet fra de rå sveipene";
+"radar_help.made.meso_how" = "DWDs deteksjoner over Tyskland, vist slik de publiseres. Ved siden av dem rotasjonssignaturer som meteocool én gang per syklus leser ut av radarenes hastighet.";
 "radar_help.made.networks" = "Radarkart, CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "rå sveip";
 "radar_help.made.networks_how" = "meteocool tar den laveste elevasjonen fra hver radar, fjerner støy og bygger én kompositt per land. Den ser etter nye sveip hvert 30. sekund. Klart fra under ett minutt (Estland, Sverige) til 7 minutter (Norge, Danmark) etter skannet; Danmarks kommer hvert tiende minutt.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Slik fungerer radaren";
 "radar_help.products.p1" = "Radarkartet kan vise to slags bilder. Et laveste skann viser hver radars laveste sveip: ekkoet nærmest bakken, og dermed det nærmeste du kommer regnet du faktisk kjenner. Langt fra en radar ligger selv dette sveipet høyt oppe, slik sidevisningen over viser, så regn fra lave skyer kan bli oversett.";
 "radar_help.products.p2" = "Et kolonnemaksimum viser for hvert punkt på kartet det sterkeste ekkoet i alle elevasjoner over det, opp til 12 km. Det viser hvor kjernene i tordenværene er, også regn og hagl som fortsatt er høyt oppe i skyen og ikke har kommet ned ennå, eller som fordamper på veien ned. Det er altså ikke nødvendigvis regn på bakken: det ser vanligvis sterkere og større ut enn det laveste skannet, og kan vise regn der det er tørt under.";
-"radar_help.products.p3" = "Et kolonnemaksimum trenger hele volumskannet, så det ligger ett skann eller mer bak. DMAX er DWDs kolonnemaksimum for Tyskland; meteocool lager sitt eget fra alle seksten nettverkene. Tordencellene og 3D-skyene finnes i et kolonnemaksimum.";
+"radar_help.products.p3" = "Et kolonnemaksimum trenger hele volumskannet, så det ligger ett skann eller mer bak. DMAX er DWDs kolonnemaksimum for Tyskland; meteocool lager sitt eget fra alle seksten nettverkene. Tordencellene og 3D-skyene finnes i et kolonnemaksimum. For USA publiserer NOAAs MRMS sitt eget.";
 "radar_help.products.title" = "Laveste skann eller kolonnemaksimum";
 "radar_help.tilts.above_1" = "rett over radaren";
 "radar_help.tilts.above_2" = "ser ingen elevasjon";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktiv";
 "storm.key.live_body" = "Registreres fortsatt. Uten ringen ble det sist sett for en stund siden.";
 "storm.key.mesocyclone" = "Mesosyklon";
-"storm.key.mesocyclone_body" = "En rotasjon fra DWDs mesosyklonprodukt.";
+"storm.key.mesocyclone_body" = "En rotasjon fra DWDs mesosyklonprodukt, eller en rotasjonssignatur meteocool leser ut av en radars hastighet.";
 "storm.key.meteocool" = "meteocool-uvær";
-"storm.key.meteocool_body" = "Fulgt av meteocool på radaren i hele Europa. Ingen prognose, hagl- eller rotasjonsmelding.";
+"storm.key.meteocool_body" = "Fulgt av meteocool på radaren i hele Europa og USA. Ingen prognose, hagl- eller rotasjonsmelding.";
 "storm.key.open" = "Hva uværsmerkene betyr";
 "storm.key.path" = "Bane";
 "storm.key.path_body" = "Hvor det har vært. Blekner når det ikke lenger sees.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "En flate for hver 10 dBZ, lagt inni hverandre som en løk.";
 "style_3d.title" = "Uværsstil";
 "text1" = "meteocool er en gratis GIS-plattform som samler og visualiserer værdata, med vekt på uvær. Den er laget for mobil, og du kan bruke den til å jage været som er på vei – eller til å unngå det.";
-"text2" = "meteocool bruker radardata fra værtjenestene i Tyskland (DWD), Sveits, Frankrike, Tsjekkia, Polen, Belgia, Slovakia, Litauen, Estland, Irland, Kroatia, Danmark, Nederland, Finland, Sverige og Norge, og lyn i sanntid fra prosjektet blitzortung.org.";
+"text2" = "meteocool bruker radardata fra værtjenestene i Tyskland (DWD), Sveits, Frankrike, Tsjekkia, Polen, Belgia, Slovakia, Litauen, Estland, Irland, Kroatia, Danmark, Nederland, Finland, Sverige, Norge og USA (NOAA/NWS, NOAA/NSSL MRMS), og lyn i sanntid fra prosjektet blitzortung.org. meteocool bearbeider dataene: de projiseres om, deles i fliser og brukes til prognoser. Verken NOAA eller de andre værtjenestene står bak eller anbefaler meteocool.";
 "time_3d.choose" = "Vis tordenværene på et tidligere tidspunkt";
 "time_3d.failed" = "Kunne ikke slå opp tordenværene kl. {time}";
 "time_3d.latest" = "Nyeste";

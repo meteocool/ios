@@ -159,7 +159,7 @@
 /* Data sources and licences (SettingsViewController.dataSources) */
 "data_sources_header" = "Datakilder og lisenser";
 "data_sources_footer" = "Leverandørene står ikke bak meteocool og gir ingen garantier. Trykk på en kilde for å se lisensen.";
-"source_dwd" = "Radar Tyskland, tordenceller, værkart · CC BY 4.0, bearbeidet";
+"source_dwd" = "Radar Tyskland, tordenceller, mesosykloner, 3D-volumer, værkart, værstasjoner · CC BY 4.0, bearbeidet";
 "source_meteoswiss" = "Radar Sveits · CC BY 4.0, bearbeidet";
 "source_meteofrance" = "Radar Frankrike · Licence Ouverte 2.0 (Etalab), bearbeidet";
 "source_chmi" = "Radar Tsjekkia · CC BY 4.0, bearbeidet";
@@ -169,19 +169,20 @@
 "source_shmu" = "Radar Slovakia · CC BY 4.0, bearbeidet";
 "source_lhmt" = "Radar Litauen · CC BY 4.0 / CC BY-SA 4.0, bearbeidet";
 "source_kaur" = "Radar Estland · CC BY 4.0, bearbeidet";
-"source_met_eireann" = "Radar Irland · Copyright Met Éireann. Kilde: www.met.ie. Publisert under lisensen Creative Commons Navngivelse 4.0 Internasjonal (CC BY 4.0). Dataene er bearbeidet: satt sammen, projisert på nytt, renset for bakkeekko og støy og fargelagt av meteocool.";
+"source_met_eireann" = "Radar Irland · Copyright Met Éireann. Kilde: www.met.ie. Publisert under lisensen Creative Commons Navngivelse 4.0 Internasjonal (CC BY 4.0). Dataene er bearbeidet: satt sammen, projisert på nytt, renset for bakkeekko og støy og fargelagt av meteocool. Met Éireann påtar seg intet som helst ansvar for feil eller mangler i dataene, for tilgjengeligheten deres eller for tap eller skade som følge av bruken av dem.";
 "source_dhmz" = "Radar Kroatia · Izvor: DHMZ. CC BY 4.0 / Otvorena dozvola, bearbeidet, sist ved skannetidspunktet kartet viser";
 "source_dmi" = "Radar Danmark · CC BY 4.0, bearbeidet";
 "source_knmi" = "Radar Nederland (Den Helder, Herwijnen) · CC BY 4.0, bearbeidet";
 "source_fmi" = "Radar Finland · CC BY 4.0, bearbeidet";
 "source_smhi" = "Radar Sverige · CC BY 4.0, bearbeidet";
 "source_met_norway" = "Radar Norge · Basert på data fra MET Norge. NLOD 2.0 / CC BY 4.0, bearbeidet";
-"source_noaa" = "Radar USA · allemannseie";
+"source_noaa" = "Radar USA, hver radars egne sveip (NEXRAD Level III) · allemannseie; bearbeidet av meteocool og derfor ikke NOAAs originale data";
+"source_noaa_mrms" = "Radar USA: kompositt, kolonnemaks, ekkotopper, VIL og 3D-volumer · allemannseie; bearbeidet av meteocool og derfor ikke NOAAs originale data";
 "source_blitzortung" = "Lyn";
 "source_openmeteo" = "Modellsammenligning · CC BY 4.0";
 "source_osm" = "Kartdata for bakgrunnskart · ODbL";
 "source_protomaps" = "Kartfliser for bakgrunnskart";
-"source_eumetnet" = "Radar Sveits, Frankrike, Tsjekkia, Polen, Belgia, Slovakia, Litauen, Estland, Irland, Kroatia, Danmark, Nederland, Finland, Sverige og Norge, levert herfra";
+"source_eumetnet" = "Radar fra alle nettverkene over unntatt Tysklands og USAs, levert gjennom denne";
 "source_mapterhorn" = "Terreng i 3D-kartet · åpne høydedata, for det meste CC BY 4.0. Trykk for å se alle kildene.";
 "source_freepik" = "Grafikk laget av Freepik fra Flaticon";
 "source_gorbachev" = "Ikoner i tegnforklaringen";
@@ -279,6 +280,7 @@
 "native_map_pause" = "Pause";
 "native_map_timeline" = "Radartid";
 "native_map_mesocyclone" = "Mesosyklon, styrke %ld";
+"native_map_rotation_signature" = "Rotasjonssignatur";
 "native_map_storm" = "Tordenvær";
 "native_map_storm_near" = "Tordenvær ved %@";
 "native_map_hail" = "Hagl";

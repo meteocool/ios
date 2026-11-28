@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "rodoma meteocool";
 "radar_help.key.scan" = "išmatuota radaro";
 "radar_help.lede" = "Kaip orų radarai skenuoja dangų, kada paskelbia, ką išmatavo, ir kuri meteocool dalis sukurta iš kokių duomenų.";
-"radar_help.made.caption" = "Oranžinės linijos – 3D debesys. Stulpelio maksimumas parodo, kur yra audros: DMAX Vokietijai, meteocool savasis – kitoms šalims. Neapdoroti skenavimai užpildo kiekvienos audros dėžę.";
+"radar_help.made.caption" = "Oranžinės linijos – 3D debesys. Stulpelio maksimumas parodo, kur yra audros: DMAX Vokietijai, NOAA MRMS – Jungtinėms Valstijoms, meteocool savasis – kitoms šalims. Neapdoroti skenavimai užpildo kiekvienos audros dėžę.";
 "radar_help.made.cells" = "Audrų celės ir trajektorijos";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "DWD celių aptikimas ir sekimas. Kiekvienai celei meteocool iš DMAX išpjauna tikrą kiekvieno stiprio kontūrą.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Iškrovos atkeliauja po vieną ir pasirodo iškart. Žaibų plytelės perkuriamos kas penkias minutes.";
 "radar_help.made.meso" = "Mezociklonų žymos";
-"radar_help.made.meso_from" = "DWD mezociklonų failas";
-"radar_help.made.meso_how" = "Rodomos taip, kaip paskelbtos.";
+"radar_help.made.meso_from" = "DWD mezociklonų failas, neapdorotų skenavimų greitis";
+"radar_help.made.meso_how" = "DWD aptikimai virš Vokietijos, rodomi taip, kaip paskelbti. Šalia jų – sukimosi požymiai, kuriuos meteocool kartą per ciklą nuskaito iš radarų greičio.";
 "radar_help.made.networks" = "Radaro žemėlapis, CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "neapdoroti skenavimai";
 "radar_help.made.networks_how" = "meteocool ima kiekvieno radaro žemiausią kampą, pašalina triukšmą ir kiekvienai šaliai sudaro vieną kompozitą. Naujų skenavimų ieško kas 30 sekundžių. Paruošiama nuo mažiau nei minutės (Estija, Švedija) iki 7 minučių (Norvegija, Danija) po skenavimo; Danijos duomenys ateina kas dešimt minučių.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "Kaip veikia radaras";
 "radar_help.products.p1" = "Radaro žemėlapis gali rodyti dviejų rūšių vaizdą. Žemiausias skenavimas rodo kiekvieno radaro žemiausią skenavimą: aidą arčiausiai žemės, taigi tai, kas labiausiai atitinka lietų, kurį iš tikrųjų pajusi. Toli nuo radaro net šis skenavimas yra aukštai, kaip rodo vaizdas iš šono aukščiau, todėl lietus iš žemų debesų gali būti nepastebėtas.";
 "radar_help.products.p2" = "Stulpelio maksimumas kiekvienam žemėlapio taškui rodo stipriausią aidą bet kuriame virš jo esančiame kampe, iki 12 km. Taip matyti, kur yra audrų branduoliai, įskaitant lietų ir krušą, kurie dar aukštai debesyje ir dar nenukrito arba pakeliui žemyn išgaruoja. Todėl tai nebūtinai lietus ant žemės: paprastai jis atrodo stipresnis ir platesnis nei žemiausias skenavimas ir gali rodyti lietų ten, kur apačioje sausa.";
-"radar_help.products.p3" = "Stulpelio maksimumui reikia viso tūrinio skenavimo, todėl jis atsilieka vienu ar daugiau skenavimų. DMAX – tai DWD stulpelio maksimumas Vokietijai; meteocool savąjį sudaro iš visų šešiolikos tinklų. Audrų celės ir 3D debesys randami stulpelio maksimume.";
+"radar_help.products.p3" = "Stulpelio maksimumui reikia viso tūrinio skenavimo, todėl jis atsilieka vienu ar daugiau skenavimų. DMAX – tai DWD stulpelio maksimumas Vokietijai; meteocool savąjį sudaro iš visų šešiolikos tinklų. Audrų celės ir 3D debesys randami stulpelio maksimume. Jungtinėms Valstijoms savąjį skelbia NOAA MRMS.";
 "radar_help.products.title" = "Žemiausias skenavimas ar stulpelio maksimumas";
 "radar_help.tilts.above_1" = "tiesiai virš radaro";
 "radar_help.tilts.above_2" = "nežiūri joks kampas";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktyvi";
 "storm.key.live_body" = "Vis dar aptinkama. Be žiedo ji paskutinį kartą matyta prieš kurį laiką.";
 "storm.key.mesocyclone" = "Mezociklonas";
-"storm.key.mesocyclone_body" = "Sukimasis, aptiktas DWD mezociklonų produkte.";
+"storm.key.mesocyclone_body" = "Sukimasis iš DWD mezociklonų produkto arba sukimosi požymis, kurį meteocool nuskaito iš radaro greičio.";
 "storm.key.meteocool" = "meteocool audra";
-"storm.key.meteocool_body" = "Seka meteocool iš radaro visoje Europoje. Be prognozės, krušos ar sukimosi žymų.";
+"storm.key.meteocool_body" = "Seka meteocool iš radaro visoje Europoje ir Jungtinėse Valstijose. Be prognozės, krušos ar sukimosi žymų.";
 "storm.key.open" = "Ką reiškia audrų žymės";
 "storm.key.path" = "Kelias";
 "storm.key.path_body" = "Kur ji buvo. Blunka, kai nebematoma.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Paviršius kas 10 dBZ, vienas kitame kaip svogūno lukštai.";
 "style_3d.title" = "Audrų stilius";
 "text1" = "meteocool – nemokama GIS platforma, kuri renka ir vaizduoja orų duomenis, ypač apie pavojingus reiškinius. Ji pritaikyta mobiliesiems įrenginiams: gali ja naudotis, kad galėtum vytis artėjančius orus arba jų išvengti.";
-"text2" = "meteocool naudoja Vokietijos (DWD), Šveicarijos, Prancūzijos, Čekijos, Lenkijos, Belgijos, Slovakijos, Lietuvos, Estijos, Airijos, Kroatijos, Danijos, Nyderlandų, Suomijos, Švedijos ir Norvegijos meteorologijos tarnybų radarų duomenis bei realaus laiko žaibų duomenis iš projekto blitzortung.org.";
+"text2" = "meteocool naudoja Vokietijos (DWD), Šveicarijos, Prancūzijos, Čekijos, Lenkijos, Belgijos, Slovakijos, Lietuvos, Estijos, Airijos, Kroatijos, Danijos, Nyderlandų, Suomijos, Švedijos, Norvegijos ir Jungtinių Valstijų (NOAA/NWS, NOAA/NSSL MRMS) meteorologijos tarnybų radarų duomenis bei realaus laiko žaibų duomenis iš projekto blitzortung.org. meteocool šiuos duomenis apdoroja: perprojektuoja, suskaido į plyteles ir pagal juos skaičiuoja prognozes. Nei NOAA, nei kitos meteorologijos tarnybos meteocool neremia ir nerekomenduoja.";
 "time_3d.choose" = "Rodyti audras ankstesniu laiku";
 "time_3d.failed" = "Nepavyko rasti audrų {time}";
 "time_3d.latest" = "Naujausias";

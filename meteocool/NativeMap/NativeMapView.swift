@@ -1095,8 +1095,13 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
            let credit = RadarEngine.credit(network: network), !names.contains(credit) {
             names.append(credit)
         }
-        if isOn(.lightning) || model.capability == .lightning { names.append("Blitzortung.org") }
-        model.credits = names.isEmpty ? "" : "© " + names.joined(separator: ", © ")
+        // The lightning map draws NOAA's own reflectivity under the strikes over the US.
+        if model.capability == .lightning, LightningRules.noaaCovers(mapView.visibleMapRect),
+           !names.contains(RadarEngine.noaaCredit) {
+            names.append(RadarEngine.noaaCredit)
+        }
+        if isOn(.lightning) || model.capability == .lightning { names.append("© Blitzortung.org") }
+        model.credits = names.joined(separator: ", ")
     }
 
     var view: UIView { self }

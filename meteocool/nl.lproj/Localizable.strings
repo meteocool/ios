@@ -159,7 +159,7 @@
 /* Data sources and licences (SettingsViewController.dataSources) */
 "data_sources_header" = "Gegevensbronnen & licenties";
 "data_sources_footer" = "De aanbieders steunen meteocool niet uitdrukkelijk en geven geen garantie. Tik op een bron voor de licentie.";
-"source_dwd" = "Radar Duitsland, onweerscellen, weerkaarten · CC BY 4.0, bewerkt";
+"source_dwd" = "Radar Duitsland, onweerscellen, mesocyclonen, 3D-volumes, weerkaarten, weerstations · CC BY 4.0, bewerkt";
 "source_meteoswiss" = "Radar Zwitserland · CC BY 4.0, bewerkt";
 "source_meteofrance" = "Radar Frankrijk · Licence Ouverte 2.0 (Etalab), bewerkt";
 "source_chmi" = "Radar Tsjechië · CC BY 4.0, bewerkt";
@@ -169,19 +169,20 @@
 "source_shmu" = "Radar Slowakije · CC BY 4.0, bewerkt";
 "source_lhmt" = "Radar Litouwen · CC BY 4.0 / CC BY-SA 4.0, bewerkt";
 "source_kaur" = "Radar Estland · CC BY 4.0, bewerkt";
-"source_met_eireann" = "Radar Ierland · Copyright Met Éireann. Bron: www.met.ie. Gepubliceerd onder de licentie Creative Commons Naamsvermelding 4.0 Internationaal (CC BY 4.0). De gegevens zijn bewerkt: door meteocool samengevoegd, opnieuw geprojecteerd, ontdaan van grondecho's en ruis, en ingekleurd.";
+"source_met_eireann" = "Radar Ierland · Copyright Met Éireann. Bron: www.met.ie. Gepubliceerd onder de licentie Creative Commons Naamsvermelding 4.0 Internationaal (CC BY 4.0). De gegevens zijn bewerkt: door meteocool samengevoegd, opnieuw geprojecteerd, ontdaan van grondecho's en ruis, en ingekleurd. Met Éireann aanvaardt geen enkele aansprakelijkheid voor fouten of omissies in de gegevens, voor de beschikbaarheid ervan, of voor verlies of schade die uit het gebruik ervan voortvloeit.";
 "source_dhmz" = "Radar Kroatië · Izvor: DHMZ. CC BY 4.0 / Otvorena dozvola, bewerkt, laatst op het scantijdstip dat de kaart toont";
 "source_dmi" = "Radar Denemarken · CC BY 4.0, bewerkt";
 "source_knmi" = "Radar Nederland (Den Helder, Herwijnen) · CC BY 4.0, bewerkt";
 "source_fmi" = "Radar Finland · CC BY 4.0, bewerkt";
 "source_smhi" = "Radar Zweden · CC BY 4.0, bewerkt";
 "source_met_norway" = "Radar Noorwegen · Gebaseerd op gegevens van MET Norway. NLOD 2.0 / CC BY 4.0, bewerkt";
-"source_noaa" = "Radar Verenigde Staten · publiek domein";
+"source_noaa" = "Radar Verenigde Staten, de eigen sweeps van elke radar (NEXRAD Level III) · publiek domein; bewerkt door meteocool, dus niet de oorspronkelijke gegevens van NOAA";
+"source_noaa_mrms" = "Radar Verenigde Staten: composiet, kolommaximum, echotops, VIL en 3D-volumes · publiek domein; bewerkt door meteocool, dus niet de oorspronkelijke gegevens van NOAA";
 "source_blitzortung" = "Bliksem";
 "source_openmeteo" = "Modelvergelijking · CC BY 4.0";
 "source_osm" = "Basiskaartgegevens · ODbL";
 "source_protomaps" = "Basiskaarttegels";
-"source_eumetnet" = "Radar Zwitserland, Frankrijk, Tsjechië, Polen, België, Slowakije, Litouwen, Estland, Ierland, Kroatië, Denemarken, Nederland, Finland, Zweden en Noorwegen, via deze bron geleverd";
+"source_eumetnet" = "Radar van elk netwerk hierboven behalve dat van Duitsland en van de Verenigde Staten, via deze bron geleverd";
 "source_mapterhorn" = "Terrein in de 3D-kaart · open hoogtegegevens, meest CC BY 4.0. Tik voor alle bronnen.";
 "source_freepik" = "Artwork designed by Freepik from Flaticon";
 "source_gorbachev" = "Legendapictogrammen";
@@ -279,6 +280,7 @@
 "native_map_pause" = "Pauze";
 "native_map_timeline" = "Radartijd";
 "native_map_mesocyclone" = "Mesocycloon, sterkte %ld";
+"native_map_rotation_signature" = "Rotatiesignatuur";
 "native_map_storm" = "Bui";
 "native_map_storm_near" = "Bui bij %@";
 "native_map_hail" = "Hagel";

@@ -510,7 +510,7 @@
 "radar_help.key.ours" = "auf meteocool zu sehen";
 "radar_help.key.scan" = "von einem Radar gemessen";
 "radar_help.lede" = "Wie die Wetterradare den Himmel abtasten, wann sie veröffentlichen, was sie gemessen haben, und welcher Teil von meteocool aus welchen Daten entsteht.";
-"radar_help.made.caption" = "Die orangen Linien sind die 3D-Wolken. Ein Säulenmaximum sagt, wo die Gewitter sind: DMAX für Deutschland, meteocools eigenes für die anderen Länder. Die rohen Sweeps füllen die Box jedes Gewitters.";
+"radar_help.made.caption" = "Die orangen Linien sind die 3D-Wolken. Ein Säulenmaximum sagt, wo die Gewitter sind: DMAX für Deutschland, NOAAs MRMS für die USA, meteocools eigenes für die anderen Länder. Die rohen Sweeps füllen die Box jedes Gewitters.";
 "radar_help.made.cells" = "Gewitterzellen und Zugbahnen";
 "radar_help.made.cells_from" = "KONRAD3D, DMAX";
 "radar_help.made.cells_how" = "Die Zellerkennung und -verfolgung des DWD. Für jede Zelle schneidet meteocool die echten Umrisse jeder Stärke aus DMAX aus.";
@@ -541,8 +541,8 @@
 "radar_help.made.lightning_from" = "Blitzortung";
 "radar_help.made.lightning_how" = "Einschläge kommen einzeln an und erscheinen sofort. Die Blitzkacheln werden alle fünf Minuten neu gebaut.";
 "radar_help.made.meso" = "Mesozyklonen";
-"radar_help.made.meso_from" = "Mesozyklonen-Datei des DWD";
-"radar_help.made.meso_how" = "So angezeigt, wie sie veröffentlicht werden.";
+"radar_help.made.meso_from" = "Mesozyklonen-Datei des DWD, Radialgeschwindigkeit der rohen Sweeps";
+"radar_help.made.meso_how" = "Die Erkennungen des DWD über Deutschland, so angezeigt, wie sie veröffentlicht werden. Daneben Rotationssignaturen, die meteocool einmal pro Zyklus aus der Radialgeschwindigkeit der Radare liest.";
 "radar_help.made.networks" = "Radarkarte CH FR CZ PL BE SK LT EE IE HR DK NL FI SE NO";
 "radar_help.made.networks_from" = "rohe Sweeps";
 "radar_help.made.networks_how" = "meteocool nimmt den flachsten Winkel jedes Radars, entfernt Störpunkte und baut ein Komposit pro Land. Es sucht alle 30 Sekunden nach neuen Sweeps. Fertig nach weniger als einer Minute (Estland, Schweden) bis 7 Minuten (Norwegen, Dänemark) nach dem Scan; Dänemarks kommt alle zehn Minuten.";
@@ -605,7 +605,7 @@
 "radar_help.open" = "So funktioniert das Radar";
 "radar_help.products.p1" = "Die Radarkarte kann zwei Arten von Bild zeigen. Ein unterster Scan zeigt den niedrigsten Sweep jedes Radars: das Echo, das dem Boden am nächsten ist, und damit das, was dem Regen, den man spürt, am nächsten kommt. Weit weg von einem Radar ist auch dieser Sweep hoch oben, wie die Seitenansicht oben zeigt, und Regen aus tiefen Wolken kann fehlen.";
 "radar_help.products.p2" = "Ein Säulenmaximum zeigt für jeden Punkt der Karte das stärkste Echo aller Winkel darüber, bis 12 km Höhe. Es zeigt, wo die Kerne der Gewitter sind, auch Regen und Hagel, die noch hoch in der Wolke hängen oder auf dem Weg nach unten verdunsten. Es ist also nicht unbedingt Regen am Boden: Meist wirkt es stärker und größer als der unterste Scan und kann Regen zeigen, wo es unten trocken bleibt.";
-"radar_help.products.p3" = "Ein Säulenmaximum braucht den ganzen Volumenscan und ist daher einen Scan oder mehr später dran. DMAX ist das Säulenmaximum des DWD für Deutschland; meteocool baut ein eigenes aus allen sechzehn Netzen. Gewitterzellen und 3D-Wolken werden in einem Säulenmaximum gefunden.";
+"radar_help.products.p3" = "Ein Säulenmaximum braucht den ganzen Volumenscan und ist daher einen Scan oder mehr später dran. DMAX ist das Säulenmaximum des DWD für Deutschland; meteocool baut ein eigenes aus allen sechzehn Netzen. Gewitterzellen und 3D-Wolken werden in einem Säulenmaximum gefunden. Für die USA veröffentlicht NOAAs MRMS ein eigenes.";
 "radar_help.products.title" = "Unterster Scan oder Säulenmaximum";
 "radar_help.tilts.above_1" = "direkt über dem Radar";
 "radar_help.tilts.above_2" = "schaut kein Winkel hin";
@@ -934,9 +934,9 @@
 "storm.key.live" = "Aktiv";
 "storm.key.live_body" = "Wird noch erfasst. Ohne den Ring wurde es zuletzt vor einer Weile gesehen.";
 "storm.key.mesocyclone" = "Mesozyklone";
-"storm.key.mesocyclone_body" = "Eine Rotation aus dem Mesozyklonen-Produkt des DWD.";
+"storm.key.mesocyclone_body" = "Eine Rotation aus dem Mesozyklonen-Produkt des DWD oder eine Rotationssignatur, die meteocool aus der Radialgeschwindigkeit eines Radars liest.";
 "storm.key.meteocool" = "meteocool-Gewitter";
-"storm.key.meteocool_body" = "Von meteocool aus dem Radar verfolgt, in ganz Europa. Ohne Vorhersage, Hagel- oder Rotationshinweis.";
+"storm.key.meteocool_body" = "Von meteocool aus dem Radar verfolgt, in ganz Europa und den USA. Ohne Vorhersage, Hagel- oder Rotationshinweis.";
 "storm.key.open" = "Was die Gewittersymbole bedeuten";
 "storm.key.path" = "Zugbahn";
 "storm.key.path_body" = "Wo es entlanggezogen ist. Verblasst, sobald es nicht mehr erfasst wird.";
@@ -1030,7 +1030,7 @@
 "style_3d.shells_body" = "Eine Fläche alle 10 dBZ, ineinander wie die Schalen einer Zwiebel.";
 "style_3d.title" = "Gewitter-Darstellung";
 "text1" = "meteocool ist eine kostenlose GIS-Plattform, die Wetterdaten sammelt und visualisiert, mit Schwerpunkt auf Unwettern. Sie ist für Mobilgeräte optimiert, und du kannst damit anrückendem Wetter hinterherjagen oder ihm ausweichen.";
-"text2" = "meteocool nutzt Radardaten der Wetterdienste von Deutschland (DWD), der Schweiz, Frankreich, Tschechien, Polen, Belgien, der Slowakei, Litauen, Estland, Irland, Kroatien, Dänemark, den Niederlanden, Finnland, Schweden und Norwegen sowie Echtzeit-Blitzdaten vom Projekt blitzortung.org.";
+"text2" = "meteocool nutzt Radardaten der Wetterdienste von Deutschland (DWD), der Schweiz, Frankreich, Tschechien, Polen, Belgien, der Slowakei, Litauen, Estland, Irland, Kroatien, Dänemark, den Niederlanden, Finnland, Schweden, Norwegen und den Vereinigten Staaten (NOAA/NWS, NOAA/NSSL MRMS) sowie Echtzeit-Blitzdaten vom Projekt blitzortung.org. meteocool verarbeitet diese Daten: Es projiziert sie um, teilt sie in Kacheln und berechnet daraus Vorhersagen. Weder die NOAA noch die anderen Wetterdienste befürworten meteocool.";
 "time_3d.choose" = "Gewitter zu einer früheren Zeit zeigen";
 "time_3d.failed" = "Die Gewitter um {time} konnten nicht geladen werden";
 "time_3d.latest" = "Neueste";

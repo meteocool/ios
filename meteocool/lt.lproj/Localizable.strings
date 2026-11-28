@@ -159,7 +159,7 @@
 /* Data sources and licences (SettingsViewController.dataSources) */
 "data_sources_header" = "Duomenų šaltiniai ir licencijos";
 "data_sources_footer" = "Duomenų teikėjai neremia meteocool ir neteikia jokių garantijų. Bakstelėk šaltinį, kad pamatytum jo licenciją.";
-"source_dwd" = "Vokietijos radaras, audrų celės, orų žemėlapiai · CC BY 4.0, su pakeitimais";
+"source_dwd" = "Vokietijos radaras, audrų celės, mezociklonai, 3D tūriai, orų žemėlapiai, orų stotys · CC BY 4.0, su pakeitimais";
 "source_meteoswiss" = "Šveicarijos radaras · CC BY 4.0, su pakeitimais";
 "source_meteofrance" = "Prancūzijos radaras · Licence Ouverte 2.0 (Etalab), su pakeitimais";
 "source_chmi" = "Čekijos radaras · CC BY 4.0, su pakeitimais";
@@ -169,19 +169,20 @@
 "source_shmu" = "Slovakijos radaras · CC BY 4.0, su pakeitimais";
 "source_lhmt" = "Lietuvos radaras · CC BY 4.0 / CC BY-SA 4.0, su pakeitimais";
 "source_kaur" = "Estijos radaras · CC BY 4.0, su pakeitimais";
-"source_met_eireann" = "Airijos radaras · Copyright Met Éireann. Šaltinis: www.met.ie. Paskelbta pagal Creative Commons Priskyrimas 4.0 Tarptautinė licenciją (CC BY 4.0). Duomenys pakeisti: meteocool juos sujungė, perprojektavo, išvalė nuo žemės atspindžių bei triukšmo ir nuspalvino.";
+"source_met_eireann" = "Airijos radaras · Copyright Met Éireann. Šaltinis: www.met.ie. Paskelbta pagal Creative Commons Priskyrimas 4.0 Tarptautinė licenciją (CC BY 4.0). Duomenys pakeisti: meteocool juos sujungė, perprojektavo, išvalė nuo žemės atspindžių bei triukšmo ir nuspalvino. Met Éireann neprisiima jokios atsakomybės už duomenų klaidas ar praleidimus, jų prieinamumą ar bet kokius nuostolius ar žalą, atsiradusius juos naudojant.";
 "source_dhmz" = "Kroatijos radaras · Izvor: DHMZ. CC BY 4.0 / Otvorena dozvola, su pakeitimais, paskutinį kartą žemėlapyje rodomu skenavimo laiku";
 "source_dmi" = "Danijos radaras · CC BY 4.0, su pakeitimais";
 "source_knmi" = "Nyderlandų radaras (Den Helder, Herwijnen) · CC BY 4.0, su pakeitimais";
 "source_fmi" = "Suomijos radaras · CC BY 4.0, su pakeitimais";
 "source_smhi" = "Švedijos radaras · CC BY 4.0, su pakeitimais";
 "source_met_norway" = "Norvegijos radaras · Pagal MET Norway duomenis. NLOD 2.0 / CC BY 4.0, su pakeitimais";
-"source_noaa" = "JAV radaras · viešasis domenas";
+"source_noaa" = "JAV radaras, kiekvieno radaro skenavimai (NEXRAD Level III) · viešasis domenas; apdoroti meteocool, todėl tai nėra NOAA originalūs duomenys";
+"source_noaa_mrms" = "JAV radaras: kompozitas, stulpelio maksimumas, aido viršūnės, VIL ir 3D tūriai · viešasis domenas; apdoroti meteocool, todėl tai nėra NOAA originalūs duomenys";
 "source_blitzortung" = "Žaibai";
 "source_openmeteo" = "Modelių palyginimas · CC BY 4.0";
 "source_osm" = "Fono žemėlapio duomenys · ODbL";
 "source_protomaps" = "Fono žemėlapio plytelės";
-"source_eumetnet" = "Šveicarijos, Prancūzijos, Čekijos, Lenkijos, Belgijos, Slovakijos, Lietuvos, Estijos, Airijos, Kroatijos, Danijos, Nyderlandų, Suomijos, Švedijos ir Norvegijos radarai, gaunami per jį";
+"source_eumetnet" = "Visų aukščiau išvardytų tinklų, išskyrus Vokietijos ir JAV, radarai, gaunami per jį";
 "source_mapterhorn" = "Reljefas 3D žemėlapyje · atvirieji aukščių duomenys, daugiausia CC BY 4.0. Bakstelėk, kad pamatytum visus šaltinius.";
 "source_freepik" = "Artwork designed by Freepik from Flaticon";
 "source_gorbachev" = "Legendos piktogramos";
@@ -279,6 +280,7 @@
 "native_map_pause" = "Pauzė";
 "native_map_timeline" = "Radaro laikas";
 "native_map_mesocyclone" = "Mezociklonas, stiprumas %ld";
+"native_map_rotation_signature" = "Sukimosi požymis";
 "native_map_storm" = "Audra";
 "native_map_storm_near" = "Audra prie %@";
 "native_map_hail" = "Kruša";

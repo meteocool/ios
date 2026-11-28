@@ -242,17 +242,21 @@ final class LightningMarks: NativeMapFeature {
 
 // MARK: - Mesocyclones
 
+/// One of DWD's mesocyclone detections, or a rotation signature meteocool
+/// reads off a radar's velocity. Only DWD's are called mesocyclones.
 final class MesocycloneAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let time: Date
     let intensity: Int
     let title: String?
 
-    init(coordinate: CLLocationCoordinate2D, time: Date, intensity: Int) {
+    init(coordinate: CLLocationCoordinate2D, time: Date, intensity: Int, signature: Bool = false) {
         self.coordinate = coordinate
         self.time = time
         self.intensity = intensity
-        title = String(format: NSLocalizedString("native_map_mesocyclone", comment: ""), intensity)
+        title = signature
+            ? NSLocalizedString("native_map_rotation_signature", value: "Rotation signature", comment: "")
+            : String(format: NSLocalizedString("native_map_mesocyclone", comment: ""), intensity)
     }
 }
 
@@ -358,16 +362,25 @@ final class MesocycloneMarks: NativeMapFeature {
         let lon: Double
         let time: Double?
         let intensity: Int?
+        /// `dwd`, or `meteocool` for a rotation signature, which brings
+        /// `scanned_at` in place of `time` and no `intensity`.
+        let source: String?
+        let scannedAt: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case lat, lon, time, intensity, source
+            case scannedAt = "scanned_at"
+        }
     }
 
     func load(_ data: Data) {
         guard let wires = try? JSONDecoder().decode([Wire].self, from: data) else { return }
         let now = Date()
         all = wires.prefix(100).compactMap { wire in
-            let time = Date(timeIntervalSince1970: (wire.time ?? now.timeIntervalSince1970 * 1000) / 1000)
+            let time = Date(timeIntervalSince1970: (wire.time ?? wire.scannedAt ?? now.timeIntervalSince1970 * 1000) / 1000)
             guard now.timeIntervalSince(time) < LightningMarks.maxAge else { return nil }
             return MesocycloneAnnotation(coordinate: WebMercator.coordinate(x: wire.lon, y: wire.lat),
-                                         time: time, intensity: wire.intensity ?? 1)
+                                         time: time, intensity: wire.intensity ?? 1, signature: wire.source == "meteocool")
         }
         show()
     }
