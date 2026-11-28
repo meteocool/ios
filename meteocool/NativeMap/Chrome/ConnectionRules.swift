@@ -3,8 +3,10 @@
 //  meteocool
 //
 //  When core's status pill says the backend is degraded, the radar out of
-//  date, or the connection slow (`lib/degraded.ts`, `updateCadence.ts`,
-//  `connectionState.ts`, `freshness.ts`).
+//  date, or the connection slow (`lib/degraded.ts`, `degradedStatus.ts`,
+//  `tileStatus.ts`, `updateCadence.ts`, `connectionState.ts`, `freshness.ts`),
+//  which endpoints are failing (`lib/apiHealth.ts`),
+//  checked as core's `degraded.test.ts` and `tileErrors.test.ts` check them.
 //
 
 import Foundation
@@ -52,6 +54,33 @@ enum ConnectionRules {
     /// Catching up lasts at least this long, at most the other (`CATCH_UP_MIN_MS`, `_MAX_MS`).
     static let catchUpMin: TimeInterval = 1.5
     static let catchUpMax: TimeInterval = 30
+    /// Radar tiles are judged over this long (`TILE_WINDOW_MS`)…
+    static let tileWindow: TimeInterval = 120
+    /// …from this many on: fewer is a couple of tiles wearing a percentage's hat (`TILE_MIN_ASKED`)…
+    static let tileMinAsked = 10
+    /// …and more than this share of them failing leaves holes worth a warning (`TILE_FAILED_SHARE`).
+    static let tileFailedShare = 0.25
+
+    /// Our own API and the data service's (the lightning and mesocyclone
+    /// caches, cells, storms, stations, sweeps), not tiles or the base map:
+    /// what slowness is a claim about (`API_MATCH`), by a request's path.
+    static func isBackend(_ path: String) -> Bool {
+        path.contains("/v3/") || ["lightning_cache", "mesocyclones", "cells", "storms", "stations", "sweeps"].contains { name in
+            path.contains("/\(name)/") || path.contains("/\(name)?") || path.hasSuffix("/\(name)")
+        }
+    }
+
+    /// How many radar tiles were asked for in the window, and how many of
+    /// them failed (`radarTileCounts`): outcomes are when each landed or failed.
+    static func tileCounts(_ outcomes: [(at: Date, ok: Bool)], now: Date) -> (asked: Int, failed: Int) {
+        let recent = outcomes.filter { $0.at >= now.addingTimeInterval(-tileWindow) }
+        return (recent.count, recent.filter { !$0.ok }.count)
+    }
+
+    /// More than a quarter of enough radar tiles failing (the `tile-errors` criterion).
+    static func tilesFailing(asked: Int, failed: Int) -> Bool {
+        asked >= tileMinAsked && Double(failed) / Double(asked) > tileFailedShare
+    }
 
     /// The p-quantile by linear interpolation, of what is given.
     static func quantile(_ values: [Double], _ p: Double) -> Double? {
@@ -65,7 +94,7 @@ enum ConnectionRules {
     /// The `/v3/` answers that count for slowness: the window's, from after
     /// the newest run of quick answers onward (`sinceRecovery`).
     static func latencySamples(_ records: [RequestRecord], now: Date) -> [TimeInterval] {
-        let recent = records.filter { $0.endpoint.contains("/v3/") && $0.status != nil && now.timeIntervalSince($0.time) <= latencyWindow }
+        let recent = records.filter { isBackend($0.endpoint) && $0.status != nil && now.timeIntervalSince($0.time) <= latencyWindow }
             .map(\.duration)
         var run = 0
         for (i, duration) in recent.enumerated().reversed() {
@@ -101,8 +130,10 @@ enum ConnectionRules {
     }
 
     /// Whether the publisher has missed its next frame by `publishOverdue`.
-    static func publishStalled(newestProcessed: Int?, cadence: Int?, now: Int) -> Bool {
-        guard let newestProcessed, let cadence else { return false }
+    /// Not the map's to judge while the backend's status is trusted: it says
+    /// what is late itself.
+    static func publishStalled(newestProcessed: Int?, cadence: Int?, now: Int, statusTrusted: Bool = false) -> Bool {
+        guard !statusTrusted, let newestProcessed, let cadence else { return false }
         return now - (newestProcessed + cadence) >= publishOverdue
     }
 

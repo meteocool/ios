@@ -2,7 +2,8 @@
 //  NativeMapEndpoints.swift
 //  meteocool
 //
-//  The hosts the native map reads from.
+//  The hosts the native map reads from (core's `src/urls.ts`, and the
+//  services its clients are bound to, `api/client.ts`).
 //
 
 import Foundation
@@ -102,6 +103,11 @@ struct NativeMapEndpoints: Equatable, Sendable {
     }
 
     var coverage: URL { api.appendingPathComponent("v3/radar/coverage") }
+    /// What the backend judges late, and its notices (404 from a backend without it).
+    var status: URL { api.appendingPathComponent("v3/status") }
+    /// The newest tile set of the rain's motion arrows (404 until a motion
+    /// field has been found anywhere).
+    var motionLayer: URL { api.appendingPathComponent("v3/motion/layer") }
     var snow: URL { api.appendingPathComponent("v3/radar/snow") }
     var lightning: URL { data.appendingPathComponent("lightning_cache") }
     var mesocyclones: URL { data.appendingPathComponent("mesocyclones/all/") }
@@ -109,7 +115,18 @@ struct NativeMapEndpoints: Equatable, Sendable {
     /// Storms around a box, seen in the last three hours (core's `StormManager`);
     /// with `until`, every storm that overlapped a past window.
     func storms(minLon: Double, minLat: Double, maxLon: Double, maxLat: Double, since: Date, until: Date? = nil) -> URL {
-        var components = URLComponents(url: data.appendingPathComponent("storms"), resolvingAgainstBaseURL: false)!
+        stormsQuery("storms", minLon: minLon, minLat: minLat, maxLon: maxLon, maxLat: maxLat, since: since, until: until)
+    }
+
+    /// The groups of two or more storms that are one system, for the same
+    /// box and window as `storms` (core's `fetchStormGroups`).
+    func stormGroups(minLon: Double, minLat: Double, maxLon: Double, maxLat: Double, since: Date, until: Date? = nil) -> URL {
+        stormsQuery("storms/groups", minLon: minLon, minLat: minLat, maxLon: maxLon, maxLat: maxLat, since: since, until: until)
+    }
+
+    private func stormsQuery(_ path: String, minLon: Double, minLat: Double, maxLon: Double, maxLat: Double, since: Date,
+                             until: Date?) -> URL {
+        var components = URLComponents(url: data.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         let iso = ISO8601DateFormatter()
         components.queryItems = [
             URLQueryItem(name: "bbox", value: [minLon, minLat, maxLon, maxLat].map { String(format: "%.3f", $0) }.joined(separator: ",")),

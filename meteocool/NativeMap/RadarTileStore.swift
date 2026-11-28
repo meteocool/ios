@@ -2,7 +2,8 @@
 //  RadarTileStore.swift
 //  meteocool
 //
-//  Fetches, decodes and colours the radar's value tiles for the native map.
+//  Fetches, decodes and colours the radar's value tiles for the native map
+//  (core's `layers/valueTiles.ts` without OpenLayers).
 //
 
 import Foundation
@@ -17,9 +18,11 @@ struct RadarTileKey: Hashable, Sendable {
     let x: Int
     /// XYZ, top row 0.
     let y: Int
+    /// What its bytes mean, which it is coloured by.
+    let encoding: String
 
     init(_ layer: RadarLayer, z: Int, x: Int, y: Int) {
-        (bucket, tileId, self.z, self.x, self.y) = (layer.bucket, layer.tileId, z, x, y)
+        (bucket, tileId, self.z, self.x, self.y, encoding) = (layer.bucket, layer.tileId, z, x, y, layer.encoding)
     }
 
     func url(base: URL) -> URL {
@@ -67,18 +70,28 @@ final class RadarTileStore: @unchecked Sendable {
 
     /// Called on the main queue when a tile has arrived or turned out empty.
     var onTile: (@MainActor (RadarTileKey) -> Void)?
+    /// A tile asked for landed (true, a blank one too) or failed, on the
+    /// fetch's own queue: the map's `tile-errors` criterion counts them
+    /// (core's `radarTileOutcome`). Set before the first fetch.
+    var onOutcome: (@Sendable (Bool) -> Void)?
 
     private let lock = NSLock()
     private let session: URLSession
     private var base: URL
+    /// The reader's palette and the ink, and each encoding's table in them.
     private var lut: RadarLUT
+    private var luts: [String: RadarLUT] = [:]
     /// Compressed PNGs, small: what the network delivered.
     private let pngs = NSCache<NSString, NSData>()
     /// Coloured tiles, a megabyte each, in the current palette.
     private let images = NSCache<NSString, ImageBox>()
     private var missing = Set<RadarTileKey>()
     private var pending: [RadarTileKey: Int] = [:]
-    private var running = Set<RadarTileKey>()
+    /// What is being fetched, with the priority it was asked for at.
+    private var running: [RadarTileKey: Int] = [:]
+    /// Asked for later than this priority waits while anything at it is
+    /// still to come (`PlaybackRules.nextToFetch`); nil holds nothing.
+    private var holdBehind: Int?
     private static let concurrency = 8
 
     private final class ImageBox {
@@ -116,6 +129,7 @@ final class RadarTileStore: @unchecked Sendable {
             let next = RadarLUT(palette: palette, ink: ink)
             guard next.id != lut.id else { return false }
             lut = next
+            luts = [:]
             return true
         }
         if changed { images.removeAllObjects() }
@@ -130,9 +144,18 @@ final class RadarTileStore: @unchecked Sendable {
         }
     }
 
+    /// The table a tile is coloured with: the palette's, or its encoding's own.
+    private func table(_ encoding: String) -> RadarLUT {
+        if encoding == lut.encoding { return lut }
+        if let known = luts[encoding] { return known }
+        let made = RadarLUT(encoding: encoding, palette: lut.name, ink: lut.ink)
+        luts[encoding] = made
+        return made
+    }
+
     /// The tile as it can be drawn now, without waiting for the network.
     func lookup(_ key: RadarTileKey) -> Lookup {
-        let (name, lut, isMissing) = lock.withLock { (cacheName(key), self.lut, missing.contains(key)) }
+        let (name, lut, isMissing) = lock.withLock { (cacheName(key), table(key.encoding), missing.contains(key)) }
         if isMissing { return .empty }
         if let box = images.object(forKey: name) { return box.image.map(Lookup.image) ?? .empty }
         guard let png = pngs.object(forKey: cacheName(key, palette: false)) else { return .pending }
@@ -144,7 +167,7 @@ final class RadarTileStore: @unchecked Sendable {
     /// Fetches what is missing of `keys`, sooner for a lower `priority`.
     func request(_ keys: [RadarTileKey], priority: Int) {
         lock.withLock {
-            for key in keys where !missing.contains(key) && !running.contains(key) {
+            for key in keys where !missing.contains(key) && running[key] == nil {
                 guard pngs.object(forKey: cacheName(key, palette: false)) == nil else { continue }
                 pending[key] = min(pending[key] ?? .max, priority)
             }
@@ -153,11 +176,14 @@ final class RadarTileStore: @unchecked Sendable {
     }
 
     /// Replaces what waits to be fetched by a new plan (a moved map, another
-    /// frame); fetches already under way finish.
-    func replacePlan(_ plan: [RadarTileKey: Int]) {
+    /// frame); fetches already under way finish. With `holdBehind`, what is
+    /// asked for later than that priority waits until nothing at it is left
+    /// to fetch: the steps' tiles behind the previews'.
+    func replacePlan(_ plan: [RadarTileKey: Int], holdBehind: Int? = nil) {
         lock.withLock {
+            self.holdBehind = holdBehind
             pending = plan.filter { key, _ in
-                !missing.contains(key) && !running.contains(key) && pngs.object(forKey: cacheName(key, palette: false)) == nil
+                !missing.contains(key) && running[key] == nil && pngs.object(forKey: cacheName(key, palette: false)) == nil
             }
         }
         pump()
@@ -166,9 +192,9 @@ final class RadarTileStore: @unchecked Sendable {
     private func pump() {
         let next: [(RadarTileKey, URL)] = lock.withLock {
             var picked: [(RadarTileKey, URL)] = []
-            while running.count < Self.concurrency, let key = pending.min(by: { $0.value < $1.value })?.key {
-                pending[key] = nil
-                running.insert(key)
+            while running.count < Self.concurrency,
+                  let key = PlaybackRules.nextToFetch(pending, running: running.values, holdBehind: holdBehind) {
+                running[key] = pending.removeValue(forKey: key)
                 picked.append((key, key.url(base: base)))
             }
             return picked
@@ -184,7 +210,7 @@ final class RadarTileStore: @unchecked Sendable {
     private func finished(_ key: RadarTileKey, data: Data?, status: Int?, failed: Bool) {
         var notify = false
         lock.withLock {
-            running.remove(key)
+            running[key] = nil
             if let status, status == 404 || status == 403 {
                 // Not published: a tile with nothing in it.
                 if missing.count > 20_000 { missing.removeAll() }
@@ -196,6 +222,7 @@ final class RadarTileStore: @unchecked Sendable {
             }
         }
         pump()
+        onOutcome?(notify)
         guard notify else { return }
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated { self?.onTile?(key) }
@@ -203,6 +230,6 @@ final class RadarTileStore: @unchecked Sendable {
     }
 
     private func cacheName(_ key: RadarTileKey, palette: Bool = true) -> NSString {
-        "\(palette ? lut.id : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
+        "\(palette ? table(key.encoding).id : "png")/\(key.bucket)/\(key.tileId)/\(key.z)/\(key.x)/\(key.y)" as NSString
     }
 }

@@ -1,0 +1,98 @@
+{
+  "dkbor": {
+    "operator": "DMI",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2023",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://ing.dk/artikel/efter-fejl-og-mangel-paa-reservedele-bornholm-er-uden-vejrradar-frem-til-april",
+      "https://www.dmi.dk/nyheder/2022/to-nye-radarer-pa-vej",
+      "https://en.wikipedia.org/wiki/Danish_Meteorological_Institute",
+      "https://en.wikipedia.org/wiki/Rytterkn%C3%A6gten",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/"
+    ]
+  },
+  "dkrom": {
+    "operator": "DMI",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": null,
+    "photo": {
+      "src": "/radars/dkrom.webp",
+      "width": 800,
+      "height": 600,
+      "author": "Hjart",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:R%C3%B8m%C3%B8_-_DMIs_vejrradar.jpg"
+    },
+    "sources": [
+      "https://ing.dk/artikel/skybrud-tidligere-kunne-de-ikke-maales-i-dag-kan-de-overses-nu-skal-nye-radarer-lure-dem",
+      "https://en.wikipedia.org/wiki/Danish_Meteorological_Institute",
+      "https://dk.openprocurements.com/tender/2014-weather-radar-modernization-project-wram16",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "dksam": {
+    "operator": "DMI",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2024",
+    "towerM": 20,
+    "photo": null,
+    "sources": [
+      "https://www.dmi.dk/nyheder/ny-radar-paa-samsoe-giver-bedre-varslinger",
+      "https://www.dmi.dk/nyheder/2022/to-nye-radarer-pa-vej",
+      "https://www.visitdenmark.com/denmark/plan-your-trip/et-meteorologisk-midtpunkt-gdk1152228",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "dksin": {
+    "operator": "DMI",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://en.wikipedia.org/wiki/Danish_Meteorological_Institute",
+      "https://dk.openprocurements.com/tender/2014-weather-radar-modernization-project-wram16",
+      "https://ing.dk/artikel/skybrud-tidligere-kunne-de-ikke-maales-i-dag-kan-de-overses-nu-skal-nye-radarer-lure-dem",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "dkste": {
+    "operator": "DMI",
+    "system": "Vaisala",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": null,
+    "photo": {
+      "src": "/radars/dkste.webp",
+      "width": 800,
+      "height": 450,
+      "author": "Søren Fuglede Jørgensen",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Rasteplads_Flagbanken.JPG"
+    },
+    "sources": [
+      "https://dk.openprocurements.com/tender/2014-weather-radar-modernization-project-wram16",
+      "https://ing.dk/artikel/skybrud-tidligere-kunne-de-ikke-maales-i-dag-kan-de-overses-nu-skal-nye-radarer-lure-dem",
+      "https://en.wikipedia.org/wiki/Danish_Meteorological_Institute",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

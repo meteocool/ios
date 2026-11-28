@@ -2,7 +2,11 @@
 //  StormDetailsView.swift
 //  meteocool
 //
-//  A storm's panel: core's `StormDetails.svelte` in `StormPanel.svelte`.
+//  A storm's panel: core's `StormDetails.svelte` in `StormPanel.svelte`,
+//  with the size of its system from `lib/stormGroups.ts`, its readings
+//  (`Readings.svelte`), what it merged with (`StormLineage.svelte`), its
+//  close and share discs (`Disc.svelte`, `CloseDisc.svelte`,
+//  `ShareDisc.svelte`), and its radars' sweeps (`lib/openRadar.ts`).
 //
 
 import SwiftUI
@@ -69,6 +73,10 @@ struct StormDetailsView: View {
                 .padding(.top, wide ? 16 : 21)
                 .padding(.trailing, wide ? 0 : 8)
                 .padding(.bottom, 28)
+                // Its words can be copied (core's `.mc-selectable`); a long
+                // press on a text, so the sheet's drags and the dial's turn
+                // and the buttons' taps are as they were.
+                .textSelection(.enabled)
             }
             .scrollIndicators(.automatic)
             // Clear of the discs: on an iPad the indicator takes a drag, and
@@ -296,7 +304,19 @@ struct StormDetailsView: View {
         return out
     }
 
+    /// The readings, and how many storms the system it is part of has, when
+    /// it is one of two or more (`StormGroupRules.systemSize`): a count, with
+    /// no scale to measure it on.
     private var readingItems: [StormRules.Reading] {
+        let base = measuredReadings
+        let shown = selection?.summary ?? selection?.detail?.storm
+        guard let system = StormGroupRules.systemSize(shown, groups: store.groups, held: store.held) else { return base }
+        return base + [StormRules.Reading(key: "system", label: CoreStrings.t("storm.reading.system"),
+                                          text: CoreStrings.t("storm.reading.system_value", ["count": system]),
+                                          band: nil, bandName: nil, fill: nil)]
+    }
+
+    private var measuredReadings: [StormRules.Reading] {
         if let track { return StormRules.cellReadings(track, t) }
         guard storm != nil || selection?.volume != nil else { return [] }
         let step = selection?.detail.flatMap { StormSelect.trackerSeries($0).last }

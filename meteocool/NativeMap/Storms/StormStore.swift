@@ -3,8 +3,8 @@
 //  meteocool
 //
 //  The storms the map holds and the one selected: core's `selectedStorm`,
-//  `stormDetails`, `lib/stormResolver.ts` and the family walk of
-//  `StormDetails.svelte`.
+//  `stormDetails`, `lib/stormResolver.ts`, `lib/StormManager.ts` (fetching
+//  half) and the family walk of `StormDetails.svelte`.
 //
 
 import Foundation
@@ -24,6 +24,9 @@ final class StormStore: ObservableObject {
 
     /// The storms of the last `/storms` answer.
     @Published private(set) var held: [Storm] = []
+    /// The groups of them that are one system, from `/storms/groups` for
+    /// the same box and window; none from a backend without groups.
+    @Published private(set) var groups: [StormSystem] = []
     @Published var selection: StormSelection? {
         didSet {
             if selection == nil { details = false }
@@ -49,6 +52,38 @@ final class StormStore: ObservableObject {
     @Published private(set) var named: (name: String, area: String?)?
     /// Bumped when marks must be drawn again: an answer, a frame, a selection.
     @Published private(set) var revision = 0
+
+    /// What a bump of `revision` was, for how the marks change
+    /// (`StormEasing`): a new answer and a step of the player ease, a change
+    /// of what is viewed applies at once, and a window opened or left drops
+    /// what was drawn.
+    enum Change: Equatable {
+        case update
+        /// A step of the player, this long (ms) after the one before it.
+        case step(gapMs: Double)
+        case view
+        case drop
+    }
+
+    /// The changes since the marks last drew, as one: dropping wins, then
+    /// applying at once.
+    private var pendingChange: Change?
+    /// When the player last stepped (ms of uptime).
+    private var lastStepMs: Double?
+
+    private func changed(_ change: Change) {
+        switch (pendingChange, change) {
+        case (.drop?, _), (.view?, .update), (.view?, .step): break
+        default: pendingChange = change
+        }
+        revision += 1
+    }
+
+    /// What the marks are to draw, once: nil when nothing has changed.
+    func takeChange() -> Change? {
+        defer { pendingChange = nil }
+        return pendingChange
+    }
     /// A link's slice, for the storm it is opening (`cut`).
     var linkCut: Double?
     /// A past window: every storm that overlapped it, rewound to the step
@@ -58,8 +93,17 @@ final class StormStore: ObservableObject {
     weak var map: NativeMapContext?
     /// The box the held storms were asked for.
     private var fetched: StormDrawing.Extent?
+    /// The box the request out now asks for, while it is out. A move inside
+    /// it waits for that answer instead of asking again: the tray settling
+    /// just after the first fetch nudges the view a few points, and that
+    /// sent the storms and the groups twice.
+    private var requested: StormDrawing.Extent?
     private var token = 0
-    private var lastSeenAtDetail: [String: String] = [:]
+    /// When the backend last had no groups (ms), so it is not asked again on
+    /// every pan; nil for never.
+    private var groupsAbsentAt: Double?
+    /// Each storm's newest detail, so one reopened shows its history at once.
+    private var detailCache = StormSelect.DetailCache()
     private var detailInFlight: String?
     private var familyRoot: String?
     private var familyIncomplete = false
@@ -81,31 +125,81 @@ final class StormStore: ObservableObject {
 
     // MARK: - Fetching
 
+    /// One `reload`'s two answers, applied together once both are in.
+    private final class Answer {
+        var storms: [Storm]?
+        var groups: [StormSystem]?
+    }
+
     /// Fetches `/storms` for the view when it left the box fetched, or when
-    /// told to (`StormManager.reload`).
+    /// told to (`StormManager.reload`); with it `/storms/groups` for the
+    /// same box and window, beside the storms and never in their way: a
+    /// failure is no groups, and a backend without them is not asked again
+    /// for a while (`StormGroupRules`).
     func reload(force: Bool = false) {
         guard let map, frame != .hidden, let view = Self.extent(of: map.mapView.visibleMapRect) else { return }
         let world = StormDrawing.worldExtent(view)
-        if !force, StormDrawing.covers(fetched, world) { return }
+        if !force, StormDrawing.covers(fetched, world) || StormDrawing.covers(requested, world) { return }
         let padded = StormDrawing.worldExtent(StormDrawing.padExtent(view, Self.padding))
         token += 1
         let mine = token
+        requested = padded
         let (since, until) = Self.span(window)
+        let answer = Answer()
+        func apply() {
+            guard let storms = answer.storms, let groups = answer.groups else { return }
+            if mine == token { requested = nil }
+            guard mine == token else { return }
+            fetched = padded
+            held = storms
+            self.groups = groups
+            refreshSelection()
+            changed(.update)
+        }
+        var older: Int?
+        #if DEBUG
+        // UI tests stand in for a backend from before ratings and groups
+        // (`MC_OLDER_STORMS`, the status its `/storms/groups` answers).
+        older = ProcessInfo.processInfo.environment["MC_OLDER_STORMS"].flatMap(Int.init)
+        #endif
+        if let older {
+            if StormGroupRules.absent.contains(older) { groupsAbsentAt = Date().timeIntervalSince1970 * 1000 }
+            answer.groups = []
+        } else if StormGroupRules.asksForGroups(groupsAbsentAt, now: Date().timeIntervalSince1970 * 1000) {
+            let url = map.endpoints.stormGroups(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
+                                                since: since, until: until)
+            map.fetch(url) { [weak self] data, status in
+                guard let self else { return }
+                if data == nil, let status, StormGroupRules.absent.contains(status) {
+                    self.groupsAbsentAt = Date().timeIntervalSince1970 * 1000
+                }
+                answer.groups = data.flatMap(StormJSON.groups) ?? []
+                apply()
+            }
+        } else {
+            answer.groups = []
+        }
         let url = map.endpoints.storms(minLon: padded.west, minLat: padded.south, maxLon: padded.east, maxLat: padded.north,
                                        since: since, until: until)
         map.fetch(url) { [weak self] data, status in
-            guard let self, mine == self.token else { return }
             if let data, let collection = StormJSON.storms(data) {
-                self.fetched = padded
-                self.held = collection.features
-                self.refreshSelection()
-                self.revision += 1
+                answer.storms = collection.features
+                if older != nil {
+                    for index in answer.storms!.indices {
+                        answer.storms![index].properties.rating = nil
+                        answer.storms![index].properties.notable = nil
+                        answer.storms![index].properties.group = nil
+                    }
+                }
             } else if status == 404 {
                 // No storms served: not an error.
-                self.fetched = padded
-                self.held = []
-                self.revision += 1
+                answer.storms = []
+            } else {
+                // Nothing to draw, and the next move asks again.
+                if mine == self?.token { self?.requested = nil }
+                return
             }
+            apply()
         }
     }
 
@@ -122,9 +216,11 @@ final class StormStore: ObservableObject {
         window = next
         token += 1
         fetched = nil
+        requested = nil
         held = []
+        groups = []
         selection = nil
-        revision += 1
+        changed(.drop)
     }
 
     /// Socket `storms`, or a wake: fetch again, and the selection's detail.
@@ -156,7 +252,9 @@ final class StormStore: ObservableObject {
             }
         }
         if next == .now { reload() }
-        revision += 1
+        let nowMs = ProcessInfo.processInfo.systemUptime * 1000
+        changed(.step(gapMs: lastStepMs.map { nowMs - $0 } ?? .infinity))
+        lastStepMs = nowMs
     }
 
     // MARK: - Taps
@@ -201,10 +299,15 @@ final class StormStore: ObservableObject {
             return
         }
         if let id = selection.id {
-            let seen = selection.summary?.properties.lastSeen ?? ""
-            if selection.detail == nil || (lastSeenAtDetail[id].map { seen > $0 } ?? false) {
-                fetchDetail(id, key: "detail:\(id)@\(seen)")
+            if let detail = selection.detail { detailCache.remember(detail) }
+            if let reopened = detailCache.reopened(selection) {
+                // Reopened: the history it had, at once; the change brings
+                // this back, to ask for a newer detail if the list has one.
+                self.selection = reopened
+                return
             }
+            let seen = selection.summary?.properties.lastSeen ?? ""
+            if detailCache.wantsFetch(selection) { fetchDetail(id, key: "detail:\(id)@\(seen)") }
         } else if let cell = selection.cell {
             resolveSeed(cell)
         }
@@ -224,12 +327,16 @@ final class StormStore: ObservableObject {
         let asked = StormSelect.selectionKey(selection)
         map.fetch(map.endpoints.data.appendingPathComponent("storms/\(id)")) { [weak self] data, status in
             guard let self else { return }
-            self.detailInFlight = nil
+            if self.detailInFlight == key { self.detailInFlight = nil }
+            let detail = data.flatMap(StormJSON.detail)
+            // Kept whatever is open now: a storm left before its detail
+            // landed shows it when tapped again. One that failed is asked
+            // again the next time it is opened.
+            if let detail { self.detailCache.remember(detail) }
             guard StormSelect.selectionKey(self.selection) == asked else { return }
-            if let data, let detail = StormJSON.detail(data), let next = StormSelect.withDetail(self.selection, detail) {
-                self.lastSeenAtDetail[id] = detail.storm.properties.lastSeen
+            if let detail, let next = StormSelect.withDetail(self.selection, detail) {
                 self.selection = next
-                self.revision += 1
+                self.changed(.view)
             } else if status == 404, self.selection?.summary == nil {
                 self.map?.model.toast = CoreStrings.t("storm.toast.storm_gone")
                 self.selection = nil

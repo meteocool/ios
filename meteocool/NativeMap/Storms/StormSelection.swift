@@ -4,8 +4,9 @@
 //
 //  The one selection the map makes, a storm, and the rules for what a tap,
 //  a walk through the family, a refresh or a fetched detail does to it:
-//  core's `lib/stormSelection.ts`, `lib/cellSelection.ts` and
-//  `lib/cellTrack.ts`, rule for rule.
+//  core's `lib/stormSelection.ts`, `lib/cellSelection.ts`,
+//  `lib/cellTrack.ts` and the detail cache of `lib/stormResolver.ts`, rule
+//  for rule.
 //
 
 import Foundation
@@ -121,9 +122,11 @@ enum StormSelect {
     }
 
     /// The fetched storm, for the storm it was fetched for. The cell shown is
-    /// kept if the storm claims it, refreshed from the detail's copy.
-    static func withDetail(_ current: StormSelection?, _ detail: StormDetail) -> StormSelection? {
-        guard var current, current.id == detail.storm.id else { return current }
+    /// kept if the storm claims it, refreshed from the detail's copy; the
+    /// history shown is kept where the new detail has none (`keepHistory`).
+    static func withDetail(_ current: StormSelection?, _ fresh: StormDetail) -> StormSelection? {
+        guard var current, current.id == fresh.storm.id else { return current }
+        let detail = current.detail.map { keepHistory(fresh, $0) } ?? fresh
         let cells = detail.konrad3d
         let shown = current.cell.flatMap { open in cells.first { $0.code == open.code } }
         let cell: TrackProperties?
@@ -138,6 +141,61 @@ enum StormSelect {
         current.detail = detail
         current.cell = cell
         return current
+    }
+
+    /// A newer detail of a storm, keeping the history an older one had where
+    /// the newer has none.
+    ///
+    /// A storm that has history does not lose it; a detail that comes back
+    /// without its tracker tracks' features or its KONRAD3D tracks is one
+    /// caught before the newest scan's tracks were written, or past the hour
+    /// the features are kept for. Either way the older history is the better
+    /// answer than an empty panel. Not for another storm's detail.
+    static func keepHistory(_ fresh: StormDetail, _ previous: StormDetail) -> StormDetail {
+        guard fresh.storm.id == previous.storm.id else { return fresh }
+        func hasFeatures(_ detail: StormDetail) -> Bool { detail.tracks.contains { !$0.features.isEmpty } }
+        let keepTracks = !hasFeatures(fresh) && hasFeatures(previous)
+        let keepCells = fresh.konrad3d.isEmpty && !previous.konrad3d.isEmpty
+        guard keepTracks || keepCells else { return fresh }
+        var kept = fresh
+        if keepTracks { kept.tracks = previous.tracks }
+        if keepCells { kept.konrad3d = previous.konrad3d }
+        return kept
+    }
+
+    /// The newest detail of each storm opened, by id (`stormResolver.ts`'s
+    /// `details`): what a storm reopened shows at once, and whose `lastSeen`
+    /// says whether a newer list copy needs it fetched again. A storm's
+    /// history only grows, so an older detail is never worse than none.
+    struct DetailCache: Equatable, Sendable {
+        private(set) var byId: [String: StormDetail] = [:]
+
+        /// Keeps a fetched detail, the history of the one held where it has none.
+        mutating func remember(_ detail: StormDetail) {
+            let id = detail.storm.properties.id
+            let held = byId[id]
+            if let held, held.storm.properties.lastSeen > detail.storm.properties.lastSeen { return }
+            byId[id] = held.map { keepHistory(detail, $0) } ?? detail
+        }
+
+        /// A storm reopened without its detail: the history it had, at once,
+        /// under the list copy's header, which may be newer; nil when none is
+        /// held or the selection already has its own.
+        func reopened(_ selection: StormSelection) -> StormSelection? {
+            guard let id = selection.id, selection.detail == nil, let held = byId[id],
+                  var shown = withDetail(selection, held) else { return nil }
+            if let summary = selection.summary { shown.summary = summary }
+            return shown
+        }
+
+        /// Whether the open storm's detail is to be fetched: none yet, or its
+        /// list copy seen since the one held was.
+        func wantsFetch(_ selection: StormSelection) -> Bool {
+            guard let id = selection.id else { return false }
+            if selection.detail == nil { return true }
+            let seen = selection.summary?.properties.lastSeen ?? ""
+            return byId[id].map { seen > $0.storm.properties.lastSeen } ?? false
+        }
     }
 
     enum Lookup: Equatable {

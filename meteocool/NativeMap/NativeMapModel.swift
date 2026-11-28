@@ -2,7 +2,8 @@
 //  NativeMapModel.swift
 //  meteocool
 //
-//  The native map's state that its controls and sheets show.
+//  The native map's state that its controls and sheets show (core's
+//  `src/stores.ts`, where its counterparts are kept).
 //
 
 import Combine
@@ -40,6 +41,9 @@ final class NativeMapModel: ObservableObject {
     @Published var connected = false
     /// The map is drawn dark (core's dark basemap rules: labels, casings, wash).
     @Published var isDark = false
+    /// The base map is the satellite imagery (`baseLayer` of `satellite`),
+    /// which counts as dark (core's `isDarkBasemap`).
+    @Published var satellite = false
     /// Something the map put over the controls, by owner; the controls hide
     /// while any is set.
     @Published var covers = Set<String>()
@@ -60,10 +64,11 @@ final class NativeMapModel: ObservableObject {
     /// (`openStormIn3D`).
     var focus3D: ThreeDFocus?
     /// The map and view a storm was opened on the 3D map from (core's
-    /// `open3d.ts` origin): closing that storm goes back. The view is
-    /// dropped once the 3D map is moved, and the whole of it once another
-    /// map is picked.
-    var detour: (capability: Capability, camera: MKMapCamera?)?
+    /// `lib/open3d.ts` origin, `detourOrigin`): while there is one, the 3D
+    /// map offers a button back to it (`BackFrom3D`). The view is dropped
+    /// once the 3D map is moved, and the whole of it once another map is
+    /// picked.
+    @Published var detour: (capability: Capability, camera: MKMapCamera?)?
     /// The place the tray's bars are for (core's strip title): the place
     /// name once known, else what the bars measure; nil without a position.
     @Published var trayTitle: String?
@@ -73,10 +78,22 @@ final class NativeMapModel: ObservableObject {
     @Published var legendDBZ = false
     /// The observed picture chosen (`radarProduct`).
     @Published var product = RadarProduct.hx
+    /// How the 3D map draws its storms (core's `cloudStyle`, the
+    /// `layer3dStyle` setting; `CloudStyle`).
+    @Published var cloudStyle = CloudStyle.default
     /// The radar is behind (core's `radarStale`): dimmed, "Out of date".
     @Published var stale = false
     /// A toast at the top (core's `reportToast`), gone after a while.
     @Published var toast: String?
+    /// What the backend's trusted status says of this screen (core's
+    /// `statusVerdict` over `serverStatus`); nil without one, when the map's
+    /// own rules judge, and in a past window.
+    @Published var statusVerdict: StatusVerdict?
+    /// The socket has been gone for a while (core's `socketDown`): the status
+    /// sheet says so, and the map asks on a timer of its own.
+    @Published var socketDown = false
+    /// A notice is in the slot above the tray: the dry outlook gives way.
+    @Published var noticeShown = false
     /// The past window the map is used in (the archive), nil live. Set
     /// before its steps land; `RadarPlayer.window` is the strip's.
     @Published var window: RadarWindow?

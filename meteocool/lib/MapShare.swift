@@ -70,6 +70,37 @@ struct MapShare: Equatable {
         return "?" + query
     }
 
+    /// The card the link previews as (core's `lib/sharePreview.ts`): the map
+    /// at the link's view, as a wide card, from the link's own origin. The
+    /// same card a messenger unfurls the link as, since core's Worker names
+    /// it in the link's OpenGraph tags.
+    var previewURL: URL? {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        let latLonZ = components.queryItems?.first { $0.name == "latLonZ" }?.value
+        components.percentEncodedPath = ""
+        components.percentEncodedQuery = nil
+        components.fragment = nil
+        guard let origin = components.string else { return nil }
+        return URL(string: origin + Self.previewPath(latLonZ))
+    }
+
+    /// The card's size, which the OpenGraph tags state alongside it.
+    static let previewSize = CGSize(width: 1200, height: 630)
+
+    /// The card's path and query for a link's `latLonZ` ("lat,lon,zoom");
+    /// the default view's card without one (core's `previewPath`). The view
+    /// is encoded as `encodeURIComponent` does, so it cannot break out of its
+    /// parameter, but its commas are left as the endpoint has always had them.
+    static func previewPath(_ latLonZ: String?) -> String {
+        let base = "/v3/preview/og.png?aspectRatio=wide&frame=true&"
+        guard let latLonZ, !latLonZ.isEmpty,
+              let encoded = latLonZ.addingPercentEncoding(withAllowedCharacters: uriComponent) else { return base + "default" }
+        return base + "latLonZ=" + encoded.replacingOccurrences(of: "%2C", with: ",")
+    }
+
+    /// What `encodeURIComponent` leaves as it is.
+    private static let uriComponent = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
+
     /// A finite number from JSON, which arrives as `NSNumber`.
     private static func number(_ value: Any?) -> CGFloat? {
         guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }

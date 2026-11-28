@@ -1,0 +1,155 @@
+{
+  "seang": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 20,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMeYYSWkud2cC-7bj9ED8igqjnMviT5dClReTE1rv3Uic",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "seatv": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2019",
+    "towerM": 21,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMZGpF4TMvn8NnDh5YxenrJ9UZxz6g169oh2xOZZNSxiG",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network",
+      "https://www.smhi.se/blogg/blogg/2020-11-18-varfor-forsvinner-alltid-regnet-innan-det-nar-fram-till-min-plats"
+    ]
+  },
+  "sebaa": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2018",
+    "towerM": 22,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMePoFyFHZ0TEaWkX9489Dw7FKRREZfhYzAT8i2T3SwcG",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "sehuv": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": 12,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMfXXUF6oOWzoXAD1qz4M42az1JlrPEU8bBWMqMmwrBmc",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "sekaa": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2018",
+    "towerM": 24,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMReNHsxKMx2awOHWP5qC3eH__9FsnQFkm98Ia5uKaovR",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "sekrn": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2021",
+    "towerM": 5,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMdJ-A4Hiu73Hg28zk6KMJEW0wkS4yzct3utcT56EYf5y",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network",
+      "https://www.smhi.se/nyheter/nyheter/2021-02-17-vaderradar-i-kiruna-moderniserad"
+    ]
+  },
+  "selek": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": 16,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMdcJ7VjV8XLPbEpE6EP2X2UVPyqbxQi1bQuc7q04B2K6",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "sella": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2018",
+    "towerM": 19,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMYtfFNbNyaiM7m0BuDtVJEiZBlkw9H9vLLKXRCWEnJj1",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  },
+  "seoer": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": 12,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMXZbzxdn4ucXLtUl_nNNCHaEr8HvlRpgeyA14GcUkMnR",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network",
+      "https://www.smhi.se/nyheter/nyheter/2022-09-01-smhi-tar-over-forsvarsmaktens-vaderradaranlaggningar"
+    ]
+  },
+  "seosd": {
+    "operator": "SMHI",
+    "system": "EEC",
+    "band": "C",
+    "dualPol": true,
+    "since": "2016",
+    "towerM": 13,
+    "photo": null,
+    "sources": [
+      "https://www.eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/OPERA_RADARS_DB.json",
+      "https://wrd.mgm.gov.tr/Radar/Detail/V1JEMVjjiliUa2cTbY4c6Is43VKksYAQirkF3q6VlYmhbdcu",
+      "https://www.smhi.se/nyheter/nyheter/2021-09-23-vaderradarnatet-moderniserat---okar-kvaliteten-i-nederbordsprognoser",
+      "https://www.saab.com/newsroom/press-releases/2012/saab-modernizes-the-swedish-weather-radar-network"
+    ]
+  }
+}

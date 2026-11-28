@@ -1408,13 +1408,17 @@ extension ViewController {
     /// The system share sheet for a link to the map, from one of the page's
     /// share buttons, the map's own (`shareMap`) or a screenshot
     /// (`screenshotTaken`). `image` is the map as it was, offered beside the
-    /// link for a screenshot. `source` is a native control an iPad's popover
-    /// points at, in place of the page's rect.
+    /// link for a screenshot. Without one, the link's preview card is asked
+    /// for as the sheet opens (`ShareCard`): the sheet's preview of the link,
+    /// and a picture beside it. `source` is a native control an iPad's
+    /// popover points at, in place of the page's rect.
     func presentShare(_ share: MapShare, image: UIImage? = nil, from source: UIView? = nil, over presenter: UIViewController? = nil) {
         let presenter = presenter ?? self
         guard presenter.presentedViewController == nil else { return }
-        var items: [Any] = [MapLinkItem(share: share, image: image)]
+        let card = image == nil ? share.previewURL.map { ShareCard(url: $0) } : nil
+        var items: [Any] = [MapLinkItem(share: share, image: image, card: card)]
         if let image { items.append(image) }
+        if let card { items.append(ShareCardItem(card: card)) }
         let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = mapSurface
@@ -1529,15 +1533,18 @@ extension ViewController {
 }
 
 /// The link in a share sheet: the URL itself for every destination, with a
-/// title for the sheet's header and a mail's subject, and the map's picture
-/// (or the logo) as the header's preview.
+/// title for the sheet's header and a mail's subject, and the map's picture,
+/// or the link's preview card as it comes, as the header's preview; the logo
+/// where there is neither.
 private final class MapLinkItem: NSObject, UIActivityItemSource {
     private let share: MapShare
     private let image: UIImage?
+    private let card: ShareCard?
 
-    init(share: MapShare, image: UIImage?) {
+    init(share: MapShare, image: UIImage?, card: ShareCard?) {
         self.share = share
         self.image = image
+        self.card = card
     }
 
     func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
@@ -1559,6 +1566,10 @@ private final class MapLinkItem: NSObject, UIActivityItemSource {
         metadata.title = share.title
         if let image {
             metadata.imageProvider = NSItemProvider(object: image)
+            return metadata
+        }
+        if let card {
+            metadata.imageProvider = card.provider()
         } else if let logo = UIImage(named: "Logo") {
             metadata.iconProvider = NSItemProvider(object: logo)
         }

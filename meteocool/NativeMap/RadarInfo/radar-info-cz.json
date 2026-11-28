@@ -1,0 +1,48 @@
+{
+  "czbrd": {
+    "operator": "ČHMÚ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 56,
+    "photo": {
+      "src": "/radars/czbrd.webp",
+      "width": 800,
+      "height": 600,
+      "author": "Gortyna",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Praha_radar4.jpg"
+    },
+    "sources": [
+      "https://cs.wikipedia.org/wiki/Meteorologick%C3%BD_radar_Brdy_%E2%80%93_Praha",
+      "https://cs.wikipedia.org/wiki/Praha_(Brdsk%C3%A1_vrchovina)",
+      "https://opendata.chmi.cz/meteorology/weather/radar/radar_popis_cz.pdf",
+      "https://starfos.tacr.cz/en/vysledky-vyzkumu/RIV%2F00020699%3A_____%2F17%3AN0000082",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "czska": {
+    "operator": "ČHMÚ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2015",
+    "towerM": 37,
+    "photo": {
+      "src": "/radars/czska.webp",
+      "width": 800,
+      "height": 1200,
+      "author": "Jiří Komárek",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Meteoradar_Skalky,_Bukov%C3%A1,_okres_Prost%C4%9Bjov_(02).jpg"
+    },
+    "sources": [
+      "https://cs.wikipedia.org/wiki/Meteorologick%C3%BD_radar_Skalky_u_Protivanova",
+      "https://starfos.tacr.cz/en/vysledky-vyzkumu/RIV%2F00020699%3A_____%2F17%3AN0000082",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

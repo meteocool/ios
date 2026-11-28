@@ -3,8 +3,9 @@
 //  meteocool
 //
 //  Site mode's controls, in the player's tray while a radar is open (core's
-//  `SiteSweepTray.svelte`), and the legend of radial velocity
-//  (`VelocityScaleLine.svelte`).
+//  `SiteSweepTray.svelte`), with the "i" to the radar's own page, and the
+//  legend of radial velocity (`VelocityScaleLine.svelte`), and the dial for
+//  storm-relative motion by hand (`MotionDial.svelte`).
 //
 
 import SwiftUI
@@ -38,6 +39,17 @@ struct SiteSweepTray: View {
                             .accessibilityIdentifier("nativeMap.site.status")
                     }
                     Spacer(minLength: 0)
+                    Button(action: state.openAbout) {
+                        Image(systemName: "info")
+                            .scaledFont(13, weight: .semibold, relativeTo: .footnote)
+                            .foregroundStyle(theme.text3)
+                            .frame(width: 30, height: 30)
+                            .background(theme.tint, in: Circle())
+                            .hitTarget()
+                    }
+                    .buttonStyle(PressScale())
+                    .accessibilityLabel(CoreStrings.t("site.info.button"))
+                    .accessibilityIdentifier("nativeMap.site.info")
                     Button(action: state.close) {
                         Image(systemName: "xmark")
                             .scaledFont(13, weight: .semibold, relativeTo: .footnote)

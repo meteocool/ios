@@ -52,10 +52,11 @@ struct VolumeUniforms {
     float dim;                      // how much opacity a storm keeps
     float behind;                   // 1 for a storm from an old scan
     float ghost;                    // how much of the ghosted part is drawn
-    int mode;                       // 0 reflectivity, 1 shells
+    int mode;                       // 0 reflectivity, 1 shells, 2 the 3D map's glow (CloudStyle)
     float stepMetres;               // the march's step along a ray; `steps` caps the count
     float system;                   // which storm the box is a tile of, as a number (0: none)
-    float2 padding;
+    float high;                     // where the echo is as opaque as it gets
+    float padding;
 };
 
 struct CameraUniforms {
@@ -151,6 +152,9 @@ constant float kOpacityPerKm = 0.62;
 constant float kPeelBand = 14.0;
 /// How much of itself a storm from an older scan keeps (core's BEHIND_FADE).
 constant float kBehindFade = 0.55;
+/// The glow's opacity per kilometre: its density climbs slowly, so its core
+/// has to be denser to close (core's GLOW_OPACITY_PER_KM).
+constant float kGlowOpacityPerKm = 1.2;
 
 /// One storm along one ray, premultiplied, or nothing (alpha 0).
 ///
@@ -244,8 +248,13 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
             float3 off = (float3(field.r) - u.shells.xyz) / 1.6;
             float3 bump = exp(-off * off);
             density = max(max(bump.x, bump.y), bump.z) * field.g * 3.0;
+        } else if (u.mode == 2) {
+            // The glow rises slowly over the whole of its range, so the weak
+            // echo around a core tints it and does not hide it.
+            float t = saturate((field.r - u.low) / (u.high - u.low));
+            density = t * t * t * field.g;
         } else {
-            density = smoothstep(u.low, u.low + kPeelBand, field.r) * field.g;
+            density = smoothstep(u.low, u.high, field.r) * field.g;
         }
         if (density <= 0.002) continue;
         colour = ramp.sample(rampSampler, float2(saturate((field.r + 32.0) / 96.0), 0.5)).rgb;
@@ -254,10 +263,17 @@ static float4 raymarch(FullscreenOut in, constant VolumeUniforms &u,
             // face is what cutting a storm open is for: it shows what the
             // outside hides. Averaged over a second tap just behind it,
             // because one opaque sample facets along the voxel grid.
+            // The face is the echo itself, whatever the style thins it to: a
+            // slice through light would be as faint as the light.
             float2 behindField = sampleField(volume, s, p + d * dt * 0.5, u);
-            float smoothed = 0.5 * (density + smoothstep(u.low, u.low + kPeelBand, behindField.r) * behindField.g);
-            alpha = saturate(smoothed * 2.1);
+            float faceHigh = min(u.high, u.low + kPeelBand);
+            float here = u.mode == 1 ? density : smoothstep(u.low, faceHigh, field.r) * field.g;
+            float there = smoothstep(u.low, faceHigh, behindField.r) * behindField.g;
+            alpha = saturate((here + there) * 1.05);
             colour *= 1.12;
+        } else if (u.mode == 2) {
+            // Unlit: each reflectivity in its own colour, as on the radar beneath.
+            alpha = saturate(density * stepKm * kGlowOpacityPerKm);
         } else {
             float lambert = 0.42 + 0.58 * max(dot(fieldNormal(volume, s, p, stepUnit, u), u.light.xyz), 0.0);
             alpha = saturate(density * stepKm * kOpacityPerKm * (u.mode == 1 ? 4.0 : 1.0));
@@ -473,7 +489,8 @@ struct VolumeUniforms {
     var mode: Int32 = 0
     var stepMetres: Float = 40_000 / 96
     var system: Float = 0
-    var padding = SIMD2<Float>()
+    var high: Float = 34
+    var padding: Float = 0
 }
 
 /// Mirrors `CameraUniforms` in `StormShaders.source`.

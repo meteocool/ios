@@ -12,6 +12,8 @@ import SwiftUI
 
 struct ThreeDGuide: View {
     let palette: String
+    /// How the storms are drawn, named under the clouds' scale.
+    var style = CloudStyle.cloud
     /// The KONRAD3D layer is on: its cells are on the map to explain.
     let cellsShown: Bool
     let close: () -> Void
@@ -25,7 +27,8 @@ struct ThreeDGuide: View {
         NavigationStack {
             List {
                 Section(CoreStrings.t("guide_3d.legend")) {
-                    item(CoreStrings.t("guide_3d.clouds"), CoreStrings.t("guide_3d.clouds_body")) {
+                    item(CoreStrings.t("guide_3d.clouds"), CoreStrings.t("guide_3d.clouds_body"),
+                         note: CoreStrings.t("style_3d.\(style.rawValue)") + ": " + CoreStrings.t("style_3d.\(style.rawValue)_body")) {
                         LinearGradient(colors: stride(from: 10.0, through: 70, by: 5).map(colour), startPoint: .leading, endPoint: .trailing)
                             .frame(width: 44, height: 14)
                             .clipShape(Capsule())
@@ -81,12 +84,15 @@ struct ThreeDGuide: View {
         .accessibilityIdentifier("nativeMap.3d.guide")
     }
 
-    private func item(_ title: String, _ body: String, @ViewBuilder swatch: () -> some View) -> some View {
+    private func item(_ title: String, _ body: String, note: String? = nil, @ViewBuilder swatch: () -> some View) -> some View {
         HStack(alignment: .top, spacing: 12) {
             swatch().frame(width: 44, alignment: .leading).padding(.top, 3)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).scaledFont(15, weight: .semibold, relativeTo: .subheadline)
                 Text(body).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
+                if let note {
+                    Text(note).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary).padding(.top, 2)
+                }
             }
         }
         .accessibilityElement(children: .combine)

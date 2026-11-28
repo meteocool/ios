@@ -16,22 +16,23 @@ class BaseLayerMappingViewController: UIViewController, UITableViewDelegate, UIT
     /// "system" draws Light or Dark to match the appearance; the web map
     /// resolves it. Here it is a switch above the other four: while it is on,
     /// they are greyed out and cannot be picked.
-    private let optionKeys = ["light", "dark", "osm", "cyclosm"]
+    private let optionKeys = ["light", "dark", "osm", "cyclosm", "satellite"]
 
     //userDefaults
     let userDefaults = UserDefaults.init(suiteName: "group.org.frcy.app.meteocool")
 
     /// The basemaps the web map draws.
     ///
-    /// All four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`)
-    /// and differ only in which map features they draw.
-    /// There is no Satellite option: the frontend removed it together with the OroraTech tiles it used.
-    private var baseLayerMapping = [
-        NSLocalizedString("light", comment: "baseLayer"),
-        NSLocalizedString("dark", comment: "baseLayer"),
-        NSLocalizedString("osm", comment: "baseLayer"),
-        NSLocalizedString("cyclosm", comment: "baseLayer")
-    ]
+    /// The first four use meteocool's own Protomaps tiles (core's `src/layers/base.ts`)
+    /// and differ only in which map features they draw. Satellite is imagery
+    /// (core's `layers/satellite.ts`); the native map shows Apple's.
+    private lazy var baseLayerMapping = optionKeys.map { Self.name($0) }
+
+    /// A basemap's name as Settings shows it. Satellite's comes from core's
+    /// strings (`settings.base_layers`), the rest are the app's own.
+    static func name(_ key: String) -> String {
+        key == "satellite" ? CoreStrings.t("settings.base_layers.satellite") : NSLocalizedString(key, comment: "baseLayer")
+    }
 
     var baseLayer:String!
     /// The basemap picked below the switch. Kept while the switch is on, so

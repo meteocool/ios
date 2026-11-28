@@ -4,7 +4,9 @@
 //
 //  The weather radars of every network (core's `lib/radarSites.ts`, generated
 //  from it): which radars a storm's volume was built from, how far each
-//  stood and how high its lowest beam passed over the storm.
+//  stood and how high its lowest beam passed over the storm, the sites'
+//  codes (`radarSiteCodes.test.ts`), and a country's flag (`Flag.svelte`,
+//  as the system's emoji).
 //
 //  No app dependencies here: `scripts/check.sh` compiles this file alone.
 //

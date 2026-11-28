@@ -2,7 +2,8 @@
 //  RadarWindow.swift
 //  meteocool
 //
-//  A past window on the native map: the archive (ng's `doc/archive.md`).
+//  A past window on the native map: the archive (ng's `doc/archive.md`,
+//  core's `lib/archive.ts`).
 //
 
 import Foundation
@@ -17,8 +18,13 @@ struct RadarWindow: Equatable, Hashable, Sendable {
     static let stepSeconds = 300
     /// The most steps the timeline route serves at once.
     static let maxSteps = 1000
-    /// The lengths the picker offers, in hours.
+    /// The lengths the picker offers, in hours (`WINDOW_HOURS`).
     static let lengths = [1, 3, 6, 12, 24]
+    /// The length the picker starts on (`DEFAULT_WINDOW_HOURS`).
+    static let defaultHours = 3
+    /// The length the picker shows for a window open now: the first offered
+    /// that holds it.
+    var pickerHours: Int { Self.lengths.first { Double($0) >= hours.rounded() } ?? Self.defaultHours }
     /// How long a window a link's past frame opens, ending at that frame.
     static let linkHours = 2
 
@@ -97,11 +103,30 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         Self.format(step, template: crossesMidnight(in: timeZone) ? "EEEHHmm" : "HHmm", timeZone: timeZone, locale: locale)
     }
 
-    /// The pill's date and time of a step, short enough for the top line
-    /// ("5 Nov 14:05", "Nov 5 14:05").
-    static func dateTime(_ step: Int, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
-        format(step, template: "dMMM", timeZone: timeZone, locale: locale) + " "
+    /// A step's date and time, short enough for a phone's top line ("5 Nov
+    /// 14:05", "Nov 5 14:05"); with its weekday where there is room, as
+    /// VoiceOver reads the frame's tab ("Thu 5 Nov 14:05").
+    static func dateTime(_ step: Int, weekday: Bool = false, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        format(step, template: weekday ? "EEEdMMM" : "dMMM", timeZone: timeZone, locale: locale) + " "
             + format(step, template: "HHmm", timeZone: timeZone, locale: locale)
+    }
+
+    /// The window's day and span, as a wide screen's tab names it
+    /// (`ArchiveFrame.svelte`): "Thu 5 Nov 14:05–17:05", or both ends dated
+    /// where it runs over midnight.
+    func span(timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        let first = Self.dateTime(start, weekday: true, timeZone: timeZone, locale: locale)
+        guard !crossesMidnight(in: timeZone) else {
+            return first + " – " + Self.dateTime(end, weekday: true, timeZone: timeZone, locale: locale)
+        }
+        return first + "–" + Self.format(end, template: "HHmm", timeZone: timeZone, locale: locale)
+    }
+
+    /// A step by its clock, with its weekday once it has crossed midnight
+    /// from the window's start: the wide tab's step beside its span.
+    func clock(_ step: Int, timeZone: TimeZone = .current, locale: Locale = .current) -> String {
+        let sameDay = calendar(timeZone).isDate(Self.date(start), inSameDayAs: Self.date(step))
+        return Self.format(step, template: sameDay ? "HHmm" : "EEEHHmm", timeZone: timeZone, locale: locale)
     }
 
     /// The whole window, as the picker sums it up ("5 Nov, 14:05 – 17:05").
@@ -133,6 +158,18 @@ struct RadarWindow: Equatable, Hashable, Sendable {
         case ...(12 * 3600): return 180
         default: return 360
         }
+    }
+
+    /// How close to an end a label may sit on a strip `width` points wide,
+    /// as a share of it (`windowEdgeClear`): a clock time is wider than the
+    /// live strip's offsets, and on a phone the fixed share let "15:00" run
+    /// into a "14:45" at the start. `dated`: the labels carry days (a window
+    /// across midnight), wider still.
+    static func edgeClear(width: Double, dated: Bool) -> Double {
+        // The live strip's share (`TimelinePhysics.edgeClear`, `AXIS_EDGE_CLEAR`).
+        let least = 0.09
+        guard width > 0 else { return least }
+        return max(least, (dated ? 80 : 40) / width)
     }
 
     /// Minutes between the ruler's ticks, so a long window is not a solid bar.
@@ -182,15 +219,53 @@ struct ArchiveCoverage: Decodable, Equatable, Sendable {
         return coverage
     }
 
-    /// The window the picker opens for a start and a length: kept inside
-    /// what the archive holds, moved back rather than cut short where it
-    /// would run past the newest step.
-    func window(start: Int, hours: Int) -> RadarWindow? {
-        let length = hours * 3600
-        let first = max(since, min(RadarWindow.grid(start), until))
-        let last = min(first + length, until)
-        return RadarWindow(start: max(since, last - length), end: last)
+    /// The window a reader picked (`pickWindow`): from `start`, `hours`
+    /// long, kept inside what the archive covers. One running past the
+    /// newest step ends there; one starting before the oldest starts there.
+    /// Nil when nothing of it is kept.
+    func pick(start: Int, hours: Int) -> RadarWindow? {
+        let first = RadarWindow.grid(start)
+        let from = max(first, since), to = min(first + hours * 3600, until)
+        guard to > from else { return nil }
+        return RadarWindow(start: from, end: to)
     }
+
+    /// Where the picker starts (`seed`): the window open now, or the last
+    /// few hours the archive has; never before its oldest step.
+    func seed(open: RadarWindow?) -> (start: Int, hours: Int) {
+        let start = open?.start ?? RadarWindow.grid(until - RadarWindow.defaultHours * 3600)
+        return (max(start, since), open?.pickerHours ?? RadarWindow.defaultHours)
+    }
+
+    /// The days the picker offers, each its midnight in `calendar`, oldest
+    /// first: every day with anything kept (`coverageDays`).
+    func days(calendar: Calendar) -> [Int] {
+        var days: [Int] = []
+        let last = calendar.startOfDay(for: Self.date(until))
+        var day = calendar.startOfDay(for: Self.date(since))
+        while day <= last {
+            days.append(Int(day.timeIntervalSince1970))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = calendar.startOfDay(for: next)
+        }
+        return days
+    }
+
+    /// The minutes of the day a window may start at on `day` (its midnight
+    /// in `calendar`), on the grid (`startMinutes`): the whole day, cut at
+    /// the archive's ends on its first and last day.
+    func startMinutes(day: Int, calendar: Calendar) -> ClosedRange<Int> {
+        func minuteOf(_ seconds: Int) -> Int {
+            let parts = calendar.dateComponents([.hour, .minute], from: Self.date(seconds))
+            return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        }
+        func midnight(_ seconds: Int) -> Int { Int(calendar.startOfDay(for: Self.date(seconds)).timeIntervalSince1970) }
+        let first = midnight(since) == day ? Int((Double(minuteOf(since)) / 5).rounded(.up)) * 5 : 0
+        let last = midnight(until) == day ? minuteOf(until) / 5 * 5 : 1435
+        return first ... max(first, last)
+    }
+
+    private static func date(_ seconds: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(seconds)) }
 }
 
 /// The strikes a past window draws (`/v3/lightning/strikes`, at most three

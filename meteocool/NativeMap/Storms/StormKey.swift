@@ -6,7 +6,10 @@
 //  behind a pill in the player: DWD's diamonds and meteocool's circles, the
 //  colours, rings, paths, dotted joins, badges and "3D" tags. Each row turns
 //  its mark off the map, and each strength chip its storms
-//  (`hiddenStormMarks`); the pill carries a dot while any is off.
+//  (`hiddenStormMarks`); the lightning and the mesocyclones are layers of
+//  their own, switched here because they are read with the storms. With the
+//  storm marks off in the layer switcher the key keeps just those two, so
+//  they can still be switched. The pill carries a dot while any is off.
 //
 //  A sheet rather than core's popover card: it is looked up, not read
 //  alongside the map, and a sheet is the phone's way of doing that.
@@ -21,26 +24,26 @@ struct StormKeyPill: View {
     let filtered: Bool
     let theme: ChromeTheme
     let open: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @ScaledMetric(relativeTo: .caption2) private var scale: CGFloat = 1
 
     var body: some View {
+        let metrics = ChipMetrics.of(sizeClass)
+        let mark = metrics.icon / 11 * scale
         Button(action: open) {
             HStack(spacing: 5) {
                 HStack(spacing: 2) {
-                    Diamond().fill(Color(uiColor: StormStyle.colour(2))).frame(width: 9, height: 9)
-                    Circle().fill(Color(uiColor: StormStyle.colour(1))).frame(width: 8, height: 8)
+                    Diamond().fill(Color(uiColor: StormStyle.colour(2))).frame(width: 9 * mark, height: 9 * mark)
+                    Circle().fill(Color(uiColor: StormStyle.colour(1))).frame(width: 8 * mark, height: 8 * mark)
                 }
                 Text(CoreStrings.t("storm.key.pill"))
                 if filtered {
-                    Circle().fill(theme.accent).frame(width: 6, height: 6)
+                    Circle().fill(theme.accent).frame(width: 6 * mark, height: 6 * mark)
                 }
             }
-            .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+            .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
             .foregroundStyle(theme.text)
-            .lineLimit(1)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(theme.tint, in: Capsule())
-            .hitTarget()
+            .chip(theme, metrics)
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(CoreStrings.t("storm.key.open"))
@@ -54,7 +57,12 @@ struct StormKeyView: View {
     @ObservedObject var model: NativeMapModel
     /// The mesocyclones' layer switch, which the key's last row is.
     let mesocyclones: Binding<Bool>
+    /// The lightning's layer switch, the last row of what holds everywhere.
+    let lightning: Binding<Bool>
     let close: () -> Void
+
+    /// The storm marks are drawn: their rows are in the key.
+    private var storms: Bool { model.layersOn.contains(.storms) }
 
     private let strong = Color(uiColor: StormStyle.colour(2))
     private let moderate = Color(uiColor: StormStyle.colour(1))
@@ -63,49 +71,22 @@ struct StormKeyView: View {
         NavigationStack {
             List {
                 Section {
-                    row(.meteocool, badge: .meteocool) { Circle().fill(strong).overlay(Circle().stroke(.white, lineWidth: 1.5)).frame(width: 14) }
-                    strength
-                    row(.live) {
-                        ZStack {
-                            Circle().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [3.2, 2.6])).foregroundStyle(.secondary).frame(width: 20)
-                            Circle().fill(moderate).overlay(Circle().stroke(.white, lineWidth: 1.5)).frame(width: 10)
-                        }
-                    }
-                    row(.path) {
-                        HStack(spacing: 0) {
-                            Capsule().fill(moderate).frame(width: 16, height: 3).rotationEffect(.degrees(-20))
-                            Circle().fill(moderate).frame(width: 9)
-                        }
-                    }
-                    row(.join) {
-                        Capsule().stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [0.1, 5])).foregroundStyle(moderate)
-                            .frame(width: 26, height: 1).rotationEffect(.degrees(-25))
-                    }
-                    row(.volume) {
-                        HStack(spacing: 2) {
-                            Image(systemName: "cube.fill").foregroundStyle(strong).imageScale(.small)
-                            Text("3D").scaledFont(9, weight: .bold, relativeTo: .caption2)
-                        }
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(.background, in: Capsule())
-                        .overlay(Capsule().stroke(.secondary.opacity(0.4)))
+                    if storms { stormRows }
+                    let lightningKept = NativeMapLayer.lightning.hasPast || model.window == nil
+                    item(CoreStrings.t("storm.key.lightning"),
+                         CoreStrings.t(lightningKept ? "storm.key.lightning_body" : "chrome.archive.no_past"), on: lightning,
+                         id: "lightning", disabled: !lightningKept) {
+                        Image("MapLightning").resizable().scaledToFit().frame(width: 20, height: 20)
                     }
                 }
                 // What DWD's tracking adds, over Germany alone.
                 Section(CoreStrings.t("storm.key.germany_only")) {
-                    row(.dwd, badge: .dwd) { Diamond().fill(strong).overlay(Diamond().stroke(.white, lineWidth: 1.5)).frame(width: 16, height: 16) }
-                    row(.hail) { badged("✦", rim: Color(uiColor: StormStyle.hail)) }
-                    row(.rotation) { badged("↻", rim: .white) }
-                    row(.forecast) {
-                        ZStack {
-                            Ellipse().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [4, 3])).foregroundStyle(moderate).frame(width: 24, height: 16)
-                            Ellipse().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [4, 3])).foregroundStyle(moderate).frame(width: 12, height: 8)
-                                .offset(x: -5)
-                        }
-                    }
-                    item(CoreStrings.t("storm.key.mesocyclone"), CoreStrings.t("storm.key.mesocyclone_body"), on: mesocyclones,
-                         id: "mesocyclone") {
+                    if storms { dwdRows }
+                    // DWD keeps no series of them: in a past window there are none to show.
+                    let kept = NativeMapLayer.mesocyclones.hasPast || model.window == nil
+                    item(CoreStrings.t("storm.key.mesocyclone"),
+                         CoreStrings.t(kept ? "storm.key.mesocyclone_body" : "chrome.archive.no_past"), on: mesocyclones,
+                         id: "mesocyclone", disabled: !kept) {
                         Image("MapMesocyclone").resizable().scaledToFit().frame(width: 20, height: 20)
                     }
                 }
@@ -122,6 +103,54 @@ struct StormKeyView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.stormKey")
+    }
+
+    /// meteocool's storms, their strengths and what is drawn round them.
+    @ViewBuilder
+    private var stormRows: some View {
+        row(.meteocool, badge: .meteocool) { Circle().fill(strong).overlay(Circle().stroke(.white, lineWidth: 1.5)).frame(width: 14) }
+        strength
+        row(.live) {
+            ZStack {
+                Circle().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [3.2, 2.6])).foregroundStyle(.secondary).frame(width: 20)
+                Circle().fill(moderate).overlay(Circle().stroke(.white, lineWidth: 1.5)).frame(width: 10)
+            }
+        }
+        row(.path) {
+            HStack(spacing: 0) {
+                Capsule().fill(moderate).frame(width: 16, height: 3).rotationEffect(.degrees(-20))
+                Circle().fill(moderate).frame(width: 9)
+            }
+        }
+        row(.join) {
+            Capsule().stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [0.1, 5])).foregroundStyle(moderate)
+                .frame(width: 26, height: 1).rotationEffect(.degrees(-25))
+        }
+        row(.volume) {
+            HStack(spacing: 2) {
+                Image(systemName: "cube.fill").foregroundStyle(strong).imageScale(.small)
+                Text("3D").scaledFont(9, weight: .bold, relativeTo: .caption2)
+            }
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.background, in: Capsule())
+            .overlay(Capsule().stroke(.secondary.opacity(0.4)))
+        }
+    }
+
+    /// DWD's storms and what its tracking adds to them.
+    @ViewBuilder
+    private var dwdRows: some View {
+        row(.dwd, badge: .dwd) { Diamond().fill(strong).overlay(Diamond().stroke(.white, lineWidth: 1.5)).frame(width: 16, height: 16) }
+        row(.hail) { badged("✦", rim: Color(uiColor: StormStyle.hail)) }
+        row(.rotation) { badged("↻", rim: .white) }
+        row(.forecast) {
+            ZStack {
+                Ellipse().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [4, 3])).foregroundStyle(moderate).frame(width: 24, height: 16)
+                Ellipse().stroke(style: StrokeStyle(lineWidth: 1.6, dash: [4, 3])).foregroundStyle(moderate).frame(width: 12, height: 8)
+                    .offset(x: -5)
+            }
+        }
     }
 
     /// Strength: a chip for each band, each turning its storms off and on.
@@ -169,7 +198,7 @@ struct StormKeyView: View {
                     id: mark.rawValue, badge: badge, swatch: swatch)
     }
 
-    private func item(_ title: String, _ body: String, on: Binding<Bool>, id: String, badge: StormSource? = nil,
+    private func item(_ title: String, _ body: String, on: Binding<Bool>, id: String, badge: StormSource? = nil, disabled: Bool = false,
                       @ViewBuilder swatch: () -> some View) -> some View {
         Toggle(isOn: on) {
             HStack(alignment: .top, spacing: 12) {
@@ -182,8 +211,9 @@ struct StormKeyView: View {
                     Text(body).scaledFont(13, relativeTo: .footnote).foregroundStyle(.secondary)
                 }
             }
-            .opacity(on.wrappedValue ? 1 : 0.55)
+            .opacity(on.wrappedValue && !disabled ? 1 : 0.55)
         }
+        .disabled(disabled)
         .accessibilityLabel(CoreStrings.t("storm.key.show", ["mark": title]))
         .accessibilityIdentifier("nativeMap.stormKey.\(id)")
     }

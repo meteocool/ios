@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The native map's player: which step is on screen, and playback (core's
-//  `NowcastPlayback.svelte` and `lib/playbackLoop.ts`).
+//  `NowcastPlayback.svelte` and `lib/playbackLoop.ts`), held for each
+//  step's pictures by `lib/playbackGate.ts`'s rules (`PlaybackRules`).
 //
 
 import Foundation
@@ -17,8 +18,8 @@ final class RadarPlayer: ObservableObject {
     /// Back on the live frame after this long away (`RETURN_TO_LIVE_AFTER_MS`).
     static let returnToLiveAfter: TimeInterval = 5 * 60
     /// Waiting for a step's pictures at most this long, so a slow tile
-    /// cannot stop playback.
-    static let maxWait: TimeInterval = 3
+    /// cannot stop playback (`READY_TIMEOUT_MS`).
+    static let maxWait = PlaybackRules.readyTimeout
 
     @Published private(set) var timeline = RadarTimeline.empty
     @Published private(set) var index = 0
@@ -38,8 +39,12 @@ final class RadarPlayer: ObservableObject {
     @Published var only: Set<Int>? {
         didSet {
             guard only != oldValue, let only, !only.isEmpty, let step, !only.contains(step) else { return }
-            // A step outside them opens on the newest it has.
-            if let newest = timeline.steps.lastIndex(where: { only.contains($0) }) { show(newest) }
+            // A step outside its sweeps' hours opens on the newest it has; in
+            // a gap between them, on the nearest (`keepToSweeps`).
+            let mine = timeline.steps.filter { only.contains($0) }
+            guard let first = mine.first, let last = mine.last else { return }
+            let target = step > first && step < last ? PlaybackRules.nearestStep(mine, to: step) ?? last : last
+            if let at = timeline.steps.firstIndex(of: target) { show(at) }
         }
     }
     /// Steps whose pictures are ready to show: the strip's preload fill.
@@ -53,6 +58,12 @@ final class RadarPlayer: ObservableObject {
     /// Whether a step's pictures are ready: playing waits for the next one,
     /// so a step comes on screen whole, never tile by tile.
     var isReady: ((Int) -> Bool)?
+    /// What is prepared ahead: playback waits for a step only while its
+    /// pictures are (`holdsForTiles`).
+    var preloadMode: (() -> PlaybackRules.PreloadMode)?
+    /// The map is being zoomed or panned: playback does not wait for
+    /// pictures of a zoom the map is only passing through (`holdsForTiles`).
+    var isMoving: (() -> Bool)?
 
     /// Parked on the newest observation: stays there as new ones arrive.
     private(set) var followsLive = true
@@ -215,11 +226,14 @@ final class RadarPlayer: ObservableObject {
     private func tick() {
         guard playing, !grabbed, !timeline.steps.isEmpty else { return }
         let next = nextIndex()
-        if let isReady, !isReady(timeline.steps[next]) {
+        // The step on screen stays a little longer while the next one's
+        // pictures are not ready, never longer than `maxWait`.
+        if let isReady, PlaybackRules.holdsForTiles(preloadMode?() ?? .all, moving: isMoving?() ?? false) {
             let since = waitingSince ?? Date()
             waitingSince = since
-            if Date().timeIntervalSince(since) < Self.maxWait {
-                startTimer(after: 0.1)
+            let waited = Date().timeIntervalSince(since)
+            if !PlaybackRules.shouldAdvance(ready: isReady(timeline.steps[next]), waited: waited, timeout: Self.maxWait) {
+                startTimer(after: min(0.1, PlaybackRules.waitLeft(waited, timeout: Self.maxWait)))
                 return
             }
         }
@@ -228,30 +242,30 @@ final class RadarPlayer: ObservableObject {
         startTimer(after: Self.frameInterval)
     }
 
-    /// The step after this one while playing (`nextFrame`): through the
+    /// The map started to move: a step held for its pictures goes on now.
+    func mapStartedMoving() {
+        guard playing, !grabbed, waitingSince != nil else { return }
+        startTimer(after: 0)
+    }
+
+    /// The step after this one while playing (`nextFrame`).
+    func nextIndex() -> Int { nextIndex(after: index) }
+
+    /// The step after `index` while playing (`nextFrame`): through the
     /// forecast and round to now (or two hours back), or, with no forecast
     /// on screen, through the past and back to where play was pressed.
-    func nextIndex() -> Int {
-        // An open radar's steps alone, round to where play was pressed.
-        if let only, !only.isEmpty {
-            let mine = timeline.steps.indices.filter { only.contains(timeline.steps[$0]) }
-            if let next = mine.first(where: { $0 > index }) { return next }
-            if !fromStart, let loopFrom, mine.contains(loopFrom), loopFrom < mine.last! { return loopFrom }
-            return mine.first!
-        }
-        let start = 0
+    func nextIndex(after index: Int) -> Int {
+        let steps = timeline.steps
+        guard steps.indices.contains(index) else { return 0 }
         // A window: through it, and round to its start.
-        if timeline.window != nil { return index < lastIndex ? index + 1 : start }
-        let gridNow = timeline.steps.firstIndex(of: timeline.gridNow) ?? (nowIndex ?? 0)
-        if !noForecast {
-            if index < lastIndex { return index + 1 }
-            return fromStart ? start : min(gridNow, lastIndex)
-        }
-        let latest = nowIndex ?? lastIndex
-        if index < latest { return index + 1 }
-        if fromStart { return start }
-        guard let loopFrom, loopFrom < latest else { return start }
-        return loopFrom
+        if timeline.window != nil { return index < lastIndex ? index + 1 : 0 }
+        let mine = only.map { only in steps.filter { only.contains($0) } }
+        let gridNow = steps.contains(timeline.gridNow) ? timeline.gridNow : (timeline.now ?? steps[0])
+        let state = PlaybackRules.LoopState(
+            shown: steps[index], latestObservation: steps[nowIndex ?? lastIndex], now: min(gridNow, steps[lastIndex]),
+            lastStep: steps[lastIndex], start: steps[0], loopFrom: steps[loopFrom.flatMap { steps.indices.contains($0) ? $0 : nil } ?? index], fromStart: fromStart,
+            noForecast: noForecast, only: mine?.isEmpty == false ? mine : nil)
+        return steps.firstIndex(of: PlaybackRules.nextFrame(state)) ?? 0
     }
 
     private func show(_ newIndex: Int) {

@@ -1,5 +1,56 @@
 # Agents' notes
 
+## Syncing with core
+
+The native map (`meteocool/NativeMap/`) follows core's `develop`. Core is
+ahead most of the time; a sync ports what it has gained since the last one.
+
+### What records the state
+- `scripts/core-sync.json` is the ledger. `core` is the core commit the port
+  is synced to. `pending` lists older commits skipped so far. `webOnly`
+  (never ported, such as the WebGL tile cache) and `unported` (not yet) set
+  core files aside, each with a reason.
+- A Swift file names the core files it ports in a comment, as
+  `lib/archive.ts` or `StormPanel.svelte`. That is the map from core to
+  Swift, and `scripts/core-sync.py` reads it. Keep the names current, with
+  enough of the path to tell `lib/cellPulse.ts` from `layers/cellPulse.ts`.
+
+### How a sync goes
+1. `scripts/core-sync.py` lists core's commits since the ledger's, and for
+   each changed file the Swift files that port it. `NEW` marks a file that
+   nothing ports and the ledger omits.
+2. `scripts/core-sync.py export` writes core at `origin/develop` to
+   `build/core`, emptied first. Read core there, not in the core checkout,
+   which may be on another branch. `git -C ../core show <sha>` shows what a
+   commit changed.
+   - Core moves while a sync is under way. To port up to a chosen commit,
+     pin every step to it: pass `--ref <sha> --no-fetch` to `status`,
+     `export`, `coverage` and `mark` alike (`mark <sha> --no-fetch`).
+3. Port commit by commit, in core's order, one iOS commit per core feature
+   with core's subject where it fits. For a core file:
+   - rules (`src/lib/*.ts`) go into a `*Rules.swift` with no app
+     dependencies, rule for rule, and core's `scripts/tests/*.test.ts` into
+     `tests/*Check.swift`, compiled and run by `scripts/check.sh`;
+   - a component (`*.svelte`) becomes a SwiftUI view that keeps core's
+     behaviour and wording and follows the design notes below;
+   - a layer (`src/layers/`, `src/caps/`) becomes a `NativeMapFeature`
+     (NativeMapFeature.swift), added in NativeMapView.swift;
+   - a new route goes into NativeMapEndpoints.swift, a socket event through
+     `socketEvent`, a link parameter into NativeMapLink.swift and the
+     feature's `open` and `linkParameters`;
+   - strings come from `scripts/core-strings.py build/core`, never by hand,
+     and the radars' pages (facts and texts) from
+     `scripts/core-radar-info.py build/core`.
+4. A core change with no native counterpart goes into the ledger's
+   `webOnly` or `unported` with its reason, so the next sync does not weigh
+   it again.
+5. `scripts/check.sh` and `scripts/build.sh` pass, and the UI tests for what
+   changed pass on a simulator (`MC_SIMULATOR_UDID` pins `scripts/test.sh`
+   to one when others are booted). Then `scripts/core-sync.py mark`, and
+   `scripts/core-sync.py coverage` lists nothing new. A core test is matched
+   by its name (`x.test.ts` with what names `x.ts`): one named otherwise is
+   cited by its own name in its Check, or set aside.
+
 ## Design: Apple's guidelines first
 
 The native map (`meteocool/NativeMap/`) ports core's web frontend. Keep

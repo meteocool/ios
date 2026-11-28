@@ -187,6 +187,8 @@ final class StormScene {
     /// north, while no mode is chosen (core's `setCut`); nil for none.
     var openCut: (key: String, alongDeg: Double)?
     var palette = "classic"
+    /// How the 3D map draws its storms; the AR view keeps the cloud.
+    var style = CloudStyle.cloud
     var now = Date()
 
     /// Old enough that the storm has visibly moved since: drawn in greys,
@@ -362,15 +364,16 @@ final class StormScene {
         u.slab = SIMD2(-1, 2)
         u.dbzFloor = Float(volume.header.dbzFloor)
         u.dbzScale = Float(volume.header.dbzScale)
-        u.low = Float(StormVolume.dbzLow)
+        u.low = Float(style.floor)
+        u.high = Float(style.floor + style.band)
         u.steps = 96
         u.dim = storm.entry.openable ? 1 : Self.dimUnopenable
         u.behind = (storm.age ?? 0) > Self.staleAfter ? 1 : 0
         u.ghost = 0
-        u.mode = 0
+        u.mode = style == .glow ? 2 : 0
         // Only the drawn part of the box (a tile's apron is its neighbours'),
-        // and of that only where there is echo.
-        if let bounds = volume.marchBounds {
+        // and of that only where there is echo the style draws.
+        if let bounds = volume.marchBounds(glow: style == .glow) {
             u.boxMin = SIMD4(bounds.min, 0)
             u.boxMax = SIMD4(bounds.max, 0)
         }
@@ -384,8 +387,15 @@ final class StormScene {
 
         switch mode {
         case .peel:
-            u.low = Float(StormVolume.dbzLow + sliderValue * (group.peelFloor - StormVolume.dbzLow))
+            // From the style's floor to the storm's core. The top of the ramp
+            // stays where the style has it until the peel has thinned the
+            // storm to within a cloud's band of it, so a core is never
+            // fainter peeled (core's `uHigh`).
+            u.low = Float(style.floor + sliderValue * (group.peelFloor - style.floor))
+            u.high = max(u.high, u.low + Float(StormVolume.peelBand))
         case .shells:
+            // The AR view's shells are of the lit cloud.
+            u.low = Float(StormVolume.dbzLow)
             u.mode = 1
             // Only the shells the storm reaches; a shower has no 55 dBZ shell.
             let top = volume.maxDbz

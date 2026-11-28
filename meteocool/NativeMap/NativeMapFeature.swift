@@ -2,7 +2,8 @@
 //  NativeMapFeature.swift
 //  meteocool
 //
-//  How the native map's parts plug into it.
+//  How the native map's parts plug into it (core's `caps/Capability.ts`
+//  and what each is handed, `caps/options.ts`).
 //
 
 import MapKit
@@ -163,9 +164,15 @@ protocol NativeMapHost: AnyObject {
 
 /// The layer switches the native map stores (`nativeMap.<rawValue>`).
 enum NativeMapLayer: String, CaseIterable {
-    case lightning, mesocyclones, storms, snow, cells3d, terrain3d, sites, stations
+    case lightning, mesocyclones, storms, snow, cells3d, terrain3d, sites, stations, motion
 
     /// Whether it is on before the user has chosen: as core's settings
-    /// (`layer3dCells` and `layerStations` off, the rest on).
-    var defaultOn: Bool { self != .cells3d && self != .stations }
+    /// (`layer3dCells`, `layerStations` and `layerMotion` off, the rest on).
+    var defaultOn: Bool { self != .cells3d && self != .stations && self != .motion }
+
+    /// Whether a past window draws it (core's `NO_PAST`): not the
+    /// mesocyclones, of which DWD keeps no series; not the radars' marks,
+    /// which open site mode; not the rain's motion arrows, the newest motion
+    /// field alone. Their switches are greyed in a window, kept for live.
+    var hasPast: Bool { self != .motion && self != .mesocyclones && self != .sites }
 }

@@ -4,7 +4,9 @@
 //
 //  The layers button's panel: core's maps as tiles (`McLayerSwitcher.svelte`,
 //  `MiniMap.svelte`), and what the radar map draws over the radar, which
-//  core keeps in its settings (`SettingsDialog.svelte`).
+//  core keeps in its settings (`SettingsDialog.svelte`). The stations, the
+//  lightning and the mesocyclones are not among them: they switch only from
+//  the map, on the tray's stations pill and in the storm key, as core's do.
 //
 
 import SwiftUI
@@ -40,15 +42,16 @@ struct LayerSwitcherView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     grid
                     section(CoreStrings.t("rain_and_thunderstorms")) {
-                        toggle(CoreStrings.t("chrome.playback.lightning"), .lightning)
-                        toggle(CoreStrings.t("chrome.playback.mesocyclones"), .mesocyclones)
                         toggle(CoreStrings.t("chrome.playback.cells"), .storms)
                         toggle(CoreStrings.t("chrome.playback.radar_sites"), .sites)
-                        toggle(CoreStrings.t("stations.title"), .stations)
+                        toggle(CoreStrings.t("chrome.playback.motion"), .motion)
                     }
                     section(CoreStrings.t("settings.playback")) {
                         Toggle(CoreStrings.t("settings.playback_from_start"), isOn: fromStart)
                             .accessibilityIdentifier("nativeMap.layers.fromStart")
+                    }
+                    section(CoreStrings.t("settings.map_3d") + ": " + CoreStrings.t("style_3d.title")) {
+                        ForEach(CloudStyle.allCases, id: \.self) { style in styleRow(style) }
                     }
                     section(CoreStrings.t("settings.map_3d")) {
                         toggle(CoreStrings.t("settings.konrad_cells"), .cells3d)
@@ -137,9 +140,41 @@ struct LayerSwitcherView: View {
         }
     }
 
+    /// How the 3D map draws its storms: one of a group, ticked (core's
+    /// `layer3dStyle` radio group), its name and what it is for.
+    private func styleRow(_ style: CloudStyle) -> some View {
+        let chosen = model.cloudStyle == style
+        return Button { model.cloudStyle = style } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(CoreStrings.t("style_3d.\(style.rawValue)")).foregroundStyle(Color.primary)
+                    Text(CoreStrings.t("style_3d.\(style.rawValue)_body")).font(.footnote).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "checkmark").fontWeight(.semibold).foregroundStyle(Color.accentColor).opacity(chosen ? 1 : 0)
+            }
+            .contentShape(Rectangle())
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+        .accessibilityIdentifier("nativeMap.layers.style.\(style.rawValue)")
+    }
+
+    /// A layer's switch. One with no past is greyed in a past window, its
+    /// setting kept for live (core's `shownIn`).
     private func toggle(_ label: String, _ layer: NativeMapLayer) -> some View {
-        Toggle(label, isOn: Binding(get: { _ = revision; return isOn(layer) },
-                                    set: { setOn(layer, $0); revision += 1 }))
-            .accessibilityIdentifier("nativeMap.layers.\(layer.rawValue)")
+        let kept = layer.hasPast || model.window == nil
+        return Toggle(isOn: Binding(get: { _ = revision; return isOn(layer) },
+                                    set: { setOn(layer, $0); revision += 1 })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                if !kept {
+                    Text(CoreStrings.t("chrome.archive.no_past")).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .disabled(!kept)
+        .accessibilityIdentifier("nativeMap.layers.\(layer.rawValue)")
     }
 }

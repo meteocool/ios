@@ -84,6 +84,13 @@ final class SiteSweepState: ObservableObject {
     func close() {
         mode = nil
     }
+
+    /// Opens the open radar's own page (core's `radarInfoOpen`); set by the map.
+    var about: ((String) -> Void)?
+
+    func openAbout() {
+        if let site = mode?.site { about?(site) }
+    }
 }
 
 @MainActor

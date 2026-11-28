@@ -377,7 +377,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 return switcherCell
             case 2: //Base Layer
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]
-                linkCell.linkValueLable.text = NSLocalizedString((userDefaults?.string(forKey: "baseLayer"))!, comment: "baseLayer")
+                linkCell.linkValueLable.text = BaseLayerMappingViewController.name((userDefaults?.string(forKey: "baseLayer"))!)
                 return linkCell
             case 3: //Radar Color Map
                 linkCell.linkInfoLable.text = dataMapView[indexPath.row]

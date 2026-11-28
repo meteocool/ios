@@ -1,0 +1,33 @@
+{
+  "iedub": {
+    "operator": "Met Éireann",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": false,
+    "since": "1991",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://ted.europa.eu/en/notice/051539-2022/pdf",
+      "https://www.tii.ie/media/flfpe2hl/met-eireann-weather-radar.pdf",
+      "https://www.met.ie/met-eireann-launches-new-advanced-weather-radar-system-at-shannon-airport",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "iesha": {
+    "operator": "Met Éireann",
+    "system": "Leonardo",
+    "band": "C",
+    "dualPol": true,
+    "since": "2023",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://www.met.ie/met-eireann-launches-new-advanced-weather-radar-system-at-shannon-airport",
+      "https://ted.europa.eu/en/notice/051539-2022/pdf",
+      "https://limerickpost.ie/2024/01/02/new-weather-radar-system-in-operation-at-shannon-airport",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/"
+    ]
+  }
+}

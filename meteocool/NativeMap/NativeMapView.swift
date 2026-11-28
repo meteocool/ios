@@ -2,7 +2,13 @@
 //  NativeMapView.swift
 //  meteocool
 //
-//  The radar map drawn with MapKit instead of core's web map.
+//  The radar map drawn with MapKit instead of core's web map (`Map.svelte`,
+//  padded by the tray): the reader's stored choices and a link's, held for
+//  the visit (`lib/Settings.ts`, `settingsOverride.test.ts`), the base map
+//  (`lib/baseLayers.ts`; a withdrawn one follows the system,
+//  `withdrawnMaps.test.ts`; the satellite imagery of `layers/satellite.ts`
+//  is Apple's), the link to what is on screen
+//  (`lib/urlState.ts`), and waking (`lib/wakeup.ts`).
 //
 
 import Combine
@@ -52,6 +58,17 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     private weak var dockTop: UIView?
     let monitor = ConnectionMonitor()
     let notices = NoticeState()
+    /// What the backend judges late (`/v3/status`), while it can be trusted.
+    let statusFeed: StatusFeed
+    /// The backend's verdict set the radar's staleness: when it lapses, the
+    /// map's own rule judges again from what it finds then.
+    private var judgedByServer = false
+    /// A socket gone this long is down (core's `SOCKET_DOWN_AFTER_MS`); while
+    /// it is, the map asks every minute for what it would have been told of.
+    static let socketDownAfter: TimeInterval = 30
+    static let socketDownRefresh: TimeInterval = 60
+    private var socketDownTimer: Timer?
+    private var socketDownTick: Timer?
     let productScans = ProductScans()
     /// Bumped on each foreground and wake, for the pill's dimming.
     @Published private var wakes = 0
@@ -73,6 +90,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         radar = RadarEngine(mapView: mapView, endpoints: endpoints,
                             palette: UserDefaults(suiteName: "group.org.frcy.app.meteocool")?.string(forKey: "radarColorMapping") ?? "classic")
         socket = RadarSocket(host: endpoints.api)
+        statusFeed = StatusFeed(url: endpoints.status)
         super.init(frame: .zero)
         configureMap()
         configureChrome()
@@ -82,19 +100,26 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         radar.onSeries = { [weak self] series in
             guard let self else { return }
             self.model.serverTime = Date(timeIntervalSince1970: TimeInterval(series.serverTime))
-            // A fresh series answers the staleness.
-            self.model.stale = false
-            self.radar.stale = false
+            // A fresh series answers the map's own staleness, not the backend's verdict.
+            if self.statusFeed.trusted == nil {
+                self.model.stale = false
+                self.radar.stale = false
+            }
             self.updateCoverage()
         }
         radar.onGaveUp = { [weak self] product in self?.gaveUp(product) }
         radar.onWindowRefused = { [weak self] _ in self?.windowRefused() }
         monitor.radarStale = { [weak self] in self?.model.stale ?? false }
+        monitor.statusTrusted = { [weak self] in self?.statusFeed.trusted != nil }
+        statusFeed.fetch = { [weak self] url, done in self?.fetch(url, done) }
+        statusFeed.onChange = { [weak self] in self?.updateStatus() }
         monitor.newestProcessed = { [weak self] in self?.radar.processedTimes ?? (nil, nil) }
+        // A slow or data-saving connection fetches less ahead (`preloadMode`).
+        monitor.$slow.removeDuplicates().sink { [weak self] slow in self?.radar.slow = slow }.store(in: &observers)
         observeSettings()
         socket.onEvent = { [weak self] name, data in self?.socketEvent(name, data) }
         socket.onReconnect = { [weak self] in self?.wake() }
-        socket.onConnection = { [weak self] connected in self?.model.connected = connected }
+        socket.onConnection = { [weak self] connected in self?.socketConnection(connected) }
 
         for feature in Self.makeFeatures() { add(feature) }
         applySettings()
@@ -148,8 +173,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             guard StormSelect.knowsSeverity(selection) else { return CoreStrings.t("storm.storm_label.unclassed") }
             return CoreStrings.t("storm.storm_label.\(StormRules.bandNames[StormSelect.severityOf(selection) ?? 0])")
         }, hitsStorm: { [weak storms] point in storms?.hits(point) ?? false })
-        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), MesocycloneMarks(), StationMarks(), sites, storms, CloudHints(),
-                PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
+        // A tap on a mesocyclone opens the storm it turns in.
+        let mesocyclones = MesocycloneMarks(openStorm: { [weak storms] at in storms?.openStorm(atMesocyclone: at) ?? false })
+        return [PrecipTypesMap(), LightningMap(), SnowOverlay(), LightningMarks(), mesocyclones, StationMarks(), sites, storms, CloudHints(),
+                MotionArrows(), PointFeature(), FlashToBang(), RadarWash(), ThreeDMap()]
     }
 
     /// Adds a part; it is attached at once.
@@ -184,8 +211,18 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The SwiftUI controls over the map, each in its own host so the map
     /// keeps every touch that misses them: the tray at the bottom, the strips
     /// above it, "Back to now" above those, the status pill on the top line,
-    /// and toasts under it.
+    /// and toasts under it; under them all, a past window's frame.
     private func configureChrome() {
+        // Round the map below the status bar, under every control, taking no touches.
+        let frame = addChrome(ArchiveFrame(model: model))
+        frame.isUserInteractionEnabled = false
+        NSLayoutConstraint.activate([
+            frame.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
+            frame.bottomAnchor.constraint(equalTo: bottomAnchor),
+            frame.leadingAnchor.constraint(equalTo: leadingAnchor),
+            frame.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+
         let actions = TrayActions(showForMyLocation: { [weak self] in self?.clearPoint() },
                                   openProducts: { [weak self] in self?.openProducts() },
                                   openStormKey: { [weak self] in self?.openStormKey() },
@@ -240,6 +277,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         // An open radar's controls, on the tray; the strips stand on them.
         let siteCard = addToDock(SiteSweepCard(state: model.site, model: model))
         siteCard.isHidden = true
+        model.site.about = { [weak self] code in self?.openRadarInfo(code) }
         model.site.$mode
             .map { $0 != nil }
             .removeDuplicates()
@@ -285,8 +323,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
         // Above whichever bars are up, as core counts the open strips and hints.
         let backHost = WeakView()
-        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site,
-                                           leaveWindow: { [weak self] in self?.leaveWindow() }) { backHost.view?.invalidateIntrinsicContentSize() })
+        let back = addChrome(BackToNowPill(player: player, model: model, site: model.site) { backHost.view?.invalidateIntrinsicContentSize() })
         backHost.view = back
         NSLayoutConstraint.activate([
             back.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -299,25 +336,51 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         })
         pillHost.view = pill
         // Centred, unless the logo's row of discs on the left reaches it on a
-        // narrow phone: then it keeps to their right (`logoRowWidth`).
-        // Below its content's compression resistance, or the host is squeezed
-        // to keep the centre and the capsule overflows it back to the middle.
+        // narrow phone: then it keeps to their right (`logoRowWidth`), and
+        // left of the buttons on the right (a past window's tab, which is
+        // wider): squeezed between them only then, its text cut short.
+        // Centring is below its content's compression resistance, or the host
+        // is squeezed to keep the centre and the capsule overflows it back to
+        // the middle.
         let centred = pill.centerXAnchor.constraint(equalTo: centerXAnchor)
         centred.priority = .defaultLow
-        pill.setContentCompressionResistancePriority(.required, for: .horizontal)
+        pill.setContentCompressionResistancePriority(.required - 1, for: .horizontal)
         let clear = pill.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
                                                   constant: Self.logoRowWidth)
+        let clearRight = pill.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor,
+                                                        constant: -ChromeTheme.controlColumn)
         NSLayoutConstraint.activate([
             centred,
             clear,
+            clearRight,
             pill.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter),
         ])
+
+        // The way back from a detour to the 3D map, under the top line's
+        // middle: the line itself is the status pill's.
+        let backFrom3D = addChrome(BackFrom3D(model: model, back: { [weak self] in self?.backFrom3D() }))
+        backFrom3D.isHidden = true
+        NSLayoutConstraint.activate([
+            backFrom3D.centerXAnchor.constraint(equalTo: centerXAnchor),
+            backFrom3D.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Self.topLineHeight + ChromeTheme.gutter),
+        ])
+        model.$detour.map { $0 != nil }.combineLatest(model.$capability.map { $0 == .cells3d })
+            .map { $0 && $1 }
+            .removeDuplicates()
+            .sink { [weak backFrom3D] shown in
+                DispatchQueue.main.async {
+                    backFrom3D?.isHidden = !shown
+                    backFrom3D?.invalidateIntrinsicContentSize()
+                }
+            }
+            .store(in: &observers)
 
         let toast = addChrome(ToastHost(model: model, state: chromeState))
         NSLayoutConstraint.activate([
             toast.centerXAnchor.constraint(equalTo: centerXAnchor),
             toast.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -120),
-            toast.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: ChromeTheme.gutter + 44 + ChromeTheme.gutter),
+            // Under the top line: the pill, or a window's tab and the pill under it.
+            toast.topAnchor.constraint(equalTo: pill.bottomAnchor, constant: ChromeTheme.gutter),
         ])
     }
 
@@ -325,6 +388,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// safe area, with a gutter after it: 12 pt in, then the logo and the
     /// bell, 52 pt each with 8 pt after each. The logbook is under the logo.
     static let logoRowWidth: CGFloat = 12 + 2 * (52 + 8) + ChromeTheme.gutter
+
+    /// Where the top line ends: 12 pt in from the top, then the logo's
+    /// 52 pt disc (core's `--mc-top-stack` and `--mc-control-lg`).
+    static let topLineHeight: CGFloat = 12 + 52
 
     /// Where the app's left column has room under the logo and the logbook
     /// (the Experimental Features mode's, as the flash-to-bang disc is): 12 pt
@@ -348,7 +415,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             (onTray ? dockOnTray : dockOnOther)?.isActive = true
         }
         notices.radarShown = radar
-        stripsChrome?.isHidden = !(notices.showNoRadar || notices.showNoForecast)
+        stripsChrome?.isHidden = notices.shown == nil
+        if model.noticeShown != (notices.shown != nil) { model.noticeShown = notices.shown != nil }
         stripsChrome?.invalidateIntrinsicContentSize()
         setNeedsLayout()
     }
@@ -399,11 +467,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
     }
 
-    /// What the storm marks mean, each switchable (core's `StormKey`).
+    /// What the storm marks mean, each switchable, and the lightning's and
+    /// the mesocyclones' switches (core's `StormKey`).
     func openStormKey() {
         let mesocyclones = Binding(get: { [weak self] in self?.isOn(.mesocyclones) ?? true },
                                    set: { [weak self] on in self?.setOn(.mesocyclones, on) })
-        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones,
+        let lightning = Binding(get: { [weak self] in self?.isOn(.lightning) ?? true },
+                                set: { [weak self] on in self?.setOn(.lightning, on) })
+        let key = UIHostingController(rootView: StormKeyView(model: model, mesocyclones: mesocyclones, lightning: lightning,
                                                              close: { [weak self] in self?.dismissSheet() }))
         presentSheet(key, detents: [.medium(), .large()])
     }
@@ -416,6 +487,37 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         presentSheet(menu, detents: [.medium(), .large()])
     }
 
+    /// Back from a detour to the 3D map, to the map and the view it came
+    /// from (core's `backFrom3D`, `returnFrom3D`), when the reader asks with
+    /// `BackFrom3D`. A storm open at the time stays open, on the flat map.
+    func backFrom3D() {
+        guard model.capability == .cells3d, let origin = model.detour else { return }
+        model.detour = nil
+        setCapability(origin.capability)
+        // After the tray is back: the camera's centre is the middle of the
+        // map above it, as when it was saved.
+        // MapKit centres the camera inside the map's margins, which the tray
+        // sets as it comes back; set again once it has, or the view lands
+        // half a tray off.
+        if let camera = origin.camera {
+            for delay in [0.0, 0.35] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.layoutIfNeeded()
+                    self?.mapView.setCamera(camera, animated: false)
+                }
+            }
+        }
+    }
+
+    /// The open radar's own page (core's `RadarInfo`), from the tray's "i".
+    func openRadarInfo(_ code: String) {
+        let info = RadarInfoBundle.load(code, locale: CoreStrings.language)
+        let page = UIHostingController(rootView: RadarInfoPage(code: code, info: info, photoOrigin: MeteocoolEnvironment.current.mapURL,
+                                                               close: { [weak self] in self?.dismissSheet() },
+                                                               explain: { [weak self] in self?.openExplainer() }))
+        presentSheet(page, detents: [.medium(), .large()])
+    }
+
     private func openExplainer() {
         dismissSheet { [weak self] in
             guard let self else { return }
@@ -425,10 +527,11 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         }
     }
 
-    func openConnectionDetails() {
-        let details = UIHostingController(rootView: ConnectionDetails(player: player, model: model, monitor: monitor,
-                                                                      close: { [weak self] in self?.dismissSheet() }))
-        presentSheet(details, detents: [.large()])
+    /// What the pill sums up, in sentences, with Connection Details behind it.
+    func openStatusSheet() {
+        let sheet = UIHostingController(rootView: StatusSheet(player: player, model: model, monitor: monitor,
+                                                              close: { [weak self] in self?.dismissSheet() }))
+        presentSheet(sheet, detents: [.medium(), .large()])
     }
 
     /// A sheet over the map, the app's buttons hidden while it is up.
@@ -453,17 +556,157 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         guard model.capability == .radar, mapView.bounds.width > 0 else { return }
         let visible = mapView.visibleMapRect
         let out = !RadarCoverage.touchesRadar(visible)
-        notices.outOfRadar = out
         player.outOfRadar = out
         let timeline = player.timeline
         let anyRun = Set(timeline.nowcastDomains.values.flatMap { $0 })
         // A window has no forecast to miss.
         player.noForecast = timeline.window == nil && !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: Array(anyRun)) >= 1
+        var noForecastHere = false
         if let step = player.step, timeline.isForecast(step) {
-            notices.noForecastHere = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: timeline.nowcastDomains[step] ?? []) >= 1
-        } else {
-            notices.noForecastHere = false
+            noForecastHere = !out && ForecastCoverage.uncoveredShare(visible, radar: radar, domains: timeline.nowcastDomains[step] ?? []) >= 1
         }
+        // Where a network whose radar has stopped draws, the map's present is
+        // the last picture that came and the nowcast has no run: the player
+        // says the weather service's data is not coming in (`feedOutage.ts`),
+        // over as much of the screen as the forecast's own notice.
+        let view = viewExtent, coverage = statusCoverage
+        let stalled = stalledNetworks
+        let share = out || stalled.isEmpty ? 0 : StatusRules.unionShare(stalled, view: view, coverage: coverage)
+        let atCentre = share > 0 && stalled.contains { StatusRules.coversCentre($0, view: view, coverage: coverage) }
+        let verdict = model.statusVerdict
+        // The forecast not being made where the radar is arriving: the
+        // backend's status alone can tell, by the same rule.
+        let forecastStopped = !out && verdict.map {
+            FeedOutage.saysFeedStopped(stalledShare: $0.forecastStopped, noForecast: noForecastHere, atCentre: $0.forecastStoppedAtCentre)
+        } == true
+        notices.update(NoticeQueue.Candidates(ours: verdict?.notices ?? [], noCoverage: out,
+                                              radarStopped: FeedOutage.saysFeedStopped(stalledShare: share, noForecast: noForecastHere,
+                                                                                       atCentre: atCentre),
+                                              forecastStopped: forecastStopped, noForecast: noForecastHere))
+    }
+
+    /// The domains whose radar has stopped arriving: by the backend's status,
+    /// Germany's among them, else measured against DWD's newest scan (core's
+    /// `refreshStalled`). None in a past window, which is the archive's and
+    /// not a feed.
+    private var stalledNetworks: [String] {
+        let timeline = player.timeline
+        guard timeline.window == nil else { return [] }
+        if let verdict = model.statusVerdict { return verdict.stalled }
+        let answered = radar.series?.networks != nil
+        let feeds = RadarTimeline.networks.map { FeedOutage.Feed(code: $0, newestScan: timeline.liveScans[$0], answered: answered) }
+        return FeedOutage.stalledNetworks(feeds, reference: timeline.liveScans["de"])
+    }
+
+    /// The view as a lon/lat box (core's `mapExtent4326`); the world before
+    /// the map is laid out.
+    private var viewExtent: StatusRules.Extent {
+        let rect = mapView.visibleMapRect
+        guard rect.width > 0, rect.height > 0, mapView.bounds.width > 0 else { return .world }
+        let northWest = MKMapPoint(x: rect.minX, y: rect.minY).coordinate
+        let southEast = MKMapPoint(x: rect.maxX, y: rect.maxY).coordinate
+        return StatusRules.Extent(northWest.longitude, southEast.latitude, southEast.longitude, northWest.latitude)
+    }
+
+    /// Each domain's ground, as the status is read against it.
+    private var statusCoverage: StatusRules.Coverage {
+        radar.coverage.statusCoverage(dwdReach: RadarReach.bundled?.dwd)
+    }
+
+    /// Which layers draw what the status judges, on the map on screen (`drawnLayers`).
+    private var drawnLayers: StatusRules.DrawnLayers {
+        let radarMap = model.capability == .radar
+        return StatusRules.DrawnLayers(radar: radarMap,
+                                       lightning: model.capability == .lightning || (radarMap && isOn(.lightning)),
+                                       stations: radarMap && isOn(.stations),
+                                       storms: model.capability == .cells3d || (radarMap && isOn(.storms)))
+    }
+
+    /// The trusted status read for the screen (`statusVerdict`), and what it
+    /// judges: whether the radar on screen is out of date, which networks
+    /// have stopped. When it lapses, the map's own rules take over from what
+    /// they find now.
+    private func updateStatus() {
+        let verdict = statusFeed.trusted.map {
+            StatusVerdict($0.status, receivedAt: $0.receivedAt.timeIntervalSince1970, view: viewExtent, layers: drawnLayers,
+                          locale: CoreStrings.language, coverage: statusCoverage)
+        }
+        if verdict != model.statusVerdict { model.statusVerdict = verdict }
+        if model.window == nil {
+            if let verdict {
+                judgedByServer = true
+                if model.stale != verdict.radarDown {
+                    model.stale = verdict.radarDown
+                    radar.stale = verdict.radarDown
+                }
+            } else if judgedByServer {
+                judgedByServer = false
+                model.stale = false
+                radar.stale = false
+                judgeStaleness()
+            }
+        }
+        updateCoverage()
+    }
+
+    /// The map's own rule: out of date until a new grid lands, when the
+    /// newest observation is older than a period and the grace. Not while the
+    /// backend's verdict judges, nor in a window, which is as old as it was
+    /// chosen to be.
+    private func judgeStaleness() {
+        let now = Int(Date().timeIntervalSince1970)
+        guard model.window == nil, statusFeed.trusted == nil,
+              ConnectionRules.outdated(newestObservation: player.timeline.now, period: radar.processedTimes.cadence, now: now) else { return }
+        model.stale = true
+        radar.stale = true
+    }
+
+    // MARK: - The socket
+
+    /// The socket joined or dropped: down once it has been gone a while (a
+    /// blip reconnects within seconds), and from the start too, as a socket
+    /// that never connects is as gone.
+    private func socketConnection(_ connected: Bool) {
+        model.connected = connected
+        if connected {
+            socketDownTimer?.invalidate()
+            socketDownTimer = nil
+            setSocketDown(false)
+        } else {
+            socketLost()
+        }
+    }
+
+    private func socketLost() {
+        guard started, socketDownTimer == nil, !model.socketDown else { return }
+        socketDownTimer = Timer.scheduledTimer(withTimeInterval: Self.socketDownAfter, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.socketDownTimer = nil
+                if !self.model.connected { self.setSocketDown(true) }
+            }
+        }
+    }
+
+    private func setSocketDown(_ down: Bool) {
+        guard model.socketDown != down else { return }
+        model.socketDown = down
+        statusFeed.socketChanged(down: down)
+        socketDownTick?.invalidate()
+        socketDownTick = nil
+        guard down else { return }
+        socketDownTick = Timer.scheduledTimer(withTimeInterval: Self.socketDownRefresh, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshWithoutSocket() }
+        }
+    }
+
+    /// With the socket gone, what it would have nudged is asked for: the
+    /// timeline and every part's live data (the status has its own timer).
+    /// Not in a past window, which nothing nudges.
+    private func refreshWithoutSocket() {
+        guard started, model.window == nil else { return }
+        radar.load()
+        for feature in features { feature.wake() }
     }
 
     /// Hosts a SwiftUI view over the map, sized to fit; the caller places it.
@@ -566,6 +809,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         started = true
         radar.start()
         socket.start()
+        statusFeed.start(socketDown: model.socketDown)
+        socketLost()
         wake()
         ticker = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -578,6 +823,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         started = false
         radar.stop()
         socket.stop()
+        statusFeed.stop()
+        socketDownTimer?.invalidate()
+        socketDownTimer = nil
+        setSocketDown(false)
         ticker?.invalidate()
         ticker = nil
         for feature in features { feature.stop() }
@@ -585,14 +834,10 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
 
     /// Everything again: the app came back, or the socket did (core's wake).
     private func wake() {
-        // On wake core judges the radar's age: out of date until a new grid lands.
-        let now = Int(Date().timeIntervalSince1970)
-        // A window is as old as it was chosen to be.
-        if model.window == nil,
-           ConnectionRules.outdated(newestObservation: player.timeline.now, period: radar.processedTimes.cadence, now: now) {
-            model.stale = true
-            radar.stale = true
-        }
+        // On wake core judges the radar's age: out of date until a new grid
+        // lands, unless the backend's verdict judges it.
+        judgeStaleness()
+        statusFeed.refresh()
         radar.wake()
         for feature in features { feature.wake() }
     }
@@ -612,6 +857,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func socketEvent(_ name: String, _ data: Data) {
+        // A component's state or the notices changed: ask what.
+        if name == "status" { statusFeed.refresh() }
         radar.socketEvent(name, data)
         // The socket announces the live sky: nothing for a past window.
         guard model.window == nil else { return }
@@ -645,6 +892,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         model.window = window
         radar.open(window: window, at: time.map(window.clamp))
         guard changed else { return }
+        statusFeed.past = true
         for feature in features { feature.windowDidChange(window) }
         if started { wake() }
         updateCredits()
@@ -654,6 +902,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     func leaveWindow() {
         guard model.window != nil else { return }
         model.window = nil
+        statusFeed.past = false
         radar.open(window: nil)
         for feature in features { feature.windowDidChange(nil) }
         if started { wake() }
@@ -661,7 +910,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     private func windowRefused() {
-        model.toast = NSLocalizedString("native_map_archive_refused", value: "The archive does not keep that time.", comment: "")
+        model.toast = CoreStrings.t("chrome.archive.refused")
         leaveWindow()
     }
 
@@ -715,7 +964,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     /// The choices a link names that are settings (core's
     /// `applyLinkedChoices`), held for this visit without being stored: the
     /// overlays it names (the rest stay the reader's own), the product, the
-    /// storm marks put away, the stations' parameter, a hand's storm motion.
+    /// storm marks put away, the stations' parameter, a hand's storm motion,
+    /// the 3D map's storm style.
     /// A storm or a cell turns storms on, a radar its marks, a station the
     /// stations: each opens on a map that draws it.
     private func applyLinkedChoices(_ parameters: [String: String]) {
@@ -730,6 +980,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         if station != nil { linkOverrides[.stations] = true }
         holdingLink = true
         if let product = parameters["product"].flatMap(RadarProduct.init(rawValue:)) { model.product = product }
+        // A style the map has; core's shells, which it took back off its map, are not.
+        if let style = parameters["style"].flatMap(CloudStyle.init(rawValue:)) { model.cloudStyle = style }
         holdingLink = false
         if let hidden = NativeMapLink.hidden(parameters["hide"]) {
             model.holdHiddenMarks(Set(hidden.compactMap(StormMarkToggle.init(rawValue:))))
@@ -793,27 +1045,45 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
             endpoints = next
             radar.setEndpoints(next)
             socket.setHost(next.api)
+            statusFeed.url = next.status
+            statusFeed.refresh()
         }
         player.fromStart = defaults?.bool(forKey: "nativeMap.playbackFromStart") ?? false
         let on = Set(NativeMapLayer.allCases.filter(isOn))
         if model.layersOn != on { model.layersOn = on }
         for feature in features { feature.settingsDidChange() }
         updateCredits()
+        // The layers drawn decide what of the status is about this screen.
+        if started { updateStatus() }
     }
 
     /// Apple's map kept muted under the radar, as core's own base maps are.
     /// `osm` and `cyclosm` were the busier maps: Apple's full map stands in.
+    /// `satellite` is Apple's imagery with its roads, borders and names over
+    /// it (core's VersaTiles imagery with its coast, borders and motorways,
+    /// credited by Apple's own legal link; its fallback to a coarser tile,
+    /// `ancestorCrop`, is VersaTiles' own), and the chrome and the inks over
+    /// it are the dark map's: forest, fields and sea are mostly darker than
+    /// mid-grey.
     private func applyBaseMap(_ layer: String) {
-        let busy = layer == "osm" || layer == "cyclosm"
-        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: busy ? .default : .muted)
-        configuration.pointOfInterestFilter = layer == "cyclosm"
-            ? MKPointOfInterestFilter(including: [.park, .nationalPark, .campground, .beach]) : .excludingAll
-        mapView.preferredConfiguration = configuration
+        let satellite = layer == "satellite"
+        if satellite {
+            let configuration = MKHybridMapConfiguration(elevationStyle: .flat)
+            configuration.pointOfInterestFilter = .excludingAll
+            mapView.preferredConfiguration = configuration
+        } else {
+            let busy = layer == "osm" || layer == "cyclosm"
+            let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: busy ? .default : .muted)
+            configuration.pointOfInterestFilter = layer == "cyclosm"
+                ? MKPointOfInterestFilter(including: [.park, .nationalPark, .campground, .beach]) : .excludingAll
+            mapView.preferredConfiguration = configuration
+        }
         switch layer {
         case "light": overrideUserInterfaceStyle = .light
-        case "dark": overrideUserInterfaceStyle = .dark
+        case "dark", "satellite": overrideUserInterfaceStyle = .dark
         default: overrideUserInterfaceStyle = .unspecified
         }
+        if model.satellite != satellite { model.satellite = satellite }
         model.isDark = traitCollection.userInterfaceStyle == .dark
     }
 
@@ -859,6 +1129,14 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                 // A link's product is for this visit; the reader's own stays stored.
                 if self?.holdingLink == false { self?.defaults?.set(product.rawValue, forKey: "nativeMap.radarProduct") }
                 self?.radar.product = product
+            }
+            .store(in: &observers)
+        model.cloudStyle = CloudStyle.of(defaults?.string(forKey: "nativeMap.layer3dStyle"))
+        model.$cloudStyle.dropFirst().removeDuplicates()
+            .sink { [weak self] style in
+                // A link's style is for this visit too.
+                if self?.holdingLink == false { self?.defaults?.set(style.rawValue, forKey: "nativeMap.layer3dStyle") }
+                DispatchQueue.main.async { self?.features.forEach { $0.settingsDidChange() } }
             }
             .store(in: &observers)
         model.$selectedStorm
@@ -970,6 +1248,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
         radar.visible = capability == .radar
         radar.underlay = capability == .lightning
         model.lastUpdated = nil
+        updateStatus()
         updateChromeVisibility()
         for feature in features { feature.capabilityDidChange(capability) }
         for feature in features { feature.settingsDidChange() }
@@ -1063,6 +1342,7 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
     }
 
     func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+        radar.regionWillChange()
         for feature in features { feature.regionWillChange() }
     }
 
@@ -1075,7 +1355,8 @@ final class NativeMapView: UIView, MKMapViewDelegate, NativeMapContext, UIGestur
                                     mapView.centerCoordinate.longitude, zoomLevel)
         #endif
         radar.regionDidChange()
-        updateCoverage()
+        // The verdict moves with the view; it updates the coverage too.
+        updateStatus()
         for feature in features { feature.regionDidChange() }
         updateCredits()
     }
@@ -1089,7 +1370,9 @@ private final class ChromeState: ObservableObject {
     @Published var width: CGFloat = 0
 }
 
-/// The status pill, which opens Connection Details.
+/// The status pill, which opens the status sheet; in a past window the
+/// frame's tab in its place, the pill under it only while the connection
+/// has something to say.
 private struct PillHost: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
@@ -1101,10 +1384,25 @@ private struct PillHost: View {
     let resized: () -> Void
 
     var body: some View {
-        StatusPill(player: player, model: model, monitor: monitor, open: { owner.openConnectionDetails() },
-                   leaveWindow: { owner.leaveWindow() }, wakes: owner.wakeCount)
-            .opacity(model.capability == .radar ? 1 : 0)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in DispatchQueue.main.async { resized() } }
+        VStack(spacing: 0) {
+            if let window = model.window {
+                ArchiveTab(window: window, step: player.step, theme: ChromeTheme(dark: model.isDark),
+                           choose: { owner.openArchive() }, live: { owner.leaveWindow() })
+            }
+            if model.window == nil || saysSomething {
+                StatusPill(player: player, model: model, monitor: monitor, open: { owner.openStatusSheet() },
+                           wakes: owner.wakeCount)
+            }
+        }
+        .opacity(model.capability == .radar ? 1 : 0)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in DispatchQueue.main.async { resized() } }
+    }
+
+    /// The pill has a word for the connection, which a window does not silence.
+    private var saysSomething: Bool {
+        monitor.pillState(live: player.isLive, shownStep: player.step, replay: player.timeline.replay, radarStale: model.stale,
+                          hasTimeline: !player.timeline.steps.isEmpty, archive: model.window != nil,
+                          headline: model.statusVerdict?.headline) != .none
     }
 }
 

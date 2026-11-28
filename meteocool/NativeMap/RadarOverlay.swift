@@ -2,7 +2,9 @@
 //  RadarOverlay.swift
 //  meteocool
 //
-//  The radar composite as one MapKit overlay.
+//  The radar composite as one MapKit overlay. The step before stands in only
+//  for a tile of the step on screen still waiting, never once it is drawn
+//  (`staleFrames.test.ts`).
 //
 
 import Foundation
@@ -16,6 +18,7 @@ final class RadarScene: @unchecked Sendable {
     private var current = RadarFrameRef.none
     private var before: RadarFrameRef?
     private var drawnZoom: Int?
+    private var hasRested = true
 
     init(compositor: RadarCompositor) {
         self.compositor = compositor
@@ -36,6 +39,14 @@ final class RadarScene: @unchecked Sendable {
             current = frame
             return true
         }
+    }
+
+    /// Whether the step on screen's own tiles are asked for: not while a hand
+    /// on the timeline may only be passing over it, where its preview stands
+    /// in (core's `REST_MS`).
+    var rested: Bool {
+        get { lock.withLock { hasRested } }
+        set { lock.withLock { hasRested = newValue } }
     }
 
     /// The tile zoom MapKit last drew at, which preparing follows.
@@ -83,29 +94,65 @@ final class RadarRenderer: MKOverlayRenderer {
             case .empty:
                 break
             case .pending:
-                compositor.build(frame, z: z, x: x, y: y)
-                drawStandIn(z: z, x: x, y: y, zoom: zoom, frame: frame, previous: previous, context: context)
+                let ground = rect.intersection(mapRect).intersection(frame.bounds)
+                let preview = ground.isNull ? nil : compositor.preview(frame, z: z, x: x, y: y, ground: ground)
+                // A step the needle may only be passing over: its preview stands in, and its tiles wait.
+                if scene.rested || preview == nil { compositor.build(frame, z: z, x: x, y: y) }
+                drawStandIn(z: z, x: x, y: y, zoom: zoom, frame: frame, previous: previous, preview: preview, ground: ground,
+                            context: context)
             }
         }
     }
 
-    /// Something to show while a picture waits for its tiles: the step
-    /// before's, else a coarser one of this step's.
+    /// Something to show while a picture waits for its tiles, of the same
+    /// time where there is any (core's `lib/frameSwitch.ts`): a coarser
+    /// picture of this step, a few zooms up but no further than its preview,
+    /// which is sharper; then its preview, blurred; zooming out, the finer
+    /// pictures; a preview cut for the view before, for what it has; only
+    /// then the step before's.
     private func drawStandIn(z: Int, x: Int, y: Int, zoom: Int, frame: RadarFrameRef, previous: RadarFrameRef?,
-                             context: CGContext) {
+                             preview: (image: CGImage?, rect: MKMapRect, z: Int)?, ground: MKMapRect, context: CGContext) {
         let compositor = scene.compositor
         let tile = RadarTileKey.mapRect(z: z, x: x, y: y)
-        var candidates: [(RadarFrameRef, Int)] = []
-        if let previous, previous.zoom(for: zoom) <= z { candidates.append((previous, previous.zoom(for: zoom))) }
-        candidates += stride(from: z - 1, through: RadarLayer.minZoom, by: -1).map { (frame, $0) }
-        for (stand, sz) in candidates {
-            let (sx, sy) = (x >> (z - sz), y >> (z - sz))
-            guard case .image(let image) = compositor.cached(stand, z: sz, x: sx, y: sy) else { continue }
+        func picture(_ of: RadarFrameRef, _ at: FrameSwitchRules.Tile) -> RadarCompositor.Result {
+            compositor.cached(of, z: at.z, x: at.x, y: at.y)
+        }
+        // Ready: a picture, or known to have nothing to draw.
+        func ready(_ at: FrameSwitchRules.Tile) -> Bool {
+            if case .pending = picture(frame, at) { return false }
+            return true
+        }
+        func draw(_ of: RadarFrameRef, _ at: FrameSwitchRules.Tile) {
+            guard case .image(let image) = picture(of, at) else { return }
             context.saveGState()
             context.clip(to: CGRect(x: tile.minX, y: tile.minY, width: tile.width, height: tile.height))
-            RadarCompositor.drawTile(image, in: RadarTileKey.mapRect(z: sz, x: sx, y: sy), context: context)
+            RadarCompositor.drawTile(image, in: RadarTileKey.mapRect(z: at.z, x: at.x, y: at.y), context: context)
             context.restoreGState()
-            return
         }
+        func blur(_ piece: (image: CGImage?, rect: MKMapRect, z: Int)) {
+            guard let image = piece.image else { return }
+            context.saveGState()
+            context.clip(to: CGRect(x: tile.minX, y: tile.minY, width: tile.width, height: tile.height))
+            context.interpolationQuality = .medium
+            RadarCompositor.drawTile(image, in: piece.rect, context: context)
+            context.restoreGState()
+        }
+        let here = FrameSwitchRules.Tile(z: z, x: x, y: y)
+        let part = preview == nil && !ground.isNull ? scene.compositor.preview(frame, z: z, x: x, y: y, ground: ground, partly: true) : nil
+        let above = preview ?? part
+        let depth = above.map { max(2, z - $0.z - 1) } ?? FrameSwitchRules.ancestorReach
+        if let up = FrameSwitchRules.ancestor(of: here, minZ: RadarLayer.minZoom, depth: depth, has: ready) {
+            return draw(frame, up)
+        }
+        if let preview { return blur(preview) }
+        let children = FrameSwitchRules.children(of: here, maxZ: frame.deepest, has: ready)
+        if !children.isEmpty { return children.forEach { draw(frame, $0) } }
+        if let part { return blur(part) }
+        // The step before, where this one has nothing yet (it waited as
+        // long as it may, `RadarEngine.linger`).
+        guard let previous else { return }
+        let pz = previous.zoom(for: zoom)
+        guard pz <= z else { return }
+        draw(previous, FrameSwitchRules.Tile(z: pz, x: x >> (z - pz), y: y >> (z - pz)))
     }
 }

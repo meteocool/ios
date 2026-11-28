@@ -2,10 +2,12 @@ import Foundation
 
 /// Checks the native map's storm rules (`meteocool/NativeMap/Storms`) with
 /// core's own tests, one for one: `scripts/tests/stormMarks.test.ts`,
-/// `stormSelection.test.ts`, `stormStore.test.ts`, `cellKnownVolume.test.ts`,
-/// `cellSelection.test.ts`, `cellPlacement.test.ts`, `cellRecency.test.ts`,
-/// `cellStatus.test.ts`, `cellLineage.test.ts`, `cellPulse.test.ts`,
-/// `timeTicks.test.ts` and `swipeAway.test.ts`, then the native extras.
+/// `stormSelection.test.ts`, `stormResolver.test.ts`, `stormStore.test.ts`,
+/// `cellKnownVolume.test.ts`, `cellSelection.test.ts`,
+/// `cellPlacement.test.ts`, `cellRecency.test.ts`, `cellStatus.test.ts`,
+/// `cellLineage.test.ts`, `cellPulse.test.ts`, `timeTicks.test.ts`,
+/// `swipeAway.test.ts`, `stormGroups.test.ts`, `stormEasing.test.ts` and
+/// `mesocyclones.test.ts`, then the native extras.
 @main
 struct NativeMapStormsCheck {
     static var count = 0
@@ -22,6 +24,7 @@ struct NativeMapStormsCheck {
     static func main() {
         stormMarks()
         stormSelection()
+        stormResolver()
         stormStore()
         cellKnownVolume()
         cellSelection()
@@ -32,6 +35,9 @@ struct NativeMapStormsCheck {
         cellPulse()
         timeTicks()
         swipeAway()
+        stormGroups()
+        stormEasing()
+        mesocyclones()
         cloudHints()
         decoding()
         extras()
@@ -95,6 +101,22 @@ struct NativeMapStormsCheck {
 
     static func detail(_ of: Storm, konrad3d: [TrackProperties] = [], tracks: [TrackerTrack] = []) -> StormDetail {
         StormDetail(storm: of, konrad3d: konrad3d, tracks: tracks)
+    }
+
+    /// A group of storms as `/storms/groups` lists it: a square round
+    /// `[lon, lat]`, as a MultiPolygon.
+    static func group(_ id: String, _ storms: [String], _ change: (inout StormSystemProperties) -> Void = { _ in },
+                      at center: LonLat = LonLat(10, 50)) -> StormSystem {
+        let (lon, lat) = (center.lon, center.lat)
+        let ring: [[Double]] = [[lon - 0.1, lat - 0.1], [lon + 0.1, lat - 0.1], [lon + 0.1, lat + 0.1], [lon - 0.1, lat + 0.1], [lon - 0.1, lat - 0.1]]
+        var p = StormSystemProperties(id: id, bornAt: at(-60), lastSeen: at(0), storms: storms, severity: 1, peakDbz: 50, rating: 1.5)
+        change(&p)
+        return StormSystem(id: id, geometryType: "MultiPolygon", coordinates: coordinates([[ring]]), properties: p)
+    }
+
+    /// Nested arrays of numbers as a geometry's coordinates.
+    static func coordinates(_ polygons: [[[[Double]]]]) -> GeoCoordinates {
+        .list(polygons.map { .list($0.map { .list($0.map { .list($0.map(GeoCoordinates.number)) }) }) })
     }
 
     /// Names the message and what was put into it, as core's tests do.
@@ -276,6 +298,51 @@ struct NativeMapStormsCheck {
             precondition(StormDrawing.stormAsOf(ended, T0 - 25 * 60_000)!.properties.status == "active")
             precondition(StormDrawing.stormAsOf(ended, T0)!.properties.status == "ended")
         }
+        test("a storm the backend calls notable is drawn in full") {
+            precondition(StormDrawing.stormLook(storm(A) { $0.notable = true }, selected: nil) == .full)
+        }
+        test("a storm with no notable field, from a backend before it, is drawn in full as before") {
+            let older = storm(A)
+            precondition(older.properties.notable == nil)
+            precondition(StormDrawing.stormLook(older, selected: nil) == .full)
+            let d = draw([storm(A) { $0.hail = true }])
+            precondition(kinds(d.marks, A) == ["path", "position"])
+            precondition(d.marks.first { $0.kind == .position }?.hail == true)
+            precondition(!d.marks.contains { $0.quiet })
+            precondition(d.pings.map(\.storm) == [A])
+        }
+        test("a storm that is not notable is a quiet dot: its position alone, with no badge or ring") {
+            precondition(StormDrawing.stormLook(storm(A) { $0.notable = false }, selected: nil) == .quiet)
+            let d = draw([storm(A) { $0.notable = false; $0.hail = true; $0.meso = true }])
+            precondition(kinds(d.marks, A) == ["position"])
+            let dot = d.marks[0]
+            precondition(dot.quiet && !dot.hail && !dot.meso)
+            precondition(d.pings.isEmpty)
+        }
+        test("a quiet storm still being seen is one a mesocyclone can be matched to") {
+            let live = draw([storm(A) { $0.notable = false }, storm(B) { $0.notable = true }]).live
+            precondition(live.map(\.storm).sorted() == [A, B].sorted())
+        }
+        test("a quiet storm, selected, is drawn in full") {
+            let quiet = storm(A) { $0.notable = false }
+            precondition(StormDrawing.stormLook(quiet, selected: A) == .full)
+            let d = draw([quiet], selection: StormSelect.fromStorm(quiet))
+            precondition(kinds(d.marks, A) == ["path", "position"])
+            precondition(!d.marks.contains { $0.quiet })
+            precondition(d.pings.map(\.storm) == [A])
+        }
+        test("no join is drawn to or from a quiet storm") {
+            let merged = storm(B, { $0.status = "merged"; $0.mergedInto = A; $0.lastSeen = at(-5) }, path: [[9.8, 49.9], [9.95, 50]])
+            precondition(draw([merged, storm(A) { $0.notable = false }]).links.isEmpty)
+            var quietMerged = merged
+            quietMerged.properties.notable = false
+            let fromQuiet = draw([quietMerged, storm(A)])
+            precondition(fromQuiet.links.isEmpty)
+            // Taken by the storm it merged into, a quiet one has nothing left to draw.
+            precondition(kinds(fromQuiet.marks, B).isEmpty)
+            let branch = storm(B, { $0.bornAt = at(-40); $0.splitFrom = A; $0.notable = false }, path: [[10.12, 50.05], [10.2, 50.1]])
+            precondition(draw([storm(A), branch]).links.isEmpty)
+        }
         test("an earlier frame draws no forecast, even for the selected storm") {
             let of = storm(A) { $0.primaryProduct = "dwd/konrad3d"; $0.primaryTrack = "C1"; $0.bornAt = at(-60) }
             let selection = StormSelect.withDetail(StormSelect.fromStorm(of), detail(of, konrad3d: [cell("C1") { $0.forecast = forecast }]))
@@ -307,6 +374,32 @@ struct NativeMapStormsCheck {
         test("a seed cell is DWD's, a box of sky meteocool's") {
             precondition(StormSelect.sourcesOf(StormSelect.withCell(nil, cell("K1"))) == [.dwd])
             precondition(StormSelect.sourcesOf(StormSelect.withVolume(nil, volume("v1"))) == [.meteocool])
+        }
+        test("a core whose parent is not served on its own leaves the storm the boxes of its other cores") {
+            let of = storm(A)
+            let selection = S.withDetail(S.fromStorm(of), detail(of, tracks: [trackerTrack("t1", [
+                feature("c1", 0) { $0.parent = "envelope-unserved" }, feature("c2", 0) { $0.parent = "patch-now" },
+            ])]))!
+            precondition(S.newestPatches(selection).sorted() == ["envelope-unserved", "patch-now"])
+            precondition(S.volumeOfStorm([volume("box") { $0.feature = "patch-now" }], selection)?.path == "box")
+            precondition(S.volumeOfStorm([volume("other") { $0.feature = "patch-elsewhere" }], selection) == nil)
+        }
+        test("a newer detail without history keeps the older one's") {
+            let of = storm(A)
+            let older = detail(of, konrad3d: [cell("C1")], tracks: [trackerTrack("t1", [feature("core-1", -5), feature("core-2", 0)])])
+            let kept = S.keepHistory(detail(of), older)
+            precondition(kept.tracks.first?.features.count == 2)
+            precondition(kept.konrad3d.first?.code == "C1")
+            // Through the selection too: the panel's history does not empty on a refresh.
+            let open = S.withDetail(S.fromStorm(of), older)!
+            precondition(S.withDetail(open, detail(of))!.detail?.tracks.count == 1)
+        }
+        test("a newer detail with history replaces the older one's, and another storm's is never mixed in") {
+            let older = detail(storm(A), tracks: [trackerTrack("t1", [feature("core-1", -5)])])
+            let newer = detail(storm(A), tracks: [trackerTrack("t1", [feature("core-1", -5), feature("core-2", 0)])])
+            precondition(S.keepHistory(newer, older) == newer)
+            let other = detail(storm(B))
+            precondition(S.keepHistory(other, older) == other)
         }
 
         test("a storm tapped on the map is selected by its id, with nothing else known yet") {
@@ -488,6 +581,62 @@ struct NativeMapStormsCheck {
             let seed = S.withCell(nil, cell("C1") { $0.firstSeen = at(-20) })
             precondition(S.existedBy(seed, minute(-10)) && !S.existedBy(seed, minute(-25)))
             precondition(!S.existedBy(S.withVolume(nil, volume("v")), minute(0)))
+        }
+    }
+
+    // MARK: - stormResolver.test.ts (its detail cache: `StormSelect.DetailCache`)
+
+    /// Reopening a storm must bring its detail back, whether or not the
+    /// backend is asked again.
+    static func stormResolver() {
+        let A = sid("A"), B = sid("B")
+        typealias S = StormSelect
+        func full(_ id: String) -> StormDetail {
+            detail(storm(id), tracks: [trackerTrack("\(id)-t", [feature("\(id)-1", -10), feature("\(id)-2", -5), feature("\(id)-3", 0)])])
+        }
+        test("a storm reopened in the same cycle gets its detail back") {
+            var cache = S.DetailCache()
+            let open = S.withDetail(S.fromStorm(storm(A)), full(A))!
+            cache.remember(open.detail!)
+            // Closed, then tapped again before the storm has moved on.
+            let again = cache.reopened(S.fromStorm(storm(A)))!
+            precondition(again.detail?.tracks.first?.features.count == 3)
+            precondition(!cache.wantsFetch(again), "nothing newer to ask for")
+        }
+        test("a storm left before its detail landed gets it when tapped again") {
+            var cache = S.DetailCache()
+            // A's detail lands while B is open: kept all the same.
+            cache.remember(full(A))
+            precondition(cache.reopened(S.fromStorm(storm(B))) == nil)
+            precondition(cache.reopened(S.fromStorm(storm(A)))?.detail?.storm.id == A)
+        }
+        test("a detail that failed to load is asked for again") {
+            let cache = S.DetailCache()
+            let reopened = S.fromStorm(storm(A))
+            precondition(cache.reopened(reopened) == nil)
+            precondition(cache.wantsFetch(reopened))
+        }
+        test("a refresh that comes back without history keeps the history already shown") {
+            var cache = S.DetailCache()
+            cache.remember(full(A))
+            cache.remember(detail(storm(A)))
+            precondition(cache.byId[A]?.tracks.first?.features.count == 3)
+            let open = S.withDetail(S.fromStorm(storm(A)), full(A))!
+            precondition(S.withDetail(open, detail(storm(A)))?.detail?.tracks.first?.features.count == 3)
+        }
+        test("a reopened storm keeps the list's newer header, which asks for a newer detail") {
+            var cache = S.DetailCache()
+            cache.remember(full(A))
+            let newer = storm(A) { $0.lastSeen = at(5) }
+            let again = cache.reopened(S.fromStorm(newer))!
+            precondition(again.summary == newer && again.detail?.tracks.first?.features.count == 3)
+            precondition(cache.wantsFetch(again))
+        }
+        test("an older detail never replaces a newer one held") {
+            var cache = S.DetailCache()
+            cache.remember(detail(storm(A) { $0.lastSeen = at(5) }))
+            cache.remember(full(A))
+            precondition(cache.byId[A]?.storm.properties.lastSeen == at(5))
         }
     }
 
@@ -990,6 +1139,42 @@ struct NativeMapStormsCheck {
             let b = answer.features[1].properties
             precondition(b.severity == 0 && !b.hail && b.tracks.isEmpty && b.path == .point(LonLat(2, 48)) && b.mergedInto != nil)
         }
+        test("a storm carries its rating, notability and group; one from an older backend has none") {
+            let json = """
+            {"type":"FeatureCollection","features":[
+             {"type":"Feature","id":"A","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"A","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]},"rating":1.42,"notable":true,"group":"01M6MG0000CEVENNES0000000A"}},
+             {"type":"Feature","id":"B","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"B","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]},"rating":null,"notable":false,"group":null}},
+             {"type":"Feature","id":"C","geometry":{"type":"Point","coordinates":[4,45]},
+              "properties":{"id":"C","born_at":"2026-10-19T23:05:00Z","last_seen":"2026-10-20T00:25:00Z","status":"active",
+              "path":{"type":"Point","coordinates":[4,45]}}}]}
+            """
+            let storms = StormJSON.storms(Data(json.utf8))!.features.map(\.properties)
+            precondition(storms[0].rating == 1.42 && storms[0].notable == true && storms[0].group == "01M6MG0000CEVENNES0000000A")
+            precondition(storms[1].rating == nil && storms[1].notable == false && storms[1].group == nil)
+            precondition(storms[2].rating == nil && storms[2].notable == nil && storms[2].group == nil)
+        }
+        test("a group list decodes its outlines and storms; whatever else was served is read, not refused") {
+            let json = """
+            {"type":"FeatureCollection","features":[
+             {"type":"Feature","id":"G","geometry":{"type":"MultiPolygon","coordinates":[[[[4,45],[4.1,45],[4.1,45.1],[4,45]]]]},
+              "properties":{"id":"G","born_at":"2026-11-18T23:15:00Z","last_seen":"2026-11-18T23:15:00Z",
+              "storms":["A","B"],"severity":2,"peak_dbz":54.0,"rating":1.4244}},
+             {"type":"Feature","id":"E","geometry":{"type":"MultiPolygon","coordinates":[]},
+              "properties":{"id":"E","born_at":"2026-11-18T23:15:00Z","last_seen":"2026-11-18T23:15:00Z","storms":["C","D"],"severity":0}},
+             {"type":"Feature","id":"S","geometry":{"type":"Point","coordinates":[4,45]},"properties":{"id":"S","status":"active"}}]}
+            """
+            let groups = StormJSON.groups(Data(json.utf8))!
+            precondition(groups.count == 3)
+            precondition(groups[0].id == "G" && groups[0].geometryType == "MultiPolygon" && groups[0].properties?.storms == ["A", "B"])
+            precondition(groups[0].properties?.severity == 2 && groups[0].properties?.rating == 1.4244)
+            precondition(groups[1].coordinates == .list([]))
+            precondition(groups[2].geometryType == "Point" && groups[2].properties?.storms == nil)
+            precondition(StormJSON.groups(Data("{\"detail\":\"Not Found\"}".utf8)) == [])
+        }
         test("a detail's KONRAD3D track decodes its series, forecast and structure") {
             let json = """
             {"storm":{"type":"Feature","id":"S","geometry":{"type":"Point","coordinates":[5.36,50.52]},
@@ -1116,6 +1301,303 @@ struct NativeMapStormsCheck {
         }
     }
 
+    // MARK: - stormGroups.test.ts
+
+    /// Storms that are one system: which groups the map outlines, how many
+    /// storms a storm's panel says its system has, and what a backend
+    /// without groups comes to.
+    static func stormGroups() {
+        let A = sid("A"), B = sid("B"), C = sid("C")
+        let G = "01JGROUPGROUPGROUPGROUPGRP"
+        typealias R = StormGroupRules
+        test("a group of two storms is one outline, its polygons in [lon, lat]") {
+            let outline = R.groupOutlines([group(G, [A, B]) { $0.severity = 2 }], T0)[0]
+            precondition(outline.id == G && outline.storms == 2 && outline.severity == 2)
+            precondition(outline.polygons.count == 1)
+            precondition(outline.polygons[0][0][0] == LonLat(9.9, 49.9))
+        }
+        test("every polygon of a group's MultiPolygon is kept, holes and all") {
+            var two = group(G, [A, B])
+            let square: [[Double]] = [[9.9, 49.9], [10.1, 49.9], [10.1, 50.1], [9.9, 50.1], [9.9, 49.9]]
+            let hole: [[Double]] = [[10, 50], [10.01, 50], [10.01, 50.01], [10, 50]]
+            let far: [[Double]] = [[11, 51], [11.1, 51], [11.1, 51.1], [11, 51]]
+            two.coordinates = coordinates([[square, hole], [far]])
+            let outline = R.groupOutlines([two], T0)[0]
+            precondition(outline.polygons.count == 2)
+            precondition(outline.polygons[0].count == 2)
+        }
+        test("a group of fewer than two storms is not outlined") {
+            precondition(R.groupOutlines([group(G, [A])], T0).isEmpty)
+        }
+        test("a group with no area is not outlined, and a broken ring is left out") {
+            var point = group(G, [A, B])
+            point.geometryType = "Point"
+            point.coordinates = .list([.number(10), .number(50)])
+            var empty = group(G, [A, B])
+            empty.coordinates = .list([])
+            var short = group(G, [A, B])
+            short.coordinates = coordinates([[[[10, 50], [10.1, 50]]]])
+            precondition(R.groupOutlines([point, empty, short], T0).isEmpty)
+        }
+        test("a storm listing served where groups were asked for draws nothing") {
+            let json = """
+            {"type":"FeatureCollection","features":[{"type":"Feature","id":"A","geometry":{"type":"Point","coordinates":[10,50]},
+             "properties":{"id":"A","born_at":"2026-10-12T13:00:00Z","last_seen":"2026-10-12T14:00:00Z","status":"active",
+             "path":{"type":"Point","coordinates":[10,50]}}}]}
+            """
+            precondition(R.groupOutlines(StormJSON.groups(Data(json.utf8))!, T0).isEmpty)
+        }
+        test("in the present a group still going is outlined, and one gone for longer than a storm stays active is not") {
+            precondition(R.groupShownAt(group(G, [A, B]) { $0.lastSeen = at(-15) }, T0))
+            precondition(!R.groupShownAt(group(G, [A, B]) { $0.lastSeen = at(-25) }, T0))
+        }
+        test("on an earlier frame a group is outlined only when born by then and its outline not long after") {
+            let g = group(G, [A, B]) { $0.bornAt = at(-90); $0.lastSeen = at(0) }
+            precondition(R.groupShownAt(g, T0 - 20 * 60_000))
+            precondition(!R.groupShownAt(g, T0 - 60 * 60_000), "its outline is an hour on from then")
+            precondition(!R.groupShownAt(g, T0 - 100 * 60_000), "not yet born")
+        }
+        test("an outline is the frame's when seen within half a radar step of it, and stale otherwise") {
+            precondition(R.currentWithinMs == 150_000)
+            precondition(R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(0) }, T0))
+            precondition(R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(-2) }, T0), "the scan's own, a little off the grid")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(-5) }, T0), "a scan behind the radar")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = at(5) }, T0), "a later frame's shape")
+            precondition(!R.outlineCurrentAt(group(G, [A, B]) { $0.lastSeen = "not a time" }, T0))
+        }
+        test("in the present a system a scan behind the radar is drawn stale, and current once it catches up") {
+            precondition(R.groupOutlines([group(G, [A, B]) { $0.lastSeen = at(-5) }], T0)[0].stale)
+            precondition(!R.groupOutlines([group(G, [A, B]) { $0.lastSeen = at(0) }], T0)[0].stale)
+        }
+        test("on an earlier frame a system's newest outline is stale, and on its own frame current") {
+            let g = group(G, [A, B]) { $0.bornAt = at(-90); $0.lastSeen = at(0) }
+            precondition(R.groupOutlines([g], T0 - 20 * 60_000)[0].stale)
+            precondition(!R.groupOutlines([g], T0)[0].stale)
+        }
+        test("a storm's system is as many storms as its group lists") {
+            precondition(R.systemSize(storm(A) { $0.group = G }, groups: [group(G, [B, A, C])], held: []) == 3)
+        }
+        test("a storm in no group, or with no group field, has no system") {
+            precondition(R.systemSize(storm(A), groups: [group(G, [A, B])], held: []) == nil)
+            precondition(R.systemSize(storm(A) { $0.group = nil }, groups: [group(G, [A, B])], held: []) == nil)
+            precondition(R.systemSize(nil, groups: [], held: []) == nil)
+        }
+        test("without the group's outline, a storm's system is the storms held that share its group") {
+            let held = [storm(A) { $0.group = G }, storm(B) { $0.group = G }, storm(C) { $0.group = "other" }]
+            precondition(R.systemSize(held[0], groups: [], held: held) == 2)
+        }
+        test("a group of one is no system") {
+            let alone = storm(A) { $0.group = G }
+            precondition(R.systemSize(alone, groups: [], held: [alone]) == nil)
+            precondition(R.systemSize(alone, groups: [group(G, [A])], held: [alone]) == nil)
+        }
+        test("a 404 and a 422 both mean the backend has no groups") {
+            precondition(R.absent == [404, 422])
+        }
+        test("a backend that had no groups is not asked again until the recheck is due") {
+            precondition(R.asksForGroups(nil, now: T0))
+            precondition(!R.asksForGroups(T0, now: T0 + 60_000))
+            precondition(R.asksForGroups(T0, now: T0 + R.recheckMs))
+        }
+    }
+
+    // MARK: - stormEasing.test.ts
+
+    /// How the storms change from one drawing to the next: which changes are
+    /// eased, what slides and what fades, and an update arriving mid-way
+    /// taking over from what is drawn rather than queueing behind it.
+    static func stormEasing() {
+        typealias E = StormEasing
+        func point(_ lon: Double, _ lat: Double) -> EaseShape { .point(LonLat(lon, lat)) }
+        func line(_ points: [Double]...) -> EaseShape { .line(points.map { LonLat($0[0], $0[1]) }) }
+        func mark(_ key: String, _ shape: EaseShape, _ look: String = "a") -> EaseDrawn<String> {
+            var moves = false
+            if case .point = shape { moves = true }
+            if case .line = shape { moves = true }
+            return EaseDrawn(key: key, look: look, moves: moves, shape: shape, value: key)
+        }
+        func at(_ easings: [Easing<String>], _ t: Double) -> [EaseShowing<String>] { E.showingAt(easings, t) }
+        func byKey(_ showing: [EaseShowing<String>], _ key: String) -> EaseShowing<String>? { showing.first { $0.key == key } }
+        func lon(_ shape: EaseShape?) -> Double {
+            guard case .point(let p)? = shape else { preconditionFailure("not a point") }
+            return p.lon
+        }
+        /// About 1 km of longitude at 45° N.
+        let KM = 1 / (111.32 * cos(45 * Double.pi / 180))
+
+        test("a new answer is eased, a step only when it comes long enough after the last, and nothing with reduced motion") {
+            precondition(E.eases(reducedMotion: false, drawnBefore: true))
+            precondition(E.eases(reducedMotion: false, drawnBefore: true, stepGap: E.minGapMs))
+            precondition(E.eases(reducedMotion: false, drawnBefore: true, stepGap: .infinity))
+            // The loop's 450 ms a frame, and a drag.
+            precondition(!E.eases(reducedMotion: false, drawnBefore: true, stepGap: 450))
+            precondition(!E.eases(reducedMotion: false, drawnBefore: true, stepGap: 30))
+            precondition(!E.eases(reducedMotion: true, drawnBefore: true))
+            // The first drawing appears at once.
+            precondition(!E.eases(reducedMotion: false, drawnBefore: false))
+        }
+        test("the easing starts fast and ends exactly where it was going") {
+            precondition(E.easeOut(0) == 0 && E.easeOut(1) == 1 && E.easeOut(2) == 1)
+            precondition(E.easeOut(0.25) > 0.5)
+        }
+        test("a storm that moved slides from where it was to where it is") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", point(4 + 5 * KM, 45))], seq: 1)
+            precondition(easings.count == 1 && E.animates(easings))
+            let start = byKey(at(easings, 0), "S")!
+            precondition(start.shape == point(4, 45) && start.alpha == 1)
+            let half = lon(byKey(at(easings, 0.5), "S")?.shape)
+            precondition(half > 4 && half < 4 + 5 * KM)
+            precondition(byKey(at(easings, 1), "S")!.shape == point(4 + 5 * KM, 45))
+        }
+        test("a storm that did not move is left alone, so nothing redraws it") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", point(4, 45))], seq: 1)
+            precondition(!E.animates(easings))
+            precondition(easings[0].from == easings[0].to)
+        }
+        test("a storm that jumped further than a storm moves fades out there and in here") {
+            let far = point(4 + (E.maxKm + 5) * KM, 45)
+            precondition(!E.slides(point(4, 45), far))
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("S", far)], seq: 7)
+            let halfway = at(easings, 0.5)
+            let leaving = byKey(halfway, "S~7")!
+            precondition(leaving.leaving && leaving.shape == point(4, 45))
+            precondition(byKey(halfway, "S")!.shape == far)
+            precondition(byKey(halfway, "S")!.alpha > 0 && byKey(halfway, "S")!.alpha < 1)
+            // Gone once it ends.
+            precondition(at(easings, 1).map(\.key) == ["S"])
+        }
+        test("a different storm at nearly the same place fades, it does not slide") {
+            let before = E.settledOn([mark("A", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("B", point(4 + 0.1 * KM, 45))], seq: 1)
+            let start = at(easings, 0)
+            precondition(byKey(start, "B")!.alpha == 0 && byKey(start, "B")!.shape == point(4 + 0.1 * KM, 45))
+            precondition(byKey(start, "A~1")!.alpha == 1 && byKey(start, "A~1")!.leaving)
+            precondition(at(easings, 1).map(\.key) == ["B"])
+        }
+        test("a storm that appears fades in, and one that goes fades out and is gone") {
+            let before = E.settledOn([mark("OLD", point(4, 45))])
+            let easings = E.plan(at(before, 1), [mark("NEW", point(5, 45))], seq: 2)
+            precondition(byKey(at(easings, 0), "NEW")!.alpha == 0 && byKey(at(easings, 0), "OLD~2")!.alpha == 1)
+            precondition(byKey(at(easings, 1), "NEW")!.alpha == 1 && byKey(at(easings, 1), "OLD~2") == nil)
+        }
+        test("a storm that changes look cross-fades, both looks moving together") {
+            let before = E.settledOn([mark("S", point(4, 45), "quiet")])
+            let easings = E.plan(at(before, 1), [mark("S", point(4 + 3 * KM, 45), "full")], seq: 3)
+            let half = at(easings, 0.5)
+            let oldLook = byKey(half, "S~3")!, newLook = byKey(half, "S")!
+            precondition(oldLook.item.look == "quiet" && newLook.item.look == "full")
+            precondition(oldLook.shape == newLook.shape)
+            precondition(abs(oldLook.alpha + newLook.alpha - 1) < 1e-9)
+            precondition(at(easings, 1).map { [$0.key, $0.item.look] } == [["S", "full"]])
+        }
+        test("a path keeps its points and grows its newest one to where the storm is") {
+            let from = line([4, 45], [4.01, 45])
+            let to = line([4, 45], [4.01, 45], [4.03, 45])
+            precondition(E.shapeAt(from, to, 0) == line([4, 45], [4.01, 45], [4.01, 45]))
+            precondition(E.shapeAt(from, to, 1) == to)
+            guard case .line(let half) = E.shapeAt(from, to, 0.5) else { preconditionFailure() }
+            precondition(abs(half[2].lon - 4.02) < 1e-9)
+        }
+        test("an outline with a new shape cross-fades rather than morphing") {
+            func square(_ size: Double) -> EaseShape {
+                .multiPolygon([[[LonLat(4, 45), LonLat(4 + size, 45), LonLat(4 + size, 45 + size), LonLat(4, 45 + size), LonLat(4, 45)]]])
+            }
+            func outline(_ shape: EaseShape) -> EaseDrawn<String> { EaseDrawn(key: "G", look: "", moves: false, shape: shape, value: "G") }
+            let before = E.settledOn([outline(square(0.1))])
+            let easings = E.plan(at(before, 1), [outline(square(0.2))], seq: 4)
+            let half = at(easings, 0.5)
+            precondition(byKey(half, "G~4")!.shape == square(0.1) && byKey(half, "G")!.shape == square(0.2))
+            // The same shape again: nothing to do.
+            precondition(!E.animates(E.plan(at(E.settledOn([outline(square(0.1))]), 1), [outline(square(0.1))], seq: 5)))
+        }
+        test("an update mid-way takes over from where the storm is drawn, never from where it was going") {
+            let before = E.settledOn([mark("S", point(4, 45))])
+            let first = E.plan(at(before, 1), [mark("S", point(4 + 4 * KM, 45))], seq: 1)
+            let midway = at(first, 0.3)
+            let drawn = byKey(midway, "S")!.shape
+            let second = E.plan(midway, [mark("S", point(4 + 8 * KM, 45))], seq: 2)
+            precondition(second.count == 1)
+            precondition(byKey(at(second, 0), "S")!.shape == drawn)
+            precondition(byKey(at(second, 1), "S")!.shape == point(4 + 8 * KM, 45))
+        }
+        test("what was fading out goes on fading out from where it was, and leaves nothing behind") {
+            let before = E.settledOn([mark("GONE", point(4, 45)), mark("NEW", point(5, 45))])
+            let first = E.plan(at(before, 1), [mark("NEW", point(5, 45))], seq: 1)
+            let midway = at(first, 0.5)
+            let fading = byKey(midway, "GONE~1")!
+            precondition(fading.alpha > 0 && fading.alpha < 1)
+            let second = E.plan(midway, [mark("NEW", point(5, 45))], seq: 2)
+            // The same leaving mark, under its own key, from its own alpha: not a second ghost.
+            let leaving = second.filter(\.leaving)
+            precondition(leaving.count == 1 && leaving[0].key == "GONE~1" && leaving[0].fromAlpha == fading.alpha)
+            precondition(at(second, 1).map(\.key) == ["NEW"])
+        }
+        test("a storm fading in takes over from its own alpha, and one coming back while leaving comes in afresh") {
+            let first = E.plan([], [mark("S", point(4, 45))], seq: 1)
+            let midway = at(first, 0.2)
+            let alpha = byKey(midway, "S")!.alpha
+            let second = E.plan(midway, [mark("S", point(4, 45))], seq: 2)
+            precondition(second[0].fromAlpha == alpha && second[0].toAlpha == 1)
+
+            let leaving = at(E.plan(at(E.settledOn([mark("S", point(4, 45))]), 1), [], seq: 3), 0.5)
+            let back = E.plan(leaving, [mark("S", point(4, 45))], seq: 4)
+            precondition(byKey(at(back, 0), "S")!.alpha == 0)
+            precondition(byKey(at(back, 1), "S")!.alpha == 1)
+            precondition(at(back, 1).count == 1)
+        }
+        test("an update applied at once replaces whatever was running, leaving nothing") {
+            let first = E.plan(at(E.settledOn([mark("A", point(4, 45))]), 1), [mark("B", point(5, 45))], seq: 1)
+            precondition(at(first, 0.5).contains(where: \.leaving))
+            let snapped = E.settledOn([mark("C", point(6, 45))])
+            precondition(!E.animates(snapped))
+            precondition(at(snapped, 0).map(\.key) == ["C"] && at(snapped, 0)[0].alpha == 1)
+        }
+        test("distances are kilometres") {
+            precondition(abs(E.kmBetween(LonLat(4, 45), LonLat(4 + 10 * KM, 45)) - 10) < 1e-6)
+        }
+        test("a mark's geometry goes into a transition and back as it was") {
+            let ring = [LonLat(4, 45), LonLat(4.1, 45), LonLat(4.1, 45.1), LonLat(4, 45)]
+            for geometry: StormMark.Geometry in [.point(LonLat(4, 45)), .line(ring), .polygon(ring)] {
+                precondition(EaseShape(geometry).markGeometry == geometry)
+            }
+        }
+    }
+
+    // MARK: - mesocyclones.test.ts
+
+    static func mesocyclones() {
+        typealias M = MesocycloneRules
+        // A tap on a mesocyclone opens the storm it turns in: the tracked one
+        // nearest it, if any is near enough to be its own.
+        let storms = [
+            LiveStorm(storm: "far", coordinates: LonLat(10.0, 50.0)),
+            LiveStorm(storm: "near", coordinates: LonLat(10.3, 50.0)),
+            LiveStorm(storm: "nearer", coordinates: LonLat(10.36, 50.01)),
+        ]
+        test("a mesocyclone is the nearest tracked storm's") {
+            precondition(M.stormAt(storms, lon: 10.37, lat: 50.0) == "nearer")
+            precondition(M.stormAt(storms, lon: 10.01, lat: 50.0) == "far")
+        }
+        test("a mesocyclone no storm is near belongs to none") {
+            // 0.3° of longitude at 50° north is about 21 km.
+            precondition(M.stormAt(Array(storms.prefix(1)), lon: 10.3, lat: 50.0) == nil)
+            precondition(M.stormAt([], lon: 10.3, lat: 50.0) == nil)
+            precondition(M.stormWithinM < 21_000)
+        }
+        test("a stronger mesocyclone is a larger ring to tap") {
+            precondition(M.radiusPx(5) > M.radiusPx(1))
+            precondition(M.radiusPx(1) >= 10)
+        }
+        test("a live storm is one a mesocyclone can be matched to, where it is drawn") {
+            let A = sid("A"), B = sid("B")
+            let d = StormDrawing.drawStorms([storm(A), storm(B) { $0.lastSeen = at(-15) }], now: T0, reference: T0, selection: nil, at: nil)
+            precondition(d.live == [LiveStorm(storm: A, coordinates: LonLat(10.1, 50.05))])
+        }
+    }
+
     // MARK: - cloudHints.test.ts
 
     static func cloudHints() {
@@ -1150,22 +1632,24 @@ struct NativeMapStormsCheck {
                          cloud("c", "00:00", system: "T2", peak: 35), cloud("d", "00:00", peak: 30), cloud("e", "00:00", peak: 31)]
             precondition(CloudHintRules.onePerStorm(tiles).map(\.path) == ["b", "c", "d", "e"])
         }
-        test("a wide zoom keeps one tag per neighbourhood, current before stale, then the strongest") {
+        test("every zoom keeps one tag per neighbourhood, current before stale, then the strongest") {
             func tag(_ path: String, peak: Double, stale: Bool = false, lon: Double) -> CloudHintRules.Tag {
                 CloudHintRules.Tag(cloud: cloud(path, "00:00", peak: peak, lon: lon), stale: stale)
             }
-            // 0.2° of longitude at 54° N is about 13 km: 23 px at zoom 7, under its 67.
+            // 0.2° of longitude is 18 px at zoom 7, well under 160.
             let near = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.2), tag("far", peak: 30, lon: 10)]
             precondition(CloudHintRules.thin(near, zoom: 7).map(\.cloud.path) == ["strong", "far"])
             precondition(CloudHintRules.thin(near, zoom: 7.9).map(\.cloud.path) == ["strong", "far"], "the level's spacing, not the zoom's")
             let behind = [tag("old", peak: 60, stale: true, lon: 8), tag("new", peak: 40, lon: 8.2)]
             precondition(CloudHintRules.thin(behind, zoom: 7).map(\.cloud.path) == ["new"])
-            // From zoom 9 only overlap counts: 13 km is 92 px there, clear of a 34 px pill.
-            precondition(CloudHintRules.thin(near, zoom: 9).map(\.cloud.path) == ["strong", "weak", "far"])
-            // Two pills a kilometre apart overlap until zoom 12 or so.
+            // The same spacing zoomed in: 146 px at zoom 10, still too close;
+            // 291 px at zoom 11, and both keep their tag.
+            precondition(CloudHintRules.thin(near, zoom: 10.9).map(\.cloud.path) == ["strong", "far"])
+            precondition(CloudHintRules.thin(near, zoom: 11).map(\.cloud.path) == ["strong", "weak", "far"])
+            // Two cores a kilometre apart share a tag until zoom 14.
             let touching = [tag("weak", peak: 40, lon: 8), tag("strong", peak: 55, lon: 8.015)]
-            precondition(CloudHintRules.thin(touching, zoom: 9.5).map(\.cloud.path) == ["strong"])
-            precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong", "weak"])
+            precondition(CloudHintRules.thin(touching, zoom: 13).map(\.cloud.path) == ["strong"])
+            precondition(CloudHintRules.thin(touching, zoom: 14).map(\.cloud.path) == ["strong", "weak"])
         }
     }
 

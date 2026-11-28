@@ -33,4 +33,5 @@ enum ForecastCoverage {
         }
         return Double(uncovered) / Double(samples * samples)
     }
+
 }

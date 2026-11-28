@@ -1,0 +1,43 @@
+{
+  "nldhl": {
+    "operator": "KNMI",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2016",
+    "towerM": 52,
+    "photo": null,
+    "sources": [
+      "https://www.knmi.nl/over-het-knmi/nieuws/de-nieuwe-weerradar-van-het-knmi",
+      "https://www.knmi.nl/over-het-knmi/nieuws/herwijnen-nieuwe-locatie-knmi-radar/",
+      "https://www.knmi.nl/kennis-en-datacentrum/uitleg/neerslagradar-door-de-jaren-heen",
+      "https://www.circuitsonline.net/forum/file/140296",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "nlhrw": {
+    "operator": "KNMI",
+    "system": "Selex METEOR 735CDP10",
+    "band": "C",
+    "dualPol": true,
+    "since": "2017",
+    "towerM": 22,
+    "photo": {
+      "src": "/radars/nlhrw.webp",
+      "width": 800,
+      "height": 1200,
+      "author": "S.J. de Waard",
+      "licence": "CC BY-SA 3.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Neerslagradar_(buienradar)_voor_het_KNMI_in_Herwijnen_(01).JPG"
+    },
+    "sources": [
+      "https://www.knmi.nl/over-het-knmi/nieuws/knmi-opent-neerslagradar-in-herwijnen",
+      "https://www.knmi.nl/over-het-knmi/nieuws/herwijnen-nieuwe-locatie-knmi-radar/",
+      "https://www.knmi.nl/kennis-en-datacentrum/uitleg/neerslagradar-door-de-jaren-heen",
+      "https://www.circuitsonline.net/forum/file/140296",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/"
+    ]
+  }
+}

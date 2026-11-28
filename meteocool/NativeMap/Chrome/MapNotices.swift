@@ -2,32 +2,30 @@
 //  MapNotices.swift
 //  meteocool
 //
-//  core's "Back to now" pill, the strips above the tray (`DismissableStrip`
-//  with `SwipeDock`) and its toasts.
+//  core's "Back to now" pill, the strips above the tray
+//  (`DismissableStrip.svelte` with `SwipeDock.svelte`, the one notice of
+//  `lib/noticeQueue.ts`) and its toasts.
 //
 
 import SwiftUI
 
 /// "Back to now ⟲": shown off the live frame or while playing; lingers
 /// 120 ms when the needle comes back so a drag past now does not flicker it.
+/// Not in a past window, whose tab at the top is the way back (`ArchiveTab`).
 struct BackToNowPill: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
     /// Site mode has no timeline to go back along.
     @ObservedObject var site: SiteSweepState
-    /// Leaves a past window for live.
-    var leaveWindow: () -> Void = {}
     /// Its host measured again: grown from the empty placeholder it was
     /// laid out at, or the pill is squeezed to its icon and out of reach.
     var resized: () -> Void = {}
     @State private var shown = false
 
     private var theme: ChromeTheme { ChromeTheme(dark: model.isDark) }
-    /// In a past window: always there, as the way back to live.
-    private var archive: Bool { model.window != nil }
     private var wanted: Bool {
-        !player.timeline.steps.isEmpty && (player.playing || !player.isLive || archive) && !player.grabbed
-            && (!model.stale || archive) && model.capability == .radar
+        !player.timeline.steps.isEmpty && (player.playing || !player.isLive) && !player.grabbed
+            && !model.stale && model.capability == .radar && model.window == nil
     }
 
     var body: some View {
@@ -35,10 +33,9 @@ struct BackToNowPill: View {
         ZStack {
             Color.clear.frame(width: 1, height: 32)
             if shown {
-                Button(action: archive ? leaveWindow : player.showLive) {
+                Button(action: player.showLive) {
                     HStack(spacing: 6) {
-                        Text(archive ? NSLocalizedString("native_map_archive_back", value: "Back to Live", comment: "")
-                            : CoreStrings.t("chrome.playback.back_to_latest"))
+                        Text(CoreStrings.t("chrome.playback.back_to_latest"))
                             .scaledFont(13, weight: .semibold, relativeTo: .footnote)
                             .tracking(-0.13)
                             .foregroundStyle(theme.text)
@@ -182,7 +179,9 @@ struct DismissableStrip<Content: View>: View {
     }
 }
 
-/// The strips core shows above the tray on the radar map, one at a time.
+/// The one notice in the slot above the tray (`lib/noticeQueue.ts`): ours
+/// for this view first, then what the map finds for itself. The dry outlook,
+/// last in the queue, keeps its own strip and gives way to any of these.
 struct NoticeStrips: View {
     @ObservedObject var player: RadarPlayer
     @ObservedObject var model: NativeMapModel
@@ -192,21 +191,34 @@ struct NoticeStrips: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if notices.showNoRadar {
-                DismissableStrip(title: CoreStrings.t("radar_no_coverage"), theme: theme, dismiss: { notices.noRadarDismissed = true }) {
-                    Text(CoreStrings.plain("radar_no_coverage_body")).notice(theme)
+            if let shown = notices.shown {
+                let words = Self.words(shown)
+                DismissableStrip(title: words.title, theme: theme, dismiss: { notices.dismiss(shown) }) {
+                    Text(words.body).notice(theme)
                 }
                 .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("nativeMap.strip.noRadar")
-            } else if notices.showNoForecast {
-                DismissableStrip(title: CoreStrings.t("forecast_no_coverage"), theme: theme, dismiss: { notices.noForecastDismissed = true }) {
-                    Text(CoreStrings.plain("forecast_no_coverage_body_nowcast")).notice(theme)
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("nativeMap.strip.noForecast")
+                .accessibilityIdentifier("nativeMap.strip.\(words.id)")
+                // One replacing another leaves and comes in as a strip of its own.
+                .id(NoticeQueue.dismissalKey(shown))
             }
         }
         .padding(.horizontal, ChromeTheme.gutter)
+    }
+
+    /// A strip's heading and text by what it is about, and its identifier.
+    static func words(_ notice: NoticeQueue.Queued) -> (title: String, body: String, id: String) {
+        switch notice {
+        case .ours(let ours):
+            return (CoreStrings.t(ours.level == .warning ? "notice_warning" : "notice_info"), ours.text, "notice")
+        case .condition(.noCoverage):
+            return (CoreStrings.t("radar_no_coverage"), CoreStrings.plain("radar_no_coverage_body"), "noRadar")
+        case .condition(.radarStopped):
+            return (CoreStrings.t("radar_feed_stopped"), CoreStrings.plain("radar_feed_stopped_body"), "feedStopped")
+        case .condition(.forecastStopped):
+            return (CoreStrings.t("forecast_feed_stopped"), CoreStrings.plain("forecast_feed_stopped_body"), "forecastStopped")
+        case .condition(.noForecast), .condition(.dryOutlook):
+            return (CoreStrings.t("forecast_no_coverage"), CoreStrings.plain("forecast_no_coverage_body_nowcast"), "noForecast")
+        }
     }
 }
 
@@ -216,18 +228,36 @@ private extension Text {
     }
 }
 
-/// Which strips are up, and which the reader has hidden; each comes back
-/// once its condition clears and returns (core's per-condition dismissal).
+/// What applies above the tray, and what the reader has hidden: a
+/// condition comes back once it has cleared and returns; ours stay hidden by
+/// id for the session, a map built again included (`lib/noticeQueue.ts`).
 @MainActor
 final class NoticeState: ObservableObject {
-    @Published var outOfRadar = false { didSet { if !outOfRadar { noRadarDismissed = false } } }
-    @Published var noForecastHere = false { didSet { if !noForecastHere { noForecastDismissed = false } } }
-    @Published var noRadarDismissed = false
-    @Published var noForecastDismissed = false
+    /// The notices dismissed this session.
+    private static var sessionDismissed = Set<String>()
+
+    /// What applies now; the dry outlook is its own strip's to judge.
+    @Published private(set) var candidates = NoticeQueue.Candidates()
+    @Published private(set) var dismissed = NoticeState.sessionDismissed
     @Published var radarShown = true
 
-    var showNoRadar: Bool { radarShown && outOfRadar && !noRadarDismissed }
-    var showNoForecast: Bool { radarShown && !outOfRadar && noForecastHere && !noForecastDismissed }
+    /// The one shown, if any.
+    var shown: NoticeQueue.Queued? { radarShown ? NoticeQueue.next(candidates, dismissed: dismissed) : nil }
+
+    func update(_ next: NoticeQueue.Candidates) {
+        if next != candidates { candidates = next }
+        let kept = NoticeQueue.rearmed(dismissed, next)
+        if kept != dismissed { keep(kept) }
+    }
+
+    func dismiss(_ notice: NoticeQueue.Queued) {
+        keep(dismissed.union([NoticeQueue.dismissalKey(notice)]))
+    }
+
+    private func keep(_ next: Set<String>) {
+        dismissed = next
+        Self.sessionDismissed = next
+    }
 }
 
 /// A toast at the top (core's `Toast.ts`): a message that goes after a while.

@@ -11,6 +11,7 @@ struct ArchiveCheck {
     static func main() {
         windows()
         labels()
+        edges()
         coverage()
         timeline()
         strikes()
@@ -60,6 +61,18 @@ struct ArchiveCheck {
         let pill = RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: locale)
         precondition(pill == "2 Nov 14:05", pill)
         precondition(RadarWindow.dateTime(utc("20261102T1405Z"), timeZone: zone, locale: Locale(identifier: "en_US")) == "Nov 2 14:05")
+        // The frame's tab: the step with its weekday for VoiceOver; on a wide
+        // screen the window's day and span, and the step by its clock, dated
+        // once past the start's midnight.
+        let weekday = RadarWindow.dateTime(utc("20261102T1405Z"), weekday: true, timeZone: zone, locale: locale)
+        precondition(weekday == "Mon 2 Nov 14:05", weekday)
+        let span = day.span(timeZone: zone, locale: locale)
+        precondition(span == "Mon 2 Nov 14:00–17:00", span)
+        let nightSpan = night.span(timeZone: zone, locale: locale)
+        precondition(nightSpan == "Mon 2 Nov 22:00 – Tue 3 Nov 02:00", nightSpan)
+        precondition(day.clock(utc("20261102T1505Z"), timeZone: zone, locale: locale) == "15:05")
+        let past = night.clock(utc("20261103T0005Z"), timeZone: zone, locale: locale)
+        precondition(past == "Tue 00:05", past)
         let summary = day.summary(timeZone: zone, locale: locale)
         precondition(summary.contains("14:00") && summary.contains("17:00"), summary)
         // The strip: ticks spaced for the length, counted from the reader's midnight.
@@ -75,24 +88,28 @@ struct ArchiveCheck {
         }
     }
 
+    /// On a phone's strip a clock label gives way to the start's sooner
+    /// (core's `windowEdgeClear`).
+    static func edges() {
+        let day = 1_793_491_200, hour = 3600
+        // Three hours from 14:45: "15:00" is the fourth of 37 steps, 9.5% in.
+        let window = RadarWindow(start: day + 14 * hour + 45 * 60, end: day + 17 * hour + 45 * 60)!
+        func labels(_ clear: Double) -> [Int] {
+            TimelinePhysics.axisTicks(steps: window.steps, gridNow: day, every: 60, clear: clear).map(\.step)
+        }
+        precondition(labels(RadarWindow.edgeClear(width: 1200, dated: false)).contains(day + 15 * hour))
+        precondition(!labels(RadarWindow.edgeClear(width: 360, dated: false)).contains(day + 15 * hour))
+        precondition(RadarWindow.edgeClear(width: 360, dated: true) > RadarWindow.edgeClear(width: 360, dated: false))
+        precondition(RadarWindow.edgeClear(width: 0, dated: false) == RadarWindow.edgeClear(width: 10_000, dated: false))
+    }
+
     static func coverage() {
         let json = #"{"since": 1790000100, "until": 1792678200, "step_seconds": 300, "history_days": 31}"#
         let archive = ArchiveCoverage.decode(Data(json.utf8))!
         precondition(archive == ArchiveCoverage(since: 1_790_000_100, until: 1_792_678_200))
         precondition(ArchiveCoverage.decode(Data(#"{"since": 5, "until": 5, "step_seconds": 300}"#.utf8)) == nil)
         precondition(ArchiveCoverage.decode(Data("nope".utf8)) == nil)
-        // The picker's window: as asked inside the archive.
-        let inside = archive.window(start: archive.since + 86400 + 120, hours: 3)!
-        precondition(inside.start == archive.since + 86400 && inside.hours == 3)
-        // Running past the newest step, moved back to keep its length.
-        let newest = archive.window(start: archive.until - 3600, hours: 6)!
-        precondition(newest.end == archive.until && newest.hours == 6)
-        // Before the oldest, from the oldest.
-        let oldest = archive.window(start: archive.since - 86400, hours: 12)!
-        precondition(oldest.start == archive.since && oldest.hours == 12)
-        // An archive shorter than the length asked: all of it.
-        let short = ArchiveCoverage(since: 1_000_200, until: 1_000_200 + 3600)
-        precondition(short.window(start: short.since, hours: 24) == RadarWindow(start: short.since, end: short.until))
+        picker()
 
         // A link's frame before the live strip opens the two hours up to it.
         let now = archive.until + 60
@@ -107,6 +124,46 @@ struct ArchiveCheck {
         precondition(RadarWindow.forLink(time: archive.since + 1800, now: now, archive: archive)!.start == archive.since)
         let first = RadarWindow.forLink(time: archive.since, now: now, archive: archive)!
         precondition(first.start == archive.since && first.end == archive.since + 7200)
+    }
+
+    /// The picker (core's `archive.test.ts`): the window it opens, the days
+    /// and start times it offers, where it starts.
+    static func picker() {
+        let day = 1_793_491_200, hour = 3600
+        let archive = ArchiveCoverage(since: day - 30 * 24 * hour, until: day + 12 * hour)
+        // A picked window runs its length from its start.
+        precondition(archive.pick(start: day - 6 * hour, hours: 3) == RadarWindow(start: day - 6 * hour, end: day - 3 * hour))
+        // A start off the grid is moved back onto it.
+        precondition(archive.pick(start: day + 61, hours: 1) == RadarWindow(start: day, end: day + hour))
+        // One running past the archive's newest step ends there.
+        precondition(archive.pick(start: day + 11 * hour, hours: 6) == RadarWindow(start: day + 11 * hour, end: archive.until))
+        // One starting before the oldest step starts there.
+        precondition(archive.pick(start: archive.since - hour, hours: 3) == RadarWindow(start: archive.since, end: archive.since + 2 * hour))
+        // One with nothing of it kept is none.
+        precondition(archive.pick(start: archive.until + hour, hours: 1) == nil)
+
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        // Every day the archive keeps anything of.
+        let days = ArchiveCoverage(since: day - 2 * 86_400 + 600, until: day + 3600).days(calendar: utc)
+        precondition(days == [day - 2 * 86_400, day - 86_400, day], "\(days)")
+        // A start may be any step of a whole day…
+        precondition(archive.startMinutes(day: day - 86_400, calendar: utc) == 0 ... 1435)
+        // …cut at the archive's ends on its first and last day.
+        let ends = ArchiveCoverage(since: day - 86_400 + 7 * hour + 2 * 60, until: day + 9 * hour + 30 * 60)
+        precondition(ends.startMinutes(day: day - 86_400, calendar: utc) == 7 * 60 + 5 ... 1435)
+        precondition(ends.startMinutes(day: day, calendar: utc) == 0 ... 9 * 60 + 30)
+
+        // It starts on the last three hours kept, or on the window open now
+        // at the first length that holds it.
+        let seed = archive.seed(open: nil)
+        precondition(seed.start == archive.until - 3 * hour && seed.hours == 3)
+        let open = RadarWindow(start: day - 5 * hour, end: day - 3 * hour)!
+        precondition(archive.seed(open: open) == (day - 5 * hour, 3))
+        precondition(archive.seed(open: RadarWindow(start: day - 13 * hour, end: day - 3 * hour)) == (day - 13 * hour, 12))
+        // Never before the oldest step.
+        let young = ArchiveCoverage(since: day, until: day + hour)
+        precondition(young.seed(open: nil).start == day)
     }
 
     static func timeline() {

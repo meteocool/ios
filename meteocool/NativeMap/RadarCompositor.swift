@@ -2,7 +2,10 @@
 //  RadarCompositor.swift
 //  meteocool
 //
-//  Each step's picture, tile by tile, put together before it is shown.
+//  Each step's picture, tile by tile, put together before it is shown, and
+//  its coarse preview (core's `lib/previewTiles.ts`): only tiles the frame's
+//  index has (`layers/indexedTiles.ts`), DWD's cut where another network
+//  draws (`layers/networkHoles.ts`).
 //
 
 import Foundation
@@ -77,6 +80,19 @@ final class RadarCompositor: @unchecked Sendable {
     }()
     private var building = Set<String>()
     private var generation = 0
+    /// The steps' coarse previews, for the map in view, under `lock`.
+    private var previews = PreviewStore<Preview>(capacity: previewBytes)
+    private var previewGeneration = 0
+    /// Previews are put together on their own, a piece is small and quick.
+    private let previewQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 2
+        queue.qualityOfService = .userInitiated
+        return queue
+    }()
+    /// Where previews' tiles are asked for: after the step on screen's,
+    /// before every other step's (`RadarEngine.prefetch`).
+    static let previewPriority = 1
 
     private final class Box {
         let image: CGImage?
@@ -84,7 +100,7 @@ final class RadarCompositor: @unchecked Sendable {
     }
 
     /// Pixels per tile side, as the tiles come.
-    private static let side = 512
+    static let side = 512
 
     init(store: RadarTileStore, coverage: RadarCoverage) {
         self.store = store
@@ -100,6 +116,7 @@ final class RadarCompositor: @unchecked Sendable {
     /// Forgets every picture: the palette or the ground changed.
     func clear() {
         pictures.removeAllObjects()
+        lock.withLock { previews.clear() }
     }
 
     /// The picture as already put together; nothing is fetched or drawn.
@@ -184,7 +201,8 @@ final class RadarCompositor: @unchecked Sendable {
             guard tiles.count <= budget else { break }
             budget -= tiles.count
             for tile in tiles {
-                let distance = priority
+                // The first step's tiles before the previews', the rest after them.
+                let distance = priority == 0 ? 0 : Self.previewPriority + priority
                 queue.addOperation { [weak self] in
                     guard let self, self.lock.withLock({ self.generation == generation }) else { return }
                     if case .pending = self.cached(frame, z: z, x: tile.x, y: tile.y) {
@@ -215,19 +233,160 @@ final class RadarCompositor: @unchecked Sendable {
         }
     }
 
+    // MARK: - Previews (core's lib/previewTiles.ts)
+
+    /// A step's picture as kept in the previews: an image, or nothing to draw.
+    final class Preview: @unchecked Sendable {
+        let image: CGImage?
+        init(_ image: CGImage?) { self.image = image }
+    }
+
+    /// One piece of a step's preview to put together.
+    struct PreviewJob: Sendable {
+        let key: String
+        let frame: RadarFrameRef
+        /// The step as the previews know it: its layers in the palette drawn.
+        let frameName: String
+        let z: Int
+        let x: Int
+        let y: Int
+        /// The ground it covers, and its size in pixels.
+        let rect: MKMapRect
+        let width: Int
+        let height: Int
+        var cost: Int { PreviewTileRules.pieceOverhead + width * height * 4 }
+    }
+
+    /// The most bytes of previews kept: every step of a phone's screen, a
+    /// few tens of kilobytes each, four bytes a pixel (core's `previewBytes`
+    /// keeps one byte a pixel in 12 MB).
+    static let previewBytes = 24 << 20
+
+    /// Map points as core's extents have them: west, south, east, north, north up.
+    static func box(_ rect: MKMapRect) -> PreviewTileRules.Box { [rect.minX, -rect.maxY, rect.maxX, -rect.minY] }
+    static func rect(_ box: PreviewTileRules.Box) -> MKMapRect {
+        MKMapRect(x: box[0], y: -box[3], width: box[2] - box[0], height: box[3] - box[1])
+    }
+
+    private func previewName(_ frame: RadarFrameRef) -> String { "\(store.paletteName)|\(frame.key)" }
+
+    /// The pieces a step's preview has for `view` at MapKit's `zoom`: of each
+    /// tile `PreviewTileRules.zooms` up, the part the view needs; none where
+    /// the step's own tiles are as few.
+    func previewJobs(_ frame: RadarFrameRef, zoom: Int, view: MKMapRect) -> [PreviewJob] {
+        let z = frame.zoom(for: zoom)
+        guard !frame.layers.isEmpty, let pz = PreviewTileRules.previewZoom(z, minZ: RadarLayer.minZoom) else { return [] }
+        let scale = PreviewTileRules.previewScale(z, zoom: pz)
+        let name = previewName(frame)
+        return frame.tiles(z: pz, in: view).compactMap { tile in
+            let box = Self.box(RadarTileKey.mapRect(z: pz, x: tile.x, y: tile.y))
+            guard let crop = PreviewTileRules.cropFor(box, size: Self.side, view: Self.box(view)) else { return nil }
+            return PreviewJob(key: "\(name)|\(pz)/\(tile.x)/\(tile.y)|\(crop.name(scale: scale))", frame: frame, frameName: name,
+                              z: pz, x: tile.x, y: tile.y, rect: Self.rect(PreviewTileRules.cropExtent(box, size: Self.side, crop: crop)),
+                              width: max(1, crop.width / scale), height: max(1, crop.height / scale))
+        }
+    }
+
+    /// Puts together the previews of `frames`, in that order, for `view`: as
+    /// many as their room holds; replaces what was still waiting from the
+    /// last call. Their tiles are asked for ahead of every step's own but
+    /// the one on screen.
+    func preparePreviews(_ frames: [RadarFrameRef], zoom: Int, view: MKMapRect) {
+        previewQueue.cancelAllOperations()
+        var jobs: [PreviewJob] = []
+        var bytes = 0
+        var seen = Set<String>()
+        for frame in frames where seen.insert(frame.key).inserted {
+            let pieces = previewJobs(frame, zoom: zoom, view: view)
+            let cost = pieces.reduce(0) { $0 + $1.cost }
+            guard bytes + cost <= Self.previewBytes else { break }
+            bytes += cost
+            jobs += pieces
+        }
+        let frameOf = Dictionary(jobs.map { ($0.key, $0.frameName) }, uniquingKeysWith: { first, _ in first })
+        let generation = lock.withLock { () -> Int in
+            previews.plan(jobs.map(\.key), frameOf: { frameOf[$0] })
+            previewGeneration += 1
+            return previewGeneration
+        }
+        for job in jobs {
+            previewQueue.addOperation { [weak self] in
+                guard let self, self.lock.withLock({ self.previewGeneration == generation && !self.previews.has(job.key) }) else { return }
+                if self.buildPreview(job) { self.notifyPrepared() }
+            }
+        }
+    }
+
+    /// Puts a piece together if every tile it needs is here, else asks for them.
+    private func buildPreview(_ job: PreviewJob) -> Bool {
+        let coverage = lock.withLock { self.coverage }
+        var sources: [(RadarLayer, RadarTileKey, CGImage)] = []
+        var waiting: [RadarTileKey] = []
+        for layer in job.frame.layers where coverage.bounds(of: layer.clip).intersects(job.rect) {
+            let sz = max(RadarLayer.minZoom, min(job.z, layer.maxZoom))
+            let key = RadarTileKey(layer, z: sz, x: job.x >> (job.z - sz), y: job.y >> (job.z - sz))
+            guard layer.index.has(z: key.z, x: key.x, y: key.y) else { continue }
+            switch store.lookup(key) {
+            case .image(let image): sources.append((layer, key, image))
+            case .empty: break
+            case .pending: waiting.append(key)
+            }
+        }
+        if !waiting.isEmpty {
+            store.request(waiting, priority: Self.previewPriority)
+            return false
+        }
+        let image = sources.isEmpty ? nil : Self.compose(sources, into: job.rect, width: job.width, height: job.height, coverage: coverage)
+        let piece = PreviewPiece(key: job.key, frame: job.frameName, z: job.z, x: job.x, y: job.y, covers: Self.box(job.rect),
+                                 image: Preview(image), cost: image == nil ? PreviewTileRules.pieceOverhead : job.cost)
+        return lock.withLock { previews.put(piece) }
+    }
+
+    /// The piece of `frame`'s preview over tile `z`/`x`/`y` that covers
+    /// `ground` (with `partly`, some of it): its picture, the ground it
+    /// covers and its zoom; nil where there is none.
+    func preview(_ frame: RadarFrameRef, z: Int, x: Int, y: Int, ground: MKMapRect, partly: Bool = false)
+        -> (image: CGImage?, rect: MKMapRect, z: Int)? {
+        let name = previewName(frame)
+        guard let piece = lock.withLock({ previews.covering(name, z: z, x: x, y: y, ground: Self.box(ground), partly: partly) })
+        else { return nil }
+        return (piece.image?.image, Self.rect(piece.covers), piece.z)
+    }
+
+    /// Whether a piece of `frame`'s preview the plan names is still to come.
+    func awaitsPreview(_ frame: RadarFrameRef) -> Bool {
+        let name = previewName(frame)
+        return lock.withLock { previews.awaits(name) }
+    }
+
+    /// Whether `frame` can be shown in `rect` at MapKit's `zoom`: each of its
+    /// pictures there ready, or covered by its preview (with `partly`, in
+    /// part, as a map on the move will do).
+    func isPreviewed(_ frame: RadarFrameRef, zoom: Int, in rect: MKMapRect, partly: Bool = false) -> Bool {
+        let z = frame.zoom(for: zoom)
+        return frame.tiles(z: z, in: rect).allSatisfy { tile in
+            if case .pending = cached(frame, z: z, x: tile.x, y: tile.y) {
+                let ground = RadarTileKey.mapRect(z: z, x: tile.x, y: tile.y).intersection(rect).intersection(frame.bounds)
+                return preview(frame, z: z, x: tile.x, y: tile.y, ground: ground, partly: partly) != nil
+            }
+            return true
+        }
+    }
+
     private func name(_ frame: RadarFrameRef, _ z: Int, _ x: Int, _ y: Int) -> NSString {
         "\(store.paletteName)|\(frame.key)|\(z)/\(x)/\(y)" as NSString
     }
 
-    /// The layers on one tile, in map points, onto a bitmap of the tile.
-    static func compose(_ sources: [(RadarLayer, RadarTileKey, CGImage)], into rect: MKMapRect,
-                                coverage: RadarCoverage) -> CGImage? {
+    /// The layers on one tile, in map points, onto a bitmap of the tile;
+    /// or of a part of it, `width` by `height` (a preview's piece).
+    static func compose(_ sources: [(RadarLayer, RadarTileKey, CGImage)], into rect: MKMapRect, width: Int = side, height: Int = side,
+                        coverage: RadarCoverage) -> CGImage? {
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                                       space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        let scale = Double(side) / rect.width
+        let scale = Double(width) / rect.width
         // Map points grow downwards, the bitmap's rows upwards.
-        context.translateBy(x: 0, y: CGFloat(side))
+        context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: scale, y: -scale)
         context.translateBy(x: -rect.minX, y: -rect.minY)
         context.interpolationQuality = .none

@@ -1,0 +1,61 @@
+{
+  "behel": {
+    "operator": "VMM (Flanders Environment Agency)",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": true,
+    "since": "2016",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://www.meteo.be/en/instruments/weather-radars",
+      "https://www.meteo.be/en/about-rmi/observation-network/radarnetwerk",
+      "https://www.meteo.be/nl/info/veelgestelde-vragen/radar/de-radars-van-jabbeke-en-helchteren-zijn-uitgerust-met-dubbele-polarisatietechniek",
+      "https://meteo.be/uploads/media/60ddc37432cab/poster-delo-goud-erad-2014.pdf",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/"
+    ]
+  },
+  "bejab": {
+    "operator": "RMI",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": true,
+    "since": "2012",
+    "towerM": 46,
+    "photo": null,
+    "sources": [
+      "https://www.meteo.be/en/about-rmi/observation-network/radarnetwerk",
+      "https://www.meteo.be/en/instruments/weather-radars",
+      "https://www.meteo.be/nl/info/nieuwsbrief/artikels-2021/spectaculaire-onderhoud-van-kmi-weerradar-in-jabbeke",
+      "https://meteo.be/uploads/media/60ddc37432cab/poster-delo-goud-erad-2014.pdf",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "bewid": {
+    "operator": "RMI",
+    "system": "Selex",
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": 50,
+    "photo": {
+      "src": "/radars/bewid.webp",
+      "width": 800,
+      "height": 600,
+      "author": "Xofc",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:RadarMeteoIRM-Wideumont-16oct2016.jpg"
+    },
+    "sources": [
+      "https://www.meteo.be/en/about-rmi/observation-network/radarnetwerk",
+      "https://www.meteo.be/en/instruments/weather-radars",
+      "https://www.meteo.be/fr/infos/newsletter/articles-2022/une-nouvelle-technologie-pour-le-radar-de-wideumont",
+      "https://www.meteo.be/nl/info/nieuwsoverzicht/vervanging-van-de-weerradar-in-wideumont",
+      "https://meteo.be/uploads/media/60ddc37432cab/poster-delo-goud-erad-2014.pdf",
+      "https://eumetnet.eu/wp-content/themes/aeron-child/observations-programme/current-activities/opera/database/OPERA_Database/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

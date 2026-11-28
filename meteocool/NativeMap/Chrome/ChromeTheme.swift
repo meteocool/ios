@@ -29,6 +29,7 @@ struct ChromeTheme {
     var fill: Color { dark ? Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255).opacity(0.82) : Color.white.opacity(0.82) }
     var fillStrong: Color { dark ? Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255).opacity(0.90) : Color.white.opacity(0.90) }
     var edge: Color { dark ? Color.white.opacity(0.22) : Color.white.opacity(0.70) }
+    var hairline: Color { dark ? Color(red: 84 / 255, green: 84 / 255, blue: 88 / 255).opacity(0.65) : Color(red: 60 / 255, green: 60 / 255, blue: 67 / 255).opacity(0.22) }
     var colorScheme: ColorScheme { dark ? .dark : .light }
 
     /// Corner radii and sizes (`glass.css:189-215`).
@@ -42,6 +43,41 @@ struct ChromeTheme {
     /// wide screen's side panel stops.
     static let controlColumn: CGFloat = 76
     static let stripHeight: CGFloat = 104
+}
+
+/// The player's row of chips, Stations, Storms and the radar product
+/// (`glass.css`'s `--mc-chip-*`): a size up where the width is compact, as
+/// on a phone, where they are thumbed and swiped through. Sizes at the
+/// default text size; the label and icon grow with Dynamic Type.
+struct ChipMetrics {
+    let height: CGFloat
+    let pad: CGFloat
+    let font: CGFloat
+    let icon: CGFloat
+    let gap: CGFloat
+    /// The hairline round it, so it reads as something to press.
+    let edge: CGFloat
+
+    static let regular = ChipMetrics(height: 24, pad: 10, font: 11, icon: 11, gap: 6, edge: 0.5)
+    static let compact = ChipMetrics(height: 34, pad: 13, font: 14, icon: 14, gap: 8, edge: 1)
+
+    static func of(_ sizeClass: UserInterfaceSizeClass?) -> ChipMetrics {
+        sizeClass == .compact ? .compact : .regular
+    }
+}
+
+extension View {
+    /// A chip of the player's row: its capsule in the chrome's tint with a
+    /// hairline edge, or filled in the accent while `on`, and the 44 pt a
+    /// finger needs round it.
+    func chip(_ theme: ChromeTheme, _ metrics: ChipMetrics, on: Bool = false) -> some View {
+        lineLimit(1)
+            .padding(.horizontal, metrics.pad)
+            .frame(minHeight: metrics.height)
+            .background(on ? theme.accent : theme.tint, in: Capsule())
+            .overlay(Capsule().strokeBorder(on ? .clear : theme.hairline, lineWidth: metrics.edge))
+            .hitTarget()
+    }
 }
 
 extension View {

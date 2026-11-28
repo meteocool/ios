@@ -37,6 +37,8 @@ struct RadarExplainer: View {
                         Text(t("tilts.p3"))
                     }
                     section("products") { paragraphs("products", 3) }
+                    // Echo tops and VIL: the picker's third group, read up the column maximum's tilts.
+                    section("tops") { paragraphs("tops", 3) }
                     section("cycle") {
                         paragraphs("cycle", 3)
                         table(["pcp_done", "hx", "frame", "wn", "sweep_low", "vol_done", "dmax", "sweep_last", "clouds", "next_frame"],
@@ -45,7 +47,8 @@ struct RadarExplainer: View {
                     }
                     section("made") {
                         Text(t("made.caption")).font(.footnote).foregroundStyle(.secondary)
-                        ForEach(["de", "forecast", "types", "networks", "europe", "colmax", "cells", "clouds", "meso", "lightning"], id: \.self) { key in
+                        ForEach(["de", "forecast", "types", "networks", "europe", "colmax", "echotops", "vil", "cells",
+                                 "clouds", "meso", "lightning"], id: \.self) { key in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(t("made.\(key)")).font(.subheadline.weight(.semibold))
                                 Text("\(t("made.from")): \(t("made.\(key)_from"))").font(.caption).foregroundStyle(.secondary)
@@ -56,6 +59,8 @@ struct RadarExplainer: View {
                     section("why") { paragraphs("why", 3) }
                 }
                 .padding()
+                // Its words can be copied with a long press (core's `.mc-selectable`).
+                .textSelection(.enabled)
             }
             .navigationTitle(t("title"))
             .navigationBarTitleDisplayMode(.inline)

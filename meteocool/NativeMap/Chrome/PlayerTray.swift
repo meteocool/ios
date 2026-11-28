@@ -3,7 +3,12 @@
 //  meteocool
 //
 //  core's player tray (`NowcastPlayback.svelte`): the place, the radar
-//  product, the timeline strip, play and the legend.
+//  product, the timeline strip, play, the archive's button
+//  (`ArchivePill.svelte`) and the legend (`scales/ScaleLine.svelte`, with
+//  core's `assets/legend_clouds.svg`, `assets/legend_rain.svg`,
+//  `assets/legend_thunderstorm.svg` and `assets/legend_hail.svg`;
+//  `scales/ColumnScaleLine.svelte` for an echo top or VIL). A row that
+//  scrolls sideways fades out at an edge with more beyond (`lib/fadeEdges.ts`).
 //
 
 import SwiftUI
@@ -48,6 +53,10 @@ struct PlayerTray: View {
                 Group {
                     if let mode = site.mode, mode.quantity != .reflectivity {
                         VelocityLegend(nyquist: site.view?.nyquist, relative: mode.quantity == .srv, theme: theme)
+                    } else if site.mode == nil, let encoding = player.step.flatMap(player.timeline.columnEncoding(at:)) {
+                        // An echo top or VIL on the step on screen: its own scale. Not
+                        // in site mode, whose sweep is the radar the legend is for.
+                        ColumnLegend(encoding: encoding, theme: theme)
                     } else {
                         RadarLegend(palette: player.palette, dbz: $model.legendDBZ, theme: theme)
                     }
@@ -103,11 +112,11 @@ struct PlayerTray: View {
             PillScroller {
                 // DWD's weather stations, on or off: first, so the pills after it never move it.
                 StationTogglePill(on: model.layersOn.contains(.stations), theme: theme, toggle: actions.toggleStations)
-                // What the storm marks are, while they are drawn.
-                if model.layersOn.contains(.storms) {
-                    StormKeyPill(model: model, filtered: !model.hiddenStormMarks.isEmpty || !model.layersOn.contains(.mesocyclones),
-                                 theme: theme, open: actions.openStormKey)
-                }
+                // What the storm marks are, and the lightning's and the mesocyclones' switches.
+                StormKeyPill(model: model,
+                             filtered: (model.layersOn.contains(.storms) && !model.hiddenStormMarks.isEmpty)
+                                 || !model.layersOn.contains(.mesocyclones) || !model.layersOn.contains(.lightning),
+                             theme: theme, open: actions.openStormKey)
                 ProductPill(player: player, theme: theme, site: site.mode.map { _ in site.view }, open: actions.openProducts)
             }
             if model.point != nil, model.userLocation == nil {
@@ -151,6 +160,7 @@ private struct CappedWidth: Layout {
 private struct PillScroller<Content: View>: View {
     @ViewBuilder let content: Content
     @State private var more = Edges()
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private struct Edges: Equatable {
         var leading = false
@@ -159,7 +169,7 @@ private struct PillScroller<Content: View>: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 6) { content }
+            HStack(spacing: ChipMetrics.of(sizeClass).gap) { content }
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -190,7 +200,8 @@ private struct ChipLabel: LabelStyle {
     }
 }
 
-/// The archive: a past window to use the map in. Tinted while one is open.
+/// The archive: a past window to use the map in (core's `ArchivePill`).
+/// Tinted while one is open.
 struct ArchiveButton: View {
     let open: Bool
     let theme: ChromeTheme
@@ -206,8 +217,8 @@ struct ArchiveButton: View {
                 .hitTarget()
         }
         .buttonStyle(PressScale())
-        .accessibilityLabel(NSLocalizedString("native_map_archive", value: "Archive", comment: ""))
-        .accessibilityHint(NSLocalizedString("native_map_archive_hint", value: "Shows the map at a time the archive still keeps.", comment: ""))
+        .accessibilityLabel(CoreStrings.t("chrome.archive.title"))
+        .accessibilityHint(CoreStrings.t("chrome.archive.choose"))
         .accessibilityAddTraits(open ? .isSelected : [])
         .accessibilityIdentifier("nativeMap.archive")
     }
@@ -331,6 +342,70 @@ struct RadarLegend: View {
     }
 }
 
+/// The legend for an echo top or VIL, in place of the dBZ strip while one is
+/// drawn (`ColumnScaleLine.svelte`): its encoding's own palette, named in
+/// kilometres above sea level or kilograms a square metre, each number
+/// under its colour and the unit after the last. Not a toggle: there are no
+/// pictograms for a height.
+struct ColumnLegend: View {
+    let encoding: ColumnEncoding
+    let theme: ChromeTheme
+
+    /// As the dBZ strip's: a tick this close to the end runs into the one
+    /// before once the unit is on it, so it is left off.
+    private static let endClearance = 0.95
+
+    private var legend: (colours: [(at: Double, colour: ValueColour)], ticks: [(value: Double, at: Double)], min: Double, max: Double) {
+        encoding.scale.legend()
+    }
+
+    var body: some View {
+        let legend = self.legend
+        VStack(spacing: 2) {
+            Capsule()
+                .fill(LinearGradient(stops: legend.colours.map { stop in
+                    Gradient.Stop(color: Color(red: Double(stop.colour.r) / 255, green: Double(stop.colour.g) / 255,
+                                               blue: Double(stop.colour.b) / 255, opacity: Double(stop.colour.a) / 255),
+                                  location: stop.at)
+                }, startPoint: .leading, endPoint: .trailing))
+                .background(theme.tint, in: Capsule())
+                .overlay(Capsule().stroke(theme.edge, lineWidth: 1))
+                .frame(height: 10)
+                .padding(.top, 2)
+            GeometryReader { geometry in ticks(legend.ticks, width: geometry.size.width) }
+                .frame(height: 14)
+        }
+        .frame(height: 28)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(CoreStrings.t(encoding == .echoTop ? "chrome.scales.echotop" : "chrome.scales.vil",
+                                          ["min": Self.format(legend.min), "max": Self.format(legend.max)]))
+        .accessibilityValue(encoding.scale.unit)
+        .accessibilityIdentifier("nativeMap.columnLegend")
+    }
+
+    static func format(_ value: Double) -> String { value.formatted(.number) }
+
+    private func ticks(_ all: [(value: Double, at: Double)], width: CGFloat) -> some View {
+        let shown = all.filter { $0.at <= Self.endClearance }
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(shown.enumerated()), id: \.offset) { i, tick in
+                let last = i == shown.count - 1
+                HStack(spacing: 1) {
+                    Text(Self.format(tick.value))
+                        .scaledFont(11, weight: .semibold, relativeTo: .caption2, digits: true)
+                        .foregroundStyle(theme.text)
+                    if last {
+                        Text(encoding.scale.unit).scaledFont(8, weight: .medium, relativeTo: .caption2).foregroundStyle(theme.text2)
+                    }
+                }
+                .fixedSize()
+                .position(x: CGFloat(tick.at) * width + (last ? 10 : 0), y: 7)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// The radar product and how old its scans are (`RadarProductPicker` pill).
 struct ProductPill: View {
     @ObservedObject var player: RadarPlayer
@@ -338,6 +413,9 @@ struct ProductPill: View {
     /// With a radar open, its sweep shown: the pill is about that radar.
     var site: SiteSweepView?? = nil
     let open: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    private var metrics: ChipMetrics { ChipMetrics.of(sizeClass) }
 
     var body: some View {
         if let site { sitePill(site) } else { productPill }
@@ -348,19 +426,16 @@ struct ProductPill: View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             Button(action: open) {
                 HStack(spacing: 5) {
-                    Image(systemName: "dot.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
+                    Image(systemName: "dot.radiowaves.left.and.right").scaledFont(metrics.icon + 1, weight: .semibold, relativeTo: .caption2)
                     Text(view.map { RadarSiteAnnotation.name($0.site.site) } ?? "").truncationMode(.tail)
                     Text(Self.siteAge(view, now: context.date))
-                        .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
+                        .scaledFont(metrics.font, weight: .medium, relativeTo: .caption2, digits: true)
                         .foregroundStyle(theme.text2)
                         .layoutPriority(1)
                 }
-                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
                 .foregroundStyle(theme.text)
-                .lineLimit(1)
-                .padding(.horizontal, 10)
-                .frame(height: 24)
-                .background(theme.tint, in: Capsule())
+                .chip(theme, metrics)
             }
             .buttonStyle(PressScale())
         }
@@ -383,29 +458,27 @@ struct ProductPill: View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             Button(action: open) {
                 HStack(spacing: 5) {
-                    Image(systemName: "antenna.radiowaves.left.and.right").scaledFont(12, weight: .semibold, relativeTo: .caption)
+                    Image(systemName: "antenna.radiowaves.left.and.right").scaledFont(metrics.icon + 1, weight: .semibold, relativeTo: .caption2)
                     Text(CoreStrings.t("chrome.radar_product.\(product.rawValue)_short"))
                     Group {
                         if forecast {
                             Text(CoreStrings.t("chrome.radar_product.forecast_short"))
-                        } else if timeline.window != nil {
-                            // How old the scans are means nothing in the past.
-                            EmptyView()
                         } else if timeline.fellBack {
                             Text(CoreStrings.t("chrome.radar_product.fell_back_short")).foregroundStyle(theme.orangeInk)
+                        } else if timeline.window != nil {
+                            // How old the newest scan is, the live radar's age,
+                            // says nothing of the window's.
+                            EmptyView()
                         } else {
                             Text(Self.age(timeline.scanRange, now: context.date))
                         }
                     }
-                    .scaledFont(11, weight: .medium, relativeTo: .caption2, digits: true)
+                    .scaledFont(metrics.font, weight: .medium, relativeTo: .caption2, digits: true)
                     .foregroundStyle(theme.text2)
                 }
-                .scaledFont(11, weight: .semibold, relativeTo: .caption2)
+                .scaledFont(metrics.font, weight: .semibold, relativeTo: .caption2)
                 .foregroundStyle(theme.text)
-                .lineLimit(1)
-                .padding(.horizontal, 10)
-                .frame(height: 24)
-                .background(theme.tint, in: Capsule())
+                .chip(theme, metrics)
             }
             .buttonStyle(PressScale())
             .disabled(forecast)

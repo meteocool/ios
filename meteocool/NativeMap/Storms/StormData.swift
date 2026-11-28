@@ -3,8 +3,8 @@
 //  meteocool
 //
 //  What the data service says about storms (core's `spec/data.openapi.json`,
-//  `src/api/index.ts`): `/storms`, `/storms/{id}`, `/cells/tracks/{code}`,
-//  `/cells/volumes`.
+//  `src/api/index.ts`): `/storms`, `/storms/groups`, `/storms/{id}`,
+//  `/cells/tracks/{code}`, `/cells/volumes`.
 //
 
 import Foundation
@@ -83,6 +83,15 @@ struct StormProperties: Equatable, Sendable {
     var bbox: Bounds?
     var path: PathGeometry
     var tracks: [StormTrackClaim] = []
+    /// How much the storm matters, 0 to 3: what decides whether it is
+    /// notable, not its severity. Nil for a storm KONRAD3D alone sees, and
+    /// from a backend before ratings.
+    var rating: Double?
+    /// Whether to mark it on the map; nil from a backend before it, which
+    /// marks every storm as before (`StormDrawing.stormLook`).
+    var notable: Bool?
+    /// The group of storms that are one system it belongs to (`/storms/groups`).
+    var group: String?
 }
 
 /// `StormFeature`: a storm from `/storms`, its geometry its centroid now.
@@ -95,6 +104,38 @@ struct Storm: Equatable, Sendable {
 /// `/storms`: most recently seen first, at most 200.
 struct StormCollection: Equatable, Sendable {
     var features: [Storm]
+}
+
+/// A GeoJSON geometry's coordinates as they came: numbers nested to any
+/// depth, so a group's outline is read leniently (`StormGroupRules.polygonsOf`).
+indirect enum GeoCoordinates: Equatable, Sendable {
+    case number(Double)
+    case list([GeoCoordinates])
+    /// Anything else where a number or a list belongs.
+    case other
+}
+
+/// `GroupProperties`: every field optional, so that whatever was served
+/// where groups were asked for is read, and left out by the rules.
+struct StormSystemProperties: Equatable, Sendable {
+    var id: String?
+    var bornAt: String?
+    var lastSeen: String?
+    /// Its storms' ids, highest rated first.
+    var storms: [String]?
+    var severity: Int?
+    var peakDbz: Double?
+    var rating: Double?
+}
+
+/// `GroupFeature` (core's `StormGroup`): a group of storms that are one
+/// system, the outline of the area of moderate echo they share.
+struct StormSystem: Equatable, Sendable {
+    var id: String?
+    /// `MultiPolygon` as served; a `Polygon` is taken too.
+    var geometryType: String?
+    var coordinates: GeoCoordinates?
+    var properties: StormSystemProperties?
 }
 
 /// One KONRAD3D detection (`CellStep`).
@@ -263,6 +304,8 @@ enum StormJSON {
     }
 
     static func storms(_ data: Data) -> StormCollection? { try? decoder().decode(StormCollection.self, from: data) }
+    /// `/storms/groups`: its features, none from a body without them.
+    static func groups(_ data: Data) -> [StormSystem]? { try? decoder().decode(StormSystemCollection.self, from: data).features }
     static func detail(_ data: Data) -> StormDetail? { try? decoder().decode(StormDetail.self, from: data) }
     static func track(_ data: Data) -> TrackProperties? { try? decoder().decode(TrackFeatureWire.self, from: data).properties }
     static func volumes(_ data: Data) -> [RadarVolume]? { try? decoder().decode(VolumesWire.self, from: data).volumes }
@@ -348,6 +391,9 @@ extension StormProperties: Decodable {
         bbox = c.optional("bbox")
         path = try c.value("path")
         tracks = c.optional("tracks") ?? []
+        rating = c.optional("rating")
+        notable = c.optional("notable")
+        group = c.optional("group")
     }
 }
 
@@ -366,6 +412,54 @@ extension StormCollection: Decodable {
         let c = try decoder.container(keyedBy: StormKey.self)
         // One storm the decoder cannot read is dropped, not the answer.
         let wires: [Failable<Storm>] = c.optional("features") ?? []
+        features = wires.compactMap(\.value)
+    }
+}
+
+extension GeoCoordinates: Decodable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let number = try? c.decode(Double.self) {
+            self = .number(number)
+        } else if let list = try? c.decode([GeoCoordinates].self) {
+            self = .list(list)
+        } else {
+            self = .other
+        }
+    }
+}
+
+extension StormSystemProperties: Decodable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: StormKey.self)
+        id = c.optional("id")
+        bornAt = c.optional("bornAt")
+        lastSeen = c.optional("lastSeen")
+        storms = c.optional("storms")
+        severity = c.optional("severity")
+        peakDbz = c.optional("peakDbz")
+        rating = c.optional("rating")
+    }
+}
+
+extension StormSystem: Decodable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: StormKey.self)
+        id = c.optional("id")
+        properties = c.optional("properties")
+        let geometry = try? c.nestedContainer(keyedBy: StormKey.self, forKey: StormKey("geometry"))
+        geometryType = geometry.flatMap { $0.optional("type") }
+        coordinates = geometry.flatMap { $0.optional("coordinates") }
+    }
+}
+
+/// `GroupCollection`. One group the decoder cannot read is dropped, not the answer.
+private struct StormSystemCollection: Decodable {
+    let features: [StormSystem]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: StormKey.self)
+        let wires: [Failable<StormSystem>] = c.optional("features") ?? []
         features = wires.compactMap(\.value)
     }
 }

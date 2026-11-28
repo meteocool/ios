@@ -296,6 +296,25 @@ struct NativeMapCheck {
         precondition(ConnectionRules.cadence(processedTimes: [0, 300, 600, 900, 5000]) == 300)
         precondition(ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1600))
         precondition(!ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1500))
+        // An overdue publish is not the map's to judge while the backend's status is trusted.
+        precondition(!ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1000 + 300 + 900, statusTrusted: true))
+        precondition(ConnectionRules.publishStalled(newestProcessed: 1000, cadence: 300, now: 1000 + 300 + 900, statusTrusted: false))
+        // More than a quarter of the radar tiles failing degrades, fewer does not
+        // (a quarter exactly is not more), and a handful is too few to judge by.
+        precondition(ConnectionRules.tilesFailing(asked: 20, failed: 6))
+        precondition(!ConnectionRules.tilesFailing(asked: 20, failed: 5) && !ConnectionRules.tilesFailing(asked: 20, failed: 0))
+        precondition(!ConnectionRules.tilesFailing(asked: 9, failed: 9) && ConnectionRules.tilesFailing(asked: 10, failed: 10))
+        // Radar tiles are counted over the last two minutes only (core's tileErrors.test.ts).
+        let start = Date(timeIntervalSince1970: 10_000)
+        let outcomes = [(at: start, ok: false), (at: start.addingTimeInterval(1), ok: true)]
+        precondition(ConnectionRules.tileCounts(outcomes, now: start.addingTimeInterval(2)) == (2, 1))
+        precondition(ConnectionRules.tileCounts(outcomes, now: start.addingTimeInterval(ConnectionRules.tileWindow + 0.5)) == (1, 0))
+        precondition(ConnectionRules.tileCounts(outcomes, now: start.addingTimeInterval(ConnectionRules.tileWindow + 5)) == (0, 0))
+        // The backend's calls are the API's and the data service's, not tiles.
+        for path in ["/v3/status", "/lightning_cache", "/mesocyclones/all/", "/storms", "/cells/volumes", "/stations/observations", "/sweeps"] {
+            precondition(ConnectionRules.isBackend(path), path)
+        }
+        for path in ["/tiles/meteoradar/abc/6/33/21.png", "/tiles/v4/6/33/21.pbf"] { precondition(!ConnectionRules.isBackend(path), path) }
         precondition(ConnectionRules.outdated(newestObservation: 1000, period: nil, now: 1361))
         precondition(!ConnectionRules.outdated(newestObservation: 1000, period: nil, now: 1360))
 

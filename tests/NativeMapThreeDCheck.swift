@@ -4,7 +4,7 @@ import simd
 /// Checks the 3D storm map's rules, ported with core's own tests
 /// (`scripts/tests/stormFrame`, `volumeTiles`, `cloudFaintness`,
 /// `cloudFootprint`, `cloudSuccession`, `scans`, `tileStorms`, `cutaway`,
-/// `gpuBudget`), and the MapLibre camera it stands on.
+/// `gpuBudget`, `cloudStyle`), and the MapLibre camera it stands on.
 @main
 struct NativeMapThreeDCheck {
     static func near(_ actual: Double, _ expected: Double, _ within: Double, _ what: String = "",
@@ -81,7 +81,23 @@ struct NativeMapThreeDCheck {
         checkScans()
         checkCamera()
         checkStyle()
+        checkCloudStyle()
         print("NativeMapThreeDCheck: all checks passed")
+    }
+
+    // MARK: cloudStyle.test.ts
+
+    /// The shells' levels (`shellLevels`) are not ported: the map offers no shells.
+    static func checkCloudStyle() {
+        // A stored or linked style is taken as it is, and anything else is the cloud.
+        for style in CloudStyle.allCases { precondition(CloudStyle.of(style.rawValue) == style) }
+        precondition(CloudStyle.of("plasma") == .cloud)
+        precondition(CloudStyle.of(nil) == .cloud)
+        precondition(CloudStyle.of("true") == .cloud)
+        precondition(CloudStyle.of("shells") == .cloud, "core's shells are not on the map")
+        // The cloud is what a storm is measured above, whatever style it is drawn in.
+        precondition(CloudStyle.cloud.floor == CloudRules.dbzLow && CloudStyle.cloud.band == CloudRules.peelBand)
+        precondition(CloudStyle.glow.floor == 5 && CloudStyle.glow.band == 45 && StormVolume.glowFloor == CloudStyle.glow.floor)
     }
 
     // MARK: volumeTiles.test.ts

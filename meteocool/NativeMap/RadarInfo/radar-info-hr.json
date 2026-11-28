@@ -1,0 +1,78 @@
+{
+  "hrbil": {
+    "operator": "DHMZ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://vaisala.com/en/news/2021-03/enhancing-meteorological-monitoring-network-croatia-six-vaisala-weather-radars",
+      "https://meteohmd.hr/files/file/Aktivnosti/MeteoIzazovi/MI7/prezentacije/29-Ivatek-METMONIC.pdf",
+      "https://total-croatia-news.com/news/weather-service-full-radar/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "hrdeb": {
+    "operator": "DHMZ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://vaisala.com/en/news/2021-03/enhancing-meteorological-monitoring-network-croatia-six-vaisala-weather-radars",
+      "https://meteohmd.hr/files/file/Aktivnosti/MeteoIzazovi/MI7/prezentacije/29-Ivatek-METMONIC.pdf",
+      "https://www.novilist.hr/?p=726131",
+      "https://total-croatia-news.com/news/weather-service-full-radar/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "hrgol": {
+    "operator": "DHMZ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://vaisala.com/en/news/2021-03/enhancing-meteorological-monitoring-network-croatia-six-vaisala-weather-radars",
+      "https://meteohmd.hr/files/file/Aktivnosti/MeteoIzazovi/MI7/prezentacije/29-Ivatek-METMONIC.pdf",
+      "https://www.novilist.hr/?p=726131",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "hrgra": {
+    "operator": "DHMZ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2021",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://vaisala.com/en/news/2021-03/enhancing-meteorological-monitoring-network-croatia-six-vaisala-weather-radars",
+      "https://meteohmd.hr/files/file/Aktivnosti/MeteoIzazovi/MI7/prezentacije/29-Ivatek-METMONIC.pdf",
+      "https://total-croatia-news.com/news/weather-service-full-radar/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  },
+  "hrulj": {
+    "operator": "DHMZ",
+    "system": "Vaisala WRM200",
+    "band": "C",
+    "dualPol": true,
+    "since": "2022",
+    "towerM": null,
+    "photo": null,
+    "sources": [
+      "https://vaisala.com/en/news/2021-03/enhancing-meteorological-monitoring-network-croatia-six-vaisala-weather-radars",
+      "https://meteohmd.hr/files/file/Aktivnosti/MeteoIzazovi/MI7/prezentacije/29-Ivatek-METMONIC.pdf",
+      "https://total-croatia-news.com/news/weather-service-full-radar/",
+      "https://wrd.mgm.gov.tr/Radar/List"
+    ]
+  }
+}

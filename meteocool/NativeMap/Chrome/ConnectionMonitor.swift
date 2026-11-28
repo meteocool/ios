@@ -3,7 +3,11 @@
 //  meteocool
 //
 //  The native map's connection state and the status pill's word for it
-//  (core's `LiveIndicator.svelte`, `lib/connectionState.ts`).
+//  (core's `LiveIndicator.svelte`, `lib/connectionState.ts`,
+//  `lib/connectionStatus.ts`, `lib/degradedStatus.ts`): the network's path
+//  and how good it is (`lib/networkStatus.ts`, `lib/networkQuality.ts`,
+//  `lib/networkBanner.ts`), whether anything answers (`lib/reachability.ts`),
+//  and the requests' log (`lib/requestTiming.ts`).
 //
 
 import Foundation
@@ -16,6 +20,9 @@ final class NetworkLog: @unchecked Sendable {
     private let lock = NSLock()
     private var records: [RequestRecord] = []
     private var inFlight = 0
+    /// When each radar tile asked for landed or failed, within the window
+    /// (core's `lib/tileStatus.ts`).
+    private var tiles: [(at: Date, ok: Bool)] = []
 
     func started() { lock.withLock { inFlight += 1 } }
 
@@ -28,6 +35,20 @@ final class NetworkLog: @unchecked Sendable {
     }
 
     var snapshot: (records: [RequestRecord], inFlight: Int) { lock.withLock { (records, inFlight) } }
+
+    /// A radar tile asked for has landed or failed (`radarTileOutcome`).
+    func tileOutcome(_ ok: Bool, now: Date = Date()) {
+        lock.withLock {
+            tiles.append((now, ok))
+            let cut = now.addingTimeInterval(-ConnectionRules.tileWindow)
+            if let first = tiles.firstIndex(where: { $0.at >= cut }) { tiles.removeFirst(first) } else { tiles.removeAll() }
+        }
+    }
+
+    /// How many radar tiles were asked for in the window, and how many failed (`radarTileCounts`).
+    func tileCounts(now: Date = Date()) -> (asked: Int, failed: Int) {
+        lock.withLock { ConnectionRules.tileCounts(tiles, now: now) }
+    }
 
     /// The service a URL belongs to, as Connection Details groups them.
     static func service(of url: URL) -> String {
@@ -42,11 +63,19 @@ final class NetworkLog: @unchecked Sendable {
     }
 }
 
-/// The pill's state, in core's priority order.
+/// The pill's state, in core's priority order. `dataDown` and
+/// `dataDelayed` are the backend's verdict on what is under the middle of
+/// the screen (`StatusRules.headline`).
 enum PillState: Equatable {
-    case offline, catchingUp, degraded, stale, slow, time(Int), demo, live, none
-    /// A step of a past window: its date and time, and the way back to live.
-    case archive(Int)
+    case offline, catchingUp, degraded, dataDown, dataDelayed, stale, slow, time(Int), demo, live, none
+}
+
+/// A degraded criterion tripped: its id (core's `DegradedReason`), what the
+/// diagnostics call it, and why.
+struct DegradedReason: Equatable {
+    let id: String
+    let name: String
+    let reason: String
 }
 
 /// Watches the path, the requests and the radar's freshness, and says
@@ -60,15 +89,20 @@ final class ConnectionMonitor: ObservableObject {
     @Published private(set) var constrained = false
     @Published private(set) var expensive = false
     @Published private(set) var slow = false
-    @Published private(set) var degradedReasons: [(name: String, reason: String)] = []
+    @Published private(set) var degradedReasons: [DegradedReason] = []
     @Published private(set) var unreachable = false
 
     private let path = NWPathMonitor()
     private var timer: Timer?
     private var catchUpSince: Date?
     private var constrainedSince: Date?
-    /// The radar's freshness, from the player.
+    /// The map's own "we are behind", which holds catching up: a refetch
+    /// clears that, and nothing the map fetches clears the backend's verdict,
+    /// so not while the backend's status is trusted.
     var radarStale: () -> Bool = { false }
+    /// Whether the backend's status is trusted (`StatusFeed`): it knows what
+    /// should have come, so the map does not guess from the cadence.
+    var statusTrusted: () -> Bool = { false }
     var newestProcessed: () -> (newest: Int?, cadence: Int?) = { (nil, nil) }
 
     init() {
@@ -106,24 +140,34 @@ final class ConnectionMonitor: ObservableObject {
         let lastSilence = records.last { $0.status == nil }?.time
         unreachable = lastSilence.map { silence in lastAnswer.map { $0 < silence } ?? true } ?? false
 
-        var reasons: [(String, String)] = []
+        var reasons: [DegradedReason] = []
         let failing = ConnectionRules.failingEndpoints(records, now: now)
         if !failing.isEmpty {
-            reasons.append((CoreStrings.t("chrome.degraded.api_errors"),
-                            CoreStrings.t("chrome.degraded.api_errors_reason", ["endpoints": failing.joined(separator: ", ")])))
+            reasons.append(DegradedReason(id: "api-errors", name: CoreStrings.t("chrome.degraded.api_errors"),
+                                          reason: CoreStrings.t("chrome.degraded.api_errors_reason", ["endpoints": failing.joined(separator: ", ")])))
         }
         if let slow = ConnectionRules.slowResponses(records, now: now) {
-            reasons.append((CoreStrings.t("chrome.degraded.slow_responses"),
-                            CoreStrings.t("chrome.degraded.slow_responses_reason", ["p95": Int(slow.p95 * 1000), "count": slow.count])))
+            reasons.append(DegradedReason(id: "slow-responses", name: CoreStrings.t("chrome.degraded.slow_responses"),
+                                          reason: CoreStrings.t("chrome.degraded.slow_responses_reason",
+                                                                ["p95": Int(slow.p95 * 1000), "count": slow.count])))
         }
         let processed = newestProcessed()
-        if ConnectionRules.publishStalled(newestProcessed: processed.newest, cadence: processed.cadence, now: Int(now.timeIntervalSince1970)),
+        if ConnectionRules.publishStalled(newestProcessed: processed.newest, cadence: processed.cadence, now: Int(now.timeIntervalSince1970),
+                                          statusTrusted: statusTrusted()),
            let newest = processed.newest, let cadence = processed.cadence {
             let minutes = (Int(now.timeIntervalSince1970) - newest - cadence) / 60
-            reasons.append((CoreStrings.t("chrome.degraded.stale_publish"),
-                            CoreStrings.t("chrome.degraded.stale_publish_reason", ["minutes": minutes])))
+            reasons.append(DegradedReason(id: "stale-publish", name: CoreStrings.t("chrome.degraded.stale_publish"),
+                                          reason: CoreStrings.t("chrome.degraded.stale_publish_reason", ["minutes": minutes])))
         }
-        degradedReasons = reasons
+        // Clears itself as the failures age out of the window, or as tiles
+        // that land outnumber them.
+        let tiles = NetworkLog.shared.tileCounts(now: now)
+        if ConnectionRules.tilesFailing(asked: tiles.asked, failed: tiles.failed) {
+            reasons.append(DegradedReason(id: "tile-errors", name: CoreStrings.t("chrome.degraded.tile_errors"),
+                                          reason: CoreStrings.t("chrome.degraded.tile_errors_reason",
+                                                                ["failed": tiles.failed, "asked": tiles.asked])))
+        }
+        if reasons != degradedReasons { degradedReasons = reasons }
 
         // Slow: Low Data Mode, held five seconds before it shows (`SLOW_SETTLE_MS`).
         if constrained {
@@ -148,7 +192,7 @@ final class ConnectionMonitor: ObservableObject {
             catchUpSince = now
         case .catchingUp:
             let since = now.timeIntervalSince(catchUpSince ?? now)
-            if since >= ConnectionRules.catchUpMax || (since >= ConnectionRules.catchUpMin && inFlight == 0 && !radarStale()) {
+            if since >= ConnectionRules.catchUpMax || (since >= ConnectionRules.catchUpMin && inFlight == 0 && !(radarStale() && !statusTrusted())) {
                 connection = reasons.isEmpty ? .online : .degraded
                 catchUpSince = nil
             }
@@ -157,15 +201,28 @@ final class ConnectionMonitor: ObservableObject {
         }
     }
 
-    /// What the pill shows, given the step on screen.
-    func pillState(live: Bool, shownStep: Int?, replay: Bool, radarStale: Bool, hasTimeline: Bool, archive: Bool = false) -> PillState {
+    /// What the pill shows, given the step on screen and the backend's
+    /// verdict on what is under the middle of it (nil in a past window, and
+    /// without a status to trust).
+    func pillState(live: Bool, shownStep: Int?, replay: Bool, radarStale: Bool, hasTimeline: Bool, archive: Bool = false,
+                   headline: StatusRules.Headline? = nil) -> PillState {
         switch connection {
         case .offline: return .offline
         case .catchingUp: return .catchingUp
         case .degraded: return .degraded
         case .online: break
         }
-        if archive, let shownStep { return .archive(shownStep) }
+        // Radar that is not now any more under the middle of the screen, or
+        // anything else late there; a neighbour's sliver at the edge says nothing.
+        switch headline {
+        case .down: return .dataDown
+        case .delayed: return .dataDelayed
+        case nil: break
+        }
+        // A past window is the reader's choice, and the frame's tab says it
+        // and is the way out of it (`ArchiveFrame`): it outranks whatever is
+        // only about now, and leaves the pill nothing to say.
+        if archive { return .none }
         if radarStale { return .stale }
         if slow { return .slow }
         if !live, let shownStep { return .time(shownStep) }

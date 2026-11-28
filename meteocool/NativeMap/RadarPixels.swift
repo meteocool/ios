@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  Radar tiles from raw values to colour: core's `lib/valuePng.ts` and
-//  `lib/rvp6.ts`.
+//  `lib/rvp6.ts`, and echo tops' and VIL's tables (`lib/columnValues.ts`);
+//  the values in dBZ as `cmapUtils.test.ts` checks them.
 //
 
 import Foundation
@@ -133,6 +134,22 @@ enum GreyPNG {
     }
 }
 
+/// What a frame's bytes mean, its `values.encoding` (core's `lib/rvp6.ts`):
+/// RVP6 reflectivity, or an echo top's or VIL's (`ColumnEncoding`).
+enum ValueEncoding {
+    /// A frame whose tiles hold RVP6 bytes.
+    static let rvp6 = "rvp6-u8"
+
+    /// Whether tiles in `encoding` hold values this client draws, RVP6 or a
+    /// column product's, rather than colours (`carriesValues`).
+    static func carriesValues(_ encoding: String?) -> Bool {
+        encoding == rvp6 || ColumnEncoding(encoding: encoding) != nil
+    }
+
+    /// An RVP6 byte as dBZ: half a dBZ a step from -32.5 (`rvp6ToDbz`).
+    static func dbz(_ byte: Int) -> Double { Double(byte) / 2 - 32.5 }
+}
+
 /// A palette as a 256-entry lookup from a tile's byte to a premultiplied
 /// RGBA pixel (core's `cmap_utils.ts`): 0 and everything below the table's
 /// `leftPad` transparent, everything past its end the last colour.
@@ -149,17 +166,32 @@ struct RadarLUT: Sendable, Equatable {
     /// R, G, B, A in memory order (little-endian `UInt32`).
     let entries: [UInt32]
 
-    /// The palette and its ink, as caches key it.
-    var id: String { ink.map { "\(name)~\($0.rawValue)" } ?? name }
+    /// The palette and its ink, as caches key it; an encoding's own table by
+    /// that encoding.
+    var id: String {
+        let base = encoding == ValueEncoding.rvp6 ? name : encoding
+        return ink.map { "\(base)~\($0.rawValue)" } ?? base
+    }
 
     /// The dBZ the grey runs between, from its faintest to full ink (`GREY_FROM_DBZ`, `GREY_TO_DBZ`).
     static let greyFromDbz = 5.0
     static let greyToDbz = 50.0
 
+    /// What the tiles are coloured for: RVP6 in a palette, or an echo top's
+    /// or VIL's own table (`valueTable`).
+    let encoding: String
+
+    /// The grey `t` of the way from an ink's faintest, 0, to full ink, 1 (`inkGrey`).
+    static func inkGrey(_ t: Double, ink: Ink) -> Int {
+        let (faint, full) = ink == .black ? (160.0, 0.0) : (120.0, 255.0)
+        return Int((faint + (full - faint) * t).rounded())
+    }
+
     init(palette: String, ink: Ink? = nil) {
         let table = ColormapTables.tables[palette] ?? ColormapTables.tables["classic"]!
         name = ColormapTables.tables[palette] == nil ? "classic" : palette
         self.ink = ink
+        encoding = ValueEncoding.rvp6
         var entries = [UInt32](repeating: 0, count: 256)
         for value in 1 ..< 256 where value >= table.leftPad && !table.rgba.isEmpty {
             let packed = table.rgba[min(value - table.leftPad, table.rgba.count - 1)]
@@ -168,13 +200,45 @@ struct RadarLUT: Sendable, Equatable {
             if let ink {
                 // Grey running with dBZ, each class's alpha kept (core's `greyTable`).
                 let t = min(1, max(0, (Double(value) / 2 - 32.5 - Self.greyFromDbz) / (Self.greyToDbz - Self.greyFromDbz)))
-                let (faint, full) = ink == .black ? (160.0, 0.0) : (120.0, 255.0)
-                let grey = UInt32((faint + (full - faint) * t).rounded())
+                let grey = UInt32(Self.inkGrey(t, ink: ink))
                 (r, g, b) = (grey, grey, grey)
             }
             entries[value] = r * a / 255 | (g * a / 255) << 8 | (b * a / 255) << 16 | a << 24
         }
         self.entries = entries
+    }
+
+    /// The table a frame's bytes are drawn in by what its encoding says they
+    /// are (core's `valueTable`): reflectivity in the reader's palette, an
+    /// echo top or VIL in its own whatever the palette, either in grey with
+    /// an ink. An encoding this client does not know draws nothing rather
+    /// than be read as dBZ.
+    init(encoding: String, palette: String, ink: Ink? = nil) {
+        guard encoding != ValueEncoding.rvp6 else {
+            self.init(palette: palette, ink: ink)
+            return
+        }
+        let table = ColumnEncoding(encoding: encoding).map { column in ink.map { Self.columnGreyTable(column, ink: $0) } ?? column.table }
+            ?? [ValueColour](repeating: .clear, count: 256)
+        self.init(name: ColormapTables.tables[palette] == nil ? "classic" : palette, ink: ink, encoding: encoding, entries: table.map { c in
+            let a = UInt32(c.a)
+            return UInt32(c.r) * a / 255 | (UInt32(c.g) * a / 255) << 8 | (UInt32(c.b) * a / 255) << 16 | a << 24
+        })
+    }
+
+    private init(name: String, ink: Ink?, encoding: String, entries: [UInt32]) {
+        (self.name, self.ink, self.encoding, self.entries) = (name, ink, encoding, entries)
+    }
+
+    /// An echo top's or VIL's table in grey, as reflectivity's under an open
+    /// radar's sweep (`columnGreyTable`): each byte's alpha kept, its grey
+    /// running along its legend from the ink's faintest to full ink.
+    static func columnGreyTable(_ encoding: ColumnEncoding, ink: Ink) -> [ValueColour] {
+        let scale = encoding.scale
+        return encoding.table.enumerated().map { byte, colour in
+            let grey = inkGrey(encoding.value(byte).map(scale.position) ?? 0, ink: ink)
+            return ValueColour(grey, grey, grey, colour.a)
+        }
     }
 
     /// The tile in colour, nil for one with nothing to draw.

@@ -165,6 +165,26 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertEqual(playButton.value as? String, "paused")
     }
 
+    /// The loop keeps playing while the map is panned and zoomed: a step
+    /// is not held for pictures of a view the map is only passing through.
+    func testPlayingGoesOnWhileTheMapMoves() {
+        launch(link: "?latLonZ=47.0,8.0,7", demo: true)
+        waitForSeries()
+        playButton.tap()
+        XCTAssertEqual(playButton.value as? String, "playing")
+        var seen = Set<String>()
+        for i in 0 ..< 6 {
+            let from = map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+            let to = map.coordinate(withNormalizedOffset: CGVector(dx: i % 2 == 0 ? 0.3 : 0.7, dy: 0.45))
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+            if let value = timeline.value as? String { seen.insert(value) }
+            if i == 3 { map.pinch(withScale: 1.6, velocity: 1) }
+        }
+        XCTAssertGreaterThan(seen.count, 2, "Played on while the map moved: \(seen)")
+        XCTAssertEqual(playButton.value as? String, "playing")
+        playButton.tap()
+    }
+
     func testScrubbingBackAndBackToNow() {
         launch()
         waitForSeries()
@@ -255,20 +275,35 @@ final class NativeMapUITests: XCTestCase {
         let open = app.buttons["nativeMap.archive.open"].firstMatch
         XCTAssertTrue(open.waitForExistence(timeout: 20), "Open, once the archive has answered")
         XCTAssertTrue(open.isEnabled)
+        // The system's calendar, start and length, in core's words; it starts
+        // on the last three hours kept, 37 frames.
+        // Up to its large detent: the start and length are under the calendar,
+        // and at the largest text sizes the calendar under the lede.
+        element("nativeMap.archive.sheet").swipeUp()
+        XCTAssertTrue(element("nativeMap.archive.day").waitForExistence(timeout: 5), "The day")
+        for _ in 0 ..< 4 where !element("nativeMap.archive.start").exists { element("nativeMap.archive.sheet").swipeUp() }
+        XCTAssertTrue(element("nativeMap.archive.start").waitForExistence(timeout: 5), "The start")
+        XCTAssertTrue(element("nativeMap.archive.length").exists, "The length")
+        let summary = element("nativeMap.archive.summary")
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertTrue(summary.label.hasSuffix(", 37 frames"), "Three hours: \(summary.label)")
+        screenshot("archive picker")
         open.tap()
         // The window's steps: clock times, never offsets from now.
         let clock = { (value: String) in value.contains(":") && !value.hasPrefix("-") && !value.hasPrefix("+") }
         XCTAssertTrue(waitForValue(timeline, timeout: 60, clock), "In the window: \(timeline.value ?? "")")
         screenshot("archive window")
-        let back = element("nativeMap.backToNow")
+        // The frame's tab is the way back to live.
+        let back = element("nativeMap.archive.tab.live")
         XCTAssertTrue(back.waitForExistence(timeout: 5), "The way back to live")
         back.tap()
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
     }
 
     /// A link to a past window (`from=`, `to=`, `t=`, as core writes it)
-    /// opens the map in it, on its frame. Three hours back: within the day
-    /// staging keeps even without the archive.
+    /// opens the map in it, on its frame, framed, its tab on the top line
+    /// naming the step in place of the pill. Three hours back: within the
+    /// day staging keeps even without the archive.
     func testWindowLinkOpensThePast() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
@@ -281,16 +316,28 @@ final class NativeMapUITests: XCTestCase {
         clock.dateFormat = "HH:mm"
         let shown = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 1800)))
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { $0.hasSuffix(shown) }, "On the linked step \(shown): \(timeline.value ?? "")")
-        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 5))
-        XCTAssertTrue(element("nativeMap.backToNow").waitForExistence(timeout: 5), "The way back to live")
+        let tab = element("nativeMap.archive.tab")
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "The frame's tab")
+        XCTAssertTrue(tab.label.hasPrefix("Archive, ") && tab.label.hasSuffix(shown), "Names the step: \(tab.label)")
+        // The pill has nothing to say in the past, nor "Back to now" below.
+        XCTAssertFalse(element("nativeMap.pill").exists, "No pill in a window")
+        XCTAssertFalse(element("nativeMap.backToNow").exists, "The tab is the way back")
         screenshot("archive link")
         // Scrubbing stays inside the window: its first step at the far left.
         timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.4)).tap()
         let first = clock.string(from: Date(timeIntervalSince1970: TimeInterval(end - 3600)))
         XCTAssertTrue(waitForValue(timeline) { $0.hasSuffix(first) }, "At the window's start \(first): \(timeline.value ?? "")")
-        // The pill leaves the window.
-        element("nativeMap.pill").tap()
+        XCTAssertTrue(tab.label.hasSuffix(first), "The tab follows the step: \(tab.label)")
+        // The tab opens the picker.
+        tab.tap()
+        XCTAssertTrue(element("nativeMap.archive.sheet").waitForExistence(timeout: 10), "The archive's sheet")
+        app.buttons["nativeMap.archive.close"].firstMatch.tap()
+        XCTAssertTrue(element("nativeMap.archive.sheet").waitForNonExistence(timeout: 5))
+        // Its cross leaves the window, and the pill is back.
+        element("nativeMap.archive.tab.live").tap()
         XCTAssertTrue(waitForValue(timeline, timeout: 60) { !$0.contains(":") && !$0.isEmpty }, "Live again: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.pill").waitForExistence(timeout: 5), "The pill again")
+        XCTAssertFalse(tab.exists, "No tab live")
     }
 
     /// A link to a point opens with its ring and its readings.
@@ -377,15 +424,110 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.explainer").waitForNonExistence(timeout: 5))
     }
 
-    func testStatusPillOpensConnectionDetails() {
+    /// The echo tops and VIL: their own group in the menu, each drawn with a
+    /// legend in its own unit, and reflectivity's legend again on a step it
+    /// does not draw (core's `column-products.spec.ts`).
+    func testEchoTopsAndVILHaveTheirOwnLegend() {
+        launch(demo: true)
+        waitForSeries()
+        XCTAssertTrue(element("nativeMap.legend").exists)
+        func choose(_ product: String) {
+            element("nativeMap.productPill").tap()
+            let menu = element("nativeMap.productMenu")
+            XCTAssertTrue(menu.waitForExistence(timeout: 5))
+            let row = element("nativeMap.product.\(product)")
+            for _ in 0 ..< 4 where !row.isHittable { menu.swipeUp() }
+            XCTAssertTrue(row.waitForExistence(timeout: 5), product)
+            row.tap()
+            XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+        }
+        element("nativeMap.productPill").tap()
+        let menu = element("nativeMap.productMenu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        // The third group, below the first two.
+        for _ in 0 ..< 4 where !element("nativeMap.product.vil").isHittable { menu.swipeUp() }
+        for product in ["echotop18", "echotop45", "echotop50", "vil"] {
+            XCTAssertTrue(element("nativeMap.product.\(product)").exists, product)
+        }
+        XCTAssertTrue(app.staticTexts["Echo Tops & VIL"].exists)
+        app.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(element("nativeMap.productMenu").waitForNonExistence(timeout: 5))
+
+        choose("echotop18")
+        let column = element("nativeMap.columnLegend")
+        XCTAssertTrue(column.waitForExistence(timeout: 20), "The echo top's own legend")
+        XCTAssertEqual(column.value as? String, "km")
+        XCTAssertFalse(element("nativeMap.legend").exists)
+        screenshot("echo top")
+
+        // The forecast is WN's whatever is chosen: read in dBZ.
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.4)).tap()
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("+") }, "On the forecast: \(timeline.value ?? "")")
+        XCTAssertTrue(element("nativeMap.legend").waitForExistence(timeout: 5))
+        XCTAssertFalse(column.exists)
+        element("nativeMap.backToNow").tap()
+        XCTAssertTrue(column.waitForExistence(timeout: 5))
+
+        choose("vil")
+        XCTAssertTrue(waitForValue(column) { $0 == "kg/m²" }, "VIL's own legend: \(column.value ?? "")")
+        screenshot("VIL")
+    }
+
+    /// The pill opens the status sheet, what it sums up in sentences, and
+    /// Connection Details behind its last row.
+    func testStatusPillOpensTheStatusSheet() {
         launch()
         waitForSeries()
         element("nativeMap.pill").tap()
+        let sheet = element("nativeMap.statusSheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        // Staging answers /v3/status: what is late here, or that everything arrives.
+        XCTAssertTrue(element("nativeMap.status.arriving").waitForExistence(timeout: 10)
+            || app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.status.late.'")).count > 0,
+            "The backend's verdict")
+        screenshot("status sheet")
+        let details = element("nativeMap.status.details")
+        for _ in 0 ..< 3 where !details.exists { sheet.swipeUp() }
+        details.tap()
         XCTAssertTrue(element("nativeMap.connectionDetails").waitForExistence(timeout: 5))
         screenshot("connection details")
-        element("nativeMap.connectionDetails").buttons["Close"].firstMatch.tap()
-        XCTAssertTrue(element("nativeMap.connectionDetails").waitForNonExistence(timeout: 5))
+        element("nativeMap.status.close").tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
     }
+
+    /// The backend's verdict (`MC_STATUS`): Poland's radar down under the
+    /// middle of the screen is "Out of date" on the pill and "not coming in"
+    /// above the tray; a warning of ours comes first; the sheet lists it all.
+    func testStatusSaysWhatIsLateHere() {
+        let now = Int(Date().timeIntervalSince1970)
+        app.launchEnvironment["MC_STATUS"] = """
+        {"server_time": \(now), "replay": false, "notices": [{"id": "ui-test", "level": "warning", "domains": null, "starts": \(now - 60),
+         "ends": null, "text": {"en": "Poland's radars are being serviced."}}],
+         "components": [{"kind": "radar", "domain": "de", "state": "ok", "newest": \(now - 300)},
+                        {"kind": "radar", "domain": "pl", "state": "down", "newest": \(now - 3600), "since": \(now - 2700)}]}
+        """
+        launch(link: "?latLonZ=52.2,19.5,7")
+        waitForSeries()
+        let pill = element("nativeMap.pill")
+        XCTAssertTrue(waitForLabel(pill, timeout: 20) { $0 == "Out of date" }, "The pill: \(pill.label)")
+        let notice = element("nativeMap.strip.notice")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "Our warning first")
+        XCTAssertTrue(notice.staticTexts["Poland's radars are being serviced."].exists)
+        screenshot("status notice")
+        notice.buttons["Close"].firstMatch.tap()
+        let stopped = element("nativeMap.strip.feedStopped")
+        XCTAssertTrue(stopped.waitForExistence(timeout: 5), "Then the radar's notice")
+        pill.tap()
+        XCTAssertTrue(element("nativeMap.statusSheet").waitForExistence(timeout: 5))
+        let late = element("nativeMap.status.late.radar.pl")
+        // Under the notice; at the largest text sizes, further down the sheet.
+        for _ in 0 ..< 3 where !late.waitForExistence(timeout: 2) { element("nativeMap.statusSheet").swipeUp() }
+        XCTAssertTrue(late.waitForExistence(timeout: 5), "Poland's radar listed")
+        XCTAssertTrue(late.label.contains("Poland") && late.label.contains("Nothing new since"), late.label)
+        XCTAssertTrue(element("nativeMap.status.notice").exists, "The notice in the sheet")
+        screenshot("status sheet late")
+    }
+
 
     func testNoForecastStripWhereNoRunHasComeIn() {
         // France without its nowcast, as when a run has not come in: past
@@ -401,6 +543,30 @@ final class NativeMapUITests: XCTestCase {
         screenshot("no forecast here")
         strip.buttons["Close"].firstMatch.tap()
         XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
+    }
+
+    /// A network whose radar has stopped arriving (here Poland's, as the
+    /// series would leave it: no frame, no nowcast), by the map's own rules,
+    /// says so where it draws,
+    /// on the live step and in place of "No Forecast Here" past it.
+    func testStalledNetworkSaysRadarNotComingIn() {
+        app.launchEnvironment["MC_STALLED_NETWORKS"] = "pl"
+        // A backend without /v3/status: the map's own rules judge.
+        app.launchEnvironment["MC_STATUS"] = "404"
+        launch(link: "?latLonZ=52.2,19.5,7")
+        waitForSeries()
+        let strip = element("nativeMap.strip.feedStopped")
+        XCTAssertTrue(strip.waitForExistence(timeout: 15), "Radar data not coming in")
+        XCTAssertTrue(strip.staticTexts["Radar Data Not Coming In"].exists)
+        screenshot("radar feed stopped")
+        let middle = timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        middle.press(forDuration: 0.05, thenDragTo: timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.4)))
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("+") }, "Into the forecast: \(timeline.value ?? "")")
+        XCTAssertTrue(strip.exists, "Still the feed's notice")
+        XCTAssertFalse(element("nativeMap.strip.noForecast").exists, "Not \"No Forecast Here\"")
+        strip.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(strip.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element("nativeMap.strip.noForecast").exists, "Dismissed, it still is the reason")
     }
 
     func testSharedLinkSaysHowOld() {
@@ -604,14 +770,17 @@ final class NativeMapUITests: XCTestCase {
     /// the tests' view of southern France (44° N, 3.5° E at zoom 7), else
     /// anywhere. Its replay moves on, and a tie on the newest picked a storm
     /// off Ireland.
-    private func demoStormFeature() -> [String: Any]? {
+    private func demoStormFeature(active: Bool = false) -> [String: Any]? {
         let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
         guard let answer = demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any],
               let storms = answer["features"] as? [[String: Any]] else { return nil }
         func properties(_ storm: [String: Any]) -> [String: Any] { storm["properties"] as? [String: Any] ?? [:] }
         func point(_ storm: [String: Any]) -> [Double] { (storm["geometry"] as? [String: Any])?["coordinates"] as? [Double] ?? [] }
         let newest = storms.compactMap { properties($0)["last_seen"] as? String }.max()
-        let latest = storms.filter { properties($0)["last_seen"] as? String == newest && point($0).count >= 2 }
+        let latest = storms.filter { storm in
+            properties(storm)["last_seen"] as? String == newest && point(storm).count >= 2
+                && (!active || properties(storm)["status"] as? String == "active")
+        }
         let near = latest.filter { abs(point($0)[1] - 44) < 1.5 && abs(point($0)[0] - 3.5) < 2 }
         return (near.isEmpty ? latest : near).max { (properties($0)["peak_dbz"] as? Double ?? 0) < (properties($1)["peak_dbz"] as? Double ?? 0) }
     }
@@ -686,6 +855,169 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(hint.waitForExistence(timeout: 5))
         element("nativeMap.storm.hint.clear").tap()
         XCTAssertTrue(hint.waitForNonExistence(timeout: 5))
+    }
+
+    /// A tap on a mesocyclone opens the storm it turns in: the tracked one
+    /// nearest it. One detection 4 km east of the demo's storm and 3 km
+    /// north, as EPSG:3857 metres the way the feed files them: too far off
+    /// for a tap on it to be a tap on the storm's own mark.
+    func testMesocycloneTapOpensTheStormItTurnsIn() throws {
+        let feature = try XCTUnwrap(demoStormFeature(active: true), "The demo lists storms")
+        let id = try XCTUnwrap((feature["properties"] as? [String: Any])?["id"] as? String)
+        let point = try XCTUnwrap((feature["geometry"] as? [String: Any])?["coordinates"] as? [Double])
+        let storm = (lat: point[1], lon: point[0])
+        let x = storm.lon * .pi * 6_378_137 / 180
+        let y = log(tan(.pi / 4 + storm.lat * .pi / 360)) * 6_378_137
+        let scale = 1 / cos(storm.lat * .pi / 180)
+        app.launchEnvironment["MC_MESOCYCLONES"] = "[{\"intensity\":3,\"lon\":\(x + 4000 * scale),\"lat\":\(y + 3000 * scale)}]"
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),10", demo: true)
+        waitForSeries()
+        let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+        // Only a storm still being seen takes a mesocyclone: the demo's
+        // newest storms now and then lag its newest scan by more than that.
+        let disc = element("nativeMap.storm.\(id)")
+        guard waitForValue(disc, timeout: 15, { $0.contains("live") }) else {
+            throw XCTSkip("The demo's storm \(id) is not live on the map now (\(disc.value ?? "none"))")
+        }
+        let meso = element("nativeMap.mesocyclone")
+        XCTAssertTrue(meso.waitForExistence(timeout: 15), "The mesocyclone on the map")
+        meso.tap()
+        screenshot("mesocyclone tapped")
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let hint = element("nativeMap.storm.hint")
+            XCTAssertTrue(hint.waitForExistence(timeout: 10), "The storm it turns in, picked")
+            element("nativeMap.storm.hint.details").tap()
+        }
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10), "Its panel")
+        let picked = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01' AND selected == true"))
+        XCTAssertEqual(picked.count, 1, "One storm opened")
+        screenshot("mesocyclone storm")
+    }
+
+    /// The storms' discs on screen, by id, with their frames and values (a
+    /// debug build's value says "quiet" for a quiet dot), from one snapshot.
+    private func stormDiscs() -> [(id: String, frame: CGRect, value: String)] {
+        var discs: [(id: String, frame: CGRect, value: String)] = []
+        func collect(_ node: XCUIElementSnapshot) {
+            if node.identifier.hasPrefix("nativeMap.storm.01") {
+                discs.append((String(node.identifier.dropFirst("nativeMap.storm.".count)), node.frame, node.value as? String ?? ""))
+            }
+            node.children.forEach(collect)
+        }
+        if let snapshot = try? app.snapshot() { collect(snapshot) }
+        return discs
+    }
+
+    /// Only the storms the backend calls notable are marked in full; the
+    /// rest are quiet dots, which still open, and are drawn in full while
+    /// they are.
+    func testQuietStormsAreDotsThatStillOpen() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        var quiet: (id: String, frame: CGRect, value: String)?
+        for zoom in [8, 9] where quiet == nil {
+            launch(link: "?latLonZ=\(storm.lat),\(storm.lon),\(zoom)", demo: true)
+            waitForSeries()
+            let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+            XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+            let screen = app.windows.firstMatch.frame
+            let deadline = Date().addingTimeInterval(10)
+            while quiet == nil, Date() < deadline {
+                let all = stormDiscs()
+                let tags = markFrames().tags
+                quiet = all.first { disc in
+                    disc.value.contains("quiet")
+                        && disc.frame.midX > screen.width * 0.08 && disc.frame.midX < screen.width * 0.8
+                        && disc.frame.midY > screen.height * 0.17 && disc.frame.midY < screen.height * 0.65
+                        && !tags.contains { $0.insetBy(dx: -6, dy: -6).intersects(disc.frame) }
+                        && !all.contains { $0.id != disc.id && $0.frame.insetBy(dx: -4, dy: -4).intersects(disc.frame) }
+                }
+                if quiet == nil { RunLoop.current.run(until: Date().addingTimeInterval(1)) }
+            }
+            if quiet == nil {
+                XCTAssertTrue(stormDiscs().contains { !$0.value.contains("quiet") }, "The notable storms marked in full")
+                app.terminate()
+            }
+        }
+        let target = try XCTUnwrap(quiet, "A quiet storm in view")
+        XCTAssertTrue(stormDiscs().contains { !$0.value.contains("quiet") }, "The notable storms marked in full")
+        screenshot("quiet storms and systems")
+        app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: target.frame.midX, dy: target.frame.midY)).tap()
+        let disc = element("nativeMap.storm.\(target.id)")
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline, !(disc.exists && disc.isSelected) { RunLoop.current.run(until: Date().addingTimeInterval(0.3)) }
+        XCTAssertTrue(disc.isSelected, "The quiet storm opened")
+        XCTAssertFalse((disc.value as? String ?? "").contains("quiet"), "Drawn in full while open")
+        screenshot("quiet storm opened")
+        // Its panel names its system, when the demo groups it with others.
+        if UIDevice.current.userInterfaceIdiom == .phone, element("nativeMap.storm.hint.details").waitForExistence(timeout: 5) {
+            element("nativeMap.storm.hint.details").tap()
+        }
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10))
+        let since = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3 * 3600))
+        let storms = (demoJSON("storms?bbox=-10,35,30,60&since=\(since)") as? [String: Any])?["features"] as? [[String: Any]] ?? []
+        let groups = (demoJSON("storms/groups?bbox=-10,35,30,60&since=\(since)") as? [String: Any])?["features"] as? [[String: Any]] ?? []
+        let group = storms.compactMap { $0["properties"] as? [String: Any] }.first { $0["id"] as? String == target.id }?["group"] as? String
+        let size = groups.first { $0["id"] as? String == group }.flatMap { ($0["properties"] as? [String: Any])?["storms"] as? [Any] }?.count ?? 0
+        if size >= 2 {
+            let system = element("nativeMap.storm.readings").descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS[c] 'system' AND label CONTAINS 'storms'")).firstMatch
+            for _ in 0 ..< 3 where !system.exists { element("nativeMap.storm.details").swipeUp() }
+            XCTAssertTrue(system.waitForExistence(timeout: 10), "The panel names its system of \(size)")
+            screenshot("quiet storm system")
+        }
+    }
+
+    /// A backend from before ratings and groups, whose `/storms/groups`
+    /// answers 404 or 422: every storm marked as before, no outline, and
+    /// nothing said about it.
+    func testOlderBackendMarksEveryStormAsBefore() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        for status in ["404", "422"] {
+            app.launchEnvironment["MC_OLDER_STORMS"] = status
+            launch(link: "?latLonZ=\(storm.lat),\(storm.lon),8", demo: true)
+            waitForSeries()
+            let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+            XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+            RunLoop.current.run(until: Date().addingTimeInterval(2))
+            let all = stormDiscs()
+            XCTAssertGreaterThan(all.count, 1, status)
+            XCTAssertFalse(all.contains { $0.value.contains("quiet") }, "\(status): every storm marked in full")
+            XCTAssertFalse(element("nativeMap.toast").exists, "\(status): nothing said about it")
+            screenshot("older backend \(status)")
+            app.terminate()
+        }
+    }
+
+    /// A step back eases the storms: one that moved slides to where it was
+    /// then rather than jumping there. The transition is slowed down to be
+    /// watched (`MC_STORM_EASE_MS`).
+    func testAStepBackSlidesTheStorms() throws {
+        let storm = try XCTUnwrap(demoStorm(), "The demo lists storms")
+        app.launchEnvironment["MC_STORM_EASE_MS"] = "6000"
+        launch(link: "?latLonZ=\(storm.lat),\(storm.lon),9", demo: true)
+        waitForSeries()
+        let discs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'nativeMap.storm.01'"))
+        XCTAssertTrue(discs.firstMatch.waitForExistence(timeout: 30), "The demo replays a storm")
+        // Settled on the first answer, drawn at once.
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        func centres() -> [String: CGPoint] {
+            Dictionary(stormDiscs().map { ($0.id, CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }) { first, _ in first }
+        }
+        let before = centres()
+        // Ten minutes back: one step, long after the last.
+        timeline.coordinate(withNormalizedOffset: CGVector(dx: 0.5 - 10.0 / 240, dy: 0.4)).tap()
+        XCTAssertTrue(waitForValue(timeline) { $0.hasPrefix("-") }, "Stepped back: \(timeline.value ?? "")")
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        let midway = centres()
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        let after = centres()
+        let slid = midway.keys.filter { id in
+            guard let a = before[id], let m = midway[id], let b = after[id], hypot(b.x - a.x, b.y - a.y) > 4 else { return false }
+            // On its way: off where it was and short of where it went.
+            return hypot(m.x - a.x, m.y - a.y) > 1 && hypot(b.x - m.x, b.y - m.y) > 1
+        }
+        XCTAssertFalse(slid.isEmpty, "A storm caught sliding (\(before.count) before, \(after.count) after)")
     }
 
     // MARK: - Storm cores
@@ -811,10 +1143,19 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         screenshot("core opened from its tag")
-        // A detour: closing the core goes back to the flat map.
+        // A detour: closing the core leaves the reader on the 3D map, and
+        // the button under the top line takes them back to the radar.
+        let back = app.buttons["nativeMap.3d.back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "The way back to the main map")
+        XCTAssertEqual(back.label, "Back to main map")
         element("nativeMap.storm.close").tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        XCTAssertTrue(element("nativeMap.3d").exists, "Still on the 3D map")
+        screenshot("3D map with its way back")
+        back.tap()
         XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(back.exists, "No way back from the main map")
     }
 
     /// The flat map opened at `core`: where to tap a "3D" tag in view, clear
@@ -900,6 +1241,12 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(dial.waitForExistence(timeout: 30), "The slice dial")
         XCTAssertTrue(element("nativeMap.storm.cappi").waitForExistence(timeout: 30))
         screenshot("storm cut on the 3D map")
+        // Back to the main map with the storm still open, on the flat map's sheet.
+        let back = app.buttons["nativeMap.3d.back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForNonExistence(timeout: 10))
+        XCTAssertTrue(element("nativeMap.storm.details").waitForExistence(timeout: 10), "The storm stays open")
     }
 
     /// A KONRAD3D cell measured in three layers, as `/cells/tracks/{code}`
@@ -1067,6 +1414,29 @@ final class NativeMapUITests: XCTestCase {
         screenshot("cell panel bottom")
     }
 
+    /// The panel's words can be copied (core's `.mc-selectable`): a long
+    /// press on its text offers Copy, and the panel stays open and scrolls.
+    func testPanelTextCanBeCopied() {
+        let code = "2026102012009999999999"
+        app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
+        launch(link: "?latLonZ=48.14,11.56,9&cell=\(code)")
+        let details = element("nativeMap.storm.details")
+        XCTAssertTrue(details.waitForExistence(timeout: 30))
+        let facts = element("nativeMap.storm.facts")
+        for _ in 0 ..< 6 where !facts.exists { details.swipeUp() }
+        XCTAssertTrue(facts.waitForExistence(timeout: 5))
+        let text = facts.staticTexts.firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.press(forDuration: 1.2)
+        let copy = app.menuItems["Copy"].firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 5), "Copy offered")
+        screenshot("panel text copied")
+        copy.tap()
+        XCTAssertTrue(details.exists, "Still open")
+        details.swipeDown()
+        XCTAssertTrue(details.exists)
+    }
+
     func testCellPanelShowsItsMeasuredStructure() {
         let code = "2026102012009999999999"
         app.launchEnvironment["MC_CELL_FIXTURE"] = Self.cellFixture(code: code)
@@ -1084,6 +1454,85 @@ final class NativeMapUITests: XCTestCase {
     private func openLayers() {
         app.buttons["map.layers"].tap()
         XCTAssertTrue(element("nativeMap.layers").waitForExistence(timeout: 5))
+    }
+
+    /// The storm key opened from its pill, and its switch for `row` scrolled to.
+    private func stormKeySwitch(_ row: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        let pill = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), file: file, line: line)
+        if !element("nativeMap.stormKey").exists { pill.tap() }
+        XCTAssertTrue(element("nativeMap.stormKey").waitForExistence(timeout: 5), file: file, line: line)
+        let toggle = app.switches["nativeMap.stormKey.\(row)"].firstMatch
+        for _ in 0 ..< 5 where !(toggle.exists && toggle.isHittable) { element("nativeMap.stormKey").swipeUp() }
+        XCTAssertTrue(toggle.exists, row, file: file, line: line)
+        return toggle
+    }
+
+    private func closeStormKey() {
+        element("nativeMap.stormKey.close").tap()
+        XCTAssertTrue(element("nativeMap.stormKey").waitForNonExistence(timeout: 5))
+    }
+
+    /// Rain Motion: off until it is turned on with the other overlays, then
+    /// the arrows over the radar (core's `motion.spec.ts`); greyed in a past
+    /// window, which has no motion of its own.
+    func testRainMotionIsOffUntilTurnedOn() {
+        // Over the demo's rain, south of the Alps.
+        launch(link: "?latLonZ=44.3,8.8,6", demo: true)
+        waitForSeries()
+        openLayers()
+        let motion = app.switches["nativeMap.layers.motion"].firstMatch
+        XCTAssertTrue(motion.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertEqual(motion.value as? String, "0", "Off by default")
+        motion.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(motion) { $0 == "1" }, "Turned on")
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(element("nativeMap.layers").waitForNonExistence(timeout: 5))
+        RunLoop.current.run(until: Date().addingTimeInterval(6))
+        screenshot("rain motion")
+        // Kept: the next time the overlays open it is still on.
+        openLayers()
+        XCTAssertEqual(app.switches["nativeMap.layers.motion"].firstMatch.value as? String, "1")
+    }
+
+    /// What has no past is greyed in a window (core's `NO_PAST`), its switch
+    /// kept for live: rain motion, mesocyclones, the radars' marks, and the
+    /// storm key's mesocyclones.
+    func testRainMotionIsGreyedInAPastWindow() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmm'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        let end = (Int(Date().timeIntervalSince1970) - 3 * 3600) / 300 * 300
+        func link(_ seconds: Int) -> String { formatter.string(from: Date(timeIntervalSince1970: TimeInterval(seconds))) }
+        launch(link: "?latLonZ=48.14,11.58,7&from=\(link(end - 3600))&to=\(link(end))")
+        waitForSeries()
+        XCTAssertTrue(element("nativeMap.archive.tab").waitForExistence(timeout: 30), "In the window")
+        openLayers()
+        let motion = app.switches["nativeMap.layers.motion"].firstMatch
+        XCTAssertTrue(motion.waitForExistence(timeout: 5))
+        for _ in 0 ..< 4 where !motion.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertFalse(motion.isEnabled, "No motion in the past")
+        XCTAssertTrue(motion.label.contains("Not kept in the archive"), "Says why: \(motion.label)")
+        // Nor the radars' marks; the rest answer for the step. Mesocyclones
+        // switch from the storm key alone, below.
+        let sites = app.switches["nativeMap.layers.sites"].firstMatch
+        XCTAssertTrue(sites.exists)
+        XCTAssertFalse(sites.isEnabled, "No radars' marks in the past")
+        XCTAssertTrue(app.switches["nativeMap.layers.storms"].firstMatch.isEnabled, "Storms have a past")
+        element("nativeMap.layers.close").tap()
+        // The storm key's mesocyclone switch too, saying why.
+        let key = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(key.waitForExistence(timeout: 10))
+        key.tap()
+        let mesocyclones = app.switches["nativeMap.stormKey.mesocyclone"].firstMatch
+        XCTAssertTrue(element("nativeMap.stormKey").waitForExistence(timeout: 5))
+        // The key's last row, under the fold of a lazy list.
+        for _ in 0 ..< 5 where !(mesocyclones.exists && mesocyclones.isHittable) { element("nativeMap.stormKey").swipeUp() }
+        XCTAssertTrue(mesocyclones.exists)
+        XCTAssertFalse(mesocyclones.isEnabled, "No mesocyclones in the past")
+        XCTAssertTrue(app.staticTexts["Not kept in the archive. Back to live to see it."].exists, "Says why")
+        XCTAssertTrue(stormKeySwitch("lightning").isEnabled, "Lightning has a past")
     }
 
     func testLoopFromTwoHoursBackIsKept() {
@@ -1116,18 +1565,18 @@ final class NativeMapUITests: XCTestCase {
         openLayers()
         func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
         XCTAssertEqual(value("storms"), "1")
-        XCTAssertEqual(value("lightning"), "0", "Off for the link")
-        XCTAssertEqual(value("mesocyclones"), "0", "Off for the link")
         element("nativeMap.layers.close").tap()
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Off for the link")
+        XCTAssertEqual(stormKeySwitch("mesocyclone").value as? String, "0", "Off for the link")
+        closeStormKey()
         // Opened again without the link, and without the reset: as the reader had it.
         app.terminate()
         app.launchArguments.removeAll { $0 == "--ui-test-reset" }
         app.launchEnvironment["MC_NATIVE_MAP_LINK"] = nil
         app.launch()
         waitForSeries()
-        openLayers()
-        XCTAssertEqual(value("lightning"), "1", "The reader's own")
-        XCTAssertEqual(value("mesocyclones"), "1", "The reader's own")
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "1", "The reader's own")
+        XCTAssertEqual(stormKeySwitch("mesocyclone").value as? String, "1", "The reader's own")
     }
 
     /// A link says each overlay on or off, the product, the storm marks put
@@ -1151,10 +1600,10 @@ final class NativeMapUITests: XCTestCase {
         menu.buttons["Close"].firstMatch.tap()
         XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
         openLayers()
-        func value(_ layer: String) -> String? { app.switches["nativeMap.layers.\(layer)"].firstMatch.value as? String }
-        XCTAssertEqual(value("lightning"), "0", "Off for the link")
-        XCTAssertEqual(value("storms"), "1")
+        XCTAssertEqual(app.switches["nativeMap.layers.storms"].firstMatch.value as? String, "1")
         element("nativeMap.layers.close").tap()
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Off for the link")
+        closeStormKey()
         // Opened again without the link: the reader's own, none of it stored.
         app.terminate()
         app.launchArguments.removeAll { $0 == "--ui-test-reset" }
@@ -1251,19 +1700,44 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertFalse(pill.isSelected)
     }
 
-    func testLayerSwitcherTurnsLightningOff() {
+    /// The lightning is switched in the storm key (core's `StormKey`), not in
+    /// the layer switcher; the key's pill stays with the storm marks off,
+    /// with the lightning and the mesocyclones in it, and its dot says the
+    /// lightning is off.
+    func testStormKeyTurnsLightningOff() {
         launch()
         waitForSeries()
         openLayers()
         screenshot("layer switcher")
-        let lightning = app.switches["nativeMap.layers.lightning"].firstMatch
-        XCTAssertTrue(lightning.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.switches["nativeMap.layers.lightning"].firstMatch.exists, "Not in the layer switcher")
+        element("nativeMap.layers.close").tap()
+        let pill = element("nativeMap.stormKey.pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 10))
+        XCTAssertEqual(pill.value as? String ?? "", "", "Nothing off yet")
+        let lightning = stormKeySwitch("lightning")
         XCTAssertEqual(lightning.value as? String, "1")
+        screenshot("storm key with the lightning")
         lightning.switches.firstMatch.tap()
         XCTAssertTrue(waitForValue(lightning) { $0 == "0" })
-        element("nativeMap.layers.close").tap()
+        closeStormKey()
+        XCTAssertNotEqual(pill.value as? String ?? "", "", "The pill says something is off")
+        XCTAssertEqual(stormKeySwitch("lightning").value as? String, "0", "Kept")
+        closeStormKey()
+        // The storm marks off: the pill stays, the key keeps the lightning and the mesocyclones.
         openLayers()
-        XCTAssertEqual(app.switches["nativeMap.layers.lightning"].firstMatch.value as? String, "0")
+        let storms = app.switches["nativeMap.layers.storms"].firstMatch
+        XCTAssertTrue(storms.waitForExistence(timeout: 5))
+        storms.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(storms) { $0 == "0" })
+        element("nativeMap.layers.close").tap()
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "The pill stays with the storms off")
+        let back = stormKeySwitch("lightning")
+        XCTAssertTrue(stormKeySwitch("mesocyclone").exists)
+        XCTAssertFalse(app.switches["nativeMap.stormKey.meteocool"].firstMatch.exists, "No storm marks to switch")
+        screenshot("storm key without the storm marks")
+        back.switches.firstMatch.tap()
+        XCTAssertTrue(waitForValue(back) { $0 == "1" })
+        closeStormKey()
     }
 
     func testLightningMapShowsItsHistogram() {
@@ -1416,6 +1890,97 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(playButton.waitForExistence(timeout: 5))
     }
 
+    /// How the storms are drawn (core's `StylePicker`): the cloud, until the
+    /// glow is picked beside the scan's picker; the layer switcher's group
+    /// says the same and picks it too. Kept across launches.
+    func testThreeDStyleIsPickedOnTheMapAndKept() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=50", demo: true)
+        let style = element("nativeMap.3d.style")
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Cloud")
+        sleep(5)
+        screenshot("3D storms as a cloud")
+        style.tap()
+        let glow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Glow'")).firstMatch
+        XCTAssertTrue(glow.waitForExistence(timeout: 5), "The menu names each style")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Cloud'")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Shells'")).firstMatch.exists, "Not on the map")
+        glow.tap()
+        XCTAssertTrue(waitForValue(style, timeout: 5) { _ in style.label == "Storm style: Glow" }, style.label)
+        sleep(4)
+        screenshot("3D storms as glow")
+        openLayers()
+        let glowRow = element("nativeMap.layers.style.glow")
+        for _ in 0 ..< 4 where !glowRow.isHittable { element("nativeMap.layers").swipeUp() }
+        XCTAssertTrue(glowRow.isSelected, "Settings has the map's style")
+        XCTAssertFalse(element("nativeMap.layers.style.cloud").isSelected)
+        element("nativeMap.layers.close").tap()
+        // Kept for the next visit.
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launch()
+        let proceed = app.alerts.buttons["Continue to Demo"].firstMatch
+        if proceed.waitForExistence(timeout: 15) { proceed.tap() }
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Glow")
+        // The switcher's group picks it back.
+        openLayers()
+        let cloudRow = element("nativeMap.layers.style.cloud")
+        for _ in 0 ..< 4 where !cloudRow.isHittable { element("nativeMap.layers").swipeUp() }
+        cloudRow.tap()
+        XCTAssertTrue(cloudRow.isSelected)
+        element("nativeMap.layers.close").tap()
+        XCTAssertEqual(style.label, "Storm style: Cloud")
+    }
+
+    /// A link's `style=` is for the visit; core's shells, off its map, are not taken.
+    func testLinkedStyleHoldsForTheVisitOnly() {
+        launch(link: "?latLonZ=44,3.5,7&layer=cells3d&style=glow", demo: true)
+        let style = element("nativeMap.3d.style")
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Glow", "As linked")
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--ui-test-reset" }
+        app.launchEnvironment["MC_NATIVE_MAP_LINK"] = "?latLonZ=44,3.5,7&layer=cells3d&style=shells"
+        app.launch()
+        let proceed = app.alerts.buttons["Continue to Demo"].firstMatch
+        if proceed.waitForExistence(timeout: 15) { proceed.tap() }
+        XCTAssertTrue(style.waitForExistence(timeout: 20))
+        XCTAssertEqual(style.label, "Storm style: Cloud", "The reader's own; the link's shells are not on the map")
+    }
+
+    /// The satellite basemap (core's `layers/satellite.ts`): offered in
+    /// Settings with the others, and Apple's imagery under the radar and
+    /// under the 3D map's storms.
+    func testSatelliteBasemapUnderBothMaps() {
+        launch(link: "?latLonZ=44,3.5,7", demo: true)
+        waitForSeries()
+        app.buttons["map.settings"].tap()
+        let row = app.staticTexts["Base Map Layer"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        for _ in 0 ..< 6 where !row.isHittable { app.tables.firstMatch.swipeUp() }
+        row.tap()
+        let matchSystem = app.switches["Match System"]
+        XCTAssertTrue(matchSystem.waitForExistence(timeout: 5))
+        if matchSystem.value as? String == "1" { matchSystem.tap() }
+        let table = app.tables["settings.options"]
+        let satellite = table.staticTexts["Satellite"]
+        for _ in 0 ..< 4 where !satellite.isHittable { table.swipeUp() }
+        satellite.tap()
+        XCTAssertTrue(table.cells.containing(.staticText, identifier: "Satellite").firstMatch.isSelected)
+        app.buttons["picker.save"].tap()
+        XCTAssertTrue(app.staticTexts["Satellite"].waitForExistence(timeout: 5), "Settings names it")
+        app.buttons["Done"].firstMatch.tap()
+        waitForSeries()
+        sleep(4)
+        screenshot("satellite basemap")
+        openLayers()
+        element("nativeMap.layers.map.cells3d").tap()
+        XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 10))
+        sleep(10)
+        screenshot("satellite under the 3D map")
+    }
+
     func testThreeDEveryModeItsSliderNorthAndDetails() throws {
         let core = try XCTUnwrap(demoCores().first, "The demo lists storm cores")
         launch(link: "?latLonZ=\(core.lat),\(core.lon),7&layer=cells3d", demo: true)
@@ -1466,7 +2031,10 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7", demo: true)
         waitForSeries()
         openLayers()
-        for layer in ["lightning", "mesocyclones", "storms", "fromStart", "cells3d", "terrain3d"] {
+        // The stations and the mesocyclones switch only from the map.
+        XCTAssertFalse(app.switches["nativeMap.layers.stations"].exists)
+        XCTAssertFalse(app.switches["nativeMap.layers.mesocyclones"].exists)
+        for layer in ["lightning", "storms", "fromStart", "cells3d", "terrain3d"] {
             let toggle = app.switches["nativeMap.layers.\(layer)"].firstMatch
             for _ in 0 ..< 4 where !toggle.isHittable { element("nativeMap.layers").swipeUp() }
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), layer)
@@ -1750,6 +2318,8 @@ final class NativeMapUITests: XCTestCase {
         launch(link: "?latLonZ=44,3.5,7&layer=cells3d&pitch=30&bearing=-135", demo: true)
         XCTAssertTrue(element("nativeMap.3d").waitForExistence(timeout: 20))
         XCTAssertTrue(element("nativeMap.3d.north").exists)
+        // Opened by a link, not a detour: nothing to go back to.
+        XCTAssertFalse(app.buttons["nativeMap.3d.back"].exists)
         // Tilted and turned as the link says.
         let canvas = element("nativeMap.3d.canvas")
         XCTAssertTrue(waitForValue(canvas) { $0.hasPrefix("30,-135") }, "The link's camera: \(canvas.value as? String ?? "")")
@@ -1873,6 +2443,13 @@ final class NativeMapUITests: XCTestCase {
         // The app names its sheet; newer systems show their own list in its place.
         let sheet = app.otherElements.matching(NSPredicate(format: "identifier IN %@", ["map.share", "ActivityListView"])).firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 30))
+        // The link's card beside it, a picture of its own: the sheet offers
+        // what only a picture can do, among the first actions.
+        let picture = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["Save Image", "Assign to Contact"])).firstMatch
+        XCTAssertTrue(picture.waitForExistence(timeout: 10), "The card as a picture of its own")
+        // Time for the card to come in as the sheet's preview.
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
         screenshot("share sheet")
     }
 
@@ -2057,6 +2634,58 @@ final class NativeMapUITests: XCTestCase {
         XCTAssertTrue(waitForValue(tilt) { $0.hasPrefix("1.5° ") }, "The linked tilt: \(tilt.value ?? "")")
         // The radar's reach in view: its mark on screen.
         XCTAssertTrue(element("nativeMap.site.deoft").waitForExistence(timeout: 20))
+    }
+
+    func testTheTraysInfoOpensTheRadarsPage() {
+        launch(link: "?radar=deoft")
+        waitForSeries()
+        let about = element("nativeMap.site.info")
+        XCTAssertTrue(about.waitForExistence(timeout: 20), "The open radar's \"i\"")
+        XCTAssertEqual(about.label, "About this radar")
+        about.tap()
+        let page = element("nativeMap.radarInfo")
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "The radar's page")
+        XCTAssertTrue(app.navigationBars["Offenthal radar"].firstMatch.waitForExistence(timeout: 5))
+        // Its photo, from the web map's origin, credited and licensed.
+        let photo = element("nativeMap.radarInfo.photo")
+        XCTAssertTrue(photo.waitForExistence(timeout: 10))
+        XCTAssertEqual(photo.label, "The Offenthal radar")
+        let credit = element("nativeMap.radarInfo.credit")
+        XCTAssertTrue(credit.waitForExistence(timeout: 5))
+        XCTAssertTrue(credit.label.hasPrefix("Photo: Stefan Oemisch, "), credit.label)
+        // The facts: the operator, the band, and the network's own numbers.
+        let facts = element("nativeMap.radarInfo.facts")
+        XCTAssertTrue(facts.waitForExistence(timeout: 5))
+        // A row is one element at the accessibility sizes, two otherwise,
+        // and may be further down there.
+        func fact(_ text: String) -> Bool {
+            let row = facts.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+            for _ in 0 ..< 3 where !row.exists { page.swipeUp() }
+            return row.exists
+        }
+        XCTAssertTrue(fact("Operator") && fact("DWD"), "The operator's row")
+        XCTAssertTrue(fact("C band · dual polarisation"))
+        XCTAssertTrue(fact("246 m above sea level"))
+        XCTAssertTrue(element("nativeMap.radarInfo.text").exists)
+        screenshot("radar page")
+        // The sources and the way on to how every radar works, further down.
+        let explain = element("nativeMap.radarInfo.explain")
+        if !explain.isHittable { page.swipeUp() }
+        let sources = element("nativeMap.radarInfo.sources")
+        XCTAssertTrue(sources.waitForExistence(timeout: 5))
+        // Named by publisher, ending with where the photo was published.
+        XCTAssertTrue(sources.links["DWD"].exists)
+        XCTAssertTrue(sources.links["Photo (Wikimedia Commons)"].exists)
+        XCTAssertTrue(explain.waitForExistence(timeout: 5))
+        // A tap while the page still glides from the swipe only stops it.
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        explain.tap()
+        if !element("nativeMap.explainer").waitForExistence(timeout: 3), page.exists { explain.tap() }
+        XCTAssertTrue(element("nativeMap.explainer").waitForExistence(timeout: 10), "How the radar works")
+        XCTAssertFalse(page.exists)
+        element("nativeMap.explainer.close").tap()
+        // The radar stays open under it.
+        XCTAssertTrue(element("nativeMap.site").waitForExistence(timeout: 10))
     }
 
     func testRadarMarkOpensItsSweepWithItsTiltsAndClosesBackToTheTimeline() {

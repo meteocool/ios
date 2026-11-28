@@ -3,7 +3,8 @@
 //  meteocool
 //
 //  The radar composite on the native map: the series, its steps, and the
-//  tiles and pictures each step needs.
+//  tiles and pictures each step needs, and the radar draped on the 3D map's
+//  ground with the flat map's cuts (core's `layers/maskedTiles.ts`).
 //
 
 import MapKit
@@ -29,6 +30,10 @@ final class RadarEngine {
     var stale = false { didSet { updateOpacity() } }
     /// A storm is selected: the radar steps back (`INSPECT_OPACITY`).
     var dimmed = false { didSet { updateOpacity() } }
+    /// A slow or data-saving connection: less is fetched ahead (`preloadMode`).
+    var slow = false {
+        didSet { if slow != oldValue { prefetch() } }
+    }
     /// A radar is open in its own sweep: the composites step back under it.
     var siteDimmed = false { didSet { updateOpacity() } }
     /// The newest observation's build time and the learned cadence, for the
@@ -82,11 +87,14 @@ final class RadarEngine {
 
     /// The tiles of the step on screen, whose arrival redraws.
     private var shownTiles = Set<String>()
-    /// A step scrubbed to whose pictures are not all ready: the step on
+    /// A step asked for whose pictures are not all ready: the step on
     /// screen stays until they are, then the whole map changes at once.
     private var heldFrame: RadarFrameRef?
     private var heldIndex: Int?
     private var holdTimer: Timer?
+    /// The needle came to a step while a hand is on the timeline: its own
+    /// tiles wait for it to rest there (`PreviewTileRules.rest`).
+    private var restTimer: Timer?
     private var prepareScheduled = false
 
     init(mapView: MKMapView, endpoints: NativeMapEndpoints, palette: String) {
@@ -103,8 +111,11 @@ final class RadarEngine {
         paletteChoice = palette
 
         store.onTile = { [weak self] key in self?.tileArrived(key) }
+        store.onOutcome = { ok in NetworkLog.shared.tileOutcome(ok) }
         player.onStep = { [weak self] step in self?.showStep(step) }
         player.isReady = { [weak self] step in self?.isReady(step) ?? true }
+        player.preloadMode = { [weak self] in self?.preloadMode ?? .none }
+        player.isMoving = { [weak self] in self?.moving ?? false }
         compositor.onPrepared = { [weak self] in self?.prepared() }
         compositor.onBuilt = { [weak self] frame, rect in
             guard let self, self.scene.frames.current == frame else { return }
@@ -224,7 +235,16 @@ final class RadarEngine {
         return true
     }
 
+    /// The map is being zoomed or panned, between MapKit's will and did change.
+    private(set) var moving = false
+
+    func regionWillChange() {
+        moving = true
+        player.mapStartedMoving()
+    }
+
     func regionDidChange() {
+        moving = false
         prefetch()
         prepareAhead()
     }
@@ -277,8 +297,7 @@ final class RadarEngine {
                 self.processedTimes = (built.max(), ConnectionRules.cadence(processedTimes: built))
                 self.compose()
                 self.onSeries?(series)
-                if self.product == .merged || self.product == .colmax,
-                   series.products?[self.product.rawValue]?.isEmpty ?? true {
+                if self.product.isWhole, series.products?[self.product.rawValue]?.isEmpty ?? true {
                     self.onGaveUp?(self.product)
                 }
             }
@@ -287,13 +306,22 @@ final class RadarEngine {
     }
 
     /// The series as UI tests want it: without the networks' nowcasts
-    /// (`MC_NO_NOWCAST`), as a run that has not come in would leave it.
+    /// (`MC_NO_NOWCAST`), as a run that has not come in would leave it;
+    /// without any frame of some networks (`MC_STALLED_NETWORKS='pl,cz'`),
+    /// as a stopped feed leaves them.
     nonisolated private static func forTests(_ series: RadarSeries?) -> RadarSeries? {
         #if DEBUG
-        if ProcessInfo.processInfo.environment["MC_NO_NOWCAST"] != nil, let all = series {
-            return RadarSeries(frames: all.frames, networks: all.networks,
-                               products: all.products?.filter { !$0.key.hasPrefix("nowcast_") },
-                               serverTime: all.serverTime, replay: all.replay)
+        var series = series
+        let environment = ProcessInfo.processInfo.environment
+        if environment["MC_NO_NOWCAST"] != nil, let all = series {
+            series = RadarSeries(frames: all.frames, networks: all.networks,
+                                 products: all.products?.filter { !$0.key.hasPrefix("nowcast_") },
+                                 serverTime: all.serverTime, replay: all.replay)
+        }
+        if let stalled = environment["MC_STALLED_NETWORKS"]?.split(separator: ",").map(String.init), let all = series {
+            series = RadarSeries(frames: all.frames, networks: all.networks?.filter { !stalled.contains($0.key) },
+                                 products: all.products?.filter { key, _ in !stalled.contains { key == "nowcast_\($0)" } },
+                                 serverTime: all.serverTime, replay: all.replay)
         }
         #endif
         return series
@@ -344,29 +372,82 @@ final class RadarEngine {
 
     // MARK: - Steps
 
+    /// The longest the step on screen stands in for one whose pictures do
+    /// not all come: an empty map is worse than one a step behind, but not
+    /// for ever (core's `LINGER_MS`).
+    static let linger: TimeInterval = 5
+
     private func showStep(_ step: Int) {
         let frame = frame(for: step)
         let showing = scene.frames.current
-        // Playing waits for each step's pictures (`RadarPlayer.isReady`);
-        // a scrubbed-to step that is not ready keeps the one on screen for
-        // a moment, rather than changing tile by tile.
-        if player.playing || showing.layers.isEmpty || frame == showing || isReady(frame) {
+        // The picture moves to a step only once every tile of it in view is
+        // ready (`FrameSwitchRules.settled`), or its preview covers the
+        // rest, blurred but of the time asked for, each tile replacing the
+        // blur as it comes: until then the step before stays whole, never two
+        // times in one picture, whether played to (the player waits for it a
+        // moment, `RadarPlayer.isReady`) or scrubbed to.
+        if showing.layers.isEmpty || frame == showing || isReady(frame) || isPreviewed(frame) || standsIn(frame) {
             display(frame)
         } else {
             heldFrame = frame
             heldIndex = player.index
-            holdTimer?.invalidate()
-            holdTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self, let held = self.heldFrame else { return }
-                    self.display(held)
+            // From the first step held: a hand moving on does not put it off.
+            if holdTimer == nil {
+                holdTimer = Timer.scheduledTimer(withTimeInterval: Self.linger, repeats: false) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, let held = self.heldFrame else { return }
+                        self.display(held)
+                    }
                 }
             }
         }
+        askedAt = CACurrentMediaTime()
+        rest(frame)
         updateOpacity()
         prepareAhead()
         prefetch()
         onStep?(step)
+    }
+
+    /// When the step on screen, or the one held for, was asked for.
+    private var askedAt: CFTimeInterval = 0
+
+    /// How much longer, in seconds, the step asked for waits before its own
+    /// tiles are asked for. Shown at once from its preview under a hand on
+    /// the timeline, `PreviewTileRules.rest`: the needle may only be passing
+    /// over it. Held with nothing of it to show, the rest as well, and up to
+    /// `PreviewTileRules.previewWait` in all while its preview is on its way
+    /// (`FrameSwitchRules.waitsToAsk`).
+    private func restLeft(_ frame: RadarFrameRef) -> TimeInterval {
+        let waited = (CACurrentMediaTime() - askedAt) * 1000
+        let rest = PreviewTileRules.rest * 1000
+        guard heldFrame == frame else { return player.grabbed ? max(0, rest - waited) / 1000 : 0 }
+        return FrameSwitchRules.waitsToAsk(waited, showsAnother: !scene.frames.current.layers.isEmpty,
+                                           previewDue: compositor.awaitsPreview(frame), rest: rest,
+                                           previewWait: PreviewTileRules.previewWait * 1000) / 1000
+    }
+
+    /// A step the needle crosses has its preview drawn and its own tiles
+    /// asked for only once it has stayed on it a moment (`restLeft`): the
+    /// steps it only passed over are not in the way of the one it stopped
+    /// on, nor of the previews still coming.
+    private func rest(_ frame: RadarFrameRef) {
+        restTimer?.invalidate()
+        restTimer = nil
+        let left = restLeft(frame)
+        guard left > 0 else {
+            if !scene.rested {
+                scene.rested = true
+                renderer?.setNeedsDisplay()
+                prepareAhead()
+                prefetch()
+            }
+            return
+        }
+        scene.rested = false
+        restTimer = Timer.scheduledTimer(withTimeInterval: left, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.rest(frame) }
+        }
     }
 
     /// Puts a step on screen: every tile of it in one redraw.
@@ -437,9 +518,28 @@ final class RadarEngine {
         isReady(frame(for: step))
     }
 
-    /// Pictures were put together: a held step may be ready now.
+    /// Whether a step's preview, with what pictures of it are ready, covers the view.
+    private func isPreviewed(_ frame: RadarFrameRef) -> Bool {
+        guard let mapView else { return false }
+        return compositor.isPreviewed(frame, zoom: drawZoom, in: mapView.visibleMapRect)
+    }
+
+    /// While the map is being zoomed or panned, a step is moved to on less: a
+    /// preview that covers only part of the view will do, as the ground at
+    /// the edges is new to every step alike; so will its own pictures of
+    /// the zoom next to the one drawn, coarser or finer.
+    private func standsIn(_ frame: RadarFrameRef) -> Bool {
+        guard moving, let mapView else { return false }
+        let visible = mapView.visibleMapRect, zoom = drawZoom
+        return compositor.isPreviewed(frame, zoom: zoom, in: visible, partly: true)
+            || compositor.isReady(frame, zoom: zoom - 1, in: visible) || compositor.isReady(frame, zoom: zoom + 1, in: visible)
+    }
+
+    /// Pictures were put together: a held step may be ready now, and the
+    /// one asked for no longer waiting for its preview.
     private func prepared() {
-        if let held = heldFrame, isReady(held) { display(held) }
+        if let held = heldFrame, isReady(held) || isPreviewed(held) { display(held) }
+        if !scene.rested { rest(heldFrame ?? scene.frames.current) }
         updatePreloaded()
     }
 
@@ -450,31 +550,66 @@ final class RadarEngine {
         if ready != player.preloaded { player.preloaded = ready }
     }
 
-    /// Puts the pictures of the steps coming up together ahead of time:
-    /// while playing, in the order playing reaches them (core's
-    /// `playbackLoop`); while paused, nearest first either side, for scrubbing.
+    /// What is fetched and put together ahead (core's `preloadMode`): every
+    /// step, as the native map always has; on a slow or data-saving
+    /// connection only the next few while playing, the previews alone under
+    /// a hand, and otherwise the step on screen alone. All but the last load
+    /// every step's preview too, before the steps' own tiles.
+    var preloadMode: PlaybackRules.PreloadMode {
+        let shown = visible && !player.timeline.steps.isEmpty
+        guard slow else { return shown ? .all : .none }
+        return PlaybackRules.preloadMode(setting: true, radarShown: shown, browsing: player.playing || player.grabbed || !player.isLive,
+                                         playing: player.playing, slow: true)
+    }
+
+    /// The steps whose pictures are put together ahead, the one on screen
+    /// first: while playing, in the order playing reaches them (core's
+    /// `playOrder`); while paused, nearest first either side, for scrubbing.
+    private func stepsAhead(from start: Int) -> [Int] {
+        let steps = player.timeline.steps
+        switch preloadMode {
+        case .none, .previews:
+            return [start]
+        case .ahead:
+            return player.playing ? PlaybackRules.playOrder(from: start, next: player.nextIndex(after:), max: PlaybackRules.aheadOnSlow + 1)
+                : [start] + Array((start + 1 ..< steps.count).prefix(PlaybackRules.aheadOnSlow))
+        case .all:
+            if player.playing { return PlaybackRules.playOrder(from: start, next: player.nextIndex(after:), max: 10) }
+            var order = [start]
+            for distance in 1 ..< steps.count where order.count < 14 {
+                for i in [start + distance, start - distance] where steps.indices.contains(i) { order.append(i) }
+            }
+            return order
+        }
+    }
+
+    /// Puts the pictures of the steps coming up together ahead of time.
     private func prepareAhead() {
         let steps = player.timeline.steps
         guard !steps.isEmpty, let mapView, mapView.bounds.width > 0 else { return }
         let start = heldIndex ?? player.index
-        var order = [start]
-        if player.playing {
-            var i = start
-            while order.count < 10 {
-                i = i + 1 < steps.count ? i + 1 : (player.nowIndex ?? 0)
-                if order.contains(i) { break }
-                order.append(i)
-            }
-        } else {
-            for distance in 1 ..< steps.count where order.count < 14 {
-                for i in [start + distance, start - distance] where steps.indices.contains(i) { order.append(i) }
-            }
-        }
+        var order = stepsAhead(from: start)
+        // A step the needle may only be passing over waits for it to rest.
+        if !scene.rested { order.removeAll { $0 == start } }
         var seen = Set<String>()
         let frames = order.map { frame(for: steps[$0]) }.filter { seen.insert($0.key).inserted }
         // A margin around the view: MapKit draws a little past its edges.
         let visible = mapView.visibleMapRect
         compositor.prepare(frames, zoom: drawZoom, in: visible.insetBy(dx: -visible.width / 4, dy: -visible.height / 4))
+        compositor.preparePreviews(previewSteps.map { frame(for: steps[$0]) }, zoom: drawZoom, view: visible)
+    }
+
+    /// The steps whose previews are kept, nearest the needle first: every
+    /// one the needle can reach (`preloadPreviews`); playing, in the order
+    /// the loop shows them first.
+    private var previewSteps: [Int] {
+        guard preloadMode != .none else { return [] }
+        let timeline = player.timeline
+        let reachable = timeline.steps.indices.filter { timeline.isPlayable(timeline.steps[$0]) }
+        let start = heldIndex ?? player.index
+        let near = PlaybackRules.preloadOrder(reachable, from: start)
+        guard player.playing else { return near }
+        return PlaybackRules.playOrder(from: start, next: player.nextIndex(after:), max: reachable.count) + near
     }
 
     /// Several arrivals in a row prepare once.
@@ -495,30 +630,44 @@ final class RadarEngine {
         renderer?.setNeedsDisplay(key.mapRect)
     }
 
-    /// The step on screen's tiles first, then the others nearest first
-    /// (core's `precacheForecast`), at the zoom MapKit draws.
+    /// The step on screen's tiles first (once the needle rests on it), then
+    /// every step's preview, then the others' own nearest first (core's
+    /// `precacheForecast`), at the zoom MapKit draws.
     private func prefetch() {
         let timeline = player.timeline
         guard !timeline.steps.isEmpty, let mapView, mapView.bounds.width > 0 else { return }
         let visible = mapView.visibleMapRect
         let zoom = drawZoom
         var plan: [RadarTileKey: Int] = [:]
-        let order = timeline.steps.indices.sorted { abs($0 - player.index) < abs($1 - player.index) }
-        for i in order {
-            let distance = abs(i - player.index)
-            for layer in timeline.layers[timeline.steps[i]] ?? [] {
-                let z = max(RadarLayer.minZoom, min(zoom, layer.maxZoom))
-                guard let range = RadarTileKey.range(z: z, covering: coverage.bounds(of: layer.clip).intersection(visible)) else { continue }
+        func add(_ step: Int, zoom: (RadarLayer) -> Int?, priority: Int) {
+            for layer in timeline.layers[step] ?? [] {
+                guard let z = zoom(layer),
+                      let range = RadarTileKey.range(z: z, covering: coverage.bounds(of: layer.clip).intersection(visible)) else { continue }
                 for x in range.x {
                     for y in range.y where layer.index.has(z: z, x: x, y: y) {
                         let key = RadarTileKey(layer, z: z, x: x, y: y)
-                        if plan[key] == nil { plan[key] = distance }
+                        plan[key] = min(plan[key] ?? .max, priority)
                     }
                 }
             }
+        }
+        // The previews' tiles: a few zooms up, one or two a layer.
+        let preview = RadarCompositor.previewPriority
+        for i in previewSteps {
+            let frame = frame(for: timeline.steps[i])
+            guard let pz = PreviewTileRules.previewZoom(frame.zoom(for: zoom), minZ: RadarLayer.minZoom) else { continue }
+            add(timeline.steps[i], zoom: { max(RadarLayer.minZoom, min(pz, $0.maxZoom)) }, priority: preview)
+        }
+        let order = preloadMode == .all ? timeline.steps.indices.sorted { abs($0 - player.index) < abs($1 - player.index) }
+            : stepsAhead(from: player.index)
+        for i in order {
+            let distance = abs(i - player.index)
+            add(timeline.steps[i], zoom: { max(RadarLayer.minZoom, min(zoom, $0.maxZoom)) },
+                priority: distance == 0 && scene.rested ? 0 : preview + 1 + distance)
             if plan.count > 1200 { break }
         }
-        store.replacePlan(plan)
+        // Under a hand, every step's preview before any other step's tiles.
+        store.replacePlan(plan, holdBehind: PlaybackRules.previewsFirst(playing: player.playing) ? preview : nil)
     }
 
     // MARK: - Look

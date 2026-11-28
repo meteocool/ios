@@ -8,14 +8,14 @@
 import SwiftUI
 
 /// Each product's newest scan, from its own endpoint (`/v3/radar/europe`,
-/// `/colmax`, `/dmax`), for the menu's ages.
+/// `/colmax`, `/dmax`, `/echotop18`, …), for the menu's ages.
 @MainActor
 final class ProductScans: ObservableObject {
     @Published var newest: [RadarProduct: Int] = [:]
 
     func load(_ map: NativeMapContext) {
-        let paths: [RadarProduct: String] = [.merged: "europe", .colmax: "colmax", .dmax: "dmax"]
-        for (product, path) in paths {
+        for product in RadarProduct.allCases {
+            guard let path = product.latestPath else { continue }
             map.fetch(map.endpoints.api.appendingPathComponent("v3/radar/\(path)")) { [weak self] data, _ in
                 guard let data, let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let scan = (object["upstream_time"] as? NSNumber)?.intValue ?? (object["processed_time"] as? NSNumber)?.intValue else { return }
@@ -25,7 +25,7 @@ final class ProductScans: ObservableObject {
     }
 }
 
-/// The menu: the products in their two groups, each with its newest scan's
+/// The menu: the products in their three groups, each with its newest scan's
 /// age, the chosen one ticked; "?" opens the explainer.
 struct ProductMenu: View {
     @ObservedObject var player: RadarPlayer
@@ -45,7 +45,8 @@ struct ProductMenu: View {
                             HStack {
                                 Text(CoreStrings.t("chrome.radar_product.group_\(group.group)"))
                                 Spacer()
-                                if group.group == "lowest" {
+                                // How old each product's newest scan is means nothing in a past window.
+                                if group.group == "lowest", model.window == nil {
                                     Text(CoreStrings.t("chrome.radar_product.age_heading")).scaledFont(10, weight: .semibold, relativeTo: .caption2)
                                 }
                             }
@@ -102,11 +103,13 @@ struct ProductMenu: View {
                         .foregroundStyle(.tertiary)
                 }
                 Spacer(minLength: 4)
-                TimelineView(.periodic(from: .now, by: 15)) { context in
-                    Text(age(product, now: context.date))
-                        .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
-                        .foregroundStyle(behind(product) ? Color.orange : Color.secondary)
-                        .multilineTextAlignment(.trailing)
+                if model.window == nil {
+                    TimelineView(.periodic(from: .now, by: 15)) { context in
+                        Text(age(product, now: context.date))
+                            .scaledFont(12, weight: .semibold, relativeTo: .caption, digits: true)
+                            .foregroundStyle(behind(product) ? Color.orange : Color.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
             }
             .contentShape(Rectangle())

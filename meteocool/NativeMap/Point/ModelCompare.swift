@@ -363,6 +363,8 @@ struct ModelCompareView: View {
                 }
             }
         }
+        // Its words can be copied with a long press (core's `.mc-selectable`).
+        .textSelection(.enabled)
         // A container: its own children keep their identifiers.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nativeMap.compare")
